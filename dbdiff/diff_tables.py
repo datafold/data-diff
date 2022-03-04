@@ -1,6 +1,5 @@
 from typing import List
 import logging
-logging.basicConfig(level=logging.DEBUG)
 
 from runtype import dataclass
 
@@ -91,21 +90,25 @@ class TableSegment:
 
 
 def diff_sets(a, b):
-    return set(a) ^ set(b)
-
+    s1 = set(a)
+    s2 = set(b)
+    for i in s1-s2:
+        yield '+', i
+    for i in s2-s1:
+        yield '-', i
 
 @dataclass
 class TableDiffer:
-    segments_per_iteration: int = 32             # Into how many segments to bisect per iteration
-    minimal_bisection_threshold: int = 1024**2   # When should we stop bisecting and compare locally (in row count)
+    bisection_factor: int = 32             # Into how many segments to bisect per iteration
+    bisection_threshold: int = 1024**2   # When should we stop bisecting and compare locally (in row count)
 
     def diff_tables(self, table1, table2):
-        if self.segments_per_iteration >= self.minimal_bisection_threshold:
+        if self.bisection_factor >= self.bisection_threshold:
             raise ValueError("Incorrect param values")
-        if self.segments_per_iteration < 2:
+        if self.bisection_factor < 2:
             raise ValueError("Must have at least two segments per iteration")
 
-        logger.info(f'Diffing tables of size {table1.count} and {table2.count} | segments: {self.segments_per_iteration}, bisection threshold: {self.minimal_bisection_threshold}.')
+        logger.info(f'Diffing tables of size {table1.count} and {table2.count} | segments: {self.bisection_factor}, bisection threshold: {self.bisection_threshold}.')
 
         if table1.checksum == table2.checksum:
             return []   # No differences
@@ -118,16 +121,16 @@ class TableDiffer:
 
         # If count is below the threshold, just download and compare the columns locally
         # This saves time, as bisection speed is limited by ping.
-        if count1 < self.minimal_bisection_threshold and count2 < self.minimal_bisection_threshold:
+        if count1 < self.bisection_threshold and count2 < self.bisection_threshold:
             rows1 = table1.get_values()
             rows2 = table2.get_values()
-            diff = diff_sets(rows1, rows2)
-            logger.debug('. '*level + f'Diff found {len(diff)} different rows.')
+            diff = list(diff_sets(rows1, rows2))
+            logger.info('. '*level + f'Diff found {len(diff)} different rows.')
             yield from diff
             return
 
         # Tables are different. 
-        checkpoints = table1.choose_checkpoints(self.segments_per_iteration-1)
+        checkpoints = table1.choose_checkpoints(self.bisection_factor-1)
         assert checkpoints
         mutual_checkpoints = table2.find_checkpoints(checkpoints)
         mutual_checkpoints = list(set(mutual_checkpoints))        # Duplicate values are a problem!
@@ -140,7 +143,7 @@ class TableDiffer:
         assert count1 == sum(s.count for s in segmented1)
         assert count2 == sum(s.count for s in segmented2)
         for i, (t1, t2) in enumerate(safezip(segmented1, segmented2)):
-            logger.debug('. '*level + f'Diffing segment {i}/{len(segmented1)} of size {t1.count} and {t2.count}')
+            logger.info('. '*level + f'Diffing segment {i}/{len(segmented1)} of size {t1.count} and {t2.count}')
             # checksum is None?
             if t1.checksum != t2.checksum:
                 yield from self._diff_tables(t1, t2, level+1)

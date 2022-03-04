@@ -1,4 +1,6 @@
+import sys
 import time
+import logging
 from itertools import islice
 
 from .diff_tables import TableSegment, TableDiffer
@@ -6,13 +8,27 @@ from .database import connect_to_uri
 
 import click
 
+LOG_FORMAT = '[%(asctime)s] %(levelname)s - %(message)s'
+DATE_FORMAT ='%H:%M:%S'
+
 @click.command()
 @click.argument('db1_uri')
 @click.argument('table1_name')
 @click.argument('db2_uri')
 @click.argument('table2_name')
 @click.option('-c', '--column', default='updated_at', help='Name of column to compare')
-def main(db1_uri, table1_name, db2_uri, table2_name, column='updated_at', limit=None):
+@click.option('-l', '--limit', default=None, help='Maximum number of differences to find')
+@click.option('--bisection-factor', default=32, help='Segments per iteration')
+@click.option('--bisection-threshold', default=1024**2, help='Minimal bisection threshold')
+@click.option('-s', '--stats', is_flag=True, help='Print stats instead of a detailed diff')
+@click.option('-d', '--debug', is_flag=True, help='Print debug info')
+@click.option('-v', '--verbose', is_flag=True, help='Print extra info')
+def main(db1_uri, table1_name, db2_uri, table2_name, column, limit, bisection_factor, bisection_threshold, stats, debug, verbose):
+    if debug:
+        logging.basicConfig(level=logging.DEBUG, format=LOG_FORMAT, datefmt=DATE_FORMAT)
+    elif verbose:
+        logging.basicConfig(level=logging.INFO, format=LOG_FORMAT, datefmt=DATE_FORMAT)
+
     db1 = connect_to_uri(db1_uri)
     db2 = connect_to_uri(db2_uri)
 
@@ -21,21 +37,28 @@ def main(db1_uri, table1_name, db2_uri, table2_name, column='updated_at', limit=
     table1 = TableSegment(db1, (table1_name,), column)
     table2 = TableSegment(db2, (table2_name,), column)
 
-    differ = TableDiffer()
+    differ = TableDiffer(bisection_factor=bisection_factor, bisection_threshold=bisection_threshold)
     diff_iter = differ.diff_tables(table1, table2)
 
     if limit:
         diff_iter = islice(diff_iter, limit)
 
-    diff = list(diff_iter)
-
-    # print(diff)
-    print("Diff:", len(diff))
-    print("Diff %s%%" % (100 * len(diff) / table1.count))
+    if stats:
+        diff = list(diff_iter)
+        percent = 100 * len(diff) / table1.count
+        print(f"Diff-Total: {len(diff)} changed rows out of {table1.count}")
+        print(f"Diff-Percent: {percent:.4f}%")
+        plus = len([1 for op,_ in diff if op=='+'])
+        minus = len([1 for op,_ in diff if op=='-'])
+        print(f"Diff-Split: +{plus}  -{minus}")
+    else:
+        for op, key in diff_iter:
+            print(op, key)
+            sys.stdout.flush()
 
     end = time.time()
 
-    print("Duration:", end-start)
+    print(f"Duration: {end-start:.2f} seconds.")
 
 
 if __name__ == '__main__':
