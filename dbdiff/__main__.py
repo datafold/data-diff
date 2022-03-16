@@ -58,7 +58,7 @@ def main(db1_uri, table1_name, db2_uri, table2_name, column, limit, bisection_fa
 
     end = time.time()
 
-    print(f"Duration: {end-start:.2f} seconds.")
+    logging.info(f"Duration: {end-start:.2f} seconds.")
 
 
 if __name__ == '__main__':

@@ -61,6 +61,9 @@ class Postgres(Database):
     def quote(self, s: str):
         return f'"{s}"'
 
+    def md5_to_int(self, s: str) -> str:
+        return f"('x' || substring(md5({s}), 17))::bit(64)::bigint"
+
 
 class MySQL(Database):
     def __init__(self, host, port, database, user, password):
@@ -79,6 +82,9 @@ class MySQL(Database):
 
     def quote(self, s: str):
         return f'`{s}`'
+
+    def md5_to_int(self, s: str) -> str:
+        return f"cast(conv(substring(md5({s}), 17), 16, 10) as signed)"
 
 
 def connect_to_uri(db_uri):

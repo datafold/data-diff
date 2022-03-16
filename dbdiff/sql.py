@@ -81,7 +81,9 @@ class Checksum(Sql):
     expr: SqlOrStr
 
     def compile(self, c: Compiler):
-        return f'sum({c.compile(self.expr)})'
+        expr =  f'concat({c.compile(self.expr)})'
+        md5 = c.database.md5_to_int(expr)
+        return f'sum({md5})'
 
 @dataclass
 class Compare(Sql):
