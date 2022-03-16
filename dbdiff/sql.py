@@ -78,10 +78,11 @@ class Enum(Sql):
 
 @dataclass
 class Checksum(Sql):
-    expr: SqlOrStr
+    exprs: List[SqlOrStr]
 
     def compile(self, c: Compiler):
-        expr =  f'concat({c.compile(self.expr)})'
+        compiled_exprs = ', '.join(map(c.compile, self.exprs))
+        expr =  f'concat({compiled_exprs})'
         md5 = c.database.md5_to_int(expr)
         return f'sum({md5})'
 

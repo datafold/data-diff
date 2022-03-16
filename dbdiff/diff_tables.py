@@ -1,4 +1,4 @@
-from typing import List
+from typing import List, Tuple
 import logging
 
 from runtype import dataclass
@@ -18,6 +18,7 @@ class TableSegment:
     database: Database
     table_path: DbPath
     key_column: str
+    extra_columns: Tuple[str, ...]
     start: DbKey = None
     end: DbKey = None
 
@@ -38,7 +39,8 @@ class TableSegment:
         return Select(table=table or TableName(self.table_path), where=where, columns=columns, group_by=group_by, order_by=order_by)
 
     def get_values(self) -> List[DbKey]:
-        return self.database.query(self._make_select(), List[int])
+        select = self._make_select(columns=self._relevant_columns)
+        return self.database.query(select, List[Tuple])
 
     def choose_checkpoints(self, count: int) -> List[DbKey]:
         ratio = int(self.count / count)
@@ -83,9 +85,13 @@ class TableSegment:
         return self._count
 
     @property
+    def _relevant_columns(self):
+        return [self.key_column] + list(self.extra_columns)
+
+    @property
     def checksum(self) -> int:
         if self._checksum is None:
-            self._checksum = self.database.query(self._make_select(columns=[Checksum(self.key_column)]), int)
+            self._checksum = self.database.query(self._make_select(columns=[Checksum(self._relevant_columns)]), int)
         return self._checksum
 
 
@@ -101,6 +107,7 @@ def diff_sets(a, b):
 class TableDiffer:
     bisection_factor: int = 32             # Into how many segments to bisect per iteration
     bisection_threshold: int = 1024**2   # When should we stop bisecting and compare locally (in row count)
+    debug: bool = False
 
     def diff_tables(self, table1, table2):
         if self.bisection_factor >= self.bisection_threshold:
@@ -140,8 +147,10 @@ class TableDiffer:
 
         segmented1 = table1.segment_by_checkpoints(mutual_checkpoints)
         segmented2 = table2.segment_by_checkpoints(mutual_checkpoints)
-        assert count1 == sum(s.count for s in segmented1)
-        assert count2 == sum(s.count for s in segmented2)
+        if self.debug:
+            logger.debug("Performing sanity tests for chosen segments (assert sum of fragments == whole)")
+            assert count1 == sum(s.count for s in segmented1)
+            assert count2 == sum(s.count for s in segmented2)
         for i, (t1, t2) in enumerate(safezip(segmented1, segmented2)):
             logger.info('. '*level + f'Diffing segment {i}/{len(segmented1)} of size {t1.count} and {t2.count}')
             # checksum is None?

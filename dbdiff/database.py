@@ -1,4 +1,5 @@
 import logging
+from typing import Tuple
 
 from .sql import SqlOrStr, Compiler
 
@@ -32,20 +33,22 @@ def _one(seq):
 class Database:
     "An interface that uses the standard SQL cursor interface"
 
-    def __init__(self):
-        self._conn = self._create_connection()
-
     def query(self, sql_ast: SqlOrStr, res_type: type):
         sql_code = Compiler(self).compile(sql_ast)
         c = self._conn.cursor()
-        # print("##", sql_code)
-        # logger.debug("SQL: %s", sql_code)
+        logger.debug("Running SQL: %s", sql_code)
         c.execute(sql_code)
         res = c.fetchall()
         if res_type is int:
             return int(_one(_one(res)))
         elif getattr(res_type, '__origin__', None) is list and len(res_type.__args__) == 1:
-            return [_one(row) for row in res]
+            if res_type.__args__ == (int,):
+                return [_one(row) for row in res]
+            elif res_type.__args__ == (Tuple,):
+                return res
+            else:
+                breakpoint()
+                assert False
         return res
 
 
