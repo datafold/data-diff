@@ -36,7 +36,7 @@ class Database:
     def query(self, sql_ast: SqlOrStr, res_type: type):
         sql_code = Compiler(self).compile(sql_ast)
         c = self._conn.cursor()
-        logger.debug("Running SQL: %s", sql_code)
+        logger.debug("Running SQL (%s): %s", type(self).__name__, sql_code)
         c.execute(sql_code)
         res = c.fetchall()
         if res_type is int:
