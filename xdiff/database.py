@@ -5,12 +5,23 @@ from .sql import SqlOrStr, Compiler
 
 import dsnparse
 
-import psycopg2
-import psycopg2.extras
-psycopg2.extensions.set_wait_callback(psycopg2.extras.wait_select)
+try:
+    import psycopg2
+    import psycopg2.extras
+    psycopg2.extensions.set_wait_callback(psycopg2.extras.wait_select)
+except ImportError:
+    psycopg2 = None
 
-import mysql.connector
-from mysql.connector import errorcode
+try:
+    import mysql.connector
+    from mysql.connector import errorcode
+except ImportError:
+    mysql = None
+
+try:
+    import snowflake.connector
+except ImportError:
+    snowflake = None
 
 logger = logging.getLogger('database')
 
@@ -89,6 +100,26 @@ class MySQL(Database):
     def md5_to_int(self, s: str) -> str:
         return f"cast(conv(substring(md5({s}), 17), 16, 10) as signed)"
 
+class Snowflake(Database):
+    def __init__(self, account, user, password, path, schema, database, print_sql=False):
+        logging.getLogger('snowflake.connector').setLevel(logging.WARNING)
+
+        self._conn = snowflake.connector.connect(
+            user=user,
+            password=password,
+            account=account
+            )
+        self._conn.cursor().execute(f"USE WAREHOUSE {path.lstrip('/')}")
+        self._conn.cursor().execute(f"USE DATABASE {database}")
+        self._conn.cursor().execute(f"USE SCHEMA {schema}")
+
+    def quote(self, s: str):
+        return s
+
+    def md5_to_int(self, s: str) -> str:
+        return f"md5_number_lower64({s})"
+
+
 
 def connect_to_uri(db_uri):
     dsn = dsnparse.parse(db_uri)
@@ -107,5 +138,7 @@ def connect_to_uri(db_uri):
         return Postgres(dsn.host, dsn.port, path, dsn.user, dsn.password)
     elif scheme == 'mysql':
         return MySQL(dsn.host, dsn.port, path, dsn.user, dsn.password)
+    elif scheme == 'snowflake':
+        return Snowflake(dsn.host, dsn.user, dsn.password, path, **dsn.query)
 
     raise NotImplementedError(f"Scheme {dsn.scheme} currently not supported")

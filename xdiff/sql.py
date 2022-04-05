@@ -72,7 +72,8 @@ class Enum(Sql):
 
     def compile(self, c: Compiler):
         table = c.quote('.'.join(self.table))
-        return f'(SELECT *, (row_number() over ()) as idx FROM {table} ORDER BY {c.compile(self.order_by)}) tmp'
+        order = c.compile(self.order_by)
+        return f'(SELECT *, (row_number() over (ORDER BY {order})) as idx FROM {table} ORDER BY {order}) tmp'
 
 
 

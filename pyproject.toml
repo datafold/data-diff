@@ -30,10 +30,12 @@ dsnparse = "*"
 
 psycopg2 = { version = "*", optional = true }
 mysqlclient = { version = "*", optional = true }
+snowflake-connector-python = { version = "*", optional = true }
 
 [tool.poetry.extras]
 mysql = ["mysqlclient"]
 pgsql = ["psycopg2"]
+snowflake = ["snowflake-connector-python"]
 
 [build-system]
 requires = ["poetry-core>=1.0.0"]

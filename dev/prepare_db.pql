@@ -1,3 +1,16 @@
+// // Declare table & functions
+func run_sql(code) {
+    force_eval( SQL( nulltype, code ))
+}
+
+run_sql("DROP TABLE IF EXISTS Rating")
+run_sql("DROP TABLE IF EXISTS Rating_del1")
+run_sql("DROP TABLE IF EXISTS Rating_update1")
+run_sql("DROP TABLE IF EXISTS Rating_update001p")
+run_sql("DROP TABLE IF EXISTS Rating_update1p")
+run_sql("DROP TABLE IF EXISTS Rating_del1p")
+run_sql("DROP TABLE IF EXISTS Rating_update50p")
+
 table Rating {
     userId: int
     movieId: int
@@ -6,12 +19,25 @@ table Rating {
 }
 Rating.add_index("id")
 
-import_csv(Rating, 'ml-25m/ratings.csv', true)
-commit()
-
-func run_sql(code) {
-    force_eval( SQL( nulltype, code ))
+// Import CSV
+if (db_type == "snowflake") {
+    table tmpRating {
+        id: int
+        movieId: int
+        rating: float
+        timestamp: int
+    }
+    print "Uploading ratings CSV"
+    run_sql("RM @~/ratings.csv.gz")
+    run_sql("PUT file://ml-25m/ratings.csv @~")
+    print "Loading ratings CSV"
+    run_sql("COPY INTO tmpRating FROM '@~/ratings.csv.gz' file_format=(skip_header=1)")
+    Rating += tmpRating {..., userId:id}
+    remove_table(tmpRating)
+} else {
+    import_csv(Rating, 'ml-25m/ratings.csv', true)
 }
+commit()
 
 middle = count(Rating) /~ 2
 
@@ -49,6 +75,11 @@ if (db_type == "postgres") {
     run_sql('UPDATE Rating_update1p SET timestamp = (timestamp + 1) WHERE rand() < 0.01')
     run_sql('DELETE FROM Rating_del1p WHERE rand() < 0.01')
     run_sql('UPDATE Rating_update50p SET timestamp = (timestamp + 1) WHERE rand() < 0.5')
+} else if (db_type == "snowflake") {
+    run_sql('UPDATE Rating_update001p SET timestamp = (timestamp + 1) WHERE uniform(0::float, 1, random()) < 0.0001')
+    run_sql('UPDATE Rating_update1p SET timestamp = (timestamp + 1) WHERE uniform(0::float, 1, random()) < 0.01')
+    run_sql('DELETE FROM Rating_del1p WHERE uniform(0::float, 1, random()) < 0.01')
+    run_sql('UPDATE Rating_update50p SET timestamp = (timestamp + 1) WHERE uniform(0::float, 1, random()) < 0.5')
 } else {
     print "Unsupported database: " + db_type
 }
