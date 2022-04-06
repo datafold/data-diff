@@ -4,9 +4,9 @@ From inside the `dev` directory, run the following:
 
 either `pip install xdiff` or 
 
-2. Install Preql
+2. Install Preql (0.2.9 or up)
 
-`pip install preql`
+`pip install preql -U`
 
 3. Download CSV
 
@@ -21,6 +21,8 @@ unzip ml-25m.zip
 preql -m prepare_db  postgres://<uri>
 
 preql -m prepare_db  mysql://<uri>
+
+preql -m prepare_db  snowflake://<uri>
 
 etc.
 ```

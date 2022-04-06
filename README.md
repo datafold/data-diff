@@ -14,6 +14,8 @@ Current databases support:
 
 - MySQL
 
+- Snowflake
+
 
 # How does it work?
 
