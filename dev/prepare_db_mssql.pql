@@ -24,7 +24,7 @@ run_sql("drop table if exists tmpRating")
 run_sql("create table tmpRating(userId int, movieId int, rating float, timestamp int)")
 table tmpRating {...}
 print "Loading ratings CSV"
-run_sql("BULK INSERT tmpRating from '/ratings_small.csv' with (fieldterminator = ',', rowterminator = '0x0a', FIRSTROW = 2);")
+run_sql("BULK INSERT tmpRating from '/ratings.csv' with (fieldterminator = ',', rowterminator = '0x0a', FIRSTROW = 2);")
 print "Populating actual table"
 Rating += tmpRating
 print "Removing temp table"

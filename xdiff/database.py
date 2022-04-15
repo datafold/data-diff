@@ -78,6 +78,22 @@ class Postgres(Database):
     def md5_to_int(self, s: str) -> str:
         return f"('x' || substring(md5({s}), 17))::bit(64)::bigint"
 
+import pymssql
+class MsSQL(Database):
+    def __init__(self, host, port, database, user, password):
+        args = dict(server=host, port=port, database=database, user=user, password=password)
+        self._args = {k:v for k, v in args.items() if v is not None}
+
+        try:
+            self._conn = pymssql.connect(**self._args)
+        except pymssql.Error as e:
+            raise ConnectError(*e.args) from e
+
+    def quote(self, s: str):
+        return f'[{s}]'
+
+    def md5_to_int(self, s: str) -> str:
+        return f"CONVERT(bigint, HashBytes('MD5', {s}), 2)"
 
 class MySQL(Database):
     def __init__(self, host, port, database, user, password):
@@ -140,5 +156,7 @@ def connect_to_uri(db_uri):
         return MySQL(dsn.host, dsn.port, path, dsn.user, dsn.password)
     elif scheme == 'snowflake':
         return Snowflake(dsn.host, dsn.user, dsn.password, path, **dsn.query)
+    elif scheme == 'mssql':
+        return MsSQL(dsn.host, dsn.port, path, dsn.user, dsn.password)
 
     raise NotImplementedError(f"Scheme {dsn.scheme} currently not supported")
