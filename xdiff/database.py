@@ -5,23 +5,23 @@ from .sql import SqlOrStr, Compiler
 
 import dsnparse
 
-try:
+def import_postgres():
     import psycopg2
     import psycopg2.extras
     psycopg2.extensions.set_wait_callback(psycopg2.extras.wait_select)
-except ImportError:
-    psycopg2 = None
+    return psycopg2
 
-try:
+def import_mysql():
     import mysql.connector
-    from mysql.connector import errorcode
-except ImportError:
-    mysql = None
+    return mysql.connector
 
-try:
+def import_snowflake():
     import snowflake.connector
-except ImportError:
-    snowflake = None
+    return snowflake
+
+def import_mssql():
+    import pymssql
+    return pymssql
 
 logger = logging.getLogger('database')
 
@@ -44,12 +44,15 @@ def _one(seq):
 class Database:
     "An interface that uses the standard SQL cursor interface"
 
+    def _query(self, sql_code: str):
+        c = self._conn.cursor()
+        c.execute(sql_code)
+        return c.fetchall()
+
     def query(self, sql_ast: SqlOrStr, res_type: type):
         sql_code = Compiler(self).compile(sql_ast)
-        c = self._conn.cursor()
         logger.debug("Running SQL (%s): %s", type(self).__name__, sql_code)
-        c.execute(sql_code)
-        res = c.fetchall()
+        res = self._query(sql_code)
         if res_type is int:
             return int(_one(_one(res)))
         elif getattr(res_type, '__origin__', None) is list and len(res_type.__args__) == 1:
@@ -65,11 +68,12 @@ class Database:
 
 class Postgres(Database):
     def __init__(self, host, port, database, user, password):
+        postgres = import_postgres()
         self.args = dict(host=host, port=port, database=database, user=user, password=password)
 
         try:
-            self._conn = psycopg2.connect(**self.args)
-        except psycopg2.OperationalError as e:
+            self._conn = postgres.connect(**self.args)
+        except postgres.OperationalError as e:
             raise ConnectError(*e.args) from e
 
     def quote(self, s: str):
@@ -78,15 +82,16 @@ class Postgres(Database):
     def md5_to_int(self, s: str) -> str:
         return f"('x' || substring(md5({s}), 17))::bit(64)::bigint"
 
-import pymssql
 class MsSQL(Database):
     def __init__(self, host, port, database, user, password):
+        mssql = import_mssql()
+
         args = dict(server=host, port=port, database=database, user=user, password=password)
         self._args = {k:v for k, v in args.items() if v is not None}
 
         try:
-            self._conn = pymssql.connect(**self._args)
-        except pymssql.Error as e:
+            self._conn = mssql.connect(**self._args)
+        except mssql.Error as e:
             raise ConnectError(*e.args) from e
 
     def quote(self, s: str):
@@ -95,17 +100,37 @@ class MsSQL(Database):
     def md5_to_int(self, s: str) -> str:
         return f"CONVERT(bigint, HashBytes('MD5', {s}), 2)"
 
+class BigQuery(Database):
+    def __init__(self, project, dataset):
+        from google.cloud import bigquery
+        self._client = bigquery.Client(project)
+
+    def quote(self, s: str):
+        return f'`{s}`'
+
+    def md5_to_int(self, s: str) -> str:
+        return f"cast(cast( ('0x' || substr(TO_HEX(md5({s})), 18)) as int64) as numeric)"
+
+    def _query(self, sql_code: str):
+        try:
+            return list(self._client.query(sql_code))
+        except Exception as e:
+            msg = "Exception when trying to execute SQL code:\n    %s\n\nGot error: %s"
+            raise ConnectError(msg%(sql_code, e))
+
 class MySQL(Database):
     def __init__(self, host, port, database, user, password):
+        mysql = import_mysql()
+
         args = dict(host=host, port=port, database=database, user=user, password=password)
         self._args = {k:v for k, v in args.items() if v is not None}
 
         try:
-            self._conn = mysql.connector.connect(charset='utf8', use_unicode=True, **self._args)
-        except mysql.connector.Error as e:
-            if e.errno == errorcode.ER_ACCESS_DENIED_ERROR:
+            self._conn = mysql.connect(charset='utf8', use_unicode=True, **self._args)
+        except mysql.Error as e:
+            if e.errno == mysql.errorcode.ER_ACCESS_DENIED_ERROR:
                 raise ConnectError("Bad user name or password") from e
-            elif e.errno == errorcode.ER_BAD_DB_ERROR:
+            elif e.errno == mysql.errorcode.ER_BAD_DB_ERROR:
                 raise ConnectError("Database does not exist") from e
             else:
                 raise ConnectError(*e.args) from e
@@ -118,6 +143,7 @@ class MySQL(Database):
 
 class Snowflake(Database):
     def __init__(self, account, user, password, path, schema, database, print_sql=False):
+        snowflake = import_snowflake()
         logging.getLogger('snowflake.connector').setLevel(logging.WARNING)
 
         self._conn = snowflake.connector.connect(
@@ -158,5 +184,7 @@ def connect_to_uri(db_uri):
         return Snowflake(dsn.host, dsn.user, dsn.password, path, **dsn.query)
     elif scheme == 'mssql':
         return MsSQL(dsn.host, dsn.port, path, dsn.user, dsn.password)
+    elif scheme == 'bigquery':
+        return BigQuery(dsn.host, path)
 
     raise NotImplementedError(f"Scheme {dsn.scheme} currently not supported")
