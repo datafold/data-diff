@@ -112,11 +112,16 @@ class BigQuery(Database):
         return f"cast(cast( ('0x' || substr(TO_HEX(md5({s})), 18)) as int64) as numeric)"
 
     def _query(self, sql_code: str):
+        from google.cloud import bigquery
         try:
-            return list(self._client.query(sql_code))
+            res = list(self._client.query(sql_code))
         except Exception as e:
             msg = "Exception when trying to execute SQL code:\n    %s\n\nGot error: %s"
             raise ConnectError(msg%(sql_code, e))
+
+        if res and isinstance(res[0], bigquery.table.Row):
+            res = [row.values() for row in res]
+        return res
 
 class MySQL(Database):
     def __init__(self, host, port, database, user, password):

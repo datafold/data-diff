@@ -4,7 +4,7 @@ from typing import List, Union, Tuple
 from runtype import dataclass
 
 DbPath = Tuple[str, ...]
-DbKey = int
+DbKey = Union[int, str, bytes]
 
 class Sql:
     pass
@@ -35,6 +35,15 @@ class TableName(Sql):
 
     def compile(self, c: Compiler):
         return c.quote('.'.join(self.name))
+
+@dataclass
+class Value(Sql):
+    value: object   # Primitive
+
+    def compile(self, c: Compiler):
+        if isinstance(self.value, bytes):
+            return "b'%s'" % self.value.decode()
+        breakpoint()
 
 @dataclass
 class Select(Sql):
