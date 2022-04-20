@@ -17,12 +17,19 @@ unzip ml-25m.zip
 
 4. Setup databases
 
+(note: bigquery and mssql have their own setup scripts)
+
 ```
 preql -m prepare_db  postgres://<uri>
 
 preql -m prepare_db  mysql://<uri>
 
 preql -m prepare_db  snowflake://<uri>
+
+preql -m prepare_db_bigquery  bigquery:///<project>
+
+preql -m prepare_db_mssql  mssql://<uri>
+
 
 etc.
 ```
