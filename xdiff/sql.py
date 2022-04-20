@@ -4,7 +4,7 @@ from typing import List, Union, Tuple
 from runtype import dataclass
 
 DbPath = Tuple[str, ...]
-DbKey = int
+DbKey = Union[int, str, bytes]
 
 class Sql:
     pass
@@ -35,6 +35,17 @@ class TableName(Sql):
 
     def compile(self, c: Compiler):
         return c.quote('.'.join(self.name))
+
+@dataclass
+class Value(Sql):
+    value: object   # Primitive
+
+    def compile(self, c: Compiler):
+        if isinstance(self.value, bytes):
+            return "b'%s'" % self.value.decode()
+        elif isinstance(self.value, str):
+            return "'%s'" % self.value
+        return str(self.value)
 
 @dataclass
 class Select(Sql):
@@ -82,7 +93,7 @@ class Checksum(Sql):
     exprs: List[SqlOrStr]
 
     def compile(self, c: Compiler):
-        compiled_exprs = ', '.join('cast(%s as string)' % s for s in map(c.compile, self.exprs))
+        compiled_exprs = ', '.join(c.database.to_string(s) for s in map(c.compile, self.exprs))
         expr =  f'concat({compiled_exprs})'
         md5 = c.database.md5_to_int(expr)
         return f'sum({md5})'

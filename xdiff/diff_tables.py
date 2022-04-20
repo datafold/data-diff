@@ -3,7 +3,7 @@ import logging
 
 from runtype import dataclass
 
-from .sql import Select, Checksum, Sql, Compare, DbPath, DbKey, Count, Enum, TableName, In
+from .sql import Select, Checksum, Sql, Compare, DbPath, DbKey, Count, Enum, TableName, In, Value
 from .database import Database
 
 logger = logging.getLogger('diff_tables')
@@ -45,7 +45,7 @@ class TableSegment:
     def choose_checkpoints(self, count: int) -> List[DbKey]:
         ratio = int(self.count / count)
         assert ratio > 1
-        skip = f'idx % {ratio} = 0'
+        skip = f'mod(idx, {ratio}) = 0'
         select = self._make_select(table=Enum(self.table_path, order_by=self.key_column), where=skip)
         return self.database.query(select, List[int])
 
@@ -67,7 +67,7 @@ class TableSegment:
 
         return tables
         # Calculate checksums in one go, to prevent repetitive individual calls
-        # selects = [t._make_select(columns=[Checksum(self.key_column)]) for t in tables]
+        # selects = [t._make_select(columns=[Checksum(self._relevant_columns)]) for t in tables]
         # res = self.database.query(Select(columns=selects), list)
         # checksums ,= res
         # assert len(checksums) == len(checkpoints) + 1
@@ -139,7 +139,7 @@ class TableDiffer:
         # Tables are different. 
         checkpoints = table1.choose_checkpoints(self.bisection_factor-1)
         assert checkpoints
-        mutual_checkpoints = table2.find_checkpoints(checkpoints)
+        mutual_checkpoints = table2.find_checkpoints([Value(c) for c in checkpoints])
         mutual_checkpoints = list(set(mutual_checkpoints))        # Duplicate values are a problem!
         logger.debug('. '*level + f'Found {len(mutual_checkpoints)} mutual checkpoints (out of {len(checkpoints)}).')
         if not mutual_checkpoints:

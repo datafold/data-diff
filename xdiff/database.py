@@ -28,13 +28,6 @@ logger = logging.getLogger('database')
 class ConnectError(Exception):
     pass
 
-class Database:
-    def query(self, sql: SqlOrStr): ...
-
-
-
-class Postgres(Database):
-    pass
 
 
 def _one(seq):
@@ -65,6 +58,9 @@ class Database:
                 assert False
         return res
 
+    def to_string(self, s: str):
+        return f'cast({s} as string)' 
+
 
 class Postgres(Database):
     def __init__(self, host, port, database, user, password):
@@ -81,6 +77,10 @@ class Postgres(Database):
 
     def md5_to_int(self, s: str) -> str:
         return f"('x' || substring(md5({s}), 17))::bit(64)::bigint"
+
+    def to_string(self, s: str):
+        return f'{s}::varchar'
+
 
 class MsSQL(Database):
     def __init__(self, host, port, database, user, password):
@@ -112,11 +112,16 @@ class BigQuery(Database):
         return f"cast(cast( ('0x' || substr(TO_HEX(md5({s})), 18)) as int64) as numeric)"
 
     def _query(self, sql_code: str):
+        from google.cloud import bigquery
         try:
-            return list(self._client.query(sql_code))
+            res = list(self._client.query(sql_code))
         except Exception as e:
             msg = "Exception when trying to execute SQL code:\n    %s\n\nGot error: %s"
             raise ConnectError(msg%(sql_code, e))
+
+        if res and isinstance(res[0], bigquery.table.Row):
+            res = [row.values() for row in res]
+        return res
 
 class MySQL(Database):
     def __init__(self, host, port, database, user, password):
@@ -140,6 +145,9 @@ class MySQL(Database):
 
     def md5_to_int(self, s: str) -> str:
         return f"cast(conv(substring(md5({s}), 17), 16, 10) as signed)"
+
+    def to_string(self, s: str):
+        return f'cast({s} as char)' 
 
 class Snowflake(Database):
     def __init__(self, account, user, password, path, schema, database, print_sql=False):
