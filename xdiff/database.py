@@ -98,7 +98,11 @@ class MsSQL(Database):
         return f'[{s}]'
 
     def md5_to_int(self, s: str) -> str:
-        return f"CONVERT(bigint, HashBytes('MD5', {s}), 2)"
+        return f"CONVERT(decimal(38,0), CONVERT(bigint, HashBytes('MD5', {s}), 2))"
+        # return f"CONVERT(bigint, (CHECKSUM({s})))"
+
+    def to_string(self, s: str):
+        return f"CONVERT(varchar, {s})"
 
 class BigQuery(Database):
     def __init__(self, project, dataset):
