@@ -61,6 +61,8 @@ class Database:
     def to_string(self, s: str):
         return f'cast({s} as string)' 
 
+CHECKSUM_HEXDIGITS = 15     # Must be 15 or lower
+MD5_HEXDIGITS = 32
 
 class Postgres(Database):
     def __init__(self, host, port, database, user, password):
@@ -76,14 +78,42 @@ class Postgres(Database):
         return f'"{s}"'
 
     def md5_to_int(self, s: str) -> str:
-        return f"('x' || substring(md5({s}), 18))::bit(64)::bigint"
+        return f"('x' || substring(md5({s}), {1+MD5_HEXDIGITS-CHECKSUM_HEXDIGITS}))::bit({CHECKSUM_HEXDIGITS<<2})::bigint"
 
     def to_string(self, s: str):
         return f'{s}::varchar'
 
+
+class MySQL(Database):
+    def __init__(self, host, port, database, user, password):
+        mysql = import_mysql()
+
+        args = dict(host=host, port=port, database=database, user=user, password=password)
+        self._args = {k:v for k, v in args.items() if v is not None}
+
+        try:
+            self._conn = mysql.connect(charset='utf8', use_unicode=True, **self._args)
+        except mysql.Error as e:
+            if e.errno == mysql.errorcode.ER_ACCESS_DENIED_ERROR:
+                raise ConnectError("Bad user name or password") from e
+            elif e.errno == mysql.errorcode.ER_BAD_DB_ERROR:
+                raise ConnectError("Database does not exist") from e
+            else:
+                raise ConnectError(*e.args) from e
+
+    def quote(self, s: str):
+        return f'`{s}`'
+
+    def md5_to_int(self, s: str) -> str:
+        return f"cast(conv(substring(md5({s}), {1+MD5_HEXDIGITS-CHECKSUM_HEXDIGITS}), 16, 10) as unsigned)"
+
+    def to_string(self, s: str):
+        return f'cast({s} as char)' 
+
+
 class Redshift(Postgres):
     def md5_to_int(self, s: str) -> str:
-        return f"strtol(substring(md5({s}), 18), 16)::decimal(38)"
+        return f"strtol(substring(md5({s}), {1+MD5_HEXDIGITS-CHECKSUM_HEXDIGITS}), 16)::decimal(38)"
 
 class MsSQL(Database):
     def __init__(self, host, port, database, user, password):
@@ -130,31 +160,6 @@ class BigQuery(Database):
             res = [row.values() for row in res]
         return res
 
-class MySQL(Database):
-    def __init__(self, host, port, database, user, password):
-        mysql = import_mysql()
-
-        args = dict(host=host, port=port, database=database, user=user, password=password)
-        self._args = {k:v for k, v in args.items() if v is not None}
-
-        try:
-            self._conn = mysql.connect(charset='utf8', use_unicode=True, **self._args)
-        except mysql.Error as e:
-            if e.errno == mysql.errorcode.ER_ACCESS_DENIED_ERROR:
-                raise ConnectError("Bad user name or password") from e
-            elif e.errno == mysql.errorcode.ER_BAD_DB_ERROR:
-                raise ConnectError("Database does not exist") from e
-            else:
-                raise ConnectError(*e.args) from e
-
-    def quote(self, s: str):
-        return f'`{s}`'
-
-    def md5_to_int(self, s: str) -> str:
-        return f"cast(conv(substring(md5({s}), 18), 16, 10) as signed)"
-
-    def to_string(self, s: str):
-        return f'cast({s} as char)' 
 
 class Snowflake(Database):
     def __init__(self, account, user, password, path, schema, database, print_sql=False):
