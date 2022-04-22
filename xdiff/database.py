@@ -76,11 +76,14 @@ class Postgres(Database):
         return f'"{s}"'
 
     def md5_to_int(self, s: str) -> str:
-        return f"('x' || substring(md5({s}), 17))::bit(64)::bigint"
+        return f"('x' || substring(md5({s}), 18))::bit(64)::bigint"
 
     def to_string(self, s: str):
         return f'{s}::varchar'
 
+class Redshift(Postgres):
+    def md5_to_int(self, s: str) -> str:
+        return f"strtol(substring(md5({s}), 18), 16)::decimal(38)"
 
 class MsSQL(Database):
     def __init__(self, host, port, database, user, password):
@@ -148,7 +151,7 @@ class MySQL(Database):
         return f'`{s}`'
 
     def md5_to_int(self, s: str) -> str:
-        return f"cast(conv(substring(md5({s}), 17), 16, 10) as signed)"
+        return f"cast(conv(substring(md5({s}), 18), 16, 10) as signed)"
 
     def to_string(self, s: str):
         return f'cast({s} as char)' 
@@ -198,5 +201,7 @@ def connect_to_uri(db_uri):
         return MsSQL(dsn.host, dsn.port, path, dsn.user, dsn.password)
     elif scheme == 'bigquery':
         return BigQuery(dsn.host, path)
+    elif scheme == 'redshift':
+        return Redshift(dsn.host, dsn.port, path, dsn.user, dsn.password)
 
     raise NotImplementedError(f"Scheme {dsn.scheme} currently not supported")

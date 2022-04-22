@@ -34,6 +34,17 @@ if (db_type == "snowflake") {
     run_sql("COPY INTO tmpRating FROM '@~/ratings.csv.gz' file_format=(skip_header=1)")
     Rating += tmpRating {..., userId:id}
     remove_table(tmpRating)
+} else if (db_type == "redshift") {
+    // NOTE: Requires that the csv already exists on s3 in the given path
+
+    run_sql("""
+        COPY "public"."Rating" (userid, movieid, rating, timestamp)
+        FROM 's3://dev-cf-redshift-datafold-xdiff/ml-25m/ratings.csv' 
+        IAM_ROLE 'arn:aws:iam::760878568205:role/dev-cf-redshift-xdiff'
+        DELIMITER ','
+        IGNOREHEADER 1;
+        """)
+    print count(Rating)
 } else {
     import_csv(Rating, 'ml-25m/ratings.csv', true)
 }
@@ -65,7 +76,7 @@ Rating_update1p.add_index("id")
 Rating_del1p.add_index("id")
 Rating_update50p.add_index("id")
 
-if (db_type == "postgres") {
+if (db_type == "postgres" or db_type == "redshift") {
     run_sql('UPDATE "Rating_update001p" SET "timestamp" = ("timestamp" + 1) WHERE random() < 0.0001')
     run_sql('UPDATE "Rating_update1p" SET "timestamp" = ("timestamp" + 1) WHERE random() < 0.01')
     run_sql('DELETE FROM "Rating_del1p" WHERE random() < 0.01')
