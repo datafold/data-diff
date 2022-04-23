@@ -1,23 +1,20 @@
-// // Declare table & functions
+// Declare table & functions
 func run_sql(code) {
     force_eval( SQL( nulltype, code ))
 }
 
-run_sql("DROP TABLE IF EXISTS Rating")
-run_sql("DROP TABLE IF EXISTS Rating_del1")
-run_sql("DROP TABLE IF EXISTS Rating_update1")
-run_sql("DROP TABLE IF EXISTS Rating_update001p")
-run_sql("DROP TABLE IF EXISTS Rating_update1p")
-run_sql("DROP TABLE IF EXISTS Rating_del1p")
-run_sql("DROP TABLE IF EXISTS Rating_update50p")
-
-table Rating {
-    userId: int
-    movieId: int
-    rating: float
-    timestamp: int
+// Cleanup
+func cleanup() {
+    run_sql("DROP TABLE IF EXISTS Rating")
+    run_sql("DROP TABLE IF EXISTS Rating_del1")
+    run_sql("DROP TABLE IF EXISTS Rating_update1")
+    run_sql("DROP TABLE IF EXISTS Rating_update001p")
+    run_sql("DROP TABLE IF EXISTS Rating_update1p")
+    run_sql("DROP TABLE IF EXISTS Rating_del1p")
+    run_sql("DROP TABLE IF EXISTS Rating_update50p")
 }
-Rating.add_index("id")
+
+cleanup()
 
 // Import CSV
 if (db_type == "snowflake") {
@@ -37,16 +34,44 @@ if (db_type == "snowflake") {
 } else if (db_type == "redshift") {
     // NOTE: Requires that the csv already exists on s3 in the given path
 
+    // import_csv(Rating, 'ml-25m/ratings.csv', true)
+    table tmp_rating {
+        userid: int
+        movieid: int
+        rating: float
+        timestamp: int
+    }
+
     run_sql("""
-        COPY "public"."Rating" (userid, movieid, rating, timestamp)
+        COPY "public"."tmp_rating" (userid, movieid, rating, timestamp)
         FROM 's3://dev-cf-redshift-datafold-xdiff/ml-25m/ratings.csv' 
         IAM_ROLE 'arn:aws:iam::760878568205:role/dev-cf-redshift-xdiff'
         DELIMITER ','
         IGNOREHEADER 1;
         """)
-    print count(Rating)
+
+    table Rating {
+        id: int     // explicit id, to avoid identity type
+        userid: int
+        movieid: int
+        rating: float
+        timestamp: int
+    }
+
+    run_sql("""
+        INSERT INTO rating(id, userid, movieid, rating, timestamp)
+        SELECT row_number() over (order by userid, movieid, timestamp) AS id, userid, movieid, rating, timestamp FROM tmp_rating
+    """)
+    print(count(Rating))
 } else {
+    table Rating {
+        userId: int
+        movieId: int
+        rating: float
+        timestamp: int
+    }
     import_csv(Rating, 'ml-25m/ratings.csv', true)
+    Rating.add_index("id")
 }
 commit()
 
