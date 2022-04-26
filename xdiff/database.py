@@ -64,6 +64,9 @@ class Database:
 CHECKSUM_HEXDIGITS = 15     # Must be 15 or lower
 MD5_HEXDIGITS = 32
 
+_CHECKSUM_BITSIZE = CHECKSUM_HEXDIGITS<<2
+CHECKSUM_MASK = (2**_CHECKSUM_BITSIZE) - 1
+
 class Postgres(Database):
     def __init__(self, host, port, database, user, password):
         postgres = import_postgres()
@@ -78,7 +81,7 @@ class Postgres(Database):
         return f'"{s}"'
 
     def md5_to_int(self, s: str) -> str:
-        return f"('x' || substring(md5({s}), {1+MD5_HEXDIGITS-CHECKSUM_HEXDIGITS}))::bit({CHECKSUM_HEXDIGITS<<2})::bigint"
+        return f"('x' || substring(md5({s}), {1+MD5_HEXDIGITS-CHECKSUM_HEXDIGITS}))::bit({_CHECKSUM_BITSIZE})::bigint"
 
     def to_string(self, s: str):
         return f'{s}::varchar'
@@ -179,7 +182,7 @@ class Snowflake(Database):
         return s
 
     def md5_to_int(self, s: str) -> str:
-        return f"md5_number_lower64({s})"
+        return f"BITAND(md5_number_lower64({s}), {CHECKSUM_MASK})"
 
 
 
