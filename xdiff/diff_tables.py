@@ -4,7 +4,7 @@ import logging
 from runtype import dataclass
 
 from .sql import Select, Checksum, Sql, Compare, DbPath, DbKey, Count, Enum, TableName, In, Value
-from .database import Database
+from .database import Database, CHECKSUM_MASK
 
 logger = logging.getLogger('diff_tables')
 
@@ -91,7 +91,7 @@ class TableSegment:
     @property
     def checksum(self) -> int:
         if self._checksum is None:
-            self._checksum = self.database.query(self._make_select(columns=[Checksum(self._relevant_columns)]), int)
+            self._checksum = self.database.query(self._make_select(columns=[Checksum(self._relevant_columns)]), int) & CHECKSUM_MASK
         return self._checksum
 
 
