@@ -24,16 +24,19 @@ classifiers = [
 packages = [{ include = "xdiff" }]
 
 [tool.poetry.dependencies]
-python = "^3.6"
-runtype = "^0.1.16"
+python = "^3.7"
+runtype = "^0.2.4"
 dsnparse = "*"
+pyparsing = "ˆ3.0"
+click = "^8.1"
 
 psycopg2 = { version = "*", optional = true }
 mysqlclient = { version = "*", optional = true }
+mysql-connector-python = { version = "*", optional = true}
 snowflake-connector-python = { version = "*", optional = true }
 
 [tool.poetry.extras]
-mysql = ["mysqlclient"]
+mysql = ["mysql-connector-python"]
 pgsql = ["psycopg2"]
 snowflake = ["snowflake-connector-python"]
 

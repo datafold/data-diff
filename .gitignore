@@ -127,3 +127,10 @@ dmypy.json
 
 # Pyre type checker
 .pyre/
+
+# dev
+ml-25m
+drive
+
+# Mac
+.DS_Store

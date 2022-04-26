@@ -1,0 +1,44 @@
+version: "3.8"
+
+services:
+    postgres:
+      container_name: postgresql
+      image: postgres:14.1-alpine
+      restart: always
+      volumes: 
+        - postgresql-data:/var/lib/postgresql/data
+      ports:
+        - '5432:5432'
+      expose:
+        - '5432'
+      env_file:
+        - .env
+      tty: true
+      networks:
+        - local
+
+    mysql:
+      container_name: mysql
+      image: "${MYSQL_IMAGE:-mysql}"
+      command: --default-authentication-plugin=mysql_native_password
+      restart: always
+      volumes: 
+        - mysql-data:/var/lib/mysql:rw
+      user: mysql
+      ports:
+        - '3306:3306'
+      expose:
+        - '3306'
+      env_file:
+        - .env
+      tty: true
+      networks:
+        - local
+
+volumes:
+  postgresql-data:
+  mysql-data:
+
+networks:
+  local:
+    driver: bridge

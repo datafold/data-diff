@@ -1,0 +1,17 @@
+[tool.poetry]
+name = "xdiff-infra"
+version = "0.1.0"
+description = ""
+authors = ["chiel <chiel@datafold.com>"]
+license = "MIT"
+
+[tool.poetry.dependencies]
+python = "^3.10"
+psycopg2 = "^2.9.3"
+mysql-connector-python = "^8.0"
+datafold-xdiff = { path = "../", develop = true }
+preql = "^0.2.10"
+
+[build-system]
+requires = ["poetry-core>=1.0.0"]
+build-backend = "poetry.core.masonry.api"
