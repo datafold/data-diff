@@ -16,6 +16,7 @@ main () {
 
 initialize() {
   poetry install
+  pip install preql==0.2.10 # Temporary due to version conflicts for runtype
 
   if [ ! -f ./ml-25m/ratings.csv ]; then
     echo "Example data not found. Downloading.."
@@ -27,12 +28,12 @@ initialize() {
 }
 
 prepaire_db() {
-    poetry run preql -m prepare_db mysql://mysql:Password1@localhost/mysql
-    poetry run preql -m prepare_db postgres://postgres:Password1@localhost/postgres
+    preql -m prepare_db mysql://mysql:Password1@localhost/mysql
+    preql -m prepare_db postgres://postgres:Password1@localhost/postgres
 }
 
 xdiff() {
-    poetry run xdiff postgres://postgres:Password1@localhost/postgres Rating mysql://mysql:Password1@localhost/mysql Rating_del1p -c timestamp --stats
+    xdiff postgres://postgres:Password1@localhost/postgres Rating mysql://mysql:Password1@localhost/mysql Rating_del1p -c timestamp --stats
 }
 
 shutdown() {
