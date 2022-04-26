@@ -1,12 +1,10 @@
 from google.cloud import bigquery
 
-# Construct a BigQuery client object.
 client = bigquery.Client()
 
-# TODO(developer): Set table_id to the ID of the table to create.
-table_id = "datafold-dev-2.xdiff.Rating"
-
+table_id = "datafold-dev-2.xdiff.tmp_rating"
 dataset_name = 'xdiff'
+
 try:
     client.get_dataset(dataset_name)
 except bigquery.NotFound:
