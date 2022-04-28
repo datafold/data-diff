@@ -20,7 +20,7 @@ PY("0", "import _bq_import_csv")
 // run_sql("ALTER TABLE `datafold-dev-2.xdiff.Rating` ADD COLUMN id int")
 // run_sql("UPDATE `datafold-dev-2.xdiff.Rating` SET id = cast(GENERATE_UUID() as bytes) WHERE True")
 
-table Rating {
+table xdiff.Rating {
     id: int     // explicit id, to avoid identity type
     userid: int
     movieid: int
@@ -29,11 +29,9 @@ table Rating {
 }
 
 run_sql("""
-    INSERT INTO rating(id, userid, movieid, rating, timestamp)
-    SELECT row_number() over (order by userid, movieid, timestamp) AS id, userid, movieid, rating, timestamp FROM tmp_rating
+    INSERT INTO xdiff.Rating(id, userid, movieid, rating, timestamp)
+    SELECT row_number() over (order by userid, movieid, timestamp) AS id, userid, movieid, rating, timestamp FROM xdiff.tmp_rating
 """)
-
-table xdiff.Rating { ...  }
 
 Rating = xdiff.Rating
 
