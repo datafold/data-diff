@@ -4,9 +4,13 @@ services:
     postgres:
       container_name: postgresql
       image: postgres:14.1-alpine
+      command: >
+        -c work_mem=1GB
+        -c maintenance_work_mem=1GB
+        -c max_wal_size=8GB
       restart: always
       volumes: 
-        - postgresql-data:/var/lib/postgresql/data
+        - postgresql-data:/var/lib/postgresql/data:delegated
       ports:
         - '5432:5432'
       expose:
@@ -20,10 +24,16 @@ services:
     mysql:
       container_name: mysql
       image: "${MYSQL_IMAGE:-mysql}"
-      command: --default-authentication-plugin=mysql_native_password
+      command: >
+        --default-authentication-plugin=mysql_native_password
+        --innodb-buffer-pool-size=8G
+        --key_buffer_size=8G
+        --read_buffer_size=2G
+        --max_connections=10
+        --innodb_io_capacity=400
       restart: always
       volumes: 
-        - mysql-data:/var/lib/mysql:rw
+        - mysql-data:/var/lib/mysql:delegated
       user: mysql
       ports:
         - '3306:3306'

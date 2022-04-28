@@ -29,20 +29,20 @@ initialize() {
     unzip ml-25m.zip
   fi
   MYSQL_IMAGE=${MYSQL_IMAGE} docker-compose up -d
-  sleep 5
+  sleep 15 # Increase if you receive error like: `mysql.connector.errors.InterfaceError: 2013: Lost connection to MySQL server during query`
 }
 
 prepaire_db() {
-    preql -m prepare_db mysql://mysql:Password1@localhost/mysql
-    preql -m prepare_db postgres://postgres:Password1@localhost/postgres
+  preql -m prepare_db mysql://mysql:Password1@localhost/mysql
+  preql -m prepare_db postgres://postgres:Password1@localhost/postgres
 }
 
 xdiff() {
-    xdiff postgres://postgres:Password1@localhost/postgres Rating mysql://mysql:Password1@localhost/mysql Rating_del1p -c timestamp --stats
+  poetry run xdiff postgres://postgres:Password1@localhost/postgres Rating mysql://mysql:Password1@localhost/mysql Rating_del1p -c timestamp --stats -v
 }
 
 shutdown() {
-    docker-compose down
+  docker-compose down
 }
 
 main
