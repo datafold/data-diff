@@ -14,7 +14,7 @@ fi
 
 main () {
   initialize 
-  prepaire_db
+  prepare_db
   xdiff
   shutdown
 }
@@ -22,7 +22,6 @@ main () {
 initialize() {
   pip install poetry
   poetry install
-  pip install preql==0.2.10 # Temporary due to version conflicts for runtype
 
   if [ ! -f ./ml-25m/ratings.csv ]; then
     echo "Example data not found. Downloading.."
@@ -30,16 +29,25 @@ initialize() {
     unzip ml-25m.zip
   fi
   MYSQL_IMAGE=${MYSQL_IMAGE} docker-compose up -d
-  sleep 15 # Increase if you receive error like: `mysql.connector.errors.InterfaceError: 2013: Lost connection to MySQL server during query`
+
+  until nc -z -v -w30 localhost 3306 && nc -z -v -w30 localhost 5432; do
+    echo "Databases not yet ready.."
+    sleep 5
+  done
 }
 
-prepaire_db() {
-  preql -m prepare_db mysql://mysql:Password1@localhost/mysql
-  preql -m prepare_db postgres://postgres:Password1@localhost/postgres
+prepare_db() {
+  poetry run preql -m prepare_db mysql://mysql:Password1@localhost/mysql
+  poetry run preql -m prepare_db postgres://postgres:Password1@localhost/postgres
 }
 
 xdiff() {
+  poetry run xdiff postgres://postgres:Password1@localhost/postgres Rating mysql://mysql:Password1@localhost/mysql Rating_del1 -c timestamp --stats -v
+  poetry run xdiff postgres://postgres:Password1@localhost/postgres Rating mysql://mysql:Password1@localhost/mysql Rating_update1 -c timestamp --stats -v
+  poetry run xdiff postgres://postgres:Password1@localhost/postgres Rating mysql://mysql:Password1@localhost/mysql Rating_update001p -c timestamp --stats -v
+  poetry run xdiff postgres://postgres:Password1@localhost/postgres Rating mysql://mysql:Password1@localhost/mysql Rating_update1p -c timestamp --stats -v
   poetry run xdiff postgres://postgres:Password1@localhost/postgres Rating mysql://mysql:Password1@localhost/mysql Rating_del1p -c timestamp --stats -v
+  poetry run xdiff postgres://postgres:Password1@localhost/postgres Rating mysql://mysql:Password1@localhost/mysql Rating_update50p -c timestamp --stats -v
 }
 
 shutdown() {
