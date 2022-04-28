@@ -1,8 +1,6 @@
 import logging
 from typing import Tuple
 
-from numpy import isin
-
 from .sql import SqlOrStr, Compiler
 
 import dsnparse
