@@ -1,6 +1,8 @@
 import logging
 from typing import Tuple
 
+from numpy import isin
+
 from .sql import SqlOrStr, Compiler
 
 import dsnparse
@@ -154,6 +156,11 @@ class BigQuery(Database):
     def md5_to_int(self, s: str) -> str:
         return f"cast(cast( ('0x' || substr(TO_HEX(md5({s})), 18)) as int64) as numeric)"
 
+    def _canonize_value(self, value):
+        if isinstance(value, bytes):
+            return value.decode()
+        return value
+
     def _query(self, sql_code: str):
         from google.cloud import bigquery
         try:
@@ -163,7 +170,7 @@ class BigQuery(Database):
             raise ConnectError(msg%(sql_code, e))
 
         if res and isinstance(res[0], bigquery.table.Row):
-            res = [row.values() for row in res]
+            res = [tuple(self._canonize_value(v) for v in row.values()) for row in res]
         return res
 
 
