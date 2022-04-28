@@ -91,7 +91,7 @@ class TableSegment:
     @property
     def checksum(self) -> int:
         if self._checksum is None:
-            self._checksum = self.database.query(self._make_select(columns=[Checksum(self._relevant_columns)]), int)
+            self._checksum = self.database.query(self._make_select(columns=[Checksum(self._relevant_columns)]), int) or 0
         return self._checksum
 
 
@@ -152,7 +152,7 @@ class TableDiffer:
             assert count1 == sum(s.count for s in segmented1)
             assert count2 == sum(s.count for s in segmented2)
         for i, (t1, t2) in enumerate(safezip(segmented1, segmented2)):
-            logger.info('. '*level + f'Diffing segment {i}/{len(segmented1)} of size {t1.count} and {t2.count}')
+            logger.info('. '*level + f'Diffing segment {i+1}/{len(segmented1)} of size {t1.count} and {t2.count}')
             # checksum is None?
             if t1.checksum != t2.checksum:
                 yield from self._diff_tables(t1, t2, level+1)

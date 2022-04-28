@@ -47,7 +47,10 @@ class Database:
         logger.debug("Running SQL (%s): %s", type(self).__name__, sql_code)
         res = self._query(sql_code)
         if res_type is int:
-            return int(_one(_one(res)))
+            res = _one(_one(res))
+            if res is None:     # May happen due to sum() of 0 items
+                return None
+            return int(res)
         elif getattr(res_type, '__origin__', None) is list and len(res_type.__args__) == 1:
             if res_type.__args__ == (int,):
                 return [_one(row) for row in res]

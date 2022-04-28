@@ -4,7 +4,7 @@ From inside the `dev` directory, run the following:
 
 either `pip install xdiff` or 
 
-2. Install Preql (0.2.9 or up)
+2. Install Preql (0.2.11 or up)
 
 `pip install preql -U`
 
