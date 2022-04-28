@@ -20,6 +20,7 @@ main () {
 }
 
 initialize() {
+  pip install poetry
   poetry install
   pip install preql==0.2.10 # Temporary due to version conflicts for runtype
 
