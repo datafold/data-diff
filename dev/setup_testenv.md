@@ -14,7 +14,7 @@ NB for Mac. If the process takes very long (e.g.  importing CSV file takes >30m)
 
 `pip install xdiff -e ../`
 
-2. Install Preql (0.2.9 or up)
+2. Install Preql (0.2.11 or up)
 
 `pip install preql -U`
 

@@ -47,7 +47,10 @@ class Database:
         logger.debug("Running SQL (%s): %s", type(self).__name__, sql_code)
         res = self._query(sql_code)
         if res_type is int:
-            return int(_one(_one(res)))
+            res = _one(_one(res))
+            if res is None:     # May happen due to sum() of 0 items
+                return None
+            return int(res)
         elif getattr(res_type, '__origin__', None) is list and len(res_type.__args__) == 1:
             if res_type.__args__ == (int,):
                 return [_one(row) for row in res]
@@ -61,6 +64,11 @@ class Database:
     def to_string(self, s: str):
         return f'cast({s} as string)' 
 
+CHECKSUM_HEXDIGITS = 15     # Must be 15 or lower
+MD5_HEXDIGITS = 32
+
+_CHECKSUM_BITSIZE = CHECKSUM_HEXDIGITS<<2
+CHECKSUM_MASK = (2**_CHECKSUM_BITSIZE) - 1
 
 class Postgres(Database):
     def __init__(self, host, port, database, user, password):
@@ -76,52 +84,11 @@ class Postgres(Database):
         return f'"{s}"'
 
     def md5_to_int(self, s: str) -> str:
-        return f"('x' || substring(md5({s}), 17))::bit(64)::bigint"
+        return f"('x' || substring(md5({s}), {1+MD5_HEXDIGITS-CHECKSUM_HEXDIGITS}))::bit({_CHECKSUM_BITSIZE})::bigint"
 
     def to_string(self, s: str):
         return f'{s}::varchar'
 
-
-class MsSQL(Database):
-    def __init__(self, host, port, database, user, password):
-        mssql = import_mssql()
-
-        args = dict(server=host, port=port, database=database, user=user, password=password)
-        self._args = {k:v for k, v in args.items() if v is not None}
-
-        try:
-            self._conn = mssql.connect(**self._args)
-        except mssql.Error as e:
-            raise ConnectError(*e.args) from e
-
-    def quote(self, s: str):
-        return f'[{s}]'
-
-    def md5_to_int(self, s: str) -> str:
-        return f"CONVERT(bigint, HashBytes('MD5', {s}), 2)"
-
-class BigQuery(Database):
-    def __init__(self, project, dataset):
-        from google.cloud import bigquery
-        self._client = bigquery.Client(project)
-
-    def quote(self, s: str):
-        return f'`{s}`'
-
-    def md5_to_int(self, s: str) -> str:
-        return f"cast(cast( ('0x' || substr(TO_HEX(md5({s})), 18)) as int64) as numeric)"
-
-    def _query(self, sql_code: str):
-        from google.cloud import bigquery
-        try:
-            res = list(self._client.query(sql_code))
-        except Exception as e:
-            msg = "Exception when trying to execute SQL code:\n    %s\n\nGot error: %s"
-            raise ConnectError(msg%(sql_code, e))
-
-        if res and isinstance(res[0], bigquery.table.Row):
-            res = [row.values() for row in res]
-        return res
 
 class MySQL(Database):
     def __init__(self, host, port, database, user, password):
@@ -144,10 +111,66 @@ class MySQL(Database):
         return f'`{s}`'
 
     def md5_to_int(self, s: str) -> str:
-        return f"cast(conv(substring(md5({s}), 17), 16, 10) as signed)"
+        return f"cast(conv(substring(md5({s}), {1+MD5_HEXDIGITS-CHECKSUM_HEXDIGITS}), 16, 10) as unsigned)"
 
     def to_string(self, s: str):
         return f'cast({s} as char)' 
+
+
+class Redshift(Postgres):
+    def md5_to_int(self, s: str) -> str:
+        return f"strtol(substring(md5({s}), {1+MD5_HEXDIGITS-CHECKSUM_HEXDIGITS}), 16)::decimal(38)"
+
+class MsSQL(Database):
+    def __init__(self, host, port, database, user, password):
+        mssql = import_mssql()
+
+        args = dict(server=host, port=port, database=database, user=user, password=password)
+        self._args = {k:v for k, v in args.items() if v is not None}
+
+        try:
+            self._conn = mssql.connect(**self._args)
+        except mssql.Error as e:
+            raise ConnectError(*e.args) from e
+
+    def quote(self, s: str):
+        return f'[{s}]'
+
+    def md5_to_int(self, s: str) -> str:
+        return f"CONVERT(decimal(38,0), CONVERT(bigint, HashBytes('MD5', {s}), 2))"
+        # return f"CONVERT(bigint, (CHECKSUM({s})))"
+
+    def to_string(self, s: str):
+        return f"CONVERT(varchar, {s})"
+
+class BigQuery(Database):
+    def __init__(self, project, dataset):
+        from google.cloud import bigquery
+        self._client = bigquery.Client(project)
+
+    def quote(self, s: str):
+        return f'`{s}`'
+
+    def md5_to_int(self, s: str) -> str:
+        return f"cast(cast( ('0x' || substr(TO_HEX(md5({s})), 18)) as int64) as numeric)"
+
+    def _canonize_value(self, value):
+        if isinstance(value, bytes):
+            return value.decode()
+        return value
+
+    def _query(self, sql_code: str):
+        from google.cloud import bigquery
+        try:
+            res = list(self._client.query(sql_code))
+        except Exception as e:
+            msg = "Exception when trying to execute SQL code:\n    %s\n\nGot error: %s"
+            raise ConnectError(msg%(sql_code, e))
+
+        if res and isinstance(res[0], bigquery.table.Row):
+            res = [tuple(self._canonize_value(v) for v in row.values()) for row in res]
+        return res
+
 
 class Snowflake(Database):
     def __init__(self, account, user, password, path, schema, database, print_sql=False):
@@ -167,7 +190,7 @@ class Snowflake(Database):
         return s
 
     def md5_to_int(self, s: str) -> str:
-        return f"md5_number_lower64({s})"
+        return f"BITAND(md5_number_lower64({s}), {CHECKSUM_MASK})"
 
 
 
@@ -194,5 +217,7 @@ def connect_to_uri(db_uri):
         return MsSQL(dsn.host, dsn.port, path, dsn.user, dsn.password)
     elif scheme == 'bigquery':
         return BigQuery(dsn.host, path)
+    elif scheme == 'redshift':
+        return Redshift(dsn.host, dsn.port, path, dsn.user, dsn.password)
 
     raise NotImplementedError(f"Scheme {dsn.scheme} currently not supported")

@@ -5,6 +5,7 @@ func run_sql(code) {
 
 // Cleaning
 run_sql("DROP TABLE IF EXISTS xdiff.Rating")
+run_sql("DROP TABLE IF EXISTS xdiff.tmp_rating")
 run_sql("DROP TABLE IF EXISTS xdiff.Rating_del1")
 run_sql("DROP TABLE IF EXISTS xdiff.Rating_update1")
 run_sql("DROP TABLE IF EXISTS xdiff.Rating_update001p")
@@ -16,10 +17,21 @@ run_sql("DROP TABLE IF EXISTS xdiff.Rating_update50p")
 print "Importing the CSV through the Python script"
 PY("0", "import _bq_import_csv")
 
-run_sql("ALTER TABLE `datafold-dev-2.xdiff.Rating` ADD COLUMN id BYTES")
-run_sql("UPDATE `datafold-dev-2.xdiff.Rating` SET id = cast(GENERATE_UUID() as bytes) WHERE True")
+// run_sql("ALTER TABLE `datafold-dev-2.xdiff.Rating` ADD COLUMN id int")
+// run_sql("UPDATE `datafold-dev-2.xdiff.Rating` SET id = cast(GENERATE_UUID() as bytes) WHERE True")
 
-table xdiff.Rating { ...  }
+table xdiff.Rating {
+    id: int     // explicit id, to avoid identity type
+    userid: int
+    movieid: int
+    rating: float
+    timestamp: int
+}
+
+run_sql("""
+    INSERT INTO xdiff.Rating(id, userid, movieid, rating, timestamp)
+    SELECT row_number() over (order by userid, movieid, timestamp) AS id, userid, movieid, rating, timestamp FROM xdiff.tmp_rating
+""")
 
 Rating = xdiff.Rating
 
