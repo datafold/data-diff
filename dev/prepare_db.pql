@@ -6,6 +6,7 @@ func run_sql(code) {
 // Cleanup
 func cleanup() {
     run_sql("DROP TABLE IF EXISTS Rating")
+    run_sql("DROP TABLE IF EXISTS tmp_rating")
     run_sql("DROP TABLE IF EXISTS Rating_del1")
     run_sql("DROP TABLE IF EXISTS Rating_update1")
     run_sql("DROP TABLE IF EXISTS Rating_update001p")
@@ -18,23 +19,39 @@ cleanup()
 
 // Import CSV
 if (db_type == "snowflake") {
-    table tmpRating {
+    print "Uploading ratings CSV"
+
+    run_sql("RM @~/ratings.csv.gz")
+    run_sql("PUT file://ml-25m/ratings.csv @~")
+
+    print "Loading ratings CSV"
+
+    table tmp_rating {
         id: int
         movieId: int
         rating: float
         timestamp: int
     }
-    print "Uploading ratings CSV"
-    run_sql("RM @~/ratings.csv.gz")
-    run_sql("PUT file://ml-25m/ratings.csv @~")
-    print "Loading ratings CSV"
-    run_sql("COPY INTO tmpRating FROM '@~/ratings.csv.gz' file_format=(skip_header=1)")
-    Rating += tmpRating {..., userId:id}
-    remove_table(tmpRating)
+
+    run_sql("COPY INTO tmp_rating FROM '@~/ratings.csv.gz' file_format=(skip_header=1)")
+
+    table Rating {
+        id: int
+        userId: int
+        movieId: int
+        rating: float
+        timestamp: int
+    }
+
+    run_sql("""
+        INSERT INTO rating(id, userid, movieid, rating, timestamp)
+        SELECT row_number() over (order by tmp_rating.id, movieid, timestamp) AS id, tmp_rating.id as userid, movieid, rating, timestamp FROM tmp_rating
+    """)
+
 } else if (db_type == "redshift") {
     // NOTE: Requires that the csv already exists on s3 in the given path
+    print "Loading ratings CSV (already uploaded)"
 
-    // import_csv(Rating, 'ml-25m/ratings.csv', true)
     table tmp_rating {
         userid: int
         movieid: int
@@ -62,8 +79,9 @@ if (db_type == "snowflake") {
         INSERT INTO rating(id, userid, movieid, rating, timestamp)
         SELECT row_number() over (order by userid, movieid, timestamp) AS id, userid, movieid, rating, timestamp FROM tmp_rating
     """)
-    print(count(Rating))
 } else {
+    print "Importing ratings CSV"
+
     table Rating {
         userId: int
         movieId: int
@@ -73,6 +91,8 @@ if (db_type == "snowflake") {
     import_csv(Rating, 'ml-25m/ratings.csv', true)
     Rating.add_index("id")
 }
+
+run_sql("DROP TABLE IF EXISTS tmp_rating")
 commit()
 
 middle = count(Rating) /~ 2
