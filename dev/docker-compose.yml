@@ -1,6 +1,46 @@
 version: "3.8"
 
 services:
+    xdiff:
+      container_name: xdiff
+      build: 
+        context: ../
+        dockerfile: ./dev/xdiff.Dockerfile
+        args:
+          - DB1_URI
+          - TABLE1_NAME
+          - DB2_URI
+          - TABLE2_NAME
+          - OPTIONS
+      ports:
+        - '9992:9992'
+      expose:
+        - '9992'
+      tty: true
+      depends_on:
+        - 'postgres'
+        - 'mysql'
+      networks:
+        - local
+
+    prepdb:
+      container_name: prepdb
+      build: 
+        context: ../
+        dockerfile: ./dev/prepdb.Dockerfile
+      volumes: 
+        - prepdb-data:/app:delegated
+      ports:
+        - '9991:9991'
+      expose:
+        - '9991'
+      tty: true
+      depends_on:
+        - 'postgres'
+        - 'mysql'
+      networks:
+        - local
+
     postgres:
       container_name: postgresql
       image: postgres:14.1-alpine
@@ -27,10 +67,16 @@ services:
       command: >
         --default-authentication-plugin=mysql_native_password
         --innodb-buffer-pool-size=8G
-        --key_buffer_size=8G
-        --read_buffer_size=2G
+        --innodb_io_capacity=2000
+        --innodb_log_file_size=1G
+        --binlog-cache-size=16M
+        --key_buffer_size=0
         --max_connections=10
-        --innodb_io_capacity=400
+        --innodb_flush_log_at_trx_commit=2
+        --innodb_flush_log_at_timeout=10
+        --innodb_flush_method=O_DSYNC
+        --innodb_log_compressed_pages=OFF
+        --sync_binlog=500
       restart: always
       volumes: 
         - mysql-data:/var/lib/mysql:delegated
@@ -48,6 +94,7 @@ services:
 volumes:
   postgresql-data:
   mysql-data:
+  prepdb-data:
 
 networks:
   local:
