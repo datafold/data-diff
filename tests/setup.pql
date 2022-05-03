@@ -1,0 +1,18 @@
+func run_sql(code) {
+    force_eval( SQL( nulltype, code ))
+}
+
+table RatingsTest {
+    userId: int
+    movieId: int
+    rating: float
+    timestamp: timestamp
+}
+
+table RatingsTest2 {
+    userId: int
+    movieId: int
+    rating: float
+    timestamp: timestamp
+}
+commit()
