@@ -27,10 +27,15 @@ DATE_FORMAT ='%H:%M:%S'
 @click.option('-d', '--debug', is_flag=True, help='Print debug info')
 @click.option('-v', '--verbose', is_flag=True, help='Print extra info')
 def main(db1_uri, table1_name, db2_uri, table2_name, key_column, columns, limit, bisection_factor, bisection_threshold, stats, debug, verbose):
+    if limit and stats:
+        print("Error: cannot specify a limit when using the -s/--stats switch")
+        return
+
     if debug:
         logging.basicConfig(level=logging.DEBUG, format=LOG_FORMAT, datefmt=DATE_FORMAT)
     elif verbose:
         logging.basicConfig(level=logging.INFO, format=LOG_FORMAT, datefmt=DATE_FORMAT)
+
 
     db1 = connect_to_uri(db1_uri)
     db2 = connect_to_uri(db2_uri)
@@ -44,7 +49,7 @@ def main(db1_uri, table1_name, db2_uri, table2_name, key_column, columns, limit,
     diff_iter = differ.diff_tables(table1, table2)
 
     if limit:
-        diff_iter = islice(diff_iter, limit)
+        diff_iter = islice(diff_iter, int(limit))
 
     if stats:
         diff = list(diff_iter)
