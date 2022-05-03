@@ -1,11 +1,6 @@
 #!/usr/bin/env bash
 set -ex
 
-if [[ $( dirname $0 ) != "." ]]; then
-  echo "Execute from /dev folder."
-  exit
-fi
-
 # Use a linux/arm64 docker image for MySQL when running on ARM
 CPU_ARCHITECTURE=$(uname -p)
 if [[ "${CPU_ARCHITECTURE}" == "arm" ]]; then
@@ -13,10 +8,12 @@ if [[ "${CPU_ARCHITECTURE}" == "arm" ]]; then
 fi
 
 main () {
+  cd dev/
   initialize 
   prepare_db
   xdiff
   shutdown
+  cd ..
 }
 
 initialize() {

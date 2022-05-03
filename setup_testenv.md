@@ -1,9 +1,9 @@
 # Test XDiff with Postgres and MySQL
-From inside the `dev` directory, run the following:
+
 
 ```
-chmod +x ./example.sh
-./example.sh
+chmod +x ./dev/example.sh
+./dev/example.sh
 ```
 
 NB for Mac. If the process takes very long (e.g.  importing CSV file takes >30m), make sure that you have the latest version of Docker installed and have enabled the experimental features `Use the new Virtualization framework` and `Enable VirtioFS accelerated directory sharing`. Because the interaction with Docker and the MacOS FS is a bottleneck.
@@ -12,7 +12,7 @@ NB for Mac. If the process takes very long (e.g.  importing CSV file takes >30m)
 
 1. Install XDiff
 
-`pip install xdiff -e ../`
+`pip install xdiff -e ./src`
 
 2. Install Preql (0.2.11 or up)
 
@@ -49,7 +49,7 @@ And it's ready to use!
 Example:
 
 ```bash
-xdiff postgres://<uri> Rating postgres://<uri> Rating_del1 -c timestamp --stats
+xdiff postgres://user:password@host:db Rating mysql://user:password@host:db Rating_del1 -c timestamp --stats
 
 Diff-Total: 250156 changed rows out of 25000095
 Diff-Percent: 1.0006%
