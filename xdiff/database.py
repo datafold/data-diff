@@ -23,6 +23,10 @@ def import_mssql():
     import pymssql
     return pymssql
 
+def import_oracle():
+    import cx_Oracle
+    return cx_Oracle
+
 logger = logging.getLogger('database')
 
 class ConnectError(Exception):
@@ -116,6 +120,26 @@ class MySQL(Database):
     def to_string(self, s: str):
         return f'cast({s} as char)' 
 
+
+class Oracle(Database):
+    def __init__(self, host, port, database, user, password):
+        assert not port
+        oracle = import_oracle()
+        try:
+            self._conn = oracle.connect(user=user, password=password, dsn="%s/%s" % (host, database))
+        except Exception as e:
+            raise ConnectError(*e.args) from e
+
+    def md5_to_int(self, s: str) -> str:
+        # standard_hash is faster than DBMS_CRYPTO.Hash
+        # TODO: Find a way to use UTL_RAW.CAST_TO_BINARY_INTEGER ?
+        return f"to_number(substr(standard_hash({s}, 'MD5'), 18), 'xxxxxxxxxxxxxxx')"
+
+    def quote(self, s: str):
+        return f'{s}'
+
+    def to_string(self, s: str):
+        return f'cast({s} as varchar(1024))' 
 
 class Redshift(Postgres):
     def md5_to_int(self, s: str) -> str:
@@ -219,5 +243,7 @@ def connect_to_uri(db_uri):
         return BigQuery(dsn.host, path)
     elif scheme == 'redshift':
         return Redshift(dsn.host, dsn.port, path, dsn.user, dsn.password)
+    elif scheme == 'oracle':
+        return Oracle(dsn.host, dsn.port, path, dsn.user, dsn.password)
 
     raise NotImplementedError(f"Scheme {dsn.scheme} currently not supported")
