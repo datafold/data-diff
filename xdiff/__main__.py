@@ -3,8 +3,6 @@ import time
 import logging
 from itertools import islice
 
-from pyparsing import col
-
 from .diff_tables import TableSegment, TableDiffer
 from .database import connect_to_uri
 
