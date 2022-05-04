@@ -1,4 +1,4 @@
-FROM python:3.10-slim
+FROM python:3.10
 
 # install dependencies
 RUN apt update && apt install -y \
@@ -7,14 +7,8 @@ RUN apt update && apt install -y \
 RUN pip install poetry
 
 # copy data
-COPY /dev/prepare_db.pql /app/prepare_db.pql
-COPY /dev/prepare_db_mssql.pql /app/prepare_db_mssql.pql
-COPY /dev/prepare_db_bigquery.pql /app/prepare_db_bigquery.pql
-COPY /dev/poetry.lock /dev/pyproject.toml /dev/prepdb.sh /app/
+COPY /dev/poetry.lock /dev/pyproject.toml /app/
 ADD src src
-
-WORKDIR /app
-RUN chmod +x prepdb.sh
 
 # install package
 RUN poetry install

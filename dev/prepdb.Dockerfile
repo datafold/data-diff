@@ -1,4 +1,4 @@
-FROM python:3.10-slim
+FROM python:3.10
 
 # install dependencies
 RUN apt update && apt install -y \
