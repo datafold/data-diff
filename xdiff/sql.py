@@ -1,4 +1,6 @@
-from importlib.resources import is_resource
+"""Provides classes for a pseudo-SQL AST that compiles to SQL code
+"""
+
 from typing import List, Union, Tuple
 
 from runtype import dataclass
@@ -13,9 +15,13 @@ SqlOrStr = Union[Sql, str]
 
 @dataclass
 class Compiler:
-    database: object #Database
+    """Provides a set of utility methods for compiling SQL
 
-    in_select: bool = False
+    For internal use.
+    """
+
+    database: object #Database
+    in_select: bool = False     # Compilation
 
     def quote(self, s: str):
         return self.database.quote(s)

@@ -1,9 +1,14 @@
+from abc import ABC, abstractmethod
 import logging
 from typing import Tuple
 
+import dsnparse
+
 from .sql import SqlOrStr, Compiler
 
-import dsnparse
+
+logger = logging.getLogger('database')
+
 
 def import_postgres():
     import psycopg2
@@ -27,26 +32,29 @@ def import_oracle():
     import cx_Oracle
     return cx_Oracle
 
-logger = logging.getLogger('database')
 
 class ConnectError(Exception):
     pass
-
 
 
 def _one(seq):
     x ,= seq
     return x
 
-class Database:
-    "An interface that uses the standard SQL cursor interface"
+class Database(ABC):
+    """Base abstract class for databases.
+    
+    Used for providing connection code and implementation specific SQL utilities.
+    """
 
-    def _query(self, sql_code: str):
+    def _query(self, sql_code: str) -> list:
+        "Uses the standard SQL cursor interface"
         c = self._conn.cursor()
         c.execute(sql_code)
         return c.fetchall()
 
     def query(self, sql_ast: SqlOrStr, res_type: type):
+        "Query the given SQL AST, and attempt to convert the result to type 'res_type'"
         sql_code = Compiler(self).compile(sql_ast)
         logger.debug("Running SQL (%s): %s", type(self).__name__, sql_code)
         res = self._query(sql_code)
@@ -61,12 +69,23 @@ class Database:
             elif res_type.__args__ == (Tuple,):
                 return res
             else:
-                breakpoint()
-                assert False
+                raise ValueError(res_type)
         return res
 
-    def to_string(self, s: str):
-        return f'cast({s} as string)' 
+    @abstractmethod
+    def quote(self, s: str):
+        "Quote SQL name (implementation specific)"
+        ...
+
+    @abstractmethod
+    def to_string(self, s: str) -> str:
+        "Provide SQL for casting a column to string"
+        ...
+
+    @abstractmethod
+    def md5_to_int(self, s: str) -> str:
+        "Provide SQL for computing md5 and returning an int"
+        ...
 
 CHECKSUM_HEXDIGITS = 15     # Must be 15 or lower
 MD5_HEXDIGITS = 32
@@ -146,6 +165,8 @@ class Redshift(Postgres):
         return f"strtol(substring(md5({s}), {1+MD5_HEXDIGITS-CHECKSUM_HEXDIGITS}), 16)::decimal(38)"
 
 class MsSQL(Database):
+    "AKA sql-server"
+
     def __init__(self, host, port, database, user, password):
         mssql = import_mssql()
 
@@ -195,6 +216,8 @@ class BigQuery(Database):
             res = [tuple(self._canonize_value(v) for v in row.values()) for row in res]
         return res
 
+    def to_string(self, s: str):
+        return f'cast({s} as string)' 
 
 class Snowflake(Database):
     def __init__(self, account, user, password, path, schema, database, print_sql=False):
@@ -216,9 +239,23 @@ class Snowflake(Database):
     def md5_to_int(self, s: str) -> str:
         return f"BITAND(md5_number_lower64({s}), {CHECKSUM_MASK})"
 
+    def to_string(self, s: str):
+        return f'cast({s} as string)' 
 
 
-def connect_to_uri(db_uri):
+def connect_to_uri(db_uri: str) -> Database:
+    """Connect to the given database uri
+
+    Supported databases:
+    - postgres
+    - mysql
+    - mssql
+    - oracle
+    - snowflake
+    - bigquery
+    - redshift
+    """
+
     dsn = dsnparse.parse(db_uri)
     if len(dsn.schemes) > 1:
         raise NotImplementedError("No support for multiple schemes")

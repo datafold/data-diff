@@ -8,13 +8,19 @@ Use cases:
 
 - Find changes between two versions of the same table
 
-Current databases support:
+We currently support the following databases:
 
 - PostgreSQL
 
 - MySQL
 
+- Oracle
+
 - Snowflake
+
+- BigQuery
+
+- Redshift
 
 
 # How does it work?
