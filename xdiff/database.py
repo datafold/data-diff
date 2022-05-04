@@ -131,7 +131,9 @@ class Oracle(Database):
             raise ConnectError(*e.args) from e
 
     def md5_to_int(self, s: str) -> str:
-        return f"to_number( substr( rawtohex( DBMS_CRYPTO.Hash( UTL_I18N.STRING_TO_RAW({s}, 'AL32UTF8'), 2)), 18), 'xxxxxxxxxxxxxxx')"
+        # standard_hash is faster than DBMS_CRYPTO.Hash
+        # TODO: Find a way to use UTL_RAW.CAST_TO_BINARY_INTEGER ?
+        return f"to_number(substr(standard_hash({s}, 'MD5'), 18), 'xxxxxxxxxxxxxxx')"
 
     def quote(self, s: str):
         return f'{s}'
