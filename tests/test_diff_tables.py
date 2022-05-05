@@ -6,7 +6,7 @@ import preql
 from xdiff.database import connect_to_uri
 from xdiff.diff_tables import TableDiffer, TableSegment
 
-from .common import str_to_checksum, TEST_MYSQL_CONN_STRING
+from .common import TEST_MYSQL_CONN_STRING, str_to_checksum
 
 
 class TestDiffTables(unittest.TestCase):
