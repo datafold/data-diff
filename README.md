@@ -81,9 +81,10 @@ $ xdiff postgres:/// Original  postgres:/// Original_1diff  -v --bisection-facto
 
 # How to install
 
-Requires Python 3.6+ with pip.
+Requires Python 3.7+ with pip.
 
-    pip install datafold-xdiff      # doesn't work yet
+    poetry build --format wheel
+    pip install "dist/datafold_xdiff-0.0.2-py3-none-any.whl[mysql,pgsql]"
 
 # How to use
 
