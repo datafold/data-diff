@@ -30,12 +30,16 @@ dsnparse = "*"
 pyparsing = "ˆ3.0"
 click = "^8.1"
 
+preql = { version = "^0.2.11", optional = true }
 psycopg2 = { version = "*", optional = true }
-mysqlclient = { version = "*", optional = true }
 mysql-connector-python = { version = "*", optional = true}
 snowflake-connector-python = { version = "*", optional = true }
 
+[tool.poetry.dev-dependencies]
+protobuf = "^3.20.1"
+
 [tool.poetry.extras]
+preql = ["preql"]
 mysql = ["mysql-connector-python"]
 pgsql = ["psycopg2"]
 snowflake = ["snowflake-connector-python"]

@@ -24,7 +24,7 @@ initialize() {
     sleep 5
   done
 
-  docker-compose up -d xdiff prepdb
+  MYSQL_IMAGE=${MYSQL_IMAGE} docker-compose up -d xdiff prepdb
 }
 
 prepare_db() {
@@ -32,12 +32,12 @@ prepare_db() {
 }
 
 xdiff() {
-  docker-compose run -e DB1_URI=postgres://postgres:Password1@postgresql/postgres -e TABLE1_NAME=Rating -e DB2_URI=mysql://mysql:Password1@mysql/mysql -e TABLE2_NAME=Rating_del1 -e OPTIONS='-c timestamp --bisection-factor 4 -v -s' xdiff
-  docker-compose run -e DB1_URI=postgres://postgres:Password1@postgresql/postgres -e TABLE1_NAME=Rating -e DB2_URI=mysql://mysql:Password1@mysql/mysql -e TABLE2_NAME=Rating_update1 -e OPTIONS='-c timestamp --bisection-factor 4 -v' xdiff
-  docker-compose run -e DB1_URI=postgres://postgres:Password1@postgresql/postgres -e TABLE1_NAME=Rating -e DB2_URI=mysql://mysql:Password1@mysql/mysql -e TABLE2_NAME=Rating_update001p -e OPTIONS='-c timestamp --bisection-factor 64 -v -s' xdiff
-  docker-compose run -e DB1_URI=postgres://postgres:Password1@postgresql/postgres -e TABLE1_NAME=Rating -e DB2_URI=mysql://mysql:Password1@mysql/mysql -e TABLE2_NAME=Rating_update1p -e OPTIONS='-c timestamp --bisection-factor 4 -v -s' xdiff
-  docker-compose run -e DB1_URI=postgres://postgres:Password1@postgresql/postgres -e TABLE1_NAME=Rating -e DB2_URI=mysql://mysql:Password1@mysql/mysql -e TABLE2_NAME=Rating_del1p -e OPTIONS='-c timestamp --bisection-factor 4 -v -s' xdiff
-  docker-compose run -e DB1_URI=postgres://postgres:Password1@postgresql/postgres -e TABLE1_NAME=Rating -e DB2_URI=mysql://mysql:Password1@mysql/mysql -e TABLE2_NAME=Rating_update50p -e OPTIONS='-c timestamp --bisection-factor 4 -v -s' xdiff
+  MYSQL_IMAGE=${MYSQL_IMAGE} docker-compose run -e DB1_URI=postgres://postgres:Password1@postgresql/postgres -e TABLE1_NAME=Rating -e DB2_URI=mysql://mysql:Password1@mysql/mysql -e TABLE2_NAME=Rating_del1 -e OPTIONS='-c timestamp --bisection-factor 4 -v -s' xdiff
+  MYSQL_IMAGE=${MYSQL_IMAGE} docker-compose run -e DB1_URI=postgres://postgres:Password1@postgresql/postgres -e TABLE1_NAME=Rating -e DB2_URI=mysql://mysql:Password1@mysql/mysql -e TABLE2_NAME=Rating_update1 -e OPTIONS='-c timestamp --bisection-factor 4 -v' xdiff
+  MYSQL_IMAGE=${MYSQL_IMAGE} docker-compose run -e DB1_URI=postgres://postgres:Password1@postgresql/postgres -e TABLE1_NAME=Rating -e DB2_URI=mysql://mysql:Password1@mysql/mysql -e TABLE2_NAME=Rating_update001p -e OPTIONS='-c timestamp --bisection-factor 64 -v -s' xdiff
+  MYSQL_IMAGE=${MYSQL_IMAGE} docker-compose run -e DB1_URI=postgres://postgres:Password1@postgresql/postgres -e TABLE1_NAME=Rating -e DB2_URI=mysql://mysql:Password1@mysql/mysql -e TABLE2_NAME=Rating_update1p -e OPTIONS='-c timestamp --bisection-factor 4 -v -s' xdiff
+  MYSQL_IMAGE=${MYSQL_IMAGE} docker-compose run -e DB1_URI=postgres://postgres:Password1@postgresql/postgres -e TABLE1_NAME=Rating -e DB2_URI=mysql://mysql:Password1@mysql/mysql -e TABLE2_NAME=Rating_del1p -e OPTIONS='-c timestamp --bisection-factor 4 -v -s' xdiff
+  MYSQL_IMAGE=${MYSQL_IMAGE} docker-compose run -e DB1_URI=postgres://postgres:Password1@postgresql/postgres -e TABLE1_NAME=Rating -e DB2_URI=mysql://mysql:Password1@mysql/mysql -e TABLE2_NAME=Rating_update50p -e OPTIONS='-c timestamp --bisection-factor 4 -v -s' xdiff
 }
 
 shutdown() {
