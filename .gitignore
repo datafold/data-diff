@@ -129,7 +129,7 @@ dmypy.json
 .pyre/
 
 # dev
-ml-25m
+ml-25m*
 drive
 mysqltuner.pl
 
