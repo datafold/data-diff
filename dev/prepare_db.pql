@@ -1,5 +1,6 @@
 // Declare table & functions
 func run_sql(code) {
+    print code
     force_eval( SQL( nulltype, code ))
 }
 
@@ -101,16 +102,20 @@ middle = count(Rating) /~ 2
 // - We use 'const table' to avoid updating the ids
 
 // Rating_del1 = Delete middle row
+print "Create Rating_del1"
 const table Rating_del1 = Rating
 Rating_del1.add_index("id")
 Rating_del1[middle..(middle+1)] delete [true]
 assert count(Rating) == count(Rating_del1) + 1
 
-// Rating_del1 = Update middle row
+// Rating_update1 = Update middle row
+print "Create Rating_update1"
 const table Rating_update1 = Rating
 Rating_update1.add_index("id")
 Rating_update1[middle..(middle+1)] update {timestamp: timestamp + 1}
 
+// Rating_<>p = Percentile of rows changed
+print "Create percentile tables"
 const table Rating_update001p = Rating
 const table Rating_update1p = Rating
 const table Rating_del1p = Rating
