@@ -1,12 +1,12 @@
 import unittest
 
-from .common import str_to_checksum
+from .common import str_to_checksum, TEST_MYSQL_CONN_STRING
 from xdiff.database import connect_to_uri
 
 
 class TestDatabase(unittest.TestCase):
     def setUp(self):
-        self.mysql = connect_to_uri("mysql://xdiff:xdiff@localhost/xdiff")
+        self.mysql = connect_to_uri(TEST_MYSQL_CONN_STRING)
 
     def test_connect_to_db(self):
         self.assertEqual(1, self.mysql.query("SELECT 1", int))

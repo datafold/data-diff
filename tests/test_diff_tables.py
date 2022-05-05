@@ -6,7 +6,7 @@ import preql
 from xdiff.database import connect_to_uri
 from xdiff.diff_tables import TableDiffer, TableSegment
 
-from .common import str_to_checksum
+from .common import str_to_checksum, TEST_MYSQL_CONN_STRING
 
 
 class TestDiffTables(unittest.TestCase):
@@ -14,8 +14,8 @@ class TestDiffTables(unittest.TestCase):
     def setUpClass(cls):
         # Avoid leaking connections that require waiting for the GC, which can
         # cause deadlocks for table-level modifications.
-        cls.preql = preql.Preql("mysql://xdiff:xdiff@localhost/xdiff")
-        cls.connection = connect_to_uri("mysql://xdiff:xdiff@localhost/xdiff")
+        cls.preql = preql.Preql(TEST_MYSQL_CONN_STRING)
+        cls.connection = connect_to_uri(TEST_MYSQL_CONN_STRING)
 
     def setUp(self):
         self.table_name = "RatingsTest"

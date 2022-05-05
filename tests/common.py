@@ -5,6 +5,8 @@ import logging
 
 logging.basicConfig(level=logging.WARN)
 
+TEST_MYSQL_CONN_STRING = "mysql://mysql:Password1@localhost/mysql"
+
 def str_to_checksum(str: str):
     # hello world
     #   => 5eb63bbbe01eeed093cb22bb8f5acdc3
