@@ -3,14 +3,8 @@ set -ex
 
 main () {
   cd dev
-#   get_data
   prepare_db
   cd ..
-}
-
-get_data() {
-  wget https://files.grouplens.org/datasets/movielens/ml-25m.zip
-  unzip ml-25m.zip
 }
 
 prepare_db() {
