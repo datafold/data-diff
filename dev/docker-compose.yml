@@ -58,7 +58,7 @@ services:
 
     mysql:
       container_name: mysql
-      image: "${MYSQL_IMAGE:-mysql}"
+      image: mysql:oracle
       command: >
         --default-authentication-plugin=mysql_native_password
         --innodb-buffer-pool-size=8G
