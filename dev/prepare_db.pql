@@ -5,6 +5,18 @@ func run_sql(code) {
 }
 
 // Cleanup
+func cleanup() {
+    run_sql("DROP TABLE IF EXISTS Rating")
+    run_sql("DROP TABLE IF EXISTS tmp_rating")
+    run_sql("DROP TABLE IF EXISTS Rating_del1")
+    run_sql("DROP TABLE IF EXISTS Rating_update1")
+    run_sql("DROP TABLE IF EXISTS Rating_update001p")
+    run_sql("DROP TABLE IF EXISTS Rating_update1p")
+    run_sql("DROP TABLE IF EXISTS Rating_del1p")
+    run_sql("DROP TABLE IF EXISTS Rating_update50p")
+    commit()
+}
+
 func cleanup_double_quote() {
     run_sql("DROP TABLE IF EXISTS \"Rating\"")
     run_sql("DROP TABLE IF EXISTS \"tmp_rating\"")
@@ -17,22 +29,10 @@ func cleanup_double_quote() {
     commit()
 }
 
-func cleanup_backtick() {
-    run_sql("DROP TABLE IF EXISTS `Rating`")
-    run_sql("DROP TABLE IF EXISTS `tmp_rating`")
-    run_sql("DROP TABLE IF EXISTS `Rating_del1`")
-    run_sql("DROP TABLE IF EXISTS `Rating_update1`")
-    run_sql("DROP TABLE IF EXISTS `Rating_update001p`")
-    run_sql("DROP TABLE IF EXISTS `Rating_update1p`")
-    run_sql("DROP TABLE IF EXISTS `Rating_del1p`")
-    run_sql("DROP TABLE IF EXISTS `Rating_update50p`")
-    commit()
-}
-
-if (db_type == "mysql") {
-    cleanup_backtick()
-} else {
+if (db_type == "postgres" or db_type == "redshift") {
     cleanup_double_quote()
+} else {
+    cleanup()
 }
 
 // Import CSV
