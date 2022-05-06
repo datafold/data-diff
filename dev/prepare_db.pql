@@ -6,14 +6,15 @@ func run_sql(code) {
 
 // Cleanup
 func cleanup() {
-    run_sql("DROP TABLE IF EXISTS Rating")
-    run_sql("DROP TABLE IF EXISTS tmp_rating")
-    run_sql("DROP TABLE IF EXISTS Rating_del1")
-    run_sql("DROP TABLE IF EXISTS Rating_update1")
-    run_sql("DROP TABLE IF EXISTS Rating_update001p")
-    run_sql("DROP TABLE IF EXISTS Rating_update1p")
-    run_sql("DROP TABLE IF EXISTS Rating_del1p")
-    run_sql("DROP TABLE IF EXISTS Rating_update50p")
+    run_sql("DROP TABLE IF EXISTS \"Rating\"")
+    run_sql("DROP TABLE IF EXISTS \"tmp_rating\"")
+    run_sql("DROP TABLE IF EXISTS \"Rating_del1\"")
+    run_sql("DROP TABLE IF EXISTS \"Rating_update1\"")
+    run_sql("DROP TABLE IF EXISTS \"Rating_update001p\"")
+    run_sql("DROP TABLE IF EXISTS \"Rating_update1p\"")
+    run_sql("DROP TABLE IF EXISTS \"Rating_del1p\"")
+    run_sql("DROP TABLE IF EXISTS \"Rating_update50p\"")
+    commit()
 }
 
 cleanup()
