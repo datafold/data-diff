@@ -31,9 +31,8 @@ func cleanup_backtick() {
 
 if (db_type == "mysql") {
     cleanup_backtick()
-}
-else {
-    cleanup_double_quote
+} else {
+    cleanup_double_quote()
 }
 
 // Import CSV
