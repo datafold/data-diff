@@ -1,6 +1,6 @@
 import hashlib
 
-from xdiff.database import CHECKSUM_HEXDIGITS, MD5_HEXDIGITS
+from data_diff.database import CHECKSUM_HEXDIGITS, MD5_HEXDIGITS
 import logging
 
 logging.basicConfig(level=logging.WARN)

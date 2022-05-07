@@ -1,7 +1,7 @@
 import unittest
 
-from xdiff.database import connect_to_uri
-from xdiff.sql import Compiler, Select, TableName
+from data_diff.database import connect_to_uri
+from data_diff.sql import Compiler, Select, TableName
 
 from .common import TEST_MYSQL_CONN_STRING
 

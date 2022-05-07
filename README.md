@@ -1,4 +1,4 @@
-# xDiff
+# Data Diff
 
 A cross-database, efficient diff between mostly-similar database tables.
 
@@ -25,15 +25,15 @@ We currently support the following databases:
 
 # How does it work?
 
-xDiff finds the differences between two tables by utilizing checksum calculations and logarithmic search.
+Data Diff finds the differences between two tables by utilizing checksum calculations and logarithmic search.
 
 Instead of comparing the entire table, it compares the tuple (primary_key, version_column), where the primary key is a unique identifier of the rows, and the version_column updates each time the row changes to a new value, that is unique to that update. Usually the versioning column would be a timestamp like `updated_at`, that would auto-update by the database. But it could also be an auto-counting integer, and so on.
 
-xDiff runs a checksum on these columns using MD5. If the checksums are not the same, we know the tables are different. We then split each table into "n" different segments of similar size (determined by the bisection factor), and repeat the comparison for each matching pair of segments. When segments are below a certain size (bisection threshold), we instead download the segments to the client, and diff them locally.
+Data Diff runs a checksum on these columns using MD5. If the checksums are not the same, we know the tables are different. We then split each table into "n" different segments of similar size (determined by the bisection factor), and repeat the comparison for each matching pair of segments. When segments are below a certain size (bisection threshold), we instead download the segments to the client, and diff them locally.
 
-xDiff splits the segments using "checkpoints", to ensure that inserted or deleted rows don't affect the quality of the diff.
+Data Diff splits the segments using "checkpoints", to ensure that inserted or deleted rows don't affect the quality of the diff.
 
-This process is incremental, so differences are printed to stdout as they are found. Users can ensure xDiff quits after finding some number of differences, either by providing the `--limit` option, or by closing the pipe (for example, by piping to `head`).
+This process is incremental, so differences are printed to stdout as they are found. Users can ensure Data Diff quits after finding some number of differences, either by providing the `--limit` option, or by closing the pipe (for example, by piping to `head`).
 
 The algorithm goes like this:
 
@@ -64,7 +64,7 @@ We ran it with a very low bisection factor, and with the verbose flag, to demons
 Note: It's usually much faster to use high bisection factors, especially when there are very few changes, like in this example.
 
 ```python
-$ xdiff postgres:/// Original  postgres:/// Original_1diff  -v --bisection-factor=4
+$ data_diff postgres:/// Original  postgres:/// Original_1diff  -v --bisection-factor=4
 [16:55:19] INFO - Diffing tables of size 25000095 and 25000095 | segments: 4, bisection threshold: 1048576.
 [16:55:36] INFO - Diffing segment 0/4 of size 8333364 and 8333364
 [16:55:45] INFO - . Diffing segment 0/4 of size 2777787 and 2777787
@@ -90,11 +90,11 @@ $ xdiff postgres:/// Original  postgres:/// Original_1diff  -v --bisection-facto
 Requires Python 3.7+ with pip.
 
     poetry build --format wheel
-    pip install "dist/datafold_xdiff-0.0.2-py3-none-any.whl[mysql,pgsql]"
+    pip install "dist/data_diff-0.0.2-py3-none-any.whl[mysql,pgsql]"
 
 # How to use
 
-Usage: `xdiff DB1_URI TABLE1_NAME DB2_URI TABLE2_NAME [OPTIONS]`
+Usage: `data_diff DB1_URI TABLE1_NAME DB2_URI TABLE2_NAME [OPTIONS]`
 
 Options:
 

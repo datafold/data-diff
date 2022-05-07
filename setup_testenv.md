@@ -1,4 +1,4 @@
-# Test XDiff with Postgres and MySQL
+# Test Data Diff with Postgres and MySQL
 
 
 ```
@@ -10,11 +10,11 @@ NB for Mac. If the process takes very long (e.g.  importing CSV file takes >30m)
 
 ## Manual setup
 
-1. Install XDiff
+1. Install Data Diff
 
 ```
 poetry build --format wheel
-pip install pip install "dist/datafold_xdiff-0.0.2-py3-none-any.whl[preql,mysql,pgsql]"
+pip install pip install "dist/data_diff-0.0.2-py3-none-any.whl[preql,mysql,pgsql]"
 ```
 
 2. Download CSV
@@ -48,7 +48,7 @@ And it's ready to use!
 Example:
 
 ```bash
-xdiff postgres://user:password@host:db Rating mysql://user:password@host:db Rating_del1 -c timestamp --stats
+data_diff postgres://user:password@host:db Rating mysql://user:password@host:db Rating_del1 -c timestamp --stats
 
 Diff-Total: 250156 changed rows out of 25000095
 Diff-Percent: 1.0006%

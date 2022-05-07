@@ -1,8 +1,8 @@
 version: "3.8"
 
 services:
-    xdiff:
-      container_name: xdiff
+    data-diff:
+      container_name: data-diff
       build: 
         context: ../
         dockerfile: ./dev/Dockerfile

@@ -1,7 +1,7 @@
 import unittest
 
 from .common import str_to_checksum, TEST_MYSQL_CONN_STRING
-from xdiff.database import connect_to_uri
+from data_diff.database import connect_to_uri
 
 
 class TestDatabase(unittest.TestCase):
