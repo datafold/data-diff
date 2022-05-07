@@ -6,34 +6,18 @@ func run_sql(code) {
 
 // Cleanup
 func cleanup() {
-    run_sql("DROP TABLE IF EXISTS Rating")
+    run_sql("DROP TABLE IF EXISTS rating")
     run_sql("DROP TABLE IF EXISTS tmp_rating")
-    run_sql("DROP TABLE IF EXISTS Rating_del1")
-    run_sql("DROP TABLE IF EXISTS Rating_update1")
-    run_sql("DROP TABLE IF EXISTS Rating_update001p")
-    run_sql("DROP TABLE IF EXISTS Rating_update1p")
-    run_sql("DROP TABLE IF EXISTS Rating_del1p")
-    run_sql("DROP TABLE IF EXISTS Rating_update50p")
+    run_sql("DROP TABLE IF EXISTS rating_del1")
+    run_sql("DROP TABLE IF EXISTS rating_update1")
+    run_sql("DROP TABLE IF EXISTS rating_update001p")
+    run_sql("DROP TABLE IF EXISTS rating_update1p")
+    run_sql("DROP TABLE IF EXISTS rating_del1p")
+    run_sql("DROP TABLE IF EXISTS rating_update50p")
     commit()
 }
 
-func cleanup_double_quote() {
-    run_sql("DROP TABLE IF EXISTS \"Rating\"")
-    run_sql("DROP TABLE IF EXISTS \"tmp_rating\"")
-    run_sql("DROP TABLE IF EXISTS \"Rating_del1\"")
-    run_sql("DROP TABLE IF EXISTS \"Rating_update1\"")
-    run_sql("DROP TABLE IF EXISTS \"Rating_update001p\"")
-    run_sql("DROP TABLE IF EXISTS \"Rating_update1p\"")
-    run_sql("DROP TABLE IF EXISTS \"Rating_del1p\"")
-    run_sql("DROP TABLE IF EXISTS \"Rating_update50p\"")
-    commit()
-}
-
-if (db_type == "postgres" or db_type == "redshift") {
-    cleanup_double_quote()
-} else {
-    cleanup()
-}
+cleanup()
 
 // Import CSV
 if (db_type == "snowflake") {
@@ -46,17 +30,17 @@ if (db_type == "snowflake") {
 
     table tmp_rating {
         id: int
-        movieId: int
+        movieid: int
         rating: float
         timestamp: int
     }
 
     run_sql("COPY INTO tmp_rating FROM '@~/ratings.csv.gz' file_format=(skip_header=1)")
 
-    table Rating {
+    table rating {
         id: int
-        userId: int
-        movieId: int
+        userid: int
+        movieid: int
         rating: float
         timestamp: int
     }
@@ -85,7 +69,7 @@ if (db_type == "snowflake") {
         IGNOREHEADER 1;
         """)
 
-    table Rating {
+    table rating {
         id: int     // explicit id, to avoid identity type
         userid: int
         movieid: int
@@ -97,67 +81,89 @@ if (db_type == "snowflake") {
         INSERT INTO rating(id, userid, movieid, rating, timestamp)
         SELECT row_number() over (order by userid, movieid, timestamp) AS id, userid, movieid, rating, timestamp FROM tmp_rating
     """)
+} else if (db_type == "mssql") {
+    run_sql("drop table if exists tmp_rating")
+    run_sql("create table tmp_rating(userid int, movieid int, rating float, timestamp int)")
+    table tmp_rating {...}
+    print "Loading ratings CSV"
+    run_sql("BULK INSERT tmp_rating from 'ml-25m/ratings.csv' with (fieldterminator = ',', rowterminator = '0x0a', FIRSTROW = 2);")
+    print "Populating actual table"
+    rating += tmp_rating
+    commit()
 } else {
     print "Importing ratings CSV"
 
-    table Rating {
-        userId: int
-        movieId: int
+    table rating {
+        userid: int
+        movieid: int
         rating: float
         timestamp: int
     }
-    import_csv(Rating, 'ml-25m/ratings.csv', true)
-    Rating.add_index("id")
+    import_csv(rating, 'ml-25m/ratings.csv', true)
+    rating.add_index("id", true)
+    rating.add_index("timestamp")
+    run_sql("CREATE INDEX index_rating_id_timestamp ON rating (id, timestamp)")
 }
 
 run_sql("DROP TABLE IF EXISTS tmp_rating")
 commit()
 
-middle = count(Rating) /~ 2
+middle = count(rating) /~ 2
 
 // Code notes:
 // - We use 'const table' to avoid updating the ids
 
-// Rating_del1 = Delete middle row
-print "Create Rating_del1"
-const table Rating_del1 = Rating
-Rating_del1.add_index("id")
-Rating_del1[middle..(middle+1)] delete [true]
-assert count(Rating) == count(Rating_del1) + 1
+print "Create tables"
+const table rating_del1 = rating
+const table rating_update1 = rating
+const table rating_update001p = rating
+const table rating_update1p = rating
+const table rating_del1p = rating
+const table rating_update50p = rating
 
-// Rating_update1 = Update middle row
-print "Create Rating_update1"
-const table Rating_update1 = Rating
-Rating_update1.add_index("id")
-Rating_update1[middle..(middle+1)] update {timestamp: timestamp + 1}
+print "Create indexes"
+if (db_type != "redshift" or db_type != "snowflake") {
+    rating_del1.add_index("id", true)
+    rating_del1.add_index("timestamp")
+    run_sql("CREATE INDEX index_rating_del1_id_timestamp ON rating_del1 (id, timestamp)")
+    rating_update1.add_index("id", true)
+    rating_update1.add_index("timestamp")
+    run_sql("CREATE INDEX index_rating_update1_id_timestamp ON rating_update1 (id, timestamp)")
+    rating_update001p.add_index("id", true)
+    rating_update001p.add_index("timestamp")
+    run_sql("CREATE INDEX index_rating_update001p_id_timestamp ON rating_update001p (id, timestamp)")
+    rating_update1p.add_index("id", true)
+    rating_update1p.add_index("timestamp")
+    run_sql("CREATE INDEX index_rating_update1p_id_timestamp ON rating_update1p (id, timestamp)")
+    rating_del1p.add_index("id", true)
+    rating_del1p.add_index("timestamp")
+    run_sql("CREATE INDEX index_rating_del1p_id_timestamp ON rating_del1p (id, timestamp)")
+    rating_update50p.add_index("id", true)
+    rating_update50p.add_index("timestamp")
+    run_sql("CREATE INDEX index_rating_update50p_id_timestamp ON rating_update50p (id, timestamp)")
+    commit()
+}
 
-// Rating_<>p = Percentile of rows changed
-print "Create percentile tables"
-const table Rating_update001p = Rating
-const table Rating_update1p = Rating
-const table Rating_del1p = Rating
-const table Rating_update50p = Rating
-
-Rating_update001p.add_index("id")
-Rating_update1p.add_index("id")
-Rating_del1p.add_index("id")
-Rating_update50p.add_index("id")
+print "Alter tables"
+rating_del1[middle..(middle+1)] delete [true]
+assert count(rating) == count(rating_del1) + 1
+rating_update1[middle..(middle+1)] update {timestamp: timestamp + 1}
 
 if (db_type == "postgres" or db_type == "redshift") {
-    run_sql('UPDATE "Rating_update001p" SET "timestamp" = ("timestamp" + 1) WHERE random() < 0.0001')
-    run_sql('UPDATE "Rating_update1p" SET "timestamp" = ("timestamp" + 1) WHERE random() < 0.01')
-    run_sql('DELETE FROM "Rating_del1p" WHERE random() < 0.01')
-    run_sql('UPDATE "Rating_update50p" SET "timestamp" = ("timestamp" + 1) WHERE random() < 0.5')
-} else if (db_type == "mysql") {
-    run_sql('UPDATE Rating_update001p SET timestamp = (timestamp + 1) WHERE rand() < 0.0001')
-    run_sql('UPDATE Rating_update1p SET timestamp = (timestamp + 1) WHERE rand() < 0.01')
-    run_sql('DELETE FROM Rating_del1p WHERE rand() < 0.01')
-    run_sql('UPDATE Rating_update50p SET timestamp = (timestamp + 1) WHERE rand() < 0.5')
+    run_sql('UPDATE rating_update001p SET timestamp = (timestamp + 1) WHERE random() < 0.0001')
+    run_sql('UPDATE rating_update1p SET timestamp = (timestamp + 1) WHERE random() < 0.01')
+    run_sql('DELETE FROM rating_del1p WHERE random() < 0.01')
+    run_sql('UPDATE rating_update50p SET timestamp = (timestamp + 1) WHERE random() < 0.5')
+} else if (db_type == "mysql" or db_type == "mssql") {
+    run_sql('UPDATE rating_update001p SET timestamp = (timestamp + 1) WHERE rand() < 0.0001')
+    run_sql('UPDATE rating_update1p SET timestamp = (timestamp + 1) WHERE rand() < 0.01')
+    run_sql('DELETE FROM rating_del1p WHERE rand() < 0.01')
+    run_sql('UPDATE rating_update50p SET timestamp = (timestamp + 1) WHERE rand() < 0.5')
 } else if (db_type == "snowflake") {
-    run_sql('UPDATE Rating_update001p SET timestamp = (timestamp + 1) WHERE uniform(0::float, 1, random()) < 0.0001')
-    run_sql('UPDATE Rating_update1p SET timestamp = (timestamp + 1) WHERE uniform(0::float, 1, random()) < 0.01')
-    run_sql('DELETE FROM Rating_del1p WHERE uniform(0::float, 1, random()) < 0.01')
-    run_sql('UPDATE Rating_update50p SET timestamp = (timestamp + 1) WHERE uniform(0::float, 1, random()) < 0.5')
+    run_sql('UPDATE rating_update001p SET timestamp = (timestamp + 1) WHERE uniform(0::float, 1, random()) < 0.0001')
+    run_sql('UPDATE rating_update1p SET timestamp = (timestamp + 1) WHERE uniform(0::float, 1, random()) < 0.01')
+    run_sql('DELETE FROM rating_del1p WHERE uniform(0::float, 1, random()) < 0.01')
+    run_sql('UPDATE rating_update50p SET timestamp = (timestamp + 1) WHERE uniform(0::float, 1, random()) < 0.5')
 } else {
     print "Unsupported database: " + db_type
 }
