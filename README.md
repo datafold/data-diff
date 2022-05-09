@@ -114,3 +114,4 @@ It's highly recommended that all involved columns are indexed.
 
 # License
 
+[MIT License](https://github.com/datafold/data-diff/blob/master/LICENSE)
