@@ -114,4 +114,3 @@ It's highly recommended that all involved columns are indexed.
 
 # License
 
-TBD
