@@ -1,7 +1,7 @@
 """Provides classes for a pseudo-SQL AST that compiles to SQL code
 """
 
-from typing import List, Union, Tuple
+from typing import List, Union, Tuple, Optional
 
 from runtype import dataclass
 
@@ -122,6 +122,11 @@ class In(Sql):
         elems = ', '.join(map(c.compile, self.list))
         return f'({c.compile(self.expr)} IN ({elems}))'
 
+@dataclass
 class Count(Sql):
+    column: Optional[SqlOrStr] = None
+
     def compile(self, c: Compiler):
+        if self.column:
+            return f"count({c.compile(self.column)})"
         return 'count(*)'
