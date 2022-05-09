@@ -3,8 +3,9 @@ import logging
 from typing import Tuple
 
 import dsnparse
+import os
 
-from .sql import SqlOrStr, Compiler
+from .sql import SqlOrStr, Compiler, Explain, Select
 
 
 logger = logging.getLogger("database")
@@ -65,8 +66,17 @@ class Database(ABC):
 
     def query(self, sql_ast: SqlOrStr, res_type: type):
         "Query the given SQL AST, and attempt to convert the result to type 'res_type'"
-        sql_code = Compiler(self).compile(sql_ast)
+        compiler = Compiler(self)
+        sql_code = compiler.compile(sql_ast)
         logger.debug("Running SQL (%s): %s", type(self).__name__, sql_code)
+        if getattr(self, '_interactive', False) and isinstance(sql_ast, Select):
+            explained_sql = compiler.compile(Explain(sql_ast))
+            logger.info(f"EXPLAIN for SQL SELECT")
+            logger.info(self._query(explained_sql))
+            answer = input("Continue? [y/n] ")
+            if not answer.lower() in ["y", "yes"]:
+                os.exit(1)
+
         res = self._query(sql_code)
         if res_type is int:
             res = _one(_one(res))
@@ -81,6 +91,9 @@ class Database(ABC):
             else:
                 raise ValueError(res_type)
         return res
+
+    def enable_interactive(self):
+        self._interactive = True
 
     @abstractmethod
     def quote(self, s: str):
