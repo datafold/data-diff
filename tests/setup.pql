@@ -2,16 +2,16 @@ func run_sql(code) {
     force_eval( SQL( nulltype, code ))
 }
 
-table RatingsTest {
-    userId: int
-    movieId: int
+table ratings_test {
+    userid: int
+    movieid: int
     rating: float
     timestamp: timestamp
 }
 
-table RatingsTest2 {
-    userId: int
-    movieId: int
+table ratings_est2 {
+    userid: int
+    movieid: int
     rating: float
     timestamp: timestamp
 }

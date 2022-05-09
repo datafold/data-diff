@@ -16,7 +16,7 @@ RUN unzip ml-25m.zip -d /app/dev
 
 # install package
 RUN poetry build --format wheel
-RUN pip install "dist/datafold_xdiff-0.0.2-py3-none-any.whl[preql,mysql,pgsql]"
+RUN pip install "dist/data_diff-0.0.2-py3-none-any.whl[preql,mysql,pgsql]"
 
 ARG DB1_URI
 ARG TABLE1_NAME
@@ -30,4 +30,4 @@ ENV DB2_URI ${DB2_URI}
 ENV TABLE2_NAME ${TABLE2_NAME}
 ENV OPTIONS ${OPTIONS}
 
-CMD xdiff ${DB1_URI} ${TABLE1_NAME} ${DB2_URI} ${TABLE2_NAME} ${OPTIONS}
+CMD data_diff ${DB1_URI} ${TABLE1_NAME} ${DB2_URI} ${TABLE2_NAME} ${OPTIONS}

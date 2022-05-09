@@ -3,8 +3,8 @@ import unittest
 
 import preql
 
-from xdiff.database import connect_to_uri
-from xdiff.diff_tables import TableDiffer, TableSegment
+from data_diff.database import connect_to_uri
+from data_diff.diff_tables import TableDiffer, TableSegment
 
 from .common import TEST_MYSQL_CONN_STRING, str_to_checksum
 

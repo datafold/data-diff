@@ -63,8 +63,8 @@ if (db_type == "snowflake") {
 
     run_sql("""
         COPY "public"."tmp_rating" (userid, movieid, rating, timestamp)
-        FROM 's3://dev-cf-redshift-datafold-xdiff/ml-25m/ratings.csv' 
-        IAM_ROLE 'arn:aws:iam::760878568205:role/dev-cf-redshift-xdiff'
+        FROM 's3://dev-cf-redshift-datafold-data-diff/ml-25m/ratings.csv' 
+        IAM_ROLE 'arn:aws:iam::760878568205:role/dev-cf-redshift-data-diff'
         DELIMITER ','
         IGNOREHEADER 1;
         """)

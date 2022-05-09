@@ -1,7 +1,7 @@
 import unittest
 
-from xdiff.database import connect_to_uri
-from xdiff.sql import Checksum, Compare, Compiler, Enum, In, Select, TableName, Count
+from data_diff.database import connect_to_uri
+from data_diff.sql import Checksum, Compare, Compiler, Enum, In, Select, TableName, Count
 
 from .common import TEST_MYSQL_CONN_STRING
 
