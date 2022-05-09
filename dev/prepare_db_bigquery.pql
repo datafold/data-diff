@@ -4,23 +4,23 @@ func run_sql(code) {
 }
 
 // Cleaning
-run_sql("DROP TABLE IF EXISTS xdiff.Rating")
+run_sql("DROP TABLE IF EXISTS xdiff.rating")
 run_sql("DROP TABLE IF EXISTS xdiff.tmp_rating")
-run_sql("DROP TABLE IF EXISTS xdiff.Rating_del1")
-run_sql("DROP TABLE IF EXISTS xdiff.Rating_update1")
-run_sql("DROP TABLE IF EXISTS xdiff.Rating_update001p")
-run_sql("DROP TABLE IF EXISTS xdiff.Rating_update1p")
-run_sql("DROP TABLE IF EXISTS xdiff.Rating_del1p")
-run_sql("DROP TABLE IF EXISTS xdiff.Rating_update50p")
+run_sql("DROP TABLE IF EXISTS xdiff.rating_del1")
+run_sql("DROP TABLE IF EXISTS xdiff.rating_update1")
+run_sql("DROP TABLE IF EXISTS xdiff.rating_update001p")
+run_sql("DROP TABLE IF EXISTS xdiff.rating_update1p")
+run_sql("DROP TABLE IF EXISTS xdiff.rating_del1p")
+run_sql("DROP TABLE IF EXISTS xdiff.rating_update50p")
 
 // Import CSV
 print "Importing the CSV through the Python script"
 PY("0", "import _bq_import_csv")
 
-// run_sql("ALTER TABLE `datafold-dev-2.xdiff.Rating` ADD COLUMN id int")
-// run_sql("UPDATE `datafold-dev-2.xdiff.Rating` SET id = cast(GENERATE_UUID() as bytes) WHERE True")
+// run_sql("ALTER TABLE `datafold-dev-2.xdiff.rating` ADD COLUMN id int")
+// run_sql("UPDATE `datafold-dev-2.xdiff.rating` SET id = cast(GENERATE_UUID() as bytes) WHERE True")
 
-table xdiff.Rating {
+table xdiff.rating {
     id: int     // explicit id, to avoid identity type
     userid: int
     movieid: int
@@ -29,36 +29,36 @@ table xdiff.Rating {
 }
 
 run_sql("""
-    INSERT INTO xdiff.Rating(id, userid, movieid, rating, timestamp)
+    INSERT INTO xdiff.rating(id, userid, movieid, rating, timestamp)
     SELECT row_number() over (order by userid, movieid, timestamp) AS id, userid, movieid, rating, timestamp FROM xdiff.tmp_rating
 """)
 
-Rating = xdiff.Rating
+rating = xdiff.rating
 
-middle = count(Rating) /~ 2
+middle = count(rating) /~ 2
 
 // Code notes:
 // - We use 'const table' to avoid updating the ids
 
-// Rating_del1 = Delete middle row
-run_sql("CREATE TABLE xdiff.Rating_del1 AS (SELECT * FROM xdiff.Rating)")
-table xdiff.Rating_del1{...}
-xdiff.Rating_del1[middle..(middle+1)] delete [true]
-assert count(xdiff.Rating) == count(xdiff.Rating_del1) + 1
+// rating_del1 = Delete middle row
+run_sql("CREATE TABLE xdiff.rating_del1 AS (SELECT * FROM xdiff.rating)")
+table xdiff.rating_del1{...}
+xdiff.rating_del1[middle..(middle+1)] delete [true]
+assert count(xdiff.rating) == count(xdiff.rating_del1) + 1
 
-// Rating_del1 = Update middle row
-run_sql("CREATE TABLE xdiff.Rating_update1 AS (SELECT * FROM xdiff.Rating)")
-table xdiff.Rating_update1{...}
-xdiff.Rating_update1[middle..(middle+1)] update {timestamp: timestamp + 1}
+// rating_del1 = Update middle row
+run_sql("CREATE TABLE xdiff.rating_update1 AS (SELECT * FROM xdiff.rating)")
+table xdiff.rating_update1{...}
+xdiff.rating_update1[middle..(middle+1)] update {timestamp: timestamp + 1}
 
-run_sql("CREATE TABLE xdiff.Rating_update001p AS (SELECT * FROM xdiff.Rating)")
-run_sql("CREATE TABLE xdiff.Rating_update1p AS (SELECT * FROM xdiff.Rating)")
-run_sql("CREATE TABLE xdiff.Rating_del1p AS (SELECT * FROM xdiff.Rating)")
-run_sql("CREATE TABLE xdiff.Rating_update50p AS (SELECT * FROM xdiff.Rating)")
+run_sql("CREATE TABLE xdiff.rating_update001p AS (SELECT * FROM xdiff.rating)")
+run_sql("CREATE TABLE xdiff.rating_update1p AS (SELECT * FROM xdiff.rating)")
+run_sql("CREATE TABLE xdiff.rating_del1p AS (SELECT * FROM xdiff.rating)")
+run_sql("CREATE TABLE xdiff.rating_update50p AS (SELECT * FROM xdiff.rating)")
 
-run_sql('UPDATE xdiff.Rating_update001p SET timestamp = (timestamp + 1) WHERE rand() < 0.0001')
-run_sql('UPDATE xdiff.Rating_update1p SET timestamp = (timestamp + 1) WHERE rand() < 0.01')
-run_sql('DELETE FROM xdiff.Rating_del1p WHERE rand() < 0.01')
-run_sql('UPDATE xdiff.Rating_update50p SET timestamp = (timestamp + 1) WHERE rand() < 0.5')
+run_sql('UPDATE xdiff.rating_update001p SET timestamp = (timestamp + 1) WHERE rand() < 0.0001')
+run_sql('UPDATE xdiff.rating_update1p SET timestamp = (timestamp + 1) WHERE rand() < 0.01')
+run_sql('DELETE FROM xdiff.rating_del1p WHERE rand() < 0.01')
+run_sql('UPDATE xdiff.rating_update50p SET timestamp = (timestamp + 1) WHERE rand() < 0.5')
 
 // commit()
