@@ -14,9 +14,7 @@ RUN chmod +x dev/prepdb.sh
 RUN wget https://files.grouplens.org/datasets/movielens/ml-25m.zip
 RUN unzip ml-25m.zip -d /app/dev
 
-# install package
-RUN poetry build --format wheel
-RUN pip install "dist/data_diff-0.0.2-py3-none-any.whl[preql,mysql,pgsql]"
+RUN pip install data-diff[preql,mysql,pgsql]
 
 ARG DB1_URI
 ARG TABLE1_NAME
