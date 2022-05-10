@@ -23,6 +23,7 @@ class TableSegment:
     database: Database
     table_path: DbPath
     key_column: str
+    update_column: str
     extra_columns: Tuple[str, ...]
     start: DbKey = None
     end: DbKey = None
@@ -102,7 +103,7 @@ class TableSegment:
 
     @property
     def _relevant_columns(self) -> List[str]:
-        return [self.key_column] + list(self.extra_columns)
+        return [self.key_column, self.update_column] + list(self.extra_columns)
 
     @property
     def checksum(self) -> int:
