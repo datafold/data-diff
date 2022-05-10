@@ -8,10 +8,13 @@ from runtype import dataclass
 DbPath = Tuple[str, ...]
 DbKey = Union[int, str, bytes]
 
+
 class Sql:
     pass
 
+
 SqlOrStr = Union[Sql, str]
+
 
 @dataclass
 class Compiler:
@@ -20,8 +23,8 @@ class Compiler:
     For internal use.
     """
 
-    database: object #Database
-    in_select: bool = False     # Compilation
+    database: object  # Database
+    in_select: bool = False  # Compilation
 
     def quote(self, s: str):
         return self.database.quote(s)
@@ -35,16 +38,18 @@ class Compiler:
             return str(elem)
         assert False
 
+
 @dataclass
 class TableName(Sql):
     name: DbPath
 
     def compile(self, c: Compiler):
-        return c.quote('.'.join(self.name))
+        return c.quote(".".join(self.name))
+
 
 @dataclass
 class Value(Sql):
-    value: object   # Primitive
+    value: object  # Primitive
 
     def compile(self, c: Compiler):
         if isinstance(self.value, bytes):
@@ -52,6 +57,7 @@ class Value(Sql):
         elif isinstance(self.value, str):
             return "'%s'" % self.value
         return str(self.value)
+
 
 @dataclass
 class Select(Sql):
@@ -63,24 +69,25 @@ class Select(Sql):
 
     def compile(self, parent_c: Compiler):
         c = parent_c.replace(in_select=True)
-        columns = ', '.join(map(c.compile, self.columns))
-        select = f'SELECT {columns}'
+        columns = ", ".join(map(c.compile, self.columns))
+        select = f"SELECT {columns}"
 
         if self.table:
-            select += ' FROM ' + c.compile(self.table)
-        
+            select += " FROM " + c.compile(self.table)
+
         if self.where:
-            select += ' WHERE ' + ' AND '.join(map(c.compile, self.where))
+            select += " WHERE " + " AND ".join(map(c.compile, self.where))
 
         if self.group_by:
-            select += ' GROUP BY ' + ', '.join(map(c.compile, self.group_by))
+            select += " GROUP BY " + ", ".join(map(c.compile, self.group_by))
 
         if self.order_by:
-            select += ' ORDER BY ' + ', '.join(map(c.compile, self.order_by))
+            select += " ORDER BY " + ", ".join(map(c.compile, self.order_by))
 
         if parent_c.in_select:
-            select = '(%s)' % select
+            select = "(%s)" % select
         return select
+
 
 @dataclass
 class Enum(Sql):
@@ -88,10 +95,9 @@ class Enum(Sql):
     order_by: SqlOrStr
 
     def compile(self, c: Compiler):
-        table = c.quote('.'.join(self.table))
+        table = c.quote(".".join(self.table))
         order = c.compile(self.order_by)
-        return f'(SELECT *, (row_number() over (ORDER BY {order})) as idx FROM {table} ORDER BY {order}) tmp'
-
+        return f"(SELECT *, (row_number() over (ORDER BY {order})) as idx FROM {table} ORDER BY {order}) tmp"
 
 
 @dataclass
@@ -99,10 +105,11 @@ class Checksum(Sql):
     exprs: List[SqlOrStr]
 
     def compile(self, c: Compiler):
-        compiled_exprs = ', '.join(c.database.to_string(s) for s in map(c.compile, self.exprs))
-        expr =  f'concat({compiled_exprs})'
+        compiled_exprs = ", ".join(c.database.to_string(s) for s in map(c.compile, self.exprs))
+        expr = f"concat({compiled_exprs})"
         md5 = c.database.md5_to_int(expr)
-        return f'sum({md5})'
+        return f"sum({md5})"
+
 
 @dataclass
 class Compare(Sql):
@@ -111,16 +118,18 @@ class Compare(Sql):
     b: SqlOrStr
 
     def compile(self, c: Compiler):
-        return f'({c.compile(self.a)} {self.op} {c.compile(self.b)})'
+        return f"({c.compile(self.a)} {self.op} {c.compile(self.b)})"
+
 
 @dataclass
 class In(Sql):
     expr: SqlOrStr
-    list: List #List[SqlOrStr]
+    list: List  # List[SqlOrStr]
 
     def compile(self, c: Compiler):
-        elems = ', '.join(map(c.compile, self.list))
-        return f'({c.compile(self.expr)} IN ({elems}))'
+        elems = ", ".join(map(c.compile, self.list))
+        return f"({c.compile(self.expr)} IN ({elems}))"
+
 
 @dataclass
 class Count(Sql):
@@ -129,4 +138,4 @@ class Count(Sql):
     def compile(self, c: Compiler):
         if self.column:
             return f"count({c.compile(self.column)})"
-        return 'count(*)'
+        return "count(*)"
