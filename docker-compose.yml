@@ -39,6 +39,9 @@ services:
     postgres:
       container_name: postgresql
       image: postgres:14.1-alpine
+      # work_mem: less tmp files
+      # maintenance_work_mem: improve table-level op perf
+      # max_wal_size: allow more time before merging to heap
       command: >
         -c work_mem=1GB
         -c maintenance_work_mem=1GB
@@ -51,7 +54,7 @@ services:
       expose:
         - '5432'
       env_file:
-        - dev.env
+        - dev/dev.env
       tty: true
       networks:
         - local
@@ -59,17 +62,14 @@ services:
     mysql:
       container_name: mysql
       image: mysql:oracle
+      # fsync less aggressively for insertion perf for test setup
       command: >
         --default-authentication-plugin=mysql_native_password
-        --innodb-buffer-pool-size=8G
-        --innodb_io_capacity=2000
-        --innodb_log_file_size=1G
         --binlog-cache-size=16M
         --key_buffer_size=0
         --max_connections=10
         --innodb_flush_log_at_trx_commit=2
         --innodb_flush_log_at_timeout=10
-        --innodb_flush_method=O_DSYNC
         --innodb_log_compressed_pages=OFF
         --sync_binlog=0
       restart: always
@@ -81,7 +81,7 @@ services:
       expose:
         - '3306'
       env_file:
-        - dev.env
+        - dev/dev.env
       tty: true
       networks:
         - local
