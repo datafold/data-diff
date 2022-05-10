@@ -102,7 +102,8 @@ Usage: `data_diff DB1_URI TABLE1_NAME DB2_URI TABLE2_NAME [OPTIONS]`
 Options:
 
   - `--help` - Show help message and exit.
-  - `-k` or `--key_column` - Name of the primary key column
+  - `-k` or `--key-column` - Name of the primary key column
+  - `-t` or `--update-column` - Name of updated_at/last_updated column
   - `-c` or `--columns` - List of names of extra columns to compare
   - `-l` or `--limit` - Maximum number of differences to find (limits maximum bandwidth and runtime)
   - `-s` or `--stats` - Print stats instead of a detailed diff
