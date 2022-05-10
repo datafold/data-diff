@@ -20,7 +20,7 @@ classifiers = [
     "Topic :: Database :: Database Engines/Servers",
     "Typing :: Typed"
 ]
-packages = [{ include = "data-diff" }]
+packages = [{ include = "data_diff" }]
 
 [tool.poetry.dependencies]
 python = "^3.7"
