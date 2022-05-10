@@ -89,8 +89,11 @@ $ data_diff postgres:/// Original  postgres:/// Original_1diff  -v --bisection-f
 
 Requires Python 3.7+ with pip.
 
-    poetry build --format wheel
-    pip install "dist/data_diff-0.0.2-py3-none-any.whl[mysql,pgsql]"
+```pip install data-diff```
+
+or when you need extras like mysql and postgres
+
+```pip install "data-diff[mysql,pgsql]"```
 
 # How to use
 

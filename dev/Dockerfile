@@ -14,7 +14,7 @@ RUN chmod +x dev/prepdb.sh
 RUN wget https://files.grouplens.org/datasets/movielens/ml-25m.zip
 RUN unzip ml-25m.zip -d /app/dev
 
-RUN pip install data-diff[preql,mysql,pgsql]
+RUN pip install 'data-diff[preql,mysql,pgsql]'
 
 ARG DB1_URI
 ARG TABLE1_NAME
