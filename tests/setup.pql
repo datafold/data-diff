@@ -9,7 +9,7 @@ table ratings_test {
     timestamp: timestamp
 }
 
-table ratings_est2 {
+table ratings_test2 {
     userid: int
     movieid: int
     rating: float
