@@ -130,6 +130,7 @@ When developing/debugging, it's recommended to install dependencies and run it
 directly with `poetry` rather than go through the package.
 
 ```
+brew install mysql postgresql # MacOS dependencies for C bindings
 poetry install
 ```
 
