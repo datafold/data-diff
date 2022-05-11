@@ -18,20 +18,20 @@ class TestDiffTables(unittest.TestCase):
         cls.connection = connect_to_uri(TEST_MYSQL_CONN_STRING)
 
     def setUp(self):
-        self.table_name = "RatingsTest"
+        self.connection.query("DROP TABLE IF EXISTS ratings_test", None)
+        self.connection.query("DROP TABLE IF EXISTS ratings_test2", None)
+        self.preql.load("./tests/setup.pql")
+        self.preql.commit()
+
         self.table = TableSegment(TestDiffTables.connection,
-                                  (self.table_name, ),
+                                  ('ratings_test', ),
                                   'id',
                                   ('timestamp', ))
 
         self.table2 = TableSegment(TestDiffTables.connection,
-                                   ("RatingsTest2", ),
+                                   ("ratings_test2", ),
                                    'id',
                                    ('timestamp', ))
-        self.connection.query("DROP TABLE IF EXISTS RatingsTest", None)
-        self.connection.query("DROP TABLE IF EXISTS RatingsTest2", None)
-        self.preql.load("./tests/setup.pql")
-        self.preql.commit()
 
         self.differ = TableDiffer(3, 4)
 
@@ -43,7 +43,7 @@ class TestDiffTables(unittest.TestCase):
     def test_get_values(self):
         time = "2022-01-01 00:00:00"
         res = self.preql(f"""
-            new RatingsTest(1, 1, 9, '{time}')
+            new ratings_test(1, 1, 9, '{time}')
         """)
         self.preql.commit()
 
@@ -54,10 +54,10 @@ class TestDiffTables(unittest.TestCase):
     def test_checkpoints(self):
         time = "2022-01-01 00:00:00"
         self.preql(f"""
-            new RatingsTest(userId: 1, movieId: 1, rating: 9, timestamp: '{time}')
-            new RatingsTest(userId: 1, movieId: 1, rating: 9, timestamp: '{time}')
-            new RatingsTest(userId: 1, movieId: 1, rating: 9, timestamp: '{time}')
-            new RatingsTest(userId: 1, movieId: 1, rating: 9, timestamp: '{time}')
+            new ratings_test(userid: 1, movieid: 1, rating: 9, timestamp: '{time}')
+            new ratings_test(userid: 1, movieid: 1, rating: 9, timestamp: '{time}')
+            new ratings_test(userid: 1, movieid: 1, rating: 9, timestamp: '{time}')
+            new ratings_test(userid: 1, movieid: 1, rating: 9, timestamp: '{time}')
         """)
         self.preql.commit()
         self.assertEqual([2, 4], self.table.choose_checkpoints(2))
@@ -65,10 +65,10 @@ class TestDiffTables(unittest.TestCase):
     def test_diff_small_tables(self):
         time = "2022-01-01 00:00:00"
         self.preql(f"""
-            new RatingsTest(userId: 1, movieId: 1, rating: 9, timestamp: '{time}')
-            new RatingsTest(userId: 2, movieId: 2, rating: 9, timestamp: '{time}')
+            new ratings_test(userid: 1, movieid: 1, rating: 9, timestamp: '{time}')
+            new ratings_test(userid: 2, movieid: 2, rating: 9, timestamp: '{time}')
 
-            new RatingsTest2(userId: 1, movieId: 1, rating: 9, timestamp: '{time}')
+            new ratings_test2(userid: 1, movieid: 1, rating: 9, timestamp: '{time}')
         """)
         self.preql.commit()
         diff = list(self.differ.diff_tables(self.table, self.table2))
@@ -78,16 +78,16 @@ class TestDiffTables(unittest.TestCase):
     def test_diff_table_above_bisection_threshold(self):
         time = "2022-01-01 00:00:00"
         self.preql(f"""
-            new RatingsTest(userId: 1, movieId: 1, rating: 9, timestamp: '{time}')
-            new RatingsTest(userId: 2, movieId: 2, rating: 9, timestamp: '{time}')
-            new RatingsTest(userId: 3, movieId: 3, rating: 9, timestamp: '{time}')
-            new RatingsTest(userId: 4, movieId: 4, rating: 9, timestamp: '{time}')
-            new RatingsTest(userId: 5, movieId: 5, rating: 9, timestamp: '{time}')
+            new ratings_test(userid: 1, movieid: 1, rating: 9, timestamp: '{time}')
+            new ratings_test(userid: 2, movieid: 2, rating: 9, timestamp: '{time}')
+            new ratings_test(userid: 3, movieid: 3, rating: 9, timestamp: '{time}')
+            new ratings_test(userid: 4, movieid: 4, rating: 9, timestamp: '{time}')
+            new ratings_test(userid: 5, movieid: 5, rating: 9, timestamp: '{time}')
 
-            new RatingsTest2(userId: 1, movieId: 1, rating: 9, timestamp: '{time}')
-            new RatingsTest2(userId: 2, movieId: 2, rating: 9, timestamp: '{time}')
-            new RatingsTest2(userId: 3, movieId: 3, rating: 9, timestamp: '{time}')
-            new RatingsTest2(userId: 4, movieId: 4, rating: 9, timestamp: '{time}')
+            new ratings_test2(userid: 1, movieid: 1, rating: 9, timestamp: '{time}')
+            new ratings_test2(userid: 2, movieid: 2, rating: 9, timestamp: '{time}')
+            new ratings_test2(userid: 3, movieid: 3, rating: 9, timestamp: '{time}')
+            new ratings_test2(userid: 4, movieid: 4, rating: 9, timestamp: '{time}')
         """)
         self.preql.commit()
         diff = list(self.differ.diff_tables(self.table, self.table2))
@@ -97,8 +97,8 @@ class TestDiffTables(unittest.TestCase):
     def test_return_empty_array_when_same(self):
         time = "2022-01-01 00:00:00"
         self.preql(f"""
-            new RatingsTest(userId: 1, movieId: 1, rating: 9, timestamp: '{time}')
-            new RatingsTest2(userId: 1, movieId: 1, rating: 9, timestamp: '{time}')
+            new ratings_test(userid: 1, movieid: 1, rating: 9, timestamp: '{time}')
+            new ratings_test2(userid: 1, movieid: 1, rating: 9, timestamp: '{time}')
         """)
         self.preql.commit()
         diff = list(self.differ.diff_tables(self.table, self.table2))
