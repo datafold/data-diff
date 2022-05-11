@@ -1,41 +1,6 @@
 version: "3.8"
 
 services:
-    data-diff:
-      container_name: data-diff
-      build: 
-        context: ../
-        dockerfile: ./dev/Dockerfile
-        args:
-          - DB1_URI
-          - TABLE1_NAME
-          - DB2_URI
-          - TABLE2_NAME
-          - OPTIONS
-      ports:
-        - '9992:9992'
-      expose:
-        - '9992'
-      tty: true
-      networks:
-        - local
-
-    prepdb:
-      container_name: prepdb
-      build: 
-        context: ../
-        dockerfile: ./dev/Dockerfile
-      command: ["bash", "./dev/prepdb.sh"]
-      volumes: 
-        - prepdb-data:/app:delegated
-      ports:
-        - '9991:9991'
-      expose:
-        - '9991'
-      tty: true
-      networks:
-        - local
-
     postgres:
       container_name: postgresql
       image: postgres:14.1-alpine
@@ -89,7 +54,6 @@ services:
 volumes:
   postgresql-data:
   mysql-data:
-  prepdb-data:
 
 networks:
   local:

@@ -1,10 +1,15 @@
 # Data Diff
 
-A cross-database, efficient diff between mostly-similar database tables.
+A cross-database, efficient diff using checksums between mostly-similar database
+tables.
 
-* 
+- Validate that a table was copied properly
+- Be alerted before your customer finds out, or your report is wrong
+- Validate that your replication mechnism is working correctly
+- Find changes between two versions of the same table
 
-It uses a bisection algorithm to 
+It uses a bisection algorithm to efficiently check if e.g. a table is the same
+between MySQL and Postgres, or Postgres and Snowflake, or MySQL and RDS!
 
 ```python
 $ data-diff postgres:/// Original  postgres:/// Original_1diff  -v --bisection-factor=4
@@ -27,12 +32,6 @@ $ data-diff postgres:/// Original  postgres:/// Original_1diff  -v --bisection-f
 [16:56:11] INFO - Duration: 53.51 seconds.
 ```
 
-
-Use cases:
-
-- Quickly validate that a table was copied correctly
-- Find changes between two versions of the same table
-
 We currently support the following databases:
 
 - PostgreSQL
@@ -41,6 +40,35 @@ We currently support the following databases:
 - Snowflake
 - BigQuery
 - Redshift
+
+We plan to add more, including NoSQL, and even APIs like Shopify!
+
+# How to install
+
+Requires Python 3.7+ with pip.
+
+```pip install data-diff```
+
+or when you need extras like mysql and postgres
+
+```pip install "data-diff[mysql,pgsql]"```
+
+# How to use
+
+Usage: `data-diff DB1_URI TABLE1_NAME DB2_URI TABLE2_NAME [OPTIONS]`
+
+Options:
+
+  - `--help` - Show help message and exit.
+  - `-k` or `--key_column` - Name of the primary key column
+  - `-c` or `--columns` - List of names of extra columns to compare
+  - `-l` or `--limit` - Maximum number of differences to find (limits maximum bandwidth and runtime)
+  - `-s` or `--stats` - Print stats instead of a detailed diff
+  - `-d` or `--debug` - Print debug info
+  - `-v` or `--verbose` - Print extra info
+  - `--bisection-factor` - Segments per iteration. When set to 2, it performs binary search.
+  - `--bisection-threshold` - Minimal bisection threshold. i.e. maximum size of pages to diff locally.
+
 
 # How does it work?
 
@@ -82,36 +110,71 @@ We ran it with a very low bisection factor, and with the verbose flag, to demons
 
 Note: It's usually much faster to use high bisection factors, especially when there are very few changes, like in this example.
 
-# How to install
-
-Requires Python 3.7+ with pip.
-
-```pip install data-diff```
-
-or when you need extras like mysql and postgres
-
-```pip install "data-diff[mysql,pgsql]"```
-
-# How to use
-
-Usage: `data-diff DB1_URI TABLE1_NAME DB2_URI TABLE2_NAME [OPTIONS]`
-
-Options:
-
-  - `--help` - Show help message and exit.
-  - `-k` or `--key-column` - Name of the primary key column
-  - `-t` or `--update-column` - Name of updated_at/last_updated column
-  - `-c` or `--columns` - List of names of extra columns to compare
-  - `-l` or `--limit` - Maximum number of differences to find (limits maximum bandwidth and runtime)
-  - `-s` or `--stats` - Print stats instead of a detailed diff
-  - `-d` or `--debug` - Print debug info
-  - `-v` or `--verbose` - Print extra info
-  - `--bisection-factor` - Segments per iteration. When set to 2, it performs binary search.
-  - `--bisection-threshold` - Minimal bisection threshold. i.e. maximum size of pages to diff locally.
-
 ## Tips for performance
 
 It's highly recommended that all involved columns are indexed.
+
+## Development Setup
+
+The development setup centers around using `docker-compose` to boot up various
+databases, and then inserting data into them.
+
+For Mac for performance of Docker, we suggest enabling in the UI:
+
+* Use new Virtualization Framework
+* Enable VirtioFS accelerated directory sharing
+
+**1. Install Data Diff**
+
+When developing/debugging, it's recommended to install dependencies and run it
+directly with `poetry` rather than go through the package.
+
+```
+brew install mysql postgresql # MacOS dependencies for C bindings
+poetry install
+```
+
+**2. Download CSV of Testing Data**
+
+```shell-session
+wget https://files.grouplens.org/datasets/movielens/ml-25m.zip
+unzip ml-25m.zip -d dev/
+```
+
+**3. Start Databases**
+
+```shell-session
+docker-compose up -d mysql postgres
+```
+
+**4. Run Unit Tests**
+
+```shell-session
+poetry run python3 -m unittest
+```
+
+**5. Seed the Database(s)**
+
+If you're just testing, we recommend just setting up one database (e.g.
+Postgres) to avoid incurring the long setup time repeatedly.
+
+```shell-session
+preql -f dev/prepare_db.pql postgres://postgres:Password1@127.0.0.1:5432/postgres
+preql -f dev/prepare_db.pql mysql://mysql:Password1@127.0.0.1:3306/mysql
+preql -f dev/prepare_db.psq snowflake://<uri>
+preql -f dev/prepare_db.psq mssql://<uri>
+preql -f dev/prepare_db_bigquery.pql bigquery:///<project> # Bigquery has its own
+```
+
+**6. Run data-diff against seeded database**
+
+```bash
+poetry run python3 -m data_diff postgres://user:password@host:db Rating mysql://user:password@host:db Rating_del1 -c timestamp --stats
+
+Diff-Total: 250156 changed rows out of 25000095
+Diff-Percent: 1.0006%
+Diff-Split: +250156  -0
+```
 
 ## Development Setup
 
