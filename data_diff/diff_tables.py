@@ -6,7 +6,7 @@ import logging
 
 from runtype import dataclass
 
-from .sql import Select, Checksum, Compare, DbPath, DbKey, DbTime, Count, Enum, TableName, In, Value
+from .sql import Select, Checksum, Compare, DbPath, DbKey, DbTime, Count, Enum, TableName, In, Value, Time
 from .database import Database
 
 logger = logging.getLogger("diff_tables")
@@ -24,11 +24,11 @@ class TableSegment:
     table_path: DbPath
     key_column: str
     update_column: str
-    extra_columns: Tuple[str, ...]
+    extra_columns: Tuple[str, ...] = ()
     start_key: DbKey = None
     end_key: DbKey = None
-    start_time: DbTime = None
-    end_time: DbTime = None
+    min_time: DbTime = None
+    max_time: DbTime = None
 
     _count: int = None
     _checksum: int = None
@@ -40,10 +40,10 @@ class TableSegment:
             yield Compare("<", self.key_column, str(self.end_key))
 
     def _make_update_range(self):
-        if self.start_time is not None:
-            yield Compare("<=", str(self.start_time), self.update_column)
-        if self.end_time is not None:
-            yield Compare("<", self.update_column, str(self.end_time))
+        if self.min_time is not None:
+            yield Compare("<=", Time(self.min_time), self.update_column)
+        if self.max_time is not None:
+            yield Compare("<", self.update_column, Time(self.max_time))
 
     def _make_select(self, *, table=None, columns=None, where=None, group_by=None, order_by=None):
         if columns is None:
