@@ -9,6 +9,11 @@ tables.
 - Validate that a table was copied properly
 - Be alerted before your customer finds out, or your report is wrong
 - Validate that your replication mechnism is working correctly
+- Find changes between two versions of the same table
+
+It uses a bisection algorithm and checksums to efficiently check if e.g. a table
+is the same between MySQL and Postgres, or Postgres and Snowflake, or MySQL and
+RDS!
 
 ```python
 $ data-diff postgres:/// Original  postgres:/// Original_1diff  -v --bisection-factor=4
@@ -109,33 +114,6 @@ We ran it with a very low bisection factor, and with the verbose flag, to demons
 
 Note: It's usually much faster to use high bisection factors, especially when there are very few changes, like in this example.
 
-# How to install
-
-Requires Python 3.7+ with pip.
-
-```pip install data-diff```
-
-or when you need extras like mysql and postgres
-
-```pip install "data-diff[mysql,pgsql]"```
-
-# How to use
-
-Usage: `data-diff DB1_URI TABLE1_NAME DB2_URI TABLE2_NAME [OPTIONS]`
-
-Options:
-
-  - `--help` - Show help message and exit.
-  - `-k` or `--key-column` - Name of the primary key column
-  - `-t` or `--update-column` - Name of updated_at/last_updated column
-  - `-c` or `--columns` - List of names of extra columns to compare
-  - `-l` or `--limit` - Maximum number of differences to find (limits maximum bandwidth and runtime)
-  - `-s` or `--stats` - Print stats instead of a detailed diff
-  - `-d` or `--debug` - Print debug info
-  - `-v` or `--verbose` - Print extra info
-  - `--bisection-factor` - Segments per iteration. When set to 2, it performs binary search.
-  - `--bisection-threshold` - Minimal bisection threshold. i.e. maximum size of pages to diff locally.
-
 ## Tips for performance
 
 It's highly recommended that all involved columns are indexed.
@@ -187,9 +165,9 @@ Postgres) to avoid incurring the long setup time repeatedly.
 ```shell-session
 preql -f dev/prepare_db.pql postgres://postgres:Password1@127.0.0.1:5432/postgres
 preql -f dev/prepare_db.pql mysql://mysql:Password1@127.0.0.1:3306/mysql
-preql -f dev/prepare_db snowflake://<uri>
-preql -f dev/prepare_db mssql://<uri>
-preql -f dev/prepare_db_bigquery bigquery:///<project> # Bigquery has its own scripts
+preql -f dev/prepare_db.pql snowflake://<uri>
+preql -f dev/prepare_db.pql mssql://<uri>
+preql -f dev/prepare_db_bigquery.pql bigquery:///<project> # Bigquery has its own scripts
 ```
 
 **6. Run data-diff against seeded database**
@@ -204,7 +182,6 @@ Diff-Split: +250156  -0
 
 # How to publish to PyPI
 Before you can publish, you need to increment the version number in the [pyproject.toml](pyproject.toml) and then run:
-
 ```shell-session
 poetry build
 poetry publish

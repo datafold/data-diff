@@ -36,11 +36,8 @@ snowflake-connector-python = { version = "*", optional = true }
 [tool.poetry.dev-dependencies]
 mysql-connector-python = "*"
 preql = "^0.2.11"
-<<<<<<< HEAD
 snowflake-connector-python = "*"
 psycopg2 = "*"
-=======
->>>>>>> 6d33dbc (dev: simplify)
 
 [tool.poetry.extras]
 # When adding, update also: README + Dockerfile + dev deps
