@@ -204,6 +204,7 @@ Diff-Split: +250156  -0
 
 # How to publish to PyPI
 Before you can publish, you need to increment the version number in the [pyproject.toml](pyproject.toml) and then run:
+
 ```shell-session
 poetry build
 poetry publish
