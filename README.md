@@ -1,5 +1,8 @@
 # Data Diff
 
+**`data-diff` is currently under heavy development, if you run into issues,
+please file an issue and we'll help you out ASAP!**
+
 A cross-database, efficient diff using checksums between mostly-similar database
 tables.
 
