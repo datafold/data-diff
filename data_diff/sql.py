@@ -2,11 +2,13 @@
 """
 
 from typing import List, Union, Tuple, Optional
+from datetime import datetime
 
 from runtype import dataclass
 
 DbPath = Tuple[str, ...]
 DbKey = Union[int, str, bytes]
+DbTime = datetime
 
 
 class Sql:
