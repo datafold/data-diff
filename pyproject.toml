@@ -26,7 +26,6 @@ packages = [{ include = "data_diff" }]
 python = "^3.7"
 runtype = "^0.2.4"
 dsnparse = "*"
-pyparsing = "ˆ3.0"
 click = "^8.1"
 
 preql = { version = "^0.2.11", optional = true }
@@ -35,9 +34,11 @@ mysql-connector-python = { version = "*", optional = true}
 snowflake-connector-python = { version = "*", optional = true }
 
 [tool.poetry.dev-dependencies]
-protobuf = "^3.20.1"
+mysql-connector-python = "*"
+preql = "^0.2.11"
 
 [tool.poetry.extras]
+# When adding, update also: README + Dockerfile + dev deps
 preql = ["preql"]
 mysql = ["mysql-connector-python"]
 pgsql = ["psycopg2"]
@@ -48,4 +49,4 @@ requires = ["poetry-core>=1.0.0"]
 build-backend = "poetry.core.masonry.api"
 
 [tool.poetry.scripts]
-data_diff = 'data_diff.__main__:main'
+data-diff = 'data_diff.__main__:main'
