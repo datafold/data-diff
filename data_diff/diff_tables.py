@@ -23,7 +23,7 @@ class TableSegment:
     database: Database
     table_path: DbPath
     key_column: str
-    update_column: str
+    update_column: str = None
     extra_columns: Tuple[str, ...] = ()
     start_key: DbKey = None
     end_key: DbKey = None
@@ -32,6 +32,10 @@ class TableSegment:
 
     _count: int = None
     _checksum: int = None
+
+    def __post_init__(self):
+        if not self.update_column and (self.min_time or self.max_time):
+            raise ValueError("Error: min_time/max_time feature requires to specify 'update_column'")
 
     def _make_key_range(self):
         if self.start_key is not None:
@@ -111,7 +115,7 @@ class TableSegment:
 
     @property
     def _relevant_columns(self) -> List[str]:
-        return [self.key_column, self.update_column] + list(self.extra_columns)
+        return [self.key_column] + ([self.update_column] if self.update_column is not None else []) + list(self.extra_columns)
 
     @property
     def checksum(self) -> int:

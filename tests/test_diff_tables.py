@@ -48,6 +48,10 @@ class TestDates(TestWithConnection):
         self.preql.commit()
 
 
+    def test_init(self):
+        a = TableSegment(self.connection, ('a', ), 'id', 'datetime', max_time=self.now.datetime)
+        self.assertRaises(ValueError, TableSegment, self.connection, ('a', ), 'id', max_time=self.now.datetime)
+
     def test_basic(self):
         differ = TableDiffer(10, 100)
         a = TableSegment(self.connection, ('a', ), 'id', 'datetime')
