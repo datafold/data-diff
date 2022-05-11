@@ -18,7 +18,7 @@ DATE_FORMAT = "%H:%M:%S"
 @click.argument("db2_uri")
 @click.argument("table2_name")
 @click.option("-k", "--key-column", default="id", help="Name of primary key column")
-@click.option("-t", "--update-column", default="updated_at", help="Name of updated_at/last_updated column")
+@click.option("-t", "--update-column", default=None, help="Name of updated_at/last_updated column")
 @click.option("-c", "--columns", default=[], multiple=True, help="Names of extra columns to compare")
 @click.option("-l", "--limit", default=None, help="Maximum number of differences to find")
 @click.option("--bisection-factor", default=32, help="Segments per iteration")
