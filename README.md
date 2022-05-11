@@ -176,67 +176,6 @@ Diff-Percent: 1.0006%
 Diff-Split: +250156  -0
 ```
 
-## Development Setup
-
-The development setup centers around using `docker-compose` to boot up various
-databases, and then inserting data into them.
-
-For Mac for performance of Docker, we suggest enabling in the UI:
-
-* Use new Virtualization Framework
-* Enable VirtioFS accelerated directory sharing
-
-**1. Install Data Diff**
-
-When developing/debugging, it's recommended to install dependencies and run it
-directly with `poetry` rather than go through the package.
-
-```
-poetry install -E preql -E mysql -E pgsql -E snowflake
-```
-
-**2. Download CSV of Testing Data**
-
-```shell-session
-wget https://files.grouplens.org/datasets/movielens/ml-25m.zip
-unzip ml-25m.zip -d dev/
-```
-
-**3. Start Databases**
-
-```shell-session
-docker-compose up -d mysql postgres
-```
-
-**4. Run Unit Tests**
-
-```shell-session
-poetry run python3 -m unittest
-```
-
-**5. Seed the Database(s)**
-
-If you're just testing, we recommend just setting up one database (e.g.
-Postgres) to avoid incurring the long setup time repeatedly.
-
-```shell-session
-preql -f dev/prepare_db.pql postgres://postgres:Password1@127.0.0.1:5432/postgres
-preql -f dev/prepare_db.pql mysql://mysql:Password1@127.0.0.1:3306/mysql
-preql -f dev/prepare_db snowflake://<uri>
-preql -f dev/prepare_db mssql://<uri>
-preql -f dev/prepare_db_bigquery bigquery:///<project> # Bigquery has its own
-```
-
-**6. Run data-diff against seeded database**
-
-```bash
-poetry run python3 -m data_diff postgres://user:password@host:db Rating mysql://user:password@host:db Rating_del1 -c timestamp --stats
-
-Diff-Total: 250156 changed rows out of 25000095
-Diff-Percent: 1.0006%
-Diff-Split: +250156  -0
-```
-
 # License
 
 [MIT License](https://github.com/datafold/data-diff/blob/master/LICENSE)
