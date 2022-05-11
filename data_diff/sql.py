@@ -141,3 +141,10 @@ class Count(Sql):
         if self.column:
             return f"count({c.compile(self.column)})"
         return "count(*)"
+
+@dataclass
+class Time(Sql):
+    time: datetime
+
+    def compile(self, c: Compiler):
+        return "'%s'" % self.time.isoformat()
