@@ -16,24 +16,24 @@ is the same between MySQL and Postgres, or Postgres and Snowflake, or MySQL and
 RDS!
 
 ```python
-$ data-diff postgres:/// Original  postgres:/// Original_1diff  -v --bisection-factor=4
-[16:55:19] INFO - Diffing tables of size 25000095 and 25000095 | segments: 4, bisection threshold: 1048576.
-[16:55:36] INFO - Diffing segment 0/4 of size 8333364 and 8333364
-[16:55:45] INFO - . Diffing segment 0/4 of size 2777787 and 2777787
-[16:55:52] INFO - . . Diffing segment 0/4 of size 925928 and 925928
-[16:55:54] INFO - . . . Diff found 2 different rows.
-+ (20000, 942013020)
-- (20000, 942013021)
-[16:55:54] INFO - . . Diffing segment 1/4 of size 925929 and 925929
-[16:55:55] INFO - . . Diffing segment 2/4 of size 925929 and 925929
-[16:55:55] INFO - . . Diffing segment 3/4 of size 1 and 1
-[16:55:56] INFO - . Diffing segment 1/4 of size 2777788 and 2777788
-[16:55:58] INFO - . Diffing segment 2/4 of size 2777788 and 2777788
-[16:55:59] INFO - . Diffing segment 3/4 of size 1 and 1
-[16:56:00] INFO - Diffing segment 1/4 of size 8333365 and 8333365
-[16:56:06] INFO - Diffing segment 2/4 of size 8333365 and 8333365
-[16:56:11] INFO - Diffing segment 3/4 of size 1 and 1
-[16:56:11] INFO - Duration: 53.51 seconds.
+$ data-diff postgres:/// Original  postgres:/// Original_1diff -t timestamp -v --bisection-factor=4
+[16:57:36] INFO - Diffing tables of size 25000095 and 25000095 | segments: 4, bisection threshold: 1048576.
+[16:58:03] INFO - Diffing segment 1/4 of size 8333364 and 8333364
+[16:58:12] INFO - Diffing segment 2/4 of size 8333365 and 8333365
+[16:58:29] INFO - . Diffing segment 1/4 of size 2777787 and 2777787
+[16:58:32] INFO - . Diffing segment 2/4 of size 2777788 and 2777788
+[16:58:45] INFO - . . Diffing segment 1/4 of size 925925 and 925925
+[16:58:46] INFO - . . Diffing segment 2/4 of size 925929 and 925929
+[16:58:48] INFO - . . . Diff found 2 different rows.
++ (12500048, 1268104625)
+- (12500048, 1268104626)
+[16:58:48] INFO - . . Diffing segment 3/4 of size 925929 and 925929
+[16:58:49] INFO - . . Diffing segment 4/4 of size 5 and 5
+[16:58:50] INFO - . Diffing segment 3/4 of size 2777788 and 2777788
+[16:58:52] INFO - . Diffing segment 4/4 of size 2 and 2
+[16:58:55] INFO - Diffing segment 3/4 of size 8333365 and 8333365
+[16:59:00] INFO - Diffing segment 4/4 of size 1 and 1
+[16:59:00] INFO - Duration: 89.92 seconds.
 ```
 
 We currently support the following databases:
