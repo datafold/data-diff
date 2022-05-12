@@ -30,7 +30,7 @@ UNITS_STR = ", ".join(TIME_UNITS.keys())
     "--min-age",
     default=None,
     help="Considers only rows older than specified. "
-    "Example: --min-age=5min discard rows from the last 5 minutes. "
+    "Example: --min-age=5min ignores rows from the last 5 minutes. "
     f"\nValid units: {UNITS_STR}",
 )
 @click.option("--max-age", default=None, help="Considers only rows younger than specified. See --min-age.")
