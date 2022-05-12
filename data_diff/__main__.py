@@ -14,7 +14,6 @@ LOG_FORMAT = "[%(asctime)s] %(levelname)s - %(message)s"
 DATE_FORMAT = "%H:%M:%S"
 
 
-
 @click.command()
 @click.argument("db1_uri")
 @click.argument("table1_name")

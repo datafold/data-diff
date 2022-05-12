@@ -2,8 +2,10 @@ import re
 from datetime import datetime, timedelta
 from difflib import SequenceMatcher
 
+
 class ParseError(ValueError):
     pass
+
 
 TIME_UNITS = dict(
     seconds="seconds",
@@ -30,6 +32,7 @@ TIME_RE = re.compile(r"(\d+)([a-z]+)")
 
 UNITS_STR = ", ".join(sorted(TIME_UNITS.keys()))
 
+
 def string_similarity(a, b):
     return SequenceMatcher(None, a, b).ratio()
 
@@ -40,8 +43,8 @@ def parse_time_atom(count, unit):
         unit = TIME_UNITS[unit]
     except KeyError:
         most_similar = max(TIME_UNITS, key=lambda k: string_similarity(k, unit))
-        raise ParseError(f"'{unit}' is not a recognized time unit. Did you mean '{most_similar}'?"
-            f"\nSupported units: {UNITS_STR}"
+        raise ParseError(
+            f"'{unit}' is not a recognized time unit. Did you mean '{most_similar}'?" f"\nSupported units: {UNITS_STR}"
         )
 
     if unit in EXTRAPOLATED:
