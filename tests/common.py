@@ -8,9 +8,10 @@ logging.basicConfig(level=logging.WARN)
 TEST_MYSQL_CONN_STRING = "mysql://mysql:Password1@localhost/mysql"
 
 try:
-    from .local_settings import * 
+    from .local_settings import *
 except ImportError:
-    pass    # No local settings
+    pass  # No local settings
+
 
 def str_to_checksum(str: str):
     # hello world
@@ -18,7 +19,7 @@ def str_to_checksum(str: str):
     #   =>                   cb22bb8f5acdc3
     #   => 273350391345368515
     m = hashlib.md5()
-    m.update(str.encode('utf-8'))  # encode to binary
+    m.update(str.encode("utf-8"))  # encode to binary
     md5 = m.hexdigest()
     # 0-indexed, unlike DBs which are 1-indexed here, so +1 in dbs
     half_pos = MD5_HEXDIGITS - CHECKSUM_HEXDIGITS
