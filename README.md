@@ -154,12 +154,10 @@ poetry run python3 -m unittest
 First, download the CSVs of seeding data:
 
 ```shell-session
-wget https://files.grouplens.org/datasets/movielens/ml-1m.zip
-unzip ml-1m.zip -d dev/ && mv dev/ml-1m dev/ml
+curl https://datafold-public.s3.us-west-2.amazonaws.com/1m.csv -o dev/ratings.csv
 
-# For a larger data-set (but takes longer to import):
-# - https://files.grouplens.org/datasets/movielens/ml-25m.zip
-
+# For a larger data-set (but takes 25x longer to import):
+# - curl https://datafold-public.s3.us-west-2.amazonaws.com/25m.csv -o dev/ratings.csv
 ```
 
 Now you can insert it into the testing database(s):

@@ -24,7 +24,7 @@ if (db_type == "snowflake") {
     print "Uploading ratings CSV"
 
     run_sql("RM @~/ratings.csv.gz")
-    run_sql("PUT file://dev/ml/ratings.csv @~")
+    run_sql("PUT file://dev/ratings.csv @~")
 
     print "Loading ratings CSV"
 
@@ -86,7 +86,7 @@ if (db_type == "snowflake") {
     run_sql("create table tmp_rating(userid int, movieid int, rating float, timestamp int)")
     table tmp_rating {...}
     print "Loading ratings CSV"
-    run_sql("BULK INSERT tmp_rating from 'dev/ml/ratings.csv' with (fieldterminator = ',', rowterminator = '0x0a', FIRSTROW = 2);")
+    run_sql("BULK INSERT tmp_rating from 'dev/ratings.csv' with (fieldterminator = ',', rowterminator = '0x0a', FIRSTROW = 2);")
     print "Populating actual table"
     rating += tmp_rating
     commit()
@@ -99,7 +99,7 @@ if (db_type == "snowflake") {
         rating: float
         timestamp: int
     }
-    import_csv(rating, 'dev/ml/ratings.csv', true)
+    import_csv(rating, 'dev/ratings.csv', true)
     rating.add_index("id", true)
     rating.add_index("timestamp")
     run_sql("CREATE INDEX index_rating_id_timestamp ON rating (id, timestamp)")

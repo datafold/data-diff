@@ -130,6 +130,7 @@ dmypy.json
 
 # dev
 ml-25m*
+ratings*.csv
 drive
 mysqltuner.pl
 
