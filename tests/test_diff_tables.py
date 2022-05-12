@@ -2,14 +2,14 @@ import datetime
 import unittest
 
 import preql
+import arrow    # comes with preql
 
 from data_diff.database import connect_to_uri
 from data_diff.diff_tables import TableDiffer, TableSegment
 
 from .common import TEST_MYSQL_CONN_STRING, str_to_checksum
 
-
-class TestDiffTables(unittest.TestCase):
+class TestWithConnection(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
         # Avoid leaking connections that require waiting for the GC, which can
@@ -17,21 +17,95 @@ class TestDiffTables(unittest.TestCase):
         cls.preql = preql.Preql(TEST_MYSQL_CONN_STRING)
         cls.connection = connect_to_uri(TEST_MYSQL_CONN_STRING)
 
+class TestDates(TestWithConnection):
+    def setUp(self):
+        self.connection.query("DROP TABLE IF EXISTS a", None)
+        self.connection.query("DROP TABLE IF EXISTS b", None)
+        self.preql(r"""
+            table a {
+                datetime: datetime
+                comment: string
+            }
+            commit()
+
+            func add(date, comment) {
+                new a(date, comment)
+            }
+        """)
+        self.now = now = arrow.get(self.preql.now())
+        self.preql.add(now.shift(days=-50), "50 days ago")
+        self.preql.add(now.shift(hours=-3), "3 hours ago")
+        self.preql.add(now.shift(minutes=-10), "10 mins ago")
+        self.preql.add(now.shift(seconds=-1), "1 second ago")
+        self.preql.add(now, "now")
+
+        self.preql(r"""
+            const table b = a
+            commit()
+        """)
+
+        self.preql.add(self.now.shift(seconds=-3), "2 seconds ago")
+        self.preql.commit()
+
+
+    def test_init(self):
+        a = TableSegment(self.connection, ('a', ), 'id', 'datetime', max_time=self.now.datetime)
+        self.assertRaises(ValueError, TableSegment, self.connection, ('a', ), 'id', max_time=self.now.datetime)
+
+    def test_basic(self):
+        differ = TableDiffer(10, 100)
+        a = TableSegment(self.connection, ('a', ), 'id', 'datetime')
+        b = TableSegment(self.connection, ('b', ), 'id', 'datetime')
+        assert a.count == 6
+        assert b.count == 5
+
+        assert not list(differ.diff_tables(a, a))
+        self.assertEqual( len( list(differ.diff_tables(a, b)) ), 1 )
+
+    def test_offset(self):
+        differ = TableDiffer(2, 10)
+        sec1 = self.now.shift(seconds=-1).datetime
+        a = TableSegment(self.connection, ('a', ), 'id', 'datetime', max_time=sec1)
+        b = TableSegment(self.connection, ('b', ), 'id', 'datetime', max_time=sec1)
+        assert a.count == 4
+        assert b.count == 3
+
+        assert not list(differ.diff_tables(a, a))
+        self.assertEqual( len( list(differ.diff_tables(a, b)) ), 1 )
+
+        a = TableSegment(self.connection, ('a', ), 'id', 'datetime', min_time=sec1)
+        b = TableSegment(self.connection, ('b', ), 'id', 'datetime', min_time=sec1)
+        assert a.count == 2
+        assert b.count == 2
+        assert not list(differ.diff_tables(a, b))
+
+        day1 = self.now.shift(days=-1).datetime
+
+        a = TableSegment(self.connection, ('a', ), 'id', 'datetime', min_time=day1, max_time=sec1)
+        b = TableSegment(self.connection, ('b', ), 'id', 'datetime', min_time=day1, max_time=sec1)
+        assert a.count == 3
+        assert b.count == 2
+        assert not list(differ.diff_tables(a, a))
+        self.assertEqual( len( list(differ.diff_tables(a, b)) ), 1)
+            
+
+class TestDiffTables(TestWithConnection):
+
     def setUp(self):
         self.connection.query("DROP TABLE IF EXISTS ratings_test", None)
         self.connection.query("DROP TABLE IF EXISTS ratings_test2", None)
         self.preql.load("./tests/setup.pql")
         self.preql.commit()
 
-        self.table = TableSegment(TestDiffTables.connection,
+        self.table = TableSegment(self.connection,
                                   ('ratings_test', ),
                                   'id',
-                                  ('timestamp', ))
+                                  'timestamp')
 
-        self.table2 = TableSegment(TestDiffTables.connection,
+        self.table2 = TableSegment(self.connection,
                                    ("ratings_test2", ),
                                    'id',
-                                   ('timestamp', ))
+                                   'timestamp')
 
         self.differ = TableDiffer(3, 4)
 

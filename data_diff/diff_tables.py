@@ -6,7 +6,7 @@ import logging
 
 from runtype import dataclass
 
-from .sql import Select, Checksum, Compare, DbPath, DbKey, Count, Enum, TableName, In, Value
+from .sql import Select, Checksum, Compare, DbPath, DbKey, DbTime, Count, Enum, TableName, In, Value, Time
 from .database import Database
 
 logger = logging.getLogger("diff_tables")
@@ -23,23 +23,36 @@ class TableSegment:
     database: Database
     table_path: DbPath
     key_column: str
-    extra_columns: Tuple[str, ...]
-    start: DbKey = None
-    end: DbKey = None
+    update_column: str = None
+    extra_columns: Tuple[str, ...] = ()
+    start_key: DbKey = None
+    end_key: DbKey = None
+    min_time: DbTime = None
+    max_time: DbTime = None
 
     _count: int = None
     _checksum: int = None
 
-    def _make_range_pred(self):
-        if self.start is not None:
-            yield Compare("<=", str(self.start), self.key_column)
-        if self.end is not None:
-            yield Compare("<", self.key_column, str(self.end))
+    def __post_init__(self):
+        if not self.update_column and (self.min_time or self.max_time):
+            raise ValueError("Error: min_time/max_time feature requires to specify 'update_column'")
+
+    def _make_key_range(self):
+        if self.start_key is not None:
+            yield Compare("<=", str(self.start_key), self.key_column)
+        if self.end_key is not None:
+            yield Compare("<", self.key_column, str(self.end_key))
+
+    def _make_update_range(self):
+        if self.min_time is not None:
+            yield Compare("<=", Time(self.min_time), self.update_column)
+        if self.max_time is not None:
+            yield Compare("<", self.update_column, Time(self.max_time))
 
     def _make_select(self, *, table=None, columns=None, where=None, group_by=None, order_by=None):
         if columns is None:
             columns = [self.key_column]
-        where = list(self._make_range_pred()) + ([] if where is None else [where])
+        where = list(self._make_key_range()) + list(self._make_update_range()) + ([] if where is None else [where])
         order_by = None if order_by is None else [order_by]
         return Select(
             table=table or TableName(self.table_path),
@@ -70,16 +83,16 @@ class TableSegment:
     def segment_by_checkpoints(self, checkpoints: List[DbKey]) -> List["TableSegment"]:
         "Split the current TableSegment to a bunch of smaller ones, separate by the given checkpoints"
 
-        if self.start and self.end:
-            assert all(self.start <= c < self.end for c in checkpoints)
+        if self.start_key and self.end_key:
+            assert all(self.start_key <= c < self.end_key for c in checkpoints)
         checkpoints.sort()
 
         # Calculate sub-segments
-        positions = [self.start] + checkpoints + [self.end]
+        positions = [self.start_key] + checkpoints + [self.end_key]
         ranges = list(zip(positions[:-1], positions[1:]))
 
         # Create table segments
-        tables = [self.new(start=s, end=e) for s, e in ranges]
+        tables = [self.new(start_key=s, end_key=e) for s, e in ranges]
 
         return tables
 
@@ -102,7 +115,11 @@ class TableSegment:
 
     @property
     def _relevant_columns(self) -> List[str]:
-        return [self.key_column] + list(self.extra_columns)
+        return (
+            [self.key_column]
+            + ([self.update_column] if self.update_column is not None else [])
+            + list(self.extra_columns)
+        )
 
     @property
     def checksum(self) -> int:

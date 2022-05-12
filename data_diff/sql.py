@@ -2,11 +2,13 @@
 """
 
 from typing import List, Union, Tuple, Optional
+from datetime import datetime
 
 from runtype import dataclass
 
 DbPath = Tuple[str, ...]
 DbKey = Union[int, str, bytes]
+DbTime = datetime
 
 
 class Sql:
@@ -139,3 +141,11 @@ class Count(Sql):
         if self.column:
             return f"count({c.compile(self.column)})"
         return "count(*)"
+
+
+@dataclass
+class Time(Sql):
+    time: datetime
+
+    def compile(self, c: Compiler):
+        return "'%s'" % self.time.isoformat()

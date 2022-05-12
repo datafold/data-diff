@@ -17,8 +17,9 @@ DATE_FORMAT = "%H:%M:%S"
 @click.argument("table1_name")
 @click.argument("db2_uri")
 @click.argument("table2_name")
-@click.option("-k", "--key_column", default="id", help="Name of primary key column")
-@click.option("-c", "--columns", default=["updated_at"], multiple=True, help="Names of extra columns to compare")
+@click.option("-k", "--key-column", default="id", help="Name of primary key column")
+@click.option("-t", "--update-column", default=None, help="Name of updated_at/last_updated column")
+@click.option("-c", "--columns", default=[], multiple=True, help="Names of extra columns to compare")
 @click.option("-l", "--limit", default=None, help="Maximum number of differences to find")
 @click.option("--bisection-factor", default=32, help="Segments per iteration")
 @click.option("--bisection-threshold", default=1024**2, help="Minimal bisection threshold")
@@ -31,6 +32,7 @@ def main(
     db2_uri,
     table2_name,
     key_column,
+    update_column,
     columns,
     limit,
     bisection_factor,
@@ -53,8 +55,8 @@ def main(
 
     start = time.time()
 
-    table1 = TableSegment(db1, (table1_name,), key_column, columns)
-    table2 = TableSegment(db2, (table2_name,), key_column, columns)
+    table1 = TableSegment(db1, (table1_name,), key_column, update_column, columns)
+    table2 = TableSegment(db2, (table2_name,), key_column, update_column, columns)
 
     differ = TableDiffer(bisection_factor=bisection_factor, bisection_threshold=bisection_threshold, debug=debug)
     diff_iter = differ.diff_tables(table1, table2)

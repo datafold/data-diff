@@ -11,8 +11,9 @@ tables.
 - Validate that your replication mechnism is working correctly
 - Find changes between two versions of the same table
 
-It uses a bisection algorithm to efficiently check if e.g. a table is the same
-between MySQL and Postgres, or Postgres and Snowflake, or MySQL and RDS!
+It uses a bisection algorithm and checksums to efficiently check if e.g. a table
+is the same between MySQL and Postgres, or Postgres and Snowflake, or MySQL and
+RDS!
 
 ```python
 $ data-diff postgres:/// Original  postgres:/// Original_1diff  -v --bisection-factor=4
@@ -164,9 +165,9 @@ Postgres) to avoid incurring the long setup time repeatedly.
 ```shell-session
 preql -f dev/prepare_db.pql postgres://postgres:Password1@127.0.0.1:5432/postgres
 preql -f dev/prepare_db.pql mysql://mysql:Password1@127.0.0.1:3306/mysql
-preql -f dev/prepare_db.psq snowflake://<uri>
-preql -f dev/prepare_db.psq mssql://<uri>
-preql -f dev/prepare_db_bigquery.pql bigquery:///<project> # Bigquery has its own
+preql -f dev/prepare_db.pql snowflake://<uri>
+preql -f dev/prepare_db.pql mssql://<uri>
+preql -f dev/prepare_db_bigquery.pql bigquery:///<project> # Bigquery has its own scripts
 ```
 
 **6. Run data-diff against seeded database**
