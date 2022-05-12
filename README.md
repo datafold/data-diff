@@ -140,18 +140,18 @@ When developing/debugging, it's recommended to install dependencies and run it
 directly with `poetry` rather than go through the package.
 
 ```
-brew install mysql postgresql # MacOS dependencies for C bindings
-apt-get install libpq-dev libmysqlclient-dev # Debian dependencies
+$ brew install mysql postgresql # MacOS dependencies for C bindings
+$ apt-get install libpq-dev libmysqlclient-dev # Debian dependencies
 
-pip install poetry # Python dependency isolation tool
-poetry install # Install dependencies
+$ pip install poetry # Python dependency isolation tool
+$ poetry install # Install dependencies
 ```
 **2. Start Databases**
 
 [Install **docker-compose**][docker-compose] if you haven't already.
 
 ```shell-session
-docker-compose up -d mysql postgres # run mysql and postgres dbs in background
+$ docker-compose up -d mysql postgres # run mysql and postgres dbs in background
 ```
 
 [docker-compose]: https://docs.docker.com/compose/install/
@@ -159,7 +159,7 @@ docker-compose up -d mysql postgres # run mysql and postgres dbs in background
 **3. Run Unit Tests**
 
 ```shell-session
-poetry run python3 -m unittest
+$ poetry run python3 -m unittest
 ```
 
 **4. Seed the Database(s)**
@@ -167,7 +167,7 @@ poetry run python3 -m unittest
 First, download the CSVs of seeding data:
 
 ```shell-session
-curl https://datafold-public.s3.us-west-2.amazonaws.com/1m.csv -o dev/ratings.csv
+$ curl https://datafold-public.s3.us-west-2.amazonaws.com/1m.csv -o dev/ratings.csv
 
 # For a larger data-set (but takes 25x longer to import):
 # - curl https://datafold-public.s3.us-west-2.amazonaws.com/25m.csv -o dev/ratings.csv
@@ -177,13 +177,13 @@ Now you can insert it into the testing database(s):
 
 ```shell-session
 # It's optional to seed more than one to run data-diff(1) against.
-preql -f dev/prepare_db.pql mysql://mysql:Password1@127.0.0.1:3306/mysql
-preql -f dev/prepare_db.pql postgres://postgres:Password1@127.0.0.1:5432/postgres
+$ preql -f dev/prepare_db.pql mysql://mysql:Password1@127.0.0.1:3306/mysql
+$ preql -f dev/prepare_db.pql postgres://postgres:Password1@127.0.0.1:5432/postgres
 
 # Cloud databases
-preql -f dev/prepare_db.psq snowflake://<uri>
-preql -f dev/prepare_db.psq mssql://<uri>
-preql -f dev/prepare_db_bigquery.pql bigquery:///<project> # Bigquery has its own scripts
+$ preql -f dev/prepare_db.psq snowflake://<uri>
+$ preql -f dev/prepare_db.psq mssql://<uri>
+$ preql -f dev/prepare_db_bigquery.pql bigquery:///<project> # Bigquery has its own scripts
 ```
 
 **5. Run **data-diff** against seeded database**
