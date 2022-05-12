@@ -135,13 +135,20 @@ directly with `poetry` rather than go through the package.
 
 ```
 brew install mysql postgresql # MacOS dependencies for C bindings
-poetry install
+apt-get install libpq-dev libmysqlclient-dev # Debian dependencies
+
+pip install poetry # Python dependency isolation tool
+poetry install # Install dependencies
 ```
 **2. Start Databases**
 
+[Install **docker-compose**][docker-compose] if you haven't already.
+
 ```shell-session
-docker-compose up -d mysql postgres
+docker-compose up -d mysql postgres # run mysql and postgres dbs in background
 ```
+
+[docker-compose]: https://docs.docker.com/compose/install/
 
 **3. Run Unit Tests**
 
