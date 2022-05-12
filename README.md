@@ -65,11 +65,16 @@ Options:
 
   - `--help` - Show help message and exit.
   - `-k` or `--key_column` - Name of the primary key column
+  - `-t` or `--update-column` - Name of updated_at/last_updated column
   - `-c` or `--columns` - List of names of extra columns to compare
   - `-l` or `--limit` - Maximum number of differences to find (limits maximum bandwidth and runtime)
   - `-s` or `--stats` - Print stats instead of a detailed diff
   - `-d` or `--debug` - Print debug info
   - `-v` or `--verbose` - Print extra info
+  - `--min-age` - Considers only rows older than specified.
+                  Example: `--min-age=5min` ignores rows from the last 5 minutes.
+                  Valid units: `d, days, h, hours, min, minutes, mon, months, s, seconds, w, weeks, y, years`
+  - `--max-age` - Considers only rows younger than specified.  See `--min-age`.
   - `--bisection-factor` - Segments per iteration. When set to 2, it performs binary search.
   - `--bisection-threshold` - Minimal bisection threshold. i.e. maximum size of pages to diff locally.
 
