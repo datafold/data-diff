@@ -7,6 +7,11 @@ logging.basicConfig(level=logging.WARN)
 
 TEST_MYSQL_CONN_STRING = "mysql://mysql:Password1@localhost/mysql"
 
+try:
+    from .local_settings import * 
+except ImportError:
+    pass    # No local settings
+
 def str_to_checksum(str: str):
     # hello world
     #   => 5eb63bbbe01eeed093cb22bb8f5acdc3

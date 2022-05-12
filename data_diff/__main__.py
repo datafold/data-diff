@@ -5,14 +5,13 @@ from itertools import islice
 
 from .diff_tables import TableSegment, TableDiffer
 from .database import connect_to_uri
-from .parse_time import parse_time_delta, TIME_UNITS
+from .parse_time import parse_time_before_now, UNITS_STR
 
 import click
 
 LOG_FORMAT = "[%(asctime)s] %(levelname)s - %(message)s"
 DATE_FORMAT = "%H:%M:%S"
 
-UNITS_STR = ", ".join(TIME_UNITS.keys())
 
 
 @click.command()
@@ -68,7 +67,9 @@ def main(
 
     start = time.time()
 
-    options = dict(min_time=min_age and parse_time_delta(min_age), max_time=max_age and parse_time_delta(max_age))
+    options = dict(
+        min_time=min_age and parse_time_before_now(min_age), max_time=max_age and parse_time_before_now(max_age)
+    )
 
     table1 = TableSegment(db1, (table1_name,), key_column, update_column, columns, **options)
     table2 = TableSegment(db2, (table2_name,), key_column, update_column, columns, **options)

@@ -25,6 +25,7 @@ assert set(EXTRAPOLATED) <= set(TIME_UNITS)
 
 TIME_RE = re.compile(r"(\d+)([a-z]+)")
 
+UNITS_STR = ", ".join(sorted(TIME_UNITS.keys()))
 
 def string_similarity(a, b):
     return SequenceMatcher(None, a, b).ratio()
@@ -36,7 +37,9 @@ def parse_time_atom(count, unit):
         unit = TIME_UNITS[unit]
     except KeyError:
         most_similar = max(TIME_UNITS, key=lambda k: string_similarity(k, unit))
-        raise ValueError(f"'{unit}' is not a recognized time unit. Did you mean '{most_similar}'?")
+        raise ValueError(f"'{unit}' is not a recognized time unit. Did you mean '{most_similar}'?"
+            f"\nAll units: {UNITS_STR}"
+        )
 
     if unit in EXTRAPOLATED:
         mul, unit = EXTRAPOLATED[unit]
@@ -58,4 +61,8 @@ def parse_time_delta(t: str):
 
     if not time_dict:
         raise ValueError("No time difference specified")
-    return datetime.now() - timedelta(**time_dict)
+    return timedelta(**time_dict)
+
+
+def parse_time_before_now(t: str):
+    return datetime.now() - parse_time_delta(t)
