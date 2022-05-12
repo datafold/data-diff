@@ -1,3 +1,4 @@
+from multiprocessing.sharedctypes import Value
 import sys
 import time
 import logging
@@ -5,7 +6,7 @@ from itertools import islice
 
 from .diff_tables import TableSegment, TableDiffer
 from .database import connect_to_uri
-from .parse_time import parse_time_before_now, UNITS_STR
+from .parse_time import parse_time_before_now, UNITS_STR, ParseError
 
 import click
 
@@ -67,9 +68,13 @@ def main(
 
     start = time.time()
 
-    options = dict(
-        min_time=min_age and parse_time_before_now(min_age), max_time=max_age and parse_time_before_now(max_age)
-    )
+    try:
+        options = dict(
+            min_time=min_age and parse_time_before_now(min_age), max_time=max_age and parse_time_before_now(max_age)
+        )
+    except ParseError as e:
+        logging.error("Error while parsing age expression: %s" % e)
+        return
 
     table1 = TableSegment(db1, (table1_name,), key_column, update_column, columns, **options)
     table2 = TableSegment(db2, (table2_name,), key_column, update_column, columns, **options)

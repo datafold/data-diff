@@ -2,6 +2,9 @@ import re
 from datetime import datetime, timedelta
 from difflib import SequenceMatcher
 
+class ParseError(ValueError):
+    pass
+
 TIME_UNITS = dict(
     seconds="seconds",
     minutes="minutes",
@@ -37,8 +40,8 @@ def parse_time_atom(count, unit):
         unit = TIME_UNITS[unit]
     except KeyError:
         most_similar = max(TIME_UNITS, key=lambda k: string_similarity(k, unit))
-        raise ValueError(f"'{unit}' is not a recognized time unit. Did you mean '{most_similar}'?"
-            f"\nAll units: {UNITS_STR}"
+        raise ParseError(f"'{unit}' is not a recognized time unit. Did you mean '{most_similar}'?"
+            f"\nSupported units: {UNITS_STR}"
         )
 
     if unit in EXTRAPOLATED:
@@ -52,15 +55,15 @@ def parse_time_delta(t: str):
     while t:
         m = TIME_RE.match(t)
         if not m:
-            raise ValueError(f"Cannot parse '{t}': Not a recognized time delta")
+            raise ParseError(f"Cannot parse '{t}': Not a recognized time delta")
         count, unit = parse_time_atom(*m.groups())
         if unit in time_dict:
-            raise ValueError(f"Time unit {unit} specified more than once")
+            raise ParseError(f"Time unit {unit} specified more than once")
         time_dict[unit] = count
         t = t[m.end() :]
 
     if not time_dict:
-        raise ValueError("No time difference specified")
+        raise ParseError("No time difference specified")
     return timedelta(**time_dict)
 
 
