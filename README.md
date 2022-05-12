@@ -71,6 +71,7 @@ Options:
   - `-s` or `--stats` - Print stats instead of a detailed diff
   - `-d` or `--debug` - Print debug info
   - `-v` or `--verbose` - Print extra info
+  - `-i` or `--interactive` - Confirm queries, implies `--debug`
   - `--min-age` - Considers only rows older than specified.
                   Example: `--min-age=5min` ignores rows from the last 5 minutes.
                   Valid units: `d, days, h, hours, min, minutes, mon, months, s, seconds, w, weeks, y, years`
