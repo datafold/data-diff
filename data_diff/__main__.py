@@ -5,11 +5,14 @@ from itertools import islice
 
 from .diff_tables import TableSegment, TableDiffer
 from .database import connect_to_uri
+from .parse_time import parse_time_delta, TIME_UNITS
 
 import click
 
 LOG_FORMAT = "[%(asctime)s] %(levelname)s - %(message)s"
 DATE_FORMAT = "%H:%M:%S"
+
+UNITS_STR = ", ".join(TIME_UNITS.keys())
 
 
 @click.command()
@@ -23,6 +26,14 @@ DATE_FORMAT = "%H:%M:%S"
 @click.option("-l", "--limit", default=None, help="Maximum number of differences to find")
 @click.option("--bisection-factor", default=32, help="Segments per iteration")
 @click.option("--bisection-threshold", default=1024**2, help="Minimal bisection threshold")
+@click.option(
+    "--min-age",
+    default=None,
+    help="Considers only rows older than specified. "
+    "Example: --min-age=5min discard rows from the last 5 minutes. "
+    f"\nValid units: {UNITS_STR}",
+)
+@click.option("--max-age", default=None, help="Considers only rows younger than specified. See --min-age.")
 @click.option("-s", "--stats", is_flag=True, help="Print stats instead of a detailed diff")
 @click.option("-d", "--debug", is_flag=True, help="Print debug info")
 @click.option("-v", "--verbose", is_flag=True, help="Print extra info")
@@ -37,6 +48,8 @@ def main(
     limit,
     bisection_factor,
     bisection_threshold,
+    min_age,
+    max_age,
     stats,
     debug,
     verbose,
@@ -55,8 +68,10 @@ def main(
 
     start = time.time()
 
-    table1 = TableSegment(db1, (table1_name,), key_column, update_column, columns)
-    table2 = TableSegment(db2, (table2_name,), key_column, update_column, columns)
+    options = dict(min_time=min_age and parse_time_delta(min_age), max_time=max_age and parse_time_delta(max_age))
+
+    table1 = TableSegment(db1, (table1_name,), key_column, update_column, columns, **options)
+    table2 = TableSegment(db2, (table2_name,), key_column, update_column, columns, **options)
 
     differ = TableDiffer(bisection_factor=bisection_factor, bisection_threshold=bisection_threshold, debug=debug)
     diff_iter = differ.diff_tables(table1, table2)
