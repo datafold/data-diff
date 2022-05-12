@@ -115,7 +115,11 @@ class TableSegment:
 
     @property
     def _relevant_columns(self) -> List[str]:
-        return [self.key_column] + ([self.update_column] if self.update_column is not None else []) + list(self.extra_columns)
+        return (
+            [self.key_column]
+            + ([self.update_column] if self.update_column is not None else [])
+            + list(self.extra_columns)
+        )
 
     @property
     def checksum(self) -> int:

@@ -142,6 +142,7 @@ class Count(Sql):
             return f"count({c.compile(self.column)})"
         return "count(*)"
 
+
 @dataclass
 class Time(Sql):
     time: datetime
