@@ -137,40 +137,45 @@ directly with `poetry` rather than go through the package.
 brew install mysql postgresql # MacOS dependencies for C bindings
 poetry install
 ```
-
-**2. Download CSV of Testing Data**
-
-```shell-session
-wget https://files.grouplens.org/datasets/movielens/ml-25m.zip
-unzip ml-25m.zip -d dev/
-```
-
-**3. Start Databases**
+**2. Start Databases**
 
 ```shell-session
 docker-compose up -d mysql postgres
 ```
 
-**4. Run Unit Tests**
+**3. Run Unit Tests**
 
 ```shell-session
 poetry run python3 -m unittest
 ```
 
-**5. Seed the Database(s)**
+**4. Seed the Database(s)**
 
-If you're just testing, we recommend just setting up one database (e.g.
-Postgres) to avoid incurring the long setup time repeatedly.
+First, download the CSVs of seeding data:
 
 ```shell-session
-preql -f dev/prepare_db.pql postgres://postgres:Password1@127.0.0.1:5432/postgres
+wget https://files.grouplens.org/datasets/movielens/ml-1m.zip
+unzip ml-1m.zip -d dev/ && mv dev/ml-1m dev/ml
+
+# For a larger data-set (but takes longer to import):
+# - https://files.grouplens.org/datasets/movielens/ml-25m.zip
+
+```
+
+Now you can insert it into the testing database(s):
+
+```shell-session
+# It's optional to seed more than one to run data-diff(1) against.
 preql -f dev/prepare_db.pql mysql://mysql:Password1@127.0.0.1:3306/mysql
-preql -f dev/prepare_db.pql snowflake://<uri>
-preql -f dev/prepare_db.pql mssql://<uri>
+preql -f dev/prepare_db.pql postgres://postgres:Password1@127.0.0.1:5432/postgres
+
+# Cloud databases
+preql -f dev/prepare_db.psq snowflake://<uri>
+preql -f dev/prepare_db.psq mssql://<uri>
 preql -f dev/prepare_db_bigquery.pql bigquery:///<project> # Bigquery has its own scripts
 ```
 
-**6. Run data-diff against seeded database**
+**5. Run **data-diff** against seeded database**
 
 ```bash
 poetry run python3 -m data_diff postgres://user:password@host:db Rating mysql://user:password@host:db Rating_del1 -c timestamp --stats
@@ -178,13 +183,6 @@ poetry run python3 -m data_diff postgres://user:password@host:db Rating mysql://
 Diff-Total: 250156 changed rows out of 25000095
 Diff-Percent: 1.0006%
 Diff-Split: +250156  -0
-```
-
-# How to publish to PyPI
-Before you can publish, you need to increment the version number in the [pyproject.toml](pyproject.toml) and then run:
-```shell-session
-poetry build
-poetry publish
 ```
 
 # License
