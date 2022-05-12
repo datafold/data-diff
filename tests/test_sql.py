@@ -1,7 +1,8 @@
 import unittest
 
 from data_diff.database import connect_to_uri
-from data_diff.sql import Checksum, Compare, Compiler, Enum, In, Select, TableName, Count
+from data_diff.sql import (Checksum, Compare, Compiler, Count, Enum, Explain, In,
+                       Select, TableName)
 
 from .common import TEST_MYSQL_CONN_STRING
 
@@ -90,4 +91,14 @@ class TestSQL(unittest.TestCase):
             self.compiler.compile(
                 Select([Count("id")], TableName(("marine_mammals", "walrus")), [In("id", [1, 2, 3])])
             ),
+        )
+
+    def test_explain(self):
+        expected_sql = "EXPLAIN SELECT count(id) FROM `marine_mammals.walrus` WHERE (id IN (1, 2, 3))"
+        self.assertEqual(expected_sql, self.compiler.compile(
+            Explain(Select(
+                [Count("id")],
+                TableName(("marine_mammals", "walrus")),
+                [In("id", [1, 2, 3])]
+            )))
         )

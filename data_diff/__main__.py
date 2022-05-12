@@ -36,6 +36,7 @@ DATE_FORMAT = "%H:%M:%S"
 @click.option("-s", "--stats", is_flag=True, help="Print stats instead of a detailed diff")
 @click.option("-d", "--debug", is_flag=True, help="Print debug info")
 @click.option("-v", "--verbose", is_flag=True, help="Print extra info")
+@click.option('-i', '--interactive', is_flag=True, help='Confirm queries, implies --debug')
 def main(
     db1_uri,
     table1_name,
@@ -52,10 +53,13 @@ def main(
     stats,
     debug,
     verbose,
+    interactive,
 ):
     if limit and stats:
         print("Error: cannot specify a limit when using the -s/--stats switch")
         return
+    if interactive:
+        debug = True
 
     if debug:
         logging.basicConfig(level=logging.DEBUG, format=LOG_FORMAT, datefmt=DATE_FORMAT)
@@ -64,6 +68,10 @@ def main(
 
     db1 = connect_to_uri(db1_uri)
     db2 = connect_to_uri(db2_uri)
+
+    if interactive:
+        db1.enable_interactive()
+        db2.enable_interactive()
 
     start = time.time()
 
