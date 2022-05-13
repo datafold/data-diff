@@ -35,7 +35,7 @@ jobs:
       
       - name: Install docker-compose
         run: brew install docker-compose
-        if: ${{ startsWith(${{ matrix.os }}, 'macos') }}
+        if: ${{ startsWith(matrix.os, 'macos') }}
       
       - name: Build the stack
         run: docker-compose up -d mysql
