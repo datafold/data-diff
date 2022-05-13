@@ -4,13 +4,13 @@ from data_diff.database import connect_to_uri
 from data_diff.sql import (Checksum, Compare, Compiler, Count, Enum, Explain, In,
                        Select, TableName)
 
-from .common import TEST_MYSQL_CONN_STRING
+from .common import TEST_CONN_STRING
 
 
 class TestSQL(unittest.TestCase):
     def setUp(self):
-        self.mysql = connect_to_uri(TEST_MYSQL_CONN_STRING)
-        self.compiler = Compiler(self.mysql)
+        self.db = connect_to_uri(TEST_CONN_STRING)
+        self.compiler = Compiler(self.db)
 
     def test_compile_string(self):
         self.assertEqual("SELECT 1", self.compiler.compile("SELECT 1"))

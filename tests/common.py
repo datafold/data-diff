@@ -1,11 +1,12 @@
 import hashlib
+import os
 
 from data_diff.database import CHECKSUM_HEXDIGITS, MD5_HEXDIGITS
 import logging
 
 logging.basicConfig(level=logging.WARN)
 
-TEST_MYSQL_CONN_STRING = "mysql://mysql:Password1@localhost/mysql"
+TEST_CONN_STRING = os.environ.get("TEST_CONN_STRING", "mysql://mysql:Password1@localhost/mysql")
 
 try:
     from .local_settings import *

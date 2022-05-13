@@ -7,7 +7,7 @@ import arrow  # comes with preql
 from data_diff.database import connect_to_uri
 from data_diff.diff_tables import TableDiffer, TableSegment
 
-from .common import TEST_MYSQL_CONN_STRING, str_to_checksum
+from .common import TEST_CONN_STRING, str_to_checksum
 
 
 class TestWithConnection(unittest.TestCase):
@@ -15,8 +15,8 @@ class TestWithConnection(unittest.TestCase):
     def setUpClass(cls):
         # Avoid leaking connections that require waiting for the GC, which can
         # cause deadlocks for table-level modifications.
-        cls.preql = preql.Preql(TEST_MYSQL_CONN_STRING)
-        cls.connection = connect_to_uri(TEST_MYSQL_CONN_STRING)
+        cls.preql = preql.Preql(TEST_CONN_STRING)
+        cls.connection = connect_to_uri(TEST_CONN_STRING)
 
 
 class TestDates(TestWithConnection):
