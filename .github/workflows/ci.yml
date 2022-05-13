@@ -36,7 +36,7 @@ jobs:
       - name: Install and start Docker
         run: |
           brew install docker-machine docker docker-compose
-          sudo docker -v
+          docker-machine start
         if: ${{ startsWith(matrix.os, 'macos') }}
       
       - name: Build the stack
