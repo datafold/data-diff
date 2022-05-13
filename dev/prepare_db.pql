@@ -32,8 +32,8 @@ if (db_type == "snowflake") {
 
     print "Loading ratings CSV"
 
-    table tmp_rating {
-        id: int
+    bare table tmp_rating {
+        userid: int
         movieid: int
         rating: float
         timestamp: int
@@ -51,7 +51,8 @@ if (db_type == "snowflake") {
 
     run_sql("""
         INSERT INTO rating(id, userid, movieid, rating, timestamp)
-        SELECT row_number() over (order by tmp_rating.id, movieid, timestamp) AS id, tmp_rating.id as userid, movieid, rating, timestamp FROM tmp_rating
+        SELECT row_number() over (order by userid, movieid, timestamp) AS id, userid, movieid, rating, timestamp
+        FROM tmp_rating
     """)
 
 } else if (db_type == "redshift") {
@@ -109,7 +110,7 @@ if (db_type == "snowflake") {
     rating.add_index(["id", "timestamp"])
 }
 
-run_sql("DROP TABLE IF EXISTS tmp_rating")
+remove_table_if_exists("tmp_rating")
 commit()
 
 middle = count(rating) /~ 2
