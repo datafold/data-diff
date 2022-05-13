@@ -42,7 +42,7 @@ jobs:
         run: docker-compose up -d mysql
 
       - name: Install Poetry
-        run: curl -sSL https://raw.githubusercontent.com/python-poetry/poetry/master/get-poetry.py | python -
+        run: pip install poetry
 
       - name: Install package
         run: poetry install
