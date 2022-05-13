@@ -1,0 +1,46 @@
+name: CI
+
+on:
+  push:
+    paths:
+      - '**.py'
+      - '.github/workflows/**'
+      - '!dev/**'
+  pull_request:
+    branches: [ master ]
+
+  workflow_dispatch:
+
+jobs:
+  unit_tests:
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest]
+        python-version:
+          - "3.7"
+          - "3.8"
+          - "3.9"
+          - "3.10"
+
+    name: Check Python ${{ matrix.python-version }} on ${{ matrix.os }}
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v3
+
+      - name: Setup Python ${{ matrix.python-version }}
+        uses: actions/setup-python@v3
+        with:
+          python-version: ${{ matrix.python-version }}
+      
+      - name: Build the stack
+        run: docker-compose up -d mysql
+
+      - name: Install Poetry
+        run: pip install poetry
+
+      - name: Install package
+        run: poetry install
+      
+      - name: Run unit tests
+        run: poetry run python3 -m unittest
