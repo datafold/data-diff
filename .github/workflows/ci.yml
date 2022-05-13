@@ -16,7 +16,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        os: [ubuntu-latest, macos-latest]
+        os: [ubuntu-latest]
         python-version:
           - "3.7"
           - "3.8"
@@ -32,12 +32,6 @@ jobs:
         uses: actions/setup-python@v3
         with:
           python-version: ${{ matrix.python-version }}
-      
-      - name: Install and start Docker
-        run: |
-          brew install docker-machine docker docker-compose
-          docker-machine start
-        if: ${{ startsWith(matrix.os, 'macos') }}
       
       - name: Build the stack
         run: docker-compose up -d mysql
