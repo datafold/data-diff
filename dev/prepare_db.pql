@@ -8,6 +8,12 @@ func drop_table(t) {
     run_sql("DROP TABLE IF EXISTS " + t)
 }
 
+func create_indices(tbl) {
+    tbl.add_index("id", true)
+    tbl.add_index("timestamp")
+    tbl.add_index(["id", "timestamp"])
+}
+
 // Cleanup
 func cleanup() {
     drop_table("rating")
@@ -24,25 +30,47 @@ func cleanup() {
 cleanup()
 
 // Import CSV
-if (db_type == "snowflake") {
-    print "Uploading ratings CSV"
+if (db_type == "snowflake" or db_type == "redshift") {
+    if (db_type == "snowflake") {
+        print "Uploading ratings CSV"
 
-    run_sql("RM @~/ratings.csv.gz")
-    run_sql("PUT file://dev/ratings.csv @~")
+        run_sql("RM @~/ratings.csv.gz")
+        run_sql("PUT file://dev/ratings.csv @~")
 
-    print "Loading ratings CSV"
+        print "Loading ratings CSV"
 
-    bare table tmp_rating {
-        userid: int
-        movieid: int
-        rating: float
-        timestamp: int
+        bare table tmp_rating {
+            userid: int
+            movieid: int
+            rating: float
+            timestamp: int
+        }
+
+        run_sql("COPY INTO tmp_rating FROM '@~/ratings.csv.gz' file_format=(skip_header=1)")
+
+    } else if (db_type == "redshift") {
+        // NOTE: Requires that the csv already exists on s3 in the given path
+        print "Loading ratings CSV (already uploaded)"
+
+        table tmp_rating {
+            userid: int
+            movieid: int
+            rating: float
+            timestamp: int
+        }
+
+        run_sql("""
+            COPY "public"."tmp_rating" (userid, movieid, rating, timestamp)
+            FROM 's3://dev-cf-redshift-datafold-data-diff/ml/ratings.csv' 
+            IAM_ROLE 'arn:aws:iam::760878568205:role/dev-cf-redshift-data-diff'
+            DELIMITER ','
+            IGNOREHEADER 1;
+            """)
+
     }
 
-    run_sql("COPY INTO tmp_rating FROM '@~/ratings.csv.gz' file_format=(skip_header=1)")
-
     table rating {
-        id: int
+        id: int     // explicit id, instead of identity type
         userid: int
         movieid: int
         rating: float
@@ -55,37 +83,6 @@ if (db_type == "snowflake") {
         FROM tmp_rating
     """)
 
-} else if (db_type == "redshift") {
-    // NOTE: Requires that the csv already exists on s3 in the given path
-    print "Loading ratings CSV (already uploaded)"
-
-    table tmp_rating {
-        userid: int
-        movieid: int
-        rating: float
-        timestamp: int
-    }
-
-    run_sql("""
-        COPY "public"."tmp_rating" (userid, movieid, rating, timestamp)
-        FROM 's3://dev-cf-redshift-datafold-data-diff/ml/ratings.csv' 
-        IAM_ROLE 'arn:aws:iam::760878568205:role/dev-cf-redshift-data-diff'
-        DELIMITER ','
-        IGNOREHEADER 1;
-        """)
-
-    table rating {
-        id: int     // explicit id, to avoid identity type
-        userid: int
-        movieid: int
-        rating: float
-        timestamp: int
-    }
-
-    run_sql("""
-        INSERT INTO rating(id, userid, movieid, rating, timestamp)
-        SELECT row_number() over (order by userid, movieid, timestamp) AS id, userid, movieid, rating, timestamp FROM tmp_rating
-    """)
 } else if (db_type == "mssql") {
     run_sql("drop table if exists tmp_rating")
     run_sql("create table tmp_rating(userid int, movieid int, rating float, timestamp int)")
@@ -105,12 +102,10 @@ if (db_type == "snowflake") {
         timestamp: int
     }
     import_csv(rating, 'dev/ratings.csv', true)
-    rating.add_index("id", true)
-    rating.add_index("timestamp")
-    rating.add_index(["id", "timestamp"])
+    create_indices(rating)
 }
 
-remove_table_if_exists("tmp_rating")
+drop_table("tmp_rating")
 commit()
 
 middle = count(rating) /~ 2
@@ -127,11 +122,6 @@ const table rating_del1p = rating
 const table rating_update50p = rating
 
 print "Create indexes"
-func create_indices(tbl) {
-    tbl.add_index("id", true)
-    tbl.add_index("timestamp")
-    tbl.add_index(["id", "timestamp"])
-}
 
 create_indices(rating_del1)
 create_indices(rating_update1)
