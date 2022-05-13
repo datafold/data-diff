@@ -23,8 +23,8 @@ jobs:
           - "3.9"
           - "3.10"
         db-conn: [
-          {db: mysql, conn: mysql://mysql:Password1@localhost/mysql},
-          {db: postgres, conn: postgres://postgres:Password1@localhost/postgres}
+          {db: mysql, conn: "mysql://mysql:Password1@localhost/mysql"},
+          {db: postgres, conn: "postgres://postgres:Password1@localhost/postgres"}
         ]
 
     name: Check Python ${{ matrix.python-version }} on ${{ matrix.os }} for ${{ matrix.db-conn.db }}
