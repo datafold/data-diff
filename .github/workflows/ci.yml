@@ -33,10 +33,11 @@ jobs:
         with:
           python-version: ${{ matrix.python-version }}
       
-      - name: Install Docker
+      - name: Install and start Docker
         run: |
           brew install docker-machine docker
           brew install docker-compose
+          open -a Docker
         if: ${{ startsWith(matrix.os, 'macos') }}
       
       - name: Build the stack
