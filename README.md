@@ -110,7 +110,7 @@ The algorithm goes like this:
 
         3. Split both `A` and `B` into `m <= n` segments according to the mutual checkpoints. `m` must be at least 2.
 
-        4. For each pair of segments `Ai` and `Bi` (where `0 <= i <= m`), recurse into step 1.
+        4. For each pair of segments `Ai` and `Bi` (where `1 <= i <= m`), recurse into step 1.
 
 ## Example
 
