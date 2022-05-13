@@ -100,7 +100,7 @@ The algorithm goes like this:
 
     1. If they are the same, the tables are considered equal. Stop.
 
-    2. If their size is below the threshold, diff them locallly and print the results.
+    2. If their size is below the threshold, diff them locally and print the results.
 
     3. Else:  (they are different and above the threshold)
 
