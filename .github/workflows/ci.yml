@@ -38,7 +38,7 @@ jobs:
           python-version: ${{ matrix.python-version }}
       
       - name: Build the stack
-        run: docker-compose up -d mysql
+        run: docker-compose up -d ${{ matrix.db-conn.db }}
 
       - name: Install Poetry
         run: pip install poetry
