@@ -29,23 +29,23 @@ jobs:
           - "3.7"
           - "3.10"
 
-      name: Check Python ${{ matrix.python-version }}
-      steps:
-        - uses: actions/checkout@v3
+    name: Check Python ${{ matrix.python-version }}
+    steps:
+      - uses: actions/checkout@v3
 
-        - name: Setup Python ${{ matrix.python-version }}
-          uses: actions/setup-python@v3
-          with:
-            python-version: ${{ matrix.python-version }}
-        
-        - name: Build the stack
-          run: docker-compose up -d mysql
+      - name: Setup Python ${{ matrix.python-version }}
+        uses: actions/setup-python@v3
+        with:
+          python-version: ${{ matrix.python-version }}
+      
+      - name: Build the stack
+        run: docker-compose up -d mysql
 
-        - name: Install Poetry
-          run: curl -sSL https://raw.githubusercontent.com/python-poetry/poetry/master/get-poetry.py | python -
+      - name: Install Poetry
+        run: curl -sSL https://raw.githubusercontent.com/python-poetry/poetry/master/get-poetry.py | python -
 
-        - name: Install package
-          run: poetry install
-        
-        - name: Run unit tests
-          run: poetry run python3 -m unittest
+      - name: Install package
+        run: poetry install
+      
+      - name: Run unit tests
+        run: poetry run python3 -m unittest
