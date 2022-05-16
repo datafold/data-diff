@@ -121,7 +121,17 @@ CHECKSUM_MASK = (2**_CHECKSUM_BITSIZE) - 1
 class Postgres(Database):
     def __init__(self, host, port, database, user, password):
         postgres = import_postgres()
-        self.args = dict(host=host, port=port, database=database, user=user, password=password)
+        # https://www.postgresql.org/docs/current/libpq-connect.html
+        self.args = dict(
+            host=host,
+            port=port,
+            database=database,
+            user=user,
+            password=password,
+            # sslmode='verify-full',
+            # sslcert=''
+            # sslkey=''
+        )
 
         try:
             self._conn = postgres.connect(**self.args)
