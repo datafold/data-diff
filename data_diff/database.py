@@ -1,6 +1,8 @@
 from abc import ABC, abstractmethod
 import logging
 from typing import Tuple
+from concurrent.futures import ThreadPoolExecutor
+import threading
 
 import dsnparse
 import os
@@ -52,17 +54,17 @@ def _one(seq):
     return x
 
 
+def _query_conn(conn, sql_code: str) -> list:
+    c = conn.cursor()
+    c.execute(sql_code)
+    return c.fetchall()
+
+
 class Database(ABC):
     """Base abstract class for databases.
 
     Used for providing connection code and implementation specific SQL utilities.
     """
-
-    def _query(self, sql_code: str) -> list:
-        "Uses the standard SQL cursor interface"
-        c = self._conn.cursor()
-        c.execute(sql_code)
-        return c.fetchall()
 
     def query(self, sql_ast: SqlOrStr, res_type: type):
         "Query the given SQL AST, and attempt to convert the result to type 'res_type'"
@@ -110,6 +112,37 @@ class Database(ABC):
         "Provide SQL for computing md5 and returning an int"
         ...
 
+    @abstractmethod
+    def _query(self, sql_code: str) -> list:
+        "Send query to database and return result"
+        ...
+
+
+class ThreadedDatabase(Database):
+    """Access the database through a singleton thread.
+
+    Used for database connectors that do not support sharing their connection between different threads.
+    """
+
+    def __init__(self, thread_count=1):
+        self._queue = ThreadPoolExecutor(thread_count, initializer=self.set_conn)
+        self.thread_local = threading.local()
+
+    def set_conn(self):
+        assert not hasattr(self.thread_local, "conn")
+        self.thread_local.conn = self.create_connection()
+
+    def _query(self, sql_code: str):
+        r = self._queue.submit(self._query_in_worker, sql_code)
+        return r.result()
+
+    def _query_in_worker(self, sql_code: str):
+        return _query_conn(self.thread_local.conn, sql_code)
+
+    @abstractmethod
+    def create_connection(self):
+        ...
+
 
 CHECKSUM_HEXDIGITS = 15  # Must be 15 or lower
 MD5_HEXDIGITS = 32
@@ -118,13 +151,16 @@ _CHECKSUM_BITSIZE = CHECKSUM_HEXDIGITS << 2
 CHECKSUM_MASK = (2**_CHECKSUM_BITSIZE) - 1
 
 
-class Postgres(Database):
+class Postgres(ThreadedDatabase):
     def __init__(self, host, port, database, user, password):
-        postgres = import_postgres()
         self.args = dict(host=host, port=port, database=database, user=user, password=password)
 
+        super().__init__()
+
+    def create_connection(self):
+        postgres = import_postgres()
         try:
-            self._conn = postgres.connect(**self.args)
+            return postgres.connect(**self.args)
         except postgres.OperationalError as e:
             raise ConnectError(*e.args) from e
 
@@ -138,15 +174,17 @@ class Postgres(Database):
         return f"{s}::varchar"
 
 
-class MySQL(Database):
+class MySQL(ThreadedDatabase):
     def __init__(self, host, port, database, user, password):
-        mysql = import_mysql()
-
         args = dict(host=host, port=port, database=database, user=user, password=password)
         self._args = {k: v for k, v in args.items() if v is not None}
 
+        super().__init__()
+
+    def create_connection(self):
+        mysql = import_mysql()
         try:
-            self._conn = mysql.connect(charset="utf8", use_unicode=True, **self._args)
+            return mysql.connect(charset="utf8", use_unicode=True, **self._args)
         except mysql.Error as e:
             if e.errno == mysql.errorcode.ER_ACCESS_DENIED_ERROR:
                 raise ConnectError("Bad user name or password") from e
@@ -165,12 +203,16 @@ class MySQL(Database):
         return f"cast({s} as char)"
 
 
-class Oracle(Database):
+class Oracle(ThreadedDatabase):
     def __init__(self, host, port, database, user, password):
         assert not port
+        self.kwargs = dict(user=user, password=password, dsn="%s/%s" % (host, database))
+        super().__init__()
+
+    def create_connection(self):
         oracle = import_oracle()
         try:
-            self._conn = oracle.connect(user=user, password=password, dsn="%s/%s" % (host, database))
+            return oracle.connect(**self.kwargs)
         except Exception as e:
             raise ConnectError(*e.args) from e
 
@@ -191,17 +233,19 @@ class Redshift(Postgres):
         return f"strtol(substring(md5({s}), {1+MD5_HEXDIGITS-CHECKSUM_HEXDIGITS}), 16)::decimal(38)"
 
 
-class MsSQL(Database):
+class MsSQL(ThreadedDatabase):
     "AKA sql-server"
 
     def __init__(self, host, port, database, user, password):
-        mssql = import_mssql()
-
         args = dict(server=host, port=port, database=database, user=user, password=password)
         self._args = {k: v for k, v in args.items() if v is not None}
 
+        super().__init__()
+
+    def create_connection(self):
+        mssql = import_mssql()
         try:
-            self._conn = mssql.connect(**self._args)
+            return mssql.connect(**self._args)
         except mssql.Error as e:
             raise ConnectError(*e.args) from e
 
@@ -259,6 +303,10 @@ class Snowflake(Database):
         self._conn.cursor().execute(f"USE WAREHOUSE {path.lstrip('/')}")
         self._conn.cursor().execute(f"USE DATABASE {database}")
         self._conn.cursor().execute(f"USE SCHEMA {schema}")
+
+    def _query(self, sql_code: str) -> list:
+        "Uses the standard SQL cursor interface"
+        return _query_conn(self._conn, sql_code)
 
     def quote(self, s: str):
         return s
