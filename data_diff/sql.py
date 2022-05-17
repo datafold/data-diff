@@ -133,7 +133,6 @@ class In(Sql):
         return f"({c.compile(self.expr)} IN ({elems}))"
 
 
-
 @dataclass
 class Count(Sql):
     column: Optional[SqlOrStr] = None
@@ -153,7 +152,7 @@ class Time(Sql):
         return "'%s'" % self.time.isoformat()
         if self.column:
             return f"count({c.compile(self.column)})"
-        return 'count(*)'
+        return "count(*)"
 
 
 @dataclass
