@@ -69,7 +69,7 @@ class Database(ABC):
         compiler = Compiler(self)
         sql_code = compiler.compile(sql_ast)
         logger.debug("Running SQL (%s): %s", type(self).__name__, sql_code)
-        if getattr(self, '_interactive', False) and isinstance(sql_ast, Select):
+        if getattr(self, "_interactive", False) and isinstance(sql_ast, Select):
             explained_sql = compiler.compile(Explain(sql_ast))
             logger.info(f"EXPLAIN for SQL SELECT")
             logger.info(self._query(explained_sql))

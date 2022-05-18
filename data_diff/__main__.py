@@ -36,7 +36,7 @@ DATE_FORMAT = "%H:%M:%S"
 @click.option("-s", "--stats", is_flag=True, help="Print stats instead of a detailed diff")
 @click.option("-d", "--debug", is_flag=True, help="Print debug info")
 @click.option("-v", "--verbose", is_flag=True, help="Print extra info")
-@click.option('-i', '--interactive', is_flag=True, help='Confirm queries, implies --debug')
+@click.option("-i", "--interactive", is_flag=True, help="Confirm queries, implies --debug")
 def main(
     db1_uri,
     table1_name,
