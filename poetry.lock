@@ -173,7 +173,7 @@ asn1crypto = ">=1.5.1"
 
 [[package]]
 name = "preql"
-version = "0.2.12"
+version = "0.2.13"
 description = "An interpreted relational query language that compiles to SQL"
 category = "main"
 optional = false
@@ -246,7 +246,7 @@ python-versions = ">=3.6"
 
 [[package]]
 name = "pyjwt"
-version = "2.3.0"
+version = "2.4.0"
 description = "JSON Web Token implementation in Python"
 category = "main"
 optional = false
@@ -421,7 +421,7 @@ snowflake = ["snowflake-connector-python"]
 [metadata]
 lock-version = "1.1"
 python-versions = "^3.7"
-content-hash = "145733eafd12dc0da79583d7a2d51ea20ab611c16cb13f82ee50dd57c179b700"
+content-hash = "ab10cdad31fbb20bc0f42ead7b35057f82e08ec8b0b6c78c4a99891821ae969a"
 
 [metadata.files]
 arrow = [
@@ -565,8 +565,8 @@ oscrypto = [
     {file = "oscrypto-1.3.0.tar.gz", hash = "sha256:6f5fef59cb5b3708321db7cca56aed8ad7e662853351e7991fcf60ec606d47a4"},
 ]
 preql = [
-    {file = "preql-0.2.12-py3-none-any.whl", hash = "sha256:93117eacfe25535885209a285dc45d04ec5a1161252a5b94b4380b483e840a50"},
-    {file = "preql-0.2.12.tar.gz", hash = "sha256:a3d6bf0dd61ae838c4d5a330eaec2ff4ab7495afcb96c6ee07c816d355f0582c"},
+    {file = "preql-0.2.13-py3-none-any.whl", hash = "sha256:7690af840ca3b62a05f64657fe191971cca32267834ca3f1a2e91de5aeeb4110"},
+    {file = "preql-0.2.13.tar.gz", hash = "sha256:e47351fdf5c7735b50b97173594114936bf8b257dd4e0ac34ab9474a7e7bb337"},
 ]
 prompt-toolkit = [
     {file = "prompt_toolkit-3.0.29-py3-none-any.whl", hash = "sha256:62291dad495e665fca0bda814e342c69952086afb0f4094d0893d357e5c78752"},
@@ -649,8 +649,8 @@ pygments = [
     {file = "Pygments-2.12.0.tar.gz", hash = "sha256:5eb116118f9612ff1ee89ac96437bb6b49e8f04d8a13b514ba26f620208e26eb"},
 ]
 pyjwt = [
-    {file = "PyJWT-2.3.0-py3-none-any.whl", hash = "sha256:e0c4bb8d9f0af0c7f5b1ec4c5036309617d03d56932877f2f7a0beeb5318322f"},
-    {file = "PyJWT-2.3.0.tar.gz", hash = "sha256:b888b4d56f06f6dcd777210c334e69c737be74755d3e5e9ee3fe67dc18a0ee41"},
+    {file = "PyJWT-2.4.0-py3-none-any.whl", hash = "sha256:72d1d253f32dbd4f5c88eaf1fdc62f3a19f676ccbadb9dbc5d07e951b2b26daf"},
+    {file = "PyJWT-2.4.0.tar.gz", hash = "sha256:d42908208c699b3b973cbeb01a969ba6a96c821eefb1c5bfe4c390c01d67abba"},
 ]
 pyopenssl = [
     {file = "pyOpenSSL-21.0.0-py2.py3-none-any.whl", hash = "sha256:8935bd4920ab9abfebb07c41a4f58296407ed77f04bd1a92914044b848ba1ed6"},
