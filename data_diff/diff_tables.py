@@ -2,7 +2,7 @@
 """
 
 from operator import attrgetter
-from typing import List, Tuple, Iterator, Literal
+from typing import List, Tuple
 import logging
 from concurrent.futures import ThreadPoolExecutor
 
@@ -144,7 +144,7 @@ def diff_sets(a: set, b: set) -> iter:
         yield "-", i
 
 
-DiffResult = Iterator[Tuple[Literal["+", "-"], tuple]]
+DiffResult = iter   #Iterator[Tuple[Literal["+", "-"], tuple]]
 
 
 def precalc_attr(attr, iter):
