@@ -1,8 +1,10 @@
 """Provides classes for performing a table diff
 """
 
+from operator import attrgetter
 from typing import List, Tuple
 import logging
+from concurrent.futures import ThreadPoolExecutor
 
 from runtype import dataclass
 
@@ -10,6 +12,9 @@ from .sql import Select, Checksum, Compare, DbPath, DbKey, DbTime, Count, Enum, 
 from .database import Database
 
 logger = logging.getLogger("diff_tables")
+
+# Global task pool for the table diff algorithm
+g_task_pool = ThreadPoolExecutor()
 
 
 def safezip(*args):
@@ -142,6 +147,10 @@ def diff_sets(a: set, b: set) -> iter:
 DiffResult = iter #Iterator[Tuple[Literal["+", "-"], tuple]]
 
 
+def precalc_attr(attr, iter):
+    return list(g_task_pool.map(attrgetter(attr), iter))
+
+
 @dataclass
 class TableDiffer:
     """Finds the diff between two SQL tables
@@ -165,22 +174,26 @@ class TableDiffer:
             Where `columns` is a tuple of values for the involved columns, i.e. (id, ...extra)
         """
         if self.bisection_factor >= self.bisection_threshold:
-            raise ValueError("Incorrect param values")
+            raise ValueError("Incorrect param values (bisection factor must be lower than threshold)")
         if self.bisection_factor < 2:
-            raise ValueError("Must have at least two segments per iteration")
-
-        logger.info(
-            f"Diffing tables of size {table1.count} and {table2.count} | segments: {self.bisection_factor}, bisection threshold: {self.bisection_threshold}."
-        )
-
-        if table1.checksum == table2.checksum:
-            return []  # No differences
+            raise ValueError("Must have at least two segments per iteration (i.e. bisection_factor >= 2)")
 
         return self._diff_tables(table1, table2)
 
-    def _diff_tables(self, table1, table2, level=0):
-        count1 = table1.count
-        count2 = table2.count
+    def _diff_tables(self, table1, table2, level=0, segment_index=None, segment_count=None):
+        count1, count2 = precalc_attr("count", [table1, table2])
+
+        if segment_index:
+            logger.info(". " * level + f"Diffing segment {segment_index}/{segment_count} of size {count1} and {count2}")
+        else:
+            logger.info(
+                f"Diffing tables of size {table1.count} and {table2.count} | segments: {self.bisection_factor}, bisection threshold: {self.bisection_threshold}."
+            )
+
+        checksum1, checksum2 = precalc_attr("checksum", [table1, table2])  # Calculate checksum in parallel
+
+        if checksum1 == checksum2:
+            return  # No differences
 
         # If count is below the threshold, just download and compare the columns locally
         # This saves time, as bisection speed is limited by ping and query performance.
@@ -204,14 +217,18 @@ class TableDiffer:
         # Create new instances of TableSegment between each checkpoint
         segmented1 = table1.segment_by_checkpoints(mutual_checkpoints)
         segmented2 = table2.segment_by_checkpoints(mutual_checkpoints)
+
         if self.debug:
             logger.debug("Performing sanity tests for chosen segments (assert sum of fragments == whole)")
+            precalc_attr("count", segmented1 + segmented2)
             assert count1 == sum(s.count for s in segmented1)
             assert count2 == sum(s.count for s in segmented2)
 
-        # Compare each pair of corresponding segments between table1 and table2
-        for i, (t1, t2) in enumerate(safezip(segmented1, segmented2)):
-            logger.info(". " * level + f"Diffing segment {i+1}/{len(segmented1)} of size {t1.count} and {t2.count}")
-            if t1.checksum != t2.checksum:
-                # Apply recursively
-                yield from self._diff_tables(t1, t2, level + 1)
+        # Recursively compare each pair of corresponding segments between table1 and table2
+        diff_iters = [
+            self._diff_tables(t1, t2, level + 1, i + 1, len(segmented1))
+            for i, (t1, t2) in enumerate(safezip(segmented1, segmented2))
+        ]
+
+        for res in g_task_pool.map(list, diff_iters):
+            yield from res
