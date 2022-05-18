@@ -1,7 +1,7 @@
 """Provides classes for performing a table diff
 """
 
-from typing import List, Tuple, Iterator, Literal
+from typing import List, Tuple
 import logging
 
 from runtype import dataclass
@@ -139,7 +139,7 @@ def diff_sets(a: set, b: set) -> iter:
         yield "-", i
 
 
-DiffResult = Iterator[Tuple[Literal["+", "-"], tuple]]
+DiffResult = iter #Iterator[Tuple[Literal["+", "-"], tuple]]
 
 
 @dataclass
