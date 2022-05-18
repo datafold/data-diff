@@ -119,7 +119,7 @@ class Database(ABC):
 
 
 class ThreadedDatabase(Database):
-    """Access the database through a singleton thread.
+    """Access the database through singleton threads.
 
     Used for database connectors that do not support sharing their connection between different threads.
     """
@@ -137,6 +137,7 @@ class ThreadedDatabase(Database):
         return r.result()
 
     def _query_in_worker(self, sql_code: str):
+        "This method runs in a worker thread"
         return _query_conn(self.thread_local.conn, sql_code)
 
     @abstractmethod
