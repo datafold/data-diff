@@ -1,7 +1,7 @@
 """Provides classes for performing a table diff
 """
 
-from operator import attrgetter
+from operator import attrgetter, methodcaller
 from typing import List, Tuple
 import logging
 from concurrent.futures import ThreadPoolExecutor
@@ -12,9 +12,6 @@ from .sql import Select, Checksum, Compare, DbPath, DbKey, DbTime, Count, Enum, 
 from .database import Database
 
 logger = logging.getLogger("diff_tables")
-
-# Global task pool for the table diff algorithm
-g_task_pool = ThreadPoolExecutor()
 
 
 def safezip(*args):
@@ -146,9 +143,12 @@ def diff_sets(a: set, b: set) -> iter:
 
 DiffResult = iter #Iterator[Tuple[Literal["+", "-"], tuple]]
 
+def thread_map(func, iter):
+    task_pool = ThreadPoolExecutor()
+    return task_pool.map(func, iter)
 
 def precalc_attr(attr, iter):
-    return list(g_task_pool.map(attrgetter(attr), iter))
+    return list(thread_map(attrgetter(attr), iter))
 
 
 @dataclass
@@ -198,8 +198,7 @@ class TableDiffer:
         # If count is below the threshold, just download and compare the columns locally
         # This saves time, as bisection speed is limited by ping and query performance.
         if count1 < self.bisection_threshold and count2 < self.bisection_threshold:
-            rows1 = table1.get_values()
-            rows2 = table2.get_values()
+            rows1, rows2 = thread_map(methodcaller('get_values'), [table1, table2])
             diff = list(diff_sets(rows1, rows2))
             logger.info(". " * level + f"Diff found {len(diff)} different rows.")
             yield from diff
@@ -230,5 +229,5 @@ class TableDiffer:
             for i, (t1, t2) in enumerate(safezip(segmented1, segmented2))
         ]
 
-        for res in g_task_pool.map(list, diff_iters):
+        for res in thread_map(list, diff_iters):
             yield from res
