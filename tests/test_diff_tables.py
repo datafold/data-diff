@@ -207,8 +207,10 @@ class TestDiffTables(TestWithConnection):
         self.preql.commit()
         differ = TableDiffer()
         diff = list(differ.diff_tables(self.table, self.table2))
-        expected = [('+', (2, datetime.datetime(2021, 1, 1, 0, 0))),
-                    ('-', (2, datetime.datetime(2022, 1, 1, 0, 0))),
-                    ('+', (4, datetime.datetime(2021, 1, 1, 0, 0))),
-                    ('-', (4, datetime.datetime(2022, 1, 1, 0, 0)))]
+        expected = [
+            ("+", (2, datetime.datetime(2021, 1, 1, 0, 0))),
+            ("-", (2, datetime.datetime(2022, 1, 1, 0, 0))),
+            ("+", (4, datetime.datetime(2021, 1, 1, 0, 0))),
+            ("-", (4, datetime.datetime(2022, 1, 1, 0, 0))),
+        ]
         self.assertEqual(expected, diff)
