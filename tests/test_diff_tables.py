@@ -185,3 +185,30 @@ class TestDiffTables(TestWithConnection):
         self.preql.commit()
         diff = list(self.differ.diff_tables(self.table, self.table2))
         self.assertEqual([], diff)
+
+    def test_diff_sorted_by_key(self):
+        time = "2022-01-01 00:00:00"
+        time2 = "2021-01-01 00:00:00"
+        self.preql(
+            f"""
+            new ratings_test(userid: 1, movieid: 1, rating: 9, timestamp: '{time}')
+            new ratings_test(userid: 2, movieid: 2, rating: 9, timestamp: '{time2}')
+            new ratings_test(userid: 3, movieid: 3, rating: 9, timestamp: '{time}')
+            new ratings_test(userid: 4, movieid: 4, rating: 9, timestamp: '{time2}')
+            new ratings_test(userid: 5, movieid: 5, rating: 9, timestamp: '{time}')
+
+            new ratings_test2(userid: 1, movieid: 1, rating: 9, timestamp: '{time}')
+            new ratings_test2(userid: 2, movieid: 2, rating: 9, timestamp: '{time}')
+            new ratings_test2(userid: 3, movieid: 3, rating: 9, timestamp: '{time}')
+            new ratings_test2(userid: 4, movieid: 4, rating: 9, timestamp: '{time}')
+            new ratings_test2(userid: 5, movieid: 5, rating: 9, timestamp: '{time}')
+        """
+        )
+        self.preql.commit()
+        differ = TableDiffer()
+        diff = list(differ.diff_tables(self.table, self.table2))
+        expected = [('+', (2, datetime.datetime(2021, 1, 1, 0, 0))),
+                    ('-', (2, datetime.datetime(2022, 1, 1, 0, 0))),
+                    ('+', (4, datetime.datetime(2021, 1, 1, 0, 0))),
+                    ('-', (4, datetime.datetime(2022, 1, 1, 0, 0)))]
+        self.assertEqual(expected, diff)
