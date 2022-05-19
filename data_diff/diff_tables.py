@@ -1,15 +1,10 @@
 """Provides classes for performing a table diff
 """
 
-<<<<<<< HEAD
 from collections import defaultdict
+import logging
 from typing import List, Tuple
-import logging
-=======
-from typing import List, Tuple, Iterator, Literal
-import logging
 import datetime
->>>>>>> 8914eaf (no full index scans)
 
 from runtype import dataclass
 
@@ -44,19 +39,6 @@ class TableSegment:
         if not self.update_column and (self.min_time or self.max_time):
             raise ValueError("Error: min_time/max_time feature requires to specify 'update_column'")
 
-<<<<<<< HEAD
-=======
-        # This will only happen on the first TableSegment
-        if self.start_key is None or self.end_key is None:
-            select = self._make_select(columns=[f"min({self.key_column})", f"max({self.key_column})"])
-            res = self.database.query(select, Tuple)[0] or (0, 0)
-
-            if self.start_key is None:
-                self.start_key = res[0]
-            if self.end_key is None:
-                self.end_key = res[1]
-
->>>>>>> 8914eaf (no full index scans)
     def _make_key_range(self):
         if self.start_key is not None:
             yield Compare("<=", str(self.start_key), self.key_column)
@@ -69,12 +51,8 @@ class TableSegment:
         if self.max_time is not None:
             yield Compare("<", self.update_column, Time(self.max_time))
 
-<<<<<<< HEAD
-    def _make_select(self, *, table=None, columns=None, where=None, group_by=None, order_by=None):
-=======
     def _make_select(self, *, table=None, columns=None, where=None,
                      group_by=None, order_by=None, where_or=None):
->>>>>>> 8914eaf (no full index scans)
         if columns is None:
             columns = [self.key_column]
         where = list(self._make_key_range()) + list(self._make_update_range()) + ([] if where is None else [where])
@@ -84,10 +62,7 @@ class TableSegment:
             where=where,
             columns=columns,
             group_by=group_by,
-<<<<<<< HEAD
-=======
             where_or=where_or,
->>>>>>> 8914eaf (no full index scans)
             order_by=order_by,
         )
 
@@ -96,46 +71,47 @@ class TableSegment:
         select = self._make_select(columns=self._relevant_columns)
         return self.database.query(select, List[Tuple])
 
-<<<<<<< HEAD
-    def choose_checkpoints(self, count: int) -> List[DbKey]:
-        "Suggests a bunch of evenly-spaced checkpoints to split by"
-        ratio = int(self.count / count)
-        assert ratio > 1
-        skip = f"mod(idx, {ratio}) = 0"
-        select = self._make_select(table=Enum(self.table_path, order_by=self.key_column), where=skip)
-        return self.database.query(select, List[int])
-=======
     def choose_checkpoints(self, bisection_factor: int) -> List[DbKey]:
-        "Suggests a bunch of evenly-spaced checkpoints to split by"
-        gap = round((self.end_key - self.start_key + 1) / bisection_factor)
+        """
+        Choose `bisection_factor - 1` (because of start and end) checkpoints in
+        the keyspace.
+
+        For example, a table of 1000 with `bisection_factor` of 4 would yield
+        the following checkpoints:
+            [250, 500, 750]
+
+        Which would yield the following segments:
+            [1..249, 250..499, 500..749, 750..1000]
+        """
+
+        assert self.end_key is not None
+        assert self.start_key is not None
+        assert bisection_factor >= 2
+        # 1..11 for bisection_factor 2 would mean gap=round(10/2)=5
+        # which means checkpoints returns only 1 value:
+        #   [1 + 5 - 1] => [5]
+        # Then `segment_by_checkpoints` will produce:
+        #   [1..5, 5..11]
+        gap = round((self.end_key - self.start_key) / (bisection_factor))
         assert gap >= 1
 
-        checkpoints = [self.start_key + gap]
-        for i in range(bisection_factor - 1):
-            checkpoints.append(checkpoints[i] + gap)
+        proposed_checkpoints = [self.start_key + gap - 1]
+        # -2 because we add start + end in `segment_by_checkpoints`!
+        for i in range(bisection_factor - 2):
+            proposed_checkpoints.append(proposed_checkpoints[i] + gap - 1)
 
-        # The _make_select will ensure it's still within the valid key space!
-        lookaround = 1000
-
-        columns = []
-        where_or = []
-        for i in range(bisection_factor - 1):
-            columns.append(f"MAX(CASE WHEN id >= {checkpoints[i]-lookaround} AND id < {checkpoints[i]} THEN id ELSE -1 END)")
-            where_or.append(f"(id >= {checkpoints[i]-lookaround} AND id < {checkpoints[i]})")
-
-        select = self._make_select(columns=columns, where_or=where_or)
-        real_checkpoints = self.database.query(select, List[Tuple])
-        return list(real_checkpoints[0])
->>>>>>> 8914eaf (no full index scans)
+        return proposed_checkpoints
 
     def segment_by_checkpoints(self, checkpoints: List[DbKey]) -> List["TableSegment"]:
         "Split the current TableSegment to a bunch of smaller ones, separate by the given checkpoints"
+        # Make sure start_key and end_key are set, for the beginning and end
+        # they may not be.
+        assert self.start_key is not None
+        assert self.end_key is not None
+        assert all(self.start_key <= c < self.end_key for c in checkpoints)
 
-        if self.start_key and self.end_key:
-            assert all(self.start_key <= c < self.end_key for c in checkpoints)
-        checkpoints.sort()
-
-        # Calculate sub-segments
+        # Calculate sub-segments, turns checkpoints such as [250, 500, 750] into
+        # [1..249, 250..499, 500..749, 750..1000].
         positions = [self.start_key] + checkpoints + [self.end_key]
         ranges = list(zip(positions[:-1], positions[1:]))
 
@@ -144,60 +120,77 @@ class TableSegment:
 
         return tables
 
-<<<<<<< HEAD
-        ## Calculate checksums in one go, to prevent repetitive individual calls
-        # selects = [t._make_select(columns=[Checksum(self._relevant_columns)]) for t in tables]
-        # res = self.database.query(Select(columns=selects), list)
-        # checksums ,= res
-        # assert len(checksums) == len(checkpoints) + 1
-        # return [t.new(_checksum=checksum) for t, checksum in safezip(tables, checksums)]
-
-=======
->>>>>>> 8914eaf (no full index scans)
     def new(self, _count=None, _checksum=None, **kwargs) -> "TableSegment":
         """Using new() creates a copy of the instance using 'replace()', and makes sure the cache is reset"""
         return self.replace(_count=None, _checksum=None, **kwargs)
 
-<<<<<<< HEAD
-    @property
-    def count(self) -> int:
-        if self._count is None:
-            self._count = self.database.query(self._make_select(columns=[Count()]), int)
-=======
     def __repr__(self):
         return f"{type(self.database).__name__}/{', '.join(self.table_path)}"
+
+    def query_start_key_and_end_key(self) -> Tuple[int, int]:
+        """Query database for minimum and maximum key. This is used for setting
+        the boundaries of the initial, full table table segment."""
+        select = self._make_select(columns=[f"min({self.key_column})", f"max({self.key_column})"])
+        res = self.database.query(select, Tuple)[0]
+
+        start_key = res[0] or 1
+        # TableSegments are always exclusive the last key:
+        #   (1..250) => # WHERE i >= 1 AND i < 250
+        # Thus, for the very last segment (which is the one where these
+        # aren't automatically set!) -- we have to add 1.
+        end_key = res[1] + 1 if res[1] else 1
+
+        return (start_key, end_key)
+
+    def compute_checksum_and_count(self):
+        """
+        Query the database for the checksum and count for this segment. Note
+        that it will _not_ include the `end_key` in this segment, as that's the
+        beginning of the next segment.
+        """
+        if self.start_key is None or self.end_key is None:
+            raise ValueError("""
+                `start_key` and/or `end_key` are not set. Likely this is because
+                you didn't call `set_initial_start_key_and_end_key` to get the
+                min(key) and max(key) from the database for the initial, whole
+                table segment.
+            """)
+        if self._count is not None or self._checksum is not None:
+            return  # already computed
+
+        # Get the count in the same index pass. Much cheaper than doing it
+        # separately.
+        select = self._make_select(columns=[Count(), Checksum(self._relevant_columns)])
+        result = self.database.query(select, Tuple)[0]
+        self._count = result[0] if result[1] else 0
+        self._checksum = int(result[1]) if result[1] else 0
+
 
     @property
     def count(self) -> int:
         if self._count is None:
-            raise ValueError("You should always get the count after the checksum to avoid another index scan")
->>>>>>> 8914eaf (no full index scans)
+            raise ValueError("""
+                You must call compute_checksum_and_count() before
+                accessing the count to ensure only one index scan
+                is performed.
+             """)
+
         return self._count
 
     @property
     def _relevant_columns(self) -> List[str]:
-<<<<<<< HEAD
-        return (
-            [self.key_column]
-            + ([self.update_column] if self.update_column is not None else [])
-            + list(self.extra_columns)
-        )
-=======
-        return list(set(
+        # The user may duplicate columns across -k, -t, -c so we de-dup here.
+        relevant = list(set(
             [self.key_column]
             + ([self.update_column] if self.update_column is not None else [])
             + list(self.extra_columns)
         ))
->>>>>>> 8914eaf (no full index scans)
+        relevant.sort()
+        return relevant
 
     @property
     def checksum(self) -> int:
         if self._checksum is None:
-<<<<<<< HEAD
-            self._checksum = (
-                self.database.query(self._make_select(columns=[Checksum(self._relevant_columns)]), int) or 0
-            )
-=======
             # Get the count in the same index pass. Much cheaper than doing it
             # separately.
             select = self._make_select(columns=[Count(), Checksum(self._relevant_columns)])
@@ -205,14 +198,12 @@ class TableSegment:
             self._checksum = int(result[0][1])
             self._count = result[0][0]
 
->>>>>>> 8914eaf (no full index scans)
         return self._checksum
 
 
 def diff_sets(a: set, b: set) -> iter:
     s1 = set(a)
     s2 = set(b)
-<<<<<<< HEAD
     d = defaultdict(list)
 
     # The first item is always the key (see TableDiffer._relevant_columns)
@@ -226,16 +217,6 @@ def diff_sets(a: set, b: set) -> iter:
 
 
 DiffResult = iter  # Iterator[Tuple[Literal["+", "-"], tuple]]
-=======
-    for i in s1 - s2:
-        yield "+", i
-    for i in s2 - s1:
-        yield "-", i
-
-
-DiffResult = Iterator[Tuple[Literal["+", "-"], tuple]]
->>>>>>> 8914eaf (no full index scans)
-
 
 @dataclass
 class TableDiffer:
@@ -248,11 +229,7 @@ class TableDiffer:
     """
 
     bisection_factor: int = 32  # Into how many segments to bisect per iteration
-<<<<<<< HEAD
-    bisection_threshold: int = 1024**2  # When should we stop bisecting and compare locally (in row count)
-=======
     bisection_threshold: int = 10000  # When should we stop bisecting and compare locally (in row count)
->>>>>>> 8914eaf (no full index scans)
     debug: bool = False
 
     def diff_tables(self, table1: TableSegment, table2: TableSegment) -> DiffResult:
@@ -268,76 +245,48 @@ class TableDiffer:
         if self.bisection_factor < 2:
             raise ValueError("Must have at least two segments per iteration")
 
+        self.set_initial_start_key_and_end_key(table1, table2)
+
         logger.info(
-<<<<<<< HEAD
-            f"Diffing tables of size {table1.count} and {table2.count} | segments: {self.bisection_factor}, bisection threshold: {self.bisection_threshold}."
+            f"Diffing tables {repr(table1)} and {repr(table2)} | keys: {table1.start_key}...{table2.end_key} | segments: {self.bisection_factor}, bisection threshold: {self.bisection_threshold}."
         )
 
-        if table1.checksum == table2.checksum:
-            return []  # No differences
+        return self._diff_tables(table1, table2, self.bisection_factor)
 
-        return self._diff_tables(table1, table2)
+    def set_initial_start_key_and_end_key(self, table1: TableSegment, table2: TableSegment):
+        """For the initial, full table segment we need to set the boundaries of
+        the minimum and maximum key."""
 
-    def _diff_tables(self, table1, table2, level=0):
-        count1 = table1.count
-        count2 = table2.count
+        table1_start_key, table1_end_key = table1.query_start_key_and_end_key()
+        table2_start_key, table2_end_key = table2.query_start_key_and_end_key()
 
-        # If count is below the threshold, just download and compare the columns locally
-        # This saves time, as bisection speed is limited by ping and query performance.
-        if count1 < self.bisection_threshold and count2 < self.bisection_threshold:
-            rows1 = table1.get_values()
-            rows2 = table2.get_values()
-            diff = list(diff_sets(rows1, rows2))
-            logger.info(". " * level + f"Diff found {len(diff)} different rows.")
-            yield from diff
-            return
+        table1.start_key = min(table1_start_key, table2_start_key)
+        table2.start_key = table1.start_key
+        # The +1 in the end key is to make sure that last row is encapsulated in
+        # the final range. Because every range query assumes < end_key, not <=.
+        table1.end_key = max(table1_end_key, table2_end_key)
+        table2.end_key = table1.end_key
 
-        # Find mutual checkpoints between the two tables
-        checkpoints = table1.choose_checkpoints(self.bisection_factor - 1)
-        assert checkpoints
-        mutual_checkpoints = table2.find_checkpoints([Value(c) for c in checkpoints])
-        mutual_checkpoints = list(set(mutual_checkpoints))  # Duplicate values are a problem!
-        logger.debug(". " * level + f"Found {len(mutual_checkpoints)} mutual checkpoints (out of {len(checkpoints)}).")
-        if not mutual_checkpoints:
-            raise Exception("Tables are too different.")
+        assert table1.start_key <= table1.end_key
 
-        # Create new instances of TableSegment between each checkpoint
-        segmented1 = table1.segment_by_checkpoints(mutual_checkpoints)
-        segmented2 = table2.segment_by_checkpoints(mutual_checkpoints)
-        if self.debug:
-            logger.debug("Performing sanity tests for chosen segments (assert sum of fragments == whole)")
-            assert count1 == sum(s.count for s in segmented1)
-            assert count2 == sum(s.count for s in segmented2)
-
-        # Compare each pair of corresponding segments between table1 and table2
-        for i, (t1, t2) in enumerate(safezip(segmented1, segmented2)):
-            logger.info(". " * level + f"Diffing segment {i+1}/{len(segmented1)} of size {t1.count} and {t2.count}")
-            if t1.checksum != t2.checksum:
-                # Apply recursively
-                yield from self._diff_tables(t1, t2, level + 1)
-=======
-            f"Diffing tables {repr(table1)} and {repr(table2)} | segments: {self.bisection_factor}, bisection threshold: {self.bisection_threshold}."
-        )
-
-        return self._diff_tables(table1, table2)
-
-    def _diff_tables(self, table1, table2, level=0, bisection_factor=None):
-        if bisection_factor is None:
-            bisection_factor = self.bisection_factor
+    def _diff_tables(self, table1, table2, bisection_factor, level=0):
         if level > 50:
-            raise Exception("Recursing too far; likely infinite loop")
+            raise Exception("Recursing too deep; likely bug for infinite recursion")
 
-        # TODO: As an optimization, get an approximate count here from the
-        # database's information tables (if available), and if it's roughly
-        # below the threshold, then allow getting the values on the first pass.
-        
+        # This is the upper bound, but it might be smaller if there are gaps.
+        # E.g. between id 1..10, id 5 might have been hard deleted.
+        keyspace_size = table1.end_key - table1.start_key + 1
+
         # We only check beyond level > 0, because otherwise we might scan the
-        # entire index in one query. For large tables with billions of rows, we
-        # need to split by the `bisection_factor`.
-        if level > 0:
-            count1 = table1.count
+        # entire index with COUNT(*). For large tables with billions of rows, we
+        # need to split the COUNT(*) by the `bisection_factor`.
+        if level > 0 or keyspace_size < self.bisection_threshold:
+            # In case the first segment is below the threshold
+            # This is we get the count
+            table1.compute_checksum_and_count()
+            table2.compute_checksum_and_count()
+            count1 = table1.count # These have been precomputed with the checksum
             count2 = table2.count
-            # TODO: MAX KEY - MIN_KEY + 1 too?
 
             # If count is below the threshold, just download and compare the columns locally
             # This saves time, as bisection speed is limited by ping and query performance.
@@ -349,18 +298,21 @@ class TableDiffer:
                 yield from diff
                 return
 
-        # Find checkpoints between the two tables
+        # Find checkpoints between the two tables, e.g. [250, 500, 750] for a
+        # table with 1000 ids and a bisection factor of 4.
         checkpoints = table1.choose_checkpoints(bisection_factor)
         assert checkpoints
 
         # Create new instances of TableSegment between each checkpoint
+        # [1..249, 250..499, 500..749, 750..1000]
         segmented1 = table1.segment_by_checkpoints(checkpoints)
         segmented2 = table2.segment_by_checkpoints(checkpoints)
-        # print(segmented1)
 
         # Compare each pair of corresponding segments between table1 and table2
         for i, (t1, t2) in enumerate(safezip(segmented1, segmented2)):
-            logger.info(". " * level + f"Diffing segment {i+1}/{len(segmented1)} keys={t1.start_key}..{t1.end_key}")
+            logger.info(". " * level + f"Diffing segment {i+1}/{len(segmented1)} keys={t1.start_key}..{t1.end_key-1}")
+            t1.compute_checksum_and_count()
+            t2.compute_checksum_and_count()
+
             if t1.checksum != t2.checksum:
-                yield from self._diff_tables(t1, t2, level + 1, max(int(bisection_factor / 2), 2))
->>>>>>> 8914eaf (no full index scans)
+                yield from self._diff_tables(t1, t2, max(int(bisection_factor/2), 2), level + 1)

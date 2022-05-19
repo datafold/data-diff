@@ -61,8 +61,12 @@ class TestDates(TestWithConnection):
         differ = TableDiffer(10, 100)
         a = TableSegment(self.connection, ("a",), "id", "datetime")
         b = TableSegment(self.connection, ("b",), "id", "datetime")
-        assert a.count == 6
-        assert b.count == 5
+        differ.set_initial_start_key_and_end_key(a, b)
+        a.compute_checksum_and_count()
+        b.compute_checksum_and_count()
+
+        self.assertEqual(6, a.count)
+        self.assertEqual(5, b.count)
 
         assert not list(differ.diff_tables(a, a))
         self.assertEqual(len(list(differ.diff_tables(a, b))), 1)
@@ -72,6 +76,9 @@ class TestDates(TestWithConnection):
         sec1 = self.now.shift(seconds=-1).datetime
         a = TableSegment(self.connection, ("a",), "id", "datetime", max_time=sec1)
         b = TableSegment(self.connection, ("b",), "id", "datetime", max_time=sec1)
+        differ.set_initial_start_key_and_end_key(a, b)
+        a.compute_checksum_and_count()
+        b.compute_checksum_and_count()
         assert a.count == 4
         assert b.count == 3
 
@@ -80,6 +87,9 @@ class TestDates(TestWithConnection):
 
         a = TableSegment(self.connection, ("a",), "id", "datetime", min_time=sec1)
         b = TableSegment(self.connection, ("b",), "id", "datetime", min_time=sec1)
+        differ.set_initial_start_key_and_end_key(a, b)
+        a.compute_checksum_and_count()
+        b.compute_checksum_and_count()
         assert a.count == 2
         assert b.count == 2
         assert not list(differ.diff_tables(a, b))
@@ -88,6 +98,9 @@ class TestDates(TestWithConnection):
 
         a = TableSegment(self.connection, ("a",), "id", "datetime", min_time=day1, max_time=sec1)
         b = TableSegment(self.connection, ("b",), "id", "datetime", min_time=day1, max_time=sec1)
+        differ.set_initial_start_key_and_end_key(a, b)
+        a.compute_checksum_and_count()
+        b.compute_checksum_and_count()
         assert a.count == 3
         assert b.count == 2
         assert not list(differ.diff_tables(a, a))
@@ -108,6 +121,8 @@ class TestDiffTables(TestWithConnection):
         self.differ = TableDiffer(3, 4)
 
     def test_properties_on_empty_table(self):
+        self.differ.set_initial_start_key_and_end_key(self.table, self.table2)
+        self.table.compute_checksum_and_count()
         self.assertEqual(0, self.table.count)
         self.assertEqual(["id", "timestamp"], self.table._relevant_columns)
         self.assertEqual(0, self.table.checksum)
@@ -121,6 +136,8 @@ class TestDiffTables(TestWithConnection):
         )
         self.preql.commit()
 
+        self.differ.set_initial_start_key_and_end_key(self.table, self.table2)
+        self.table.compute_checksum_and_count()
         self.assertEqual(1, self.table.count)
         concatted = str(res["id"]) + time
         self.assertEqual(str_to_checksum(concatted), self.table.checksum)
@@ -136,7 +153,8 @@ class TestDiffTables(TestWithConnection):
         """
         )
         self.preql.commit()
-        self.assertEqual([2, 4], self.table.choose_checkpoints(2))
+        self.differ.set_initial_start_key_and_end_key(self.table, self.table2)
+        self.assertEqual([2], self.table.choose_checkpoints(2))
 
     def test_diff_small_tables(self):
         time = "2022-01-01 00:00:00"
