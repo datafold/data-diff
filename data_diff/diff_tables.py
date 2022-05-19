@@ -128,11 +128,6 @@ class TableSegment:
         return list(real_checkpoints[0])
 >>>>>>> 8914eaf (no full index scans)
 
-    def find_checkpoints(self, checkpoints: List[DbKey]) -> List[DbKey]:
-        "Takes a list of potential checkpoints and returns those that exist"
-        where = In(self.key_column, checkpoints)
-        return self.database.query(self._make_select(where=where), List[int])
-
     def segment_by_checkpoints(self, checkpoints: List[DbKey]) -> List["TableSegment"]:
         "Split the current TableSegment to a bunch of smaller ones, separate by the given checkpoints"
 
@@ -354,21 +349,13 @@ class TableDiffer:
                 yield from diff
                 return
 
-        # Find mutual checkpoints between the two tables
+        # Find checkpoints between the two tables
         checkpoints = table1.choose_checkpoints(bisection_factor)
         assert checkpoints
-        mutual_checkpoints = table2.find_checkpoints([Value(c) for c in checkpoints])
-        mutual_checkpoints = list(set(mutual_checkpoints))  # Duplicate values are a problem!
-        mutual_checkpoints.sort()
-        # print(f"level={level} cp={checkpoints} mc={mutual_checkpoints} bf={bisection_factor} t1start_key={table1.start_key} t1end_key={table1.end_key} t2_start_key={table2.start_key} t2_end_key={table2.end_key}")
-        logger.debug(". " * level + f"Found {len(mutual_checkpoints)} mutual checkpoints (out of {len(checkpoints)}) origin={checkpoints} mutual={mutual_checkpoints}")
-        if not mutual_checkpoints:
-            raise Exception("Tables are too different.")
-
 
         # Create new instances of TableSegment between each checkpoint
-        segmented1 = table1.segment_by_checkpoints(mutual_checkpoints)
-        segmented2 = table2.segment_by_checkpoints(mutual_checkpoints)
+        segmented1 = table1.segment_by_checkpoints(checkpoints)
+        segmented2 = table2.segment_by_checkpoints(checkpoints)
         # print(segmented1)
 
         # Compare each pair of corresponding segments between table1 and table2
