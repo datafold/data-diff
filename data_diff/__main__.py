@@ -94,7 +94,8 @@ def main(
 
     if stats:
         diff = list(diff_iter)
-        percent = 100 * len(diff) / table1.count
+        unique_diff_count = len({i[0] for _, i in diff})
+        percent = 100 * unique_diff_count / table1.count
         print(f"Diff-Total: {len(diff)} changed rows out of {table1.count}")
         print(f"Diff-Percent: {percent:.4f}%")
         plus = len([1 for op, _ in diff if op == "+"])
