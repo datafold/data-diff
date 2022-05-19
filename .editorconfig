@@ -1,0 +1,16 @@
+# EditorConfig spec for a consistent cross-editor style.
+# Read more: https://EditorConfig.org
+
+root = true
+
+[*]
+end_of_line = lf        # Unix-style newlines with a newline ending every file
+insert_final_newline = true
+trim_trailing_whitespace = true
+# 4 space indentation
+indent_style = space
+indent_size = 4
+
+[*.{md,py}]
+charset = utf-8
+
