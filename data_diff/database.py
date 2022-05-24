@@ -43,6 +43,12 @@ def import_oracle():
     return cx_Oracle
 
 
+def import_presto():
+    import prestodb
+
+    return prestodb
+
+
 class ConnectError(Exception):
     pass
 
@@ -136,6 +142,23 @@ class Postgres(Database):
 
     def to_string(self, s: str):
         return f"{s}::varchar"
+
+
+class Presto(Database):
+    def __init__(self, host, port, database, user, password):
+        prestodb = import_presto()
+        self.args = dict(host=host, port=port, database=database, user=user, password=password)
+
+        self._conn = prestodb.dbapi.connect(**self.args)
+
+    def quote(self, s: str):
+        return f'"{s}"'
+
+    def md5_to_int(self, s: str) -> str:
+        return f"from_base(substr(to_hex(md5(to_utf8({s}))), {1+MD5_HEXDIGITS-CHECKSUM_HEXDIGITS}), 16)"
+
+    def to_string(self, s: str):
+        return f"cast({s} as varchar)"
 
 
 class MySQL(Database):
