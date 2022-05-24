@@ -1,9 +1,11 @@
 """Provides classes for performing a table diff
 """
 
+from operator import attrgetter, methodcaller
 from collections import defaultdict
 from typing import List, Tuple
 import logging
+from concurrent.futures import ThreadPoolExecutor
 
 from runtype import dataclass
 
@@ -162,6 +164,11 @@ class TableDiffer:
     bisection_factor: int = 32  # Into how many segments to bisect per iteration
     bisection_threshold: int = 1024**2  # When should we stop bisecting and compare locally (in row count)
     debug: bool = False
+    threaded: bool = True
+
+    # Maximum size of each threadpool. None = auto. Only relevant when threaded is True.
+    # There may be many pools, so number of actual threads can be a lot higher.
+    max_threadpool_size: int = None
 
     def diff_tables(self, table1: TableSegment, table2: TableSegment) -> DiffResult:
         """Diff the given tables.
@@ -172,28 +179,33 @@ class TableDiffer:
             Where `columns` is a tuple of values for the involved columns, i.e. (id, ...extra)
         """
         if self.bisection_factor >= self.bisection_threshold:
-            raise ValueError("Incorrect param values")
+            raise ValueError("Incorrect param values (bisection factor must be lower than threshold)")
         if self.bisection_factor < 2:
-            raise ValueError("Must have at least two segments per iteration")
-
-        logger.info(
-            f"Diffing tables of size {table1.count} and {table2.count} | segments: {self.bisection_factor}, bisection threshold: {self.bisection_threshold}."
-        )
-
-        if table1.checksum == table2.checksum:
-            return []  # No differences
+            raise ValueError("Must have at least two segments per iteration (i.e. bisection_factor >= 2)")
 
         return self._diff_tables(table1, table2)
 
-    def _diff_tables(self, table1, table2, level=0):
-        count1 = table1.count
-        count2 = table2.count
+    def _diff_tables(self, table1, table2, level=0, segment_index=None, segment_count=None):
+        count1, count2 = self._precalc_attr_threaded("count", [table1, table2])
+
+        if segment_index:
+            logger.info(". " * level + f"Diffing segment {segment_index}/{segment_count} of size {count1} and {count2}")
+        else:
+            logger.info(
+                f"Diffing tables of size {table1.count} and {table2.count} | segments: {self.bisection_factor}, bisection threshold: {self.bisection_threshold}."
+            )
+
+        checksum1, checksum2 = self._precalc_attr_threaded(
+            "checksum", [table1, table2]
+        )  # Calculate checksum in parallel
+
+        if checksum1 == checksum2:
+            return  # No differences
 
         # If count is below the threshold, just download and compare the columns locally
         # This saves time, as bisection speed is limited by ping and query performance.
         if count1 < self.bisection_threshold and count2 < self.bisection_threshold:
-            rows1 = table1.get_values()
-            rows2 = table2.get_values()
+            rows1, rows2 = self._thread_map(methodcaller("get_values"), [table1, table2])
             diff = list(diff_sets(rows1, rows2))
             logger.info(". " * level + f"Diff found {len(diff)} different rows.")
             yield from diff
@@ -211,14 +223,28 @@ class TableDiffer:
         # Create new instances of TableSegment between each checkpoint
         segmented1 = table1.segment_by_checkpoints(mutual_checkpoints)
         segmented2 = table2.segment_by_checkpoints(mutual_checkpoints)
+
         if self.debug:
             logger.debug("Performing sanity tests for chosen segments (assert sum of fragments == whole)")
+            self._precalc_attr_threaded("count", segmented1 + segmented2)
             assert count1 == sum(s.count for s in segmented1)
             assert count2 == sum(s.count for s in segmented2)
 
-        # Compare each pair of corresponding segments between table1 and table2
-        for i, (t1, t2) in enumerate(safezip(segmented1, segmented2)):
-            logger.info(". " * level + f"Diffing segment {i+1}/{len(segmented1)} of size {t1.count} and {t2.count}")
-            if t1.checksum != t2.checksum:
-                # Apply recursively
-                yield from self._diff_tables(t1, t2, level + 1)
+        # Recursively compare each pair of corresponding segments between table1 and table2
+        diff_iters = [
+            self._diff_tables(t1, t2, level + 1, i + 1, len(segmented1))
+            for i, (t1, t2) in enumerate(safezip(segmented1, segmented2))
+        ]
+
+        for res in self._thread_map(list, diff_iters):
+            yield from res
+
+    def _thread_map(self, func, iter):
+        if not self.threaded:
+            return map(func, iter)
+
+        task_pool = ThreadPoolExecutor(max_workers=self.max_threadpool_size)
+        return task_pool.map(func, iter)
+
+    def _precalc_attr_threaded(self, attr, iter):
+        return list(self._thread_map(attrgetter(attr), iter))
