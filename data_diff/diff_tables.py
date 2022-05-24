@@ -2,6 +2,7 @@
 """
 
 from operator import attrgetter, methodcaller
+from collections import defaultdict
 from typing import List, Tuple
 import logging
 from concurrent.futures import ThreadPoolExecutor
@@ -135,10 +136,16 @@ class TableSegment:
 def diff_sets(a: set, b: set) -> iter:
     s1 = set(a)
     s2 = set(b)
+    d = defaultdict(list)
+
+    # The first item is always the key (see TableDiffer._relevant_columns)
     for i in s1 - s2:
-        yield "+", i
+        d[i[0]].append(("+", i))
     for i in s2 - s1:
-        yield "-", i
+        d[i[0]].append(("-", i))
+
+    for k, v in sorted(d.items(), key=lambda i: i[0]):
+        yield from v
 
 
 DiffResult = iter  # Iterator[Tuple[Literal["+", "-"], tuple]]
