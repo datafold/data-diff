@@ -37,7 +37,7 @@ DATE_FORMAT = "%H:%M:%S"
 @click.option("-d", "--debug", is_flag=True, help="Print debug info")
 @click.option("-v", "--verbose", is_flag=True, help="Print extra info")
 @click.option("-i", "--interactive", is_flag=True, help="Confirm queries, implies --debug")
-@click.option("--threads", default=None, help="Number of threads to use. 1 means no threading. Auto if not specified.")
+@click.option("-j", "--threads", default=None, help="Number of threads to use. 1 means no threading. Auto if not specified.")
 def main(
     db1_uri,
     table1_name,
