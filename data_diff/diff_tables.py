@@ -141,14 +141,7 @@ def diff_sets(a: set, b: set) -> iter:
         yield "-", i
 
 
-DiffResult = iter #Iterator[Tuple[Literal["+", "-"], tuple]]
-
-def thread_map(func, iter):
-    task_pool = ThreadPoolExecutor()
-    return task_pool.map(func, iter)
-
-def precalc_attr(attr, iter):
-    return list(thread_map(attrgetter(attr), iter))
+DiffResult = iter  # Iterator[Tuple[Literal["+", "-"], tuple]]
 
 
 @dataclass
@@ -164,6 +157,11 @@ class TableDiffer:
     bisection_factor: int = 32  # Into how many segments to bisect per iteration
     bisection_threshold: int = 1024**2  # When should we stop bisecting and compare locally (in row count)
     debug: bool = False
+    threaded: bool = True
+
+    # Maximum size of each threadpool. None = auto. Only relevant when threaded is True.
+    # There may be many pools, so number of actual threads can be a lot higher.
+    max_threadpool_size: int = None
 
     def diff_tables(self, table1: TableSegment, table2: TableSegment) -> DiffResult:
         """Diff the given tables.
@@ -181,7 +179,7 @@ class TableDiffer:
         return self._diff_tables(table1, table2)
 
     def _diff_tables(self, table1, table2, level=0, segment_index=None, segment_count=None):
-        count1, count2 = precalc_attr("count", [table1, table2])
+        count1, count2 = self._precalc_attr_threaded("count", [table1, table2])
 
         if segment_index:
             logger.info(". " * level + f"Diffing segment {segment_index}/{segment_count} of size {count1} and {count2}")
@@ -190,7 +188,9 @@ class TableDiffer:
                 f"Diffing tables of size {table1.count} and {table2.count} | segments: {self.bisection_factor}, bisection threshold: {self.bisection_threshold}."
             )
 
-        checksum1, checksum2 = precalc_attr("checksum", [table1, table2])  # Calculate checksum in parallel
+        checksum1, checksum2 = self._precalc_attr_threaded(
+            "checksum", [table1, table2]
+        )  # Calculate checksum in parallel
 
         if checksum1 == checksum2:
             return  # No differences
@@ -198,7 +198,7 @@ class TableDiffer:
         # If count is below the threshold, just download and compare the columns locally
         # This saves time, as bisection speed is limited by ping and query performance.
         if count1 < self.bisection_threshold and count2 < self.bisection_threshold:
-            rows1, rows2 = thread_map(methodcaller('get_values'), [table1, table2])
+            rows1, rows2 = self._thread_map(methodcaller("get_values"), [table1, table2])
             diff = list(diff_sets(rows1, rows2))
             logger.info(". " * level + f"Diff found {len(diff)} different rows.")
             yield from diff
@@ -219,7 +219,7 @@ class TableDiffer:
 
         if self.debug:
             logger.debug("Performing sanity tests for chosen segments (assert sum of fragments == whole)")
-            precalc_attr("count", segmented1 + segmented2)
+            self._precalc_attr_threaded("count", segmented1 + segmented2)
             assert count1 == sum(s.count for s in segmented1)
             assert count2 == sum(s.count for s in segmented2)
 
@@ -229,5 +229,15 @@ class TableDiffer:
             for i, (t1, t2) in enumerate(safezip(segmented1, segmented2))
         ]
 
-        for res in thread_map(list, diff_iters):
+        for res in self._thread_map(list, diff_iters):
             yield from res
+
+    def _thread_map(self, func, iter):
+        if not self.threaded:
+            return map(func, iter)
+
+        task_pool = ThreadPoolExecutor(max_workers=self.max_threadpool_size)
+        return task_pool.map(func, iter)
+
+    def _precalc_attr_threaded(self, attr, iter):
+        return list(self._thread_map(attrgetter(attr), iter))

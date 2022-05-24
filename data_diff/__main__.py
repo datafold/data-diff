@@ -37,6 +37,7 @@ DATE_FORMAT = "%H:%M:%S"
 @click.option("-d", "--debug", is_flag=True, help="Print debug info")
 @click.option("-v", "--verbose", is_flag=True, help="Print extra info")
 @click.option("-i", "--interactive", is_flag=True, help="Confirm queries, implies --debug")
+@click.option("--threads", default=None, help="Number of threads to use. 1 means no threading. Auto if not specified.")
 def main(
     db1_uri,
     table1_name,
@@ -54,6 +55,7 @@ def main(
     debug,
     verbose,
     interactive,
+    threads,
 ):
     if limit and stats:
         print("Error: cannot specify a limit when using the -s/--stats switch")
@@ -66,8 +68,14 @@ def main(
     elif verbose:
         logging.basicConfig(level=logging.INFO, format=LOG_FORMAT, datefmt=DATE_FORMAT)
 
-    db1 = connect_to_uri(db1_uri)
-    db2 = connect_to_uri(db2_uri)
+    if threads is not None:
+        threads = int(threads)
+        if threads < 1:
+            logging.error("Error: threads must be >= 1")
+            return
+
+    db1 = connect_to_uri(db1_uri, threads)
+    db2 = connect_to_uri(db2_uri, threads)
 
     if interactive:
         db1.enable_interactive()
@@ -86,7 +94,13 @@ def main(
     table1 = TableSegment(db1, (table1_name,), key_column, update_column, columns, **options)
     table2 = TableSegment(db2, (table2_name,), key_column, update_column, columns, **options)
 
-    differ = TableDiffer(bisection_factor=bisection_factor, bisection_threshold=bisection_threshold, debug=debug)
+    differ = TableDiffer(
+        bisection_factor=bisection_factor,
+        bisection_threshold=bisection_threshold,
+        debug=debug,
+        threaded=threads != 1,
+        max_threadpool_size=threads,
+    )
     diff_iter = differ.diff_tables(table1, table2)
 
     if limit:

@@ -1,6 +1,6 @@
 from abc import ABC, abstractmethod
 import logging
-from typing import Tuple
+from typing import Tuple, Optional
 from concurrent.futures import ThreadPoolExecutor
 import threading
 
@@ -153,10 +153,10 @@ CHECKSUM_MASK = (2**_CHECKSUM_BITSIZE) - 1
 
 
 class Postgres(ThreadedDatabase):
-    def __init__(self, host, port, database, user, password):
+    def __init__(self, host, port, database, user, password, *, thread_count):
         self.args = dict(host=host, port=port, database=database, user=user, password=password)
 
-        super().__init__()
+        super().__init__(thread_count=thread_count)
 
     def create_connection(self):
         postgres = import_postgres()
@@ -176,11 +176,11 @@ class Postgres(ThreadedDatabase):
 
 
 class MySQL(ThreadedDatabase):
-    def __init__(self, host, port, database, user, password):
+    def __init__(self, host, port, database, user, password, *, thread_count):
         args = dict(host=host, port=port, database=database, user=user, password=password)
         self._args = {k: v for k, v in args.items() if v is not None}
 
-        super().__init__()
+        super().__init__(thread_count=thread_count)
 
     def create_connection(self):
         mysql = import_mysql()
@@ -205,10 +205,10 @@ class MySQL(ThreadedDatabase):
 
 
 class Oracle(ThreadedDatabase):
-    def __init__(self, host, port, database, user, password):
+    def __init__(self, host, port, database, user, password, *, thread_count):
         assert not port
         self.kwargs = dict(user=user, password=password, dsn="%s/%s" % (host, database))
-        super().__init__()
+        super().__init__(thread_count=thread_count)
 
     def create_connection(self):
         oracle = import_oracle()
@@ -237,11 +237,11 @@ class Redshift(Postgres):
 class MsSQL(ThreadedDatabase):
     "AKA sql-server"
 
-    def __init__(self, host, port, database, user, password):
+    def __init__(self, host, port, database, user, password, *, thread_count):
         args = dict(server=host, port=port, database=database, user=user, password=password)
         self._args = {k: v for k, v in args.items() if v is not None}
 
-        super().__init__()
+        super().__init__(thread_count=thread_count)
 
     def create_connection(self):
         mssql = import_mssql()
@@ -319,8 +319,11 @@ class Snowflake(Database):
         return f"cast({s} as string)"
 
 
-def connect_to_uri(db_uri: str) -> Database:
+def connect_to_uri(db_uri: str, thread_count: Optional[int] = 1) -> Database:
     """Connect to the given database uri
+
+    thread_count determines the max number of worker threads per database,
+    if relevant. None means no limit.
 
     Supported databases:
     - postgres
@@ -345,18 +348,18 @@ def connect_to_uri(db_uri: str) -> Database:
         raise ValueError("Bad value for uri, too many paths: %s" % db_uri)
 
     if scheme == "postgres":
-        return Postgres(dsn.host, dsn.port, path, dsn.user, dsn.password)
+        return Postgres(dsn.host, dsn.port, path, dsn.user, dsn.password, thread_count=thread_count)
     elif scheme == "mysql":
-        return MySQL(dsn.host, dsn.port, path, dsn.user, dsn.password)
+        return MySQL(dsn.host, dsn.port, path, dsn.user, dsn.password, thread_count=thread_count)
     elif scheme == "snowflake":
         return Snowflake(dsn.host, dsn.user, dsn.password, path, **dsn.query)
     elif scheme == "mssql":
-        return MsSQL(dsn.host, dsn.port, path, dsn.user, dsn.password)
+        return MsSQL(dsn.host, dsn.port, path, dsn.user, dsn.password, thread_count=thread_count)
     elif scheme == "bigquery":
         return BigQuery(dsn.host, path)
     elif scheme == "redshift":
         return Redshift(dsn.host, dsn.port, path, dsn.user, dsn.password)
     elif scheme == "oracle":
-        return Oracle(dsn.host, dsn.port, path, dsn.user, dsn.password)
+        return Oracle(dsn.host, dsn.port, path, dsn.user, dsn.password, thread_count=thread_count)
 
     raise NotImplementedError(f"Scheme {dsn.scheme} currently not supported")
