@@ -44,7 +44,7 @@ COLOR_SCHEME = {
 @click.option("-v", "--verbose", is_flag=True, help="Print extra info")
 @click.option("-i", "--interactive", is_flag=True, help="Confirm queries, implies --debug")
 @click.option(
-    "-j", "--threads", default=None, help="Number of threads to use. 1 means no threading. Auto if not specified."
+    "-j", "--threads", default='1', help="Number of threads to use. Default of 1 means no threading."
 )
 def main(
     db1_uri,
@@ -77,10 +77,13 @@ def main(
         logging.basicConfig(level=logging.INFO, format=LOG_FORMAT, datefmt=DATE_FORMAT)
 
     if threads is not None:
-        threads = int(threads)
-        if threads < 1:
-            logging.error("Error: threads must be >= 1")
-            return
+        if threads.lower() == 'auto':
+            threads = None
+        else:
+            threads = int(threads)
+            if threads < 1:
+                logging.error("Error: threads must be >= 1")
+                return
 
     db1 = connect_to_uri(db1_uri, threads)
     db2 = connect_to_uri(db2_uri, threads)
