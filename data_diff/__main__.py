@@ -8,10 +8,16 @@ from .diff_tables import TableSegment, TableDiffer
 from .database import connect_to_uri
 from .parse_time import parse_time_before_now, UNITS_STR, ParseError
 
+import rich
 import click
 
 LOG_FORMAT = "[%(asctime)s] %(levelname)s - %(message)s"
 DATE_FORMAT = "%H:%M:%S"
+
+COLOR_SCHEME = {
+    "+": "green",
+    "-": "red",
+}
 
 
 @click.command()
@@ -37,7 +43,9 @@ DATE_FORMAT = "%H:%M:%S"
 @click.option("-d", "--debug", is_flag=True, help="Print debug info")
 @click.option("-v", "--verbose", is_flag=True, help="Print extra info")
 @click.option("-i", "--interactive", is_flag=True, help="Confirm queries, implies --debug")
-@click.option("-j", "--threads", default=None, help="Number of threads to use. 1 means no threading. Auto if not specified.")
+@click.option(
+    "-j", "--threads", default=None, help="Number of threads to use. 1 means no threading. Auto if not specified."
+)
 def main(
     db1_uri,
     table1_name,
@@ -117,7 +125,8 @@ def main(
         print(f"Diff-Split: +{plus}  -{minus}")
     else:
         for op, key in diff_iter:
-            print(op, key)
+            color = COLOR_SCHEME[op]
+            rich.print(f"[{color}]{op} {key!r}[/{color}]")
             sys.stdout.flush()
 
     end = time.time()

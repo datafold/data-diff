@@ -27,6 +27,7 @@ python = "^3.7"
 runtype = "^0.2.4"
 dsnparse = "*"
 click = "^8.1"
+rich = "^10.16.2"
 
 preql = { version = "^0.2.13", optional = true }
 psycopg2 = { version = "*", optional = true }
