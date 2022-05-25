@@ -275,7 +275,7 @@ class TableDiffer:
 
         # This is the upper bound, but it might be smaller if there are gaps.
         # E.g. between id 1..10, id 5 might have been hard deleted.
-        keyspace_size = table1.end_key - table1.start_key + 1
+        keyspace_size = table1.end_key - table1.start_key
 
         # We only check beyond level > 0, because otherwise we might scan the
         # entire index with COUNT(*). For large tables with billions of rows, we
@@ -310,7 +310,8 @@ class TableDiffer:
 
         # Compare each pair of corresponding segments between table1 and table2
         for i, (t1, t2) in enumerate(safezip(segmented1, segmented2)):
-            logger.info(". " * level + f"Diffing segment {i+1}/{len(segmented1)} keys={t1.start_key}..{t1.end_key-1}")
+            n_keys = t1.end_key - t1.start_key
+            logger.info(". " * level + f"Diffing segment {i+1}/{len(segmented1)} keys={t1.start_key}..{t1.end_key-1} n_keys={n_keys}")
             t1.compute_checksum_and_count()
             t2.compute_checksum_and_count()
 
