@@ -29,6 +29,7 @@ dsnparse = "*"
 click = "^8.1"
 rich = "^10.16.2"
 
+
 preql = { version = "^0.2.13", optional = true }
 psycopg2 = { version = "*", optional = true }
 mysql-connector-python = { version = "*", optional = true}
@@ -36,7 +37,7 @@ snowflake-connector-python = { version = "*", optional = true }
 
 [tool.poetry.dev-dependencies]
 mysql-connector-python = "*"
-preql = "^0.2.13"
+preql = "^0.2.14"
 snowflake-connector-python = "*"
 psycopg2 = "*"
 
