@@ -18,6 +18,11 @@ func create_indices(tbl) {
 func cleanup() {
     drop_table("rating")
     drop_table("tmp_rating")
+    drop_table("rating_gap1")
+    drop_table("rating_gap2")
+
+    drop_table("rating_gap1_update0001p")
+    drop_table("rating_gap2_update0001p")
     drop_table("rating_del1")
     drop_table("rating_update1")
     drop_table("rating_update001p")
@@ -61,7 +66,7 @@ if (db_type == "snowflake" or db_type == "redshift") {
 
         run_sql("""
             COPY "public"."tmp_rating" (userid, movieid, rating, timestamp)
-            FROM 's3://dev-cf-redshift-datafold-data-diff/ml/ratings.csv' 
+            FROM 's3://dev-cf-redshift-datafold-data-diff/ml/ratings.csv'
             IAM_ROLE 'arn:aws:iam::760878568205:role/dev-cf-redshift-data-diff'
             DELIMITER ','
             IGNOREHEADER 1;
@@ -114,6 +119,8 @@ middle = count(rating) /~ 2
 // - We use 'const table' to avoid updating the ids
 
 print "Create tables"
+const table rating_gap1 = rating
+const table rating_gap2 = rating
 const table rating_del1 = rating
 const table rating_update1 = rating
 const table rating_update001p = rating
@@ -123,6 +130,8 @@ const table rating_update50p = rating
 
 print "Create indexes"
 
+create_indices(rating_gap1)
+create_indices(rating_gap2)
 create_indices(rating_del1)
 create_indices(rating_update1)
 create_indices(rating_update001p)
@@ -140,5 +149,31 @@ rating_update001p[random() < 0.0001] update {timestamp: timestamp + 1}
 rating_update1p[random() < 0.01] update {timestamp: timestamp + 1}
 rating_update50p[random() < 0.5] update {timestamp: timestamp + 1}
 rating_del1p[random() < 0.01] delete [true]
+
+# Gaps of 10K. Have to stop short of ID 200K to not overflow int32.
+run_sql("UPDATE rating_gap1 SET id = id * 10000 + 1000000 where id <= 200000")
+
+# Initial gap (100m) with low min(id).
+run_sql("UPDATE rating_gap2 SET id = id + 100000000 WHERE id > 2")
+
+table rating_gap1 {
+    userid: int
+    movieid: int
+    rating: float
+    timestamp: int
+}
+
+table rating_gap2 {
+    userid: int
+    movieid: int
+    rating: float
+    timestamp: int
+}
+
+print "Create more tables"
+const table rating_gap1_update0001p = rating_gap1
+const table rating_gap2_update0001p = rating_gap2
+rating_gap1_update0001p[random() < 0.00001] update {timestamp: timestamp + 1}
+rating_gap2_update0001p[random() < 0.00001] update {timestamp: timestamp + 1}
 
 commit()
