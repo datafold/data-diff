@@ -315,4 +315,4 @@ class TableDiffer:
             t2.compute_checksum_and_count()
 
             if t1.checksum != t2.checksum:
-                yield from self._diff_tables(t1, t2, max(int(bisection_factor/2), 2), level + 1)
+                yield from self._diff_tables(t1, t2, bisection_factor, level + 1)
