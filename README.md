@@ -78,6 +78,7 @@ Options:
   - `--max-age` - Considers only rows younger than specified.  See `--min-age`.
   - `--bisection-factor` - Segments per iteration. When set to 2, it performs binary search.
   - `--bisection-threshold` - Minimal bisection threshold. i.e. maximum size of pages to diff locally.
+  - `-j` or `--threads` - Number of worker threads to use per database. Default=1.
 
 
 # How does it work?
