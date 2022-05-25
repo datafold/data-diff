@@ -5,13 +5,18 @@ func run_sql(code) {
 }
 
 func drop_table(t) {
-    run_sql("DROP TABLE IF EXISTS " + t)
+    run_sql("DROP TABLE IF EXISTS " + get_qualified_name(t))
 }
 
 func create_indices(tbl) {
     tbl.add_index("id", true)
     tbl.add_index("timestamp")
     tbl.add_index(["id", "timestamp"])
+}
+
+DATASET = "data_diff"   // For BigQuery
+if (db_type == "bigquery") {
+    set_active_dataset(DATASET)
 }
 
 // Cleanup
@@ -61,7 +66,7 @@ if (db_type == "snowflake" or db_type == "redshift") {
 
         run_sql("""
             COPY "public"."tmp_rating" (userid, movieid, rating, timestamp)
-            FROM 's3://dev-cf-redshift-datafold-data-diff/ml/ratings.csv' 
+            FROM 's3://dev-cf-redshift-datafold-data-diff/ml/ratings.csv'
             IAM_ROLE 'arn:aws:iam::760878568205:role/dev-cf-redshift-data-diff'
             DELIMITER ','
             IGNOREHEADER 1;
@@ -92,6 +97,23 @@ if (db_type == "snowflake" or db_type == "redshift") {
     print "Populating actual table"
     rating += tmp_rating
     commit()
+} else if (db_type == "bigquery") {
+    print "Importing the CSV through the Python script (BigQuery)"
+    PY("0", "import _bq_import_csv")
+
+    table rating {
+        id: int     // explicit id, to avoid identity type
+        userid: int
+        movieid: int
+        rating: float
+        timestamp: int
+    }
+
+    run_sql("""
+        INSERT INTO data_diff.rating(id, userid, movieid, rating, timestamp)
+        SELECT row_number() over (order by userid, movieid, timestamp) AS id, userid, movieid, rating, timestamp FROM data_diff.tmp_rating
+    """)
+
 } else {
     print "Importing ratings CSV"
 

@@ -35,7 +35,7 @@ snowflake-connector-python = { version = "*", optional = true }
 
 [tool.poetry.dev-dependencies]
 mysql-connector-python = "*"
-preql = "^0.2.13"
+preql = "^0.2.14"
 snowflake-connector-python = "*"
 psycopg2 = "*"
 
