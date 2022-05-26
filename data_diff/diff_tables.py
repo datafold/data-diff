@@ -69,9 +69,11 @@ class TableSegment:
 
     def choose_checkpoints(self, count: int) -> List[DbKey]:
         "Suggests a bunch of evenly-spaced checkpoints to split by (not including start, end)"
-        keyspace_size = self.end_key - self.start_key + 1
+        assert self.is_bounded
 
-        return list(range(self.start_key, self.end_key, keyspace_size // (count + 1) + 1))[1:]
+        keyspace_size = self.end_key - self.start_key
+
+        return list(range(self.start_key, self.end_key, keyspace_size // count))[1:]
 
     def segment_by_checkpoints(self, checkpoints: List[DbKey]) -> List["TableSegment"]:
         "Split the current TableSegment to a bunch of smaller ones, separate by the given checkpoints"
@@ -100,6 +102,9 @@ class TableSegment:
             + ([self.update_column] if self.update_column is not None else [])
             + list(self.extra_columns)
         )
+
+    def count(self) -> Tuple[int, int]:
+        return self.database.query(self._make_select(columns=[Count()]), int)
 
     def count_and_checksum(self) -> Tuple[int, int]:
         count, checksum = self.database.query(
