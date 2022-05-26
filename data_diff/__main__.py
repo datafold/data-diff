@@ -30,7 +30,7 @@ COLOR_SCHEME = {
 @click.option("-c", "--columns", default=[], multiple=True, help="Names of extra columns to compare")
 @click.option("-l", "--limit", default=None, help="Maximum number of differences to find")
 @click.option("--bisection-factor", default=32, help="Segments per iteration")
-@click.option("--bisection-threshold", default=1024**2, help="Minimal bisection threshold")
+@click.option("--bisection-threshold", default=1024*16, help="Minimal bisection threshold")
 @click.option(
     "--min-age",
     default=None,

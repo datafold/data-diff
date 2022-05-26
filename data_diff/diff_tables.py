@@ -154,7 +154,7 @@ class TableDiffer:
     """
 
     bisection_factor: int = 32  # Into how many segments to bisect per iteration
-    bisection_threshold: int = 1024**2  # When should we stop bisecting and compare locally (in row count)
+    bisection_threshold: int = 1024*16  # When should we stop bisecting and compare locally (in row count)
     debug: bool = False
     threaded: bool = True
 
