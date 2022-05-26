@@ -85,6 +85,9 @@ class Database(ABC):
             if res is None:  # May happen due to sum() of 0 items
                 return None
             return int(res)
+        if res_type is tuple:
+            assert len(res) == 1
+            return res[0]
         elif getattr(res_type, "__origin__", None) is list and len(res_type.__args__) == 1:
             if res_type.__args__ == (int,):
                 return [_one(row) for row in res]
