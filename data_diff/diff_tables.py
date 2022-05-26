@@ -21,6 +21,11 @@ def safezip(*args):
     return zip(*args)
 
 
+def split_space(start, end, count):
+    size = end - start
+    return list(range(start, end, (size + 1) // (count + 1)))[1 : count + 1]
+
+
 @dataclass(frozen=False)
 class TableSegment:
     database: Database
@@ -70,10 +75,7 @@ class TableSegment:
     def choose_checkpoints(self, count: int) -> List[DbKey]:
         "Suggests a bunch of evenly-spaced checkpoints to split by (not including start, end)"
         assert self.is_bounded
-
-        keyspace_size = self.end_key - self.start_key
-
-        return list(range(self.start_key, self.end_key, keyspace_size // count))[1:]
+        return split_space(self.start_key, self.end_key, count)
 
     def segment_by_checkpoints(self, checkpoints: List[DbKey]) -> List["TableSegment"]:
         "Split the current TableSegment to a bunch of smaller ones, separate by the given checkpoints"
@@ -159,7 +161,7 @@ class TableDiffer:
     """
 
     bisection_factor: int = 32  # Into how many segments to bisect per iteration
-    bisection_threshold: int = 1024*16  # When should we stop bisecting and compare locally (in row count)
+    bisection_threshold: int = 1024 * 16  # When should we stop bisecting and compare locally (in row count)
     debug: bool = False
     threaded: bool = True
 

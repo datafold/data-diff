@@ -5,9 +5,18 @@ import preql
 import arrow  # comes with preql
 
 from data_diff.database import connect_to_uri
-from data_diff.diff_tables import TableDiffer, TableSegment
+from data_diff.diff_tables import TableDiffer, TableSegment, split_space
 
 from .common import TEST_MYSQL_CONN_STRING, str_to_checksum
+
+
+class TestUtils(unittest.TestCase):
+    def test_split_space(self):
+        for i in range(0, 10):
+            for j in range(1, 16328, 17):
+                for n in range(1, 32):
+                    r = split_space(i, j + i + n, n)
+                    assert len(r) == n, f"split_space({i}, {j+n}, {n}) = {(r)}"
 
 
 class TestWithConnection(unittest.TestCase):
@@ -124,7 +133,6 @@ class TestDiffTables(TestWithConnection):
         self.assertEqual(1, self.table.count())
         concatted = str(res["id"]) + time
         self.assertEqual(str_to_checksum(concatted), self.table.count_and_checksum()[1])
-
 
     def test_diff_small_tables(self):
         time = "2022-01-01 00:00:00"
