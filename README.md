@@ -45,7 +45,8 @@ We currently support the following databases:
 - BigQuery
 - Redshift
 
-We plan to add more, including NoSQL, and even APIs like Shopify!
+We plan to add more, including NoSQL, and even APIs like Shopify! We're very
+open to contributions on this front.
 
 # How to install
 
