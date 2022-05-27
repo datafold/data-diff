@@ -46,7 +46,7 @@ class TableName(Sql):
     name: DbPath
 
     def compile(self, c: Compiler):
-        return c.quote(".".join(self.name))
+        return ".".join(map(c.quote, self.name))
 
 
 @dataclass
@@ -97,7 +97,7 @@ class Enum(Sql):
     order_by: SqlOrStr
 
     def compile(self, c: Compiler):
-        table = c.quote(".".join(self.table))
+        table =  ".".join(map(c.quote, self.table))
         order = c.compile(self.order_by)
         return f"(SELECT *, (row_number() over (ORDER BY {order})) as idx FROM {table} ORDER BY {order}) tmp"
 
