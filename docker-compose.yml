@@ -51,6 +51,19 @@ services:
       networks:
         - local
 
+    # prestodb.dbapi.connect(host="127.0.0.1", user="presto").cursor().execute('SELECT * FROM system.runtime.nodes')
+    presto:
+        build:
+            context: ./dev
+            dockerfile: ./Dockerfile.prestosql.340
+        volumes:
+            - ./dev/presto-conf/standalone:/opt/presto/etc:ro
+        ports:
+            - '8080:8080'
+        tty: true
+        networks:
+            - local
+
 volumes:
   postgresql-data:
   mysql-data:
