@@ -99,11 +99,11 @@ class TableSegment:
 
     @property
     def _relevant_columns(self) -> List[str]:
-        return (
-            [self.key_column]
-            + ([self.update_column] if self.update_column is not None else [])
-            + list(self.extra_columns)
-        )
+        extras = set(self.extra_columns)
+        if self.update_column:
+            extras.add(self.update_column)
+
+        return [self.key_column] + list(sorted(extras))
 
     def count(self) -> Tuple[int, int]:
         return self.database.query(self._make_select(columns=[Count()]), int)
