@@ -19,6 +19,8 @@ COLOR_SCHEME = {
     "-": "red",
 }
 
+def parse_table_name(t):
+    return tuple(t.split('.'))
 
 @click.command()
 @click.argument("db1_uri")
@@ -99,8 +101,8 @@ def main(
         logging.error("Error while parsing age expression: %s" % e)
         return
 
-    table1 = TableSegment(db1, (table1_name,), key_column, update_column, columns, **options)
-    table2 = TableSegment(db2, (table2_name,), key_column, update_column, columns, **options)
+    table1 = TableSegment(db1, parse_table_name(table1_name), key_column, update_column, columns, **options)
+    table2 = TableSegment(db2, parse_table_name(table2_name), key_column, update_column, columns, **options)
 
     differ = TableDiffer(
         bisection_factor=bisection_factor,
