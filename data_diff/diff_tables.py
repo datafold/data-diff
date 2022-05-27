@@ -1,6 +1,7 @@
 """Provides classes for performing a table diff
 """
 
+import time
 from operator import methodcaller
 from collections import defaultdict
 from typing import List, Tuple
@@ -13,6 +14,8 @@ from .sql import Select, Checksum, Compare, DbPath, DbKey, DbTime, Count, TableN
 from .database import Database
 
 logger = logging.getLogger("diff_tables")
+
+RECOMMENDED_CHECKSUM_DURATION = 10
 
 
 def safezip(*args):
@@ -109,12 +112,15 @@ class TableSegment:
         return self.database.query(self._make_select(columns=[Count()]), int)
 
     def count_and_checksum(self) -> Tuple[int, int]:
+        start = time.time()
         count, checksum = self.database.query(
             self._make_select(columns=[Count(), Checksum(self._relevant_columns)]), tuple
         )
+        duration = time.time() - start
+        if duration > RECOMMENDED_CHECKSUM_DURATION:
+            logger.warn(f"Checksum is taking longer than expected ({duration:.2f}s). ")
 
         # TODO Handle None TODO
-
         return count or 0, checksum
 
     def query_key_range(self) -> Tuple[int, int]:
@@ -205,9 +211,6 @@ class TableDiffer:
             # We can be sure that row_count <= max_rows
             max_rows = table1.end_key - table1.start_key
 
-        if max_rows == 0:
-            return
-
         # If count is below the threshold, just download and compare the columns locally
         # This saves time, as bisection speed is limited by ping and query performance.
         if max_rows < self.bisection_threshold:
@@ -234,9 +237,20 @@ class TableDiffer:
             yield from res
 
     def _diff_tables(self, table1, table2, level=0, segment_index=None, segment_count=None):
-        logger.info(". " * level + f"Diffing segment {segment_index}/{segment_count}")
+        logger.info(
+            ". " * level
+            + f"Diffing segment {segment_index}/{segment_count}, key-range: {table1.start_key:x}..{table2.end_key:x}"
+        )
 
         (count1, checksum1), (count2, checksum2) = self._threaded_call("count_and_checksum", [table1, table2])
+
+        if not (count1 or count2):
+            logger.warn(
+                "Uneven distribution of keys detected. "
+                "For better performance, we recommend to increase the bisection-threshold."
+            )
+            assert checksum1 is None and checksum2 is None
+            return
 
         if checksum1 != checksum2:
             yield from self._bisect_and_diff_tables(table1, table2, level=level, max_rows=max(count1, count2))
