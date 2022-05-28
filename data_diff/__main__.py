@@ -4,7 +4,7 @@ import time
 import logging
 from itertools import islice
 
-from .diff_tables import TableSegment, TableDiffer
+from .diff_tables import TableSegment, TableDiffer, DEFAULT_BISECTION_THRESHOLD
 from .database import connect_to_uri
 from .parse_time import parse_time_before_now, UNITS_STR, ParseError
 
@@ -30,7 +30,11 @@ COLOR_SCHEME = {
 @click.option("-c", "--columns", default=[], multiple=True, help="Names of extra columns to compare")
 @click.option("-l", "--limit", default=None, help="Maximum number of differences to find")
 @click.option("--bisection-factor", default=32, help="Segments per iteration")
-@click.option("--bisection-threshold", default=1024 * 16, help="Minimal bisection threshold")
+@click.option(
+    "--bisection-threshold",
+    default=DEFAULT_BISECTION_THRESHOLD,
+    help="Minimal bisection threshold. Below it, data-diff will download the data and compare it locally.",
+)
 @click.option(
     "--min-age",
     default=None,

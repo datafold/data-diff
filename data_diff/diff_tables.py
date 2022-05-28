@@ -17,6 +17,8 @@ logger = logging.getLogger("diff_tables")
 
 RECOMMENDED_CHECKSUM_DURATION = 10
 
+DEFAULT_BISECTION_THRESHOLD = 1024 * 16
+
 
 def safezip(*args):
     "zip but makes sure all sequences are the same length"
@@ -167,7 +169,9 @@ class TableDiffer:
     """
 
     bisection_factor: int = 32  # Into how many segments to bisect per iteration
-    bisection_threshold: int = 1024 * 16  # When should we stop bisecting and compare locally (in row count)
+    bisection_threshold: int = (
+        DEFAULT_BISECTION_THRESHOLD  # When should we stop bisecting and compare locally (in row count)
+    )
     debug: bool = False
     threaded: bool = True
 
