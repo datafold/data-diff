@@ -48,7 +48,7 @@ COLOR_SCHEME = {
     "--threads",
     default="1",
     help="Number of worker threads to use per database. Default=1. "
-    "'auto' will use the maximum amount recommended by Python. "
+    "A higher number will increase performance, but take more capacity from your database. "
     "'serial' guarantees a single-threaded execution of the algorithm (useful for debugging).",
 )
 def main(
@@ -86,8 +86,6 @@ def main(
         if threads.lower() == "serial":
             threaded = False
             threads = 1
-        elif threads.lower() == "auto":
-            threads = None
         else:
             try:
                 threads = int(threads)
