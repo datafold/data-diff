@@ -71,6 +71,10 @@ print "Create more tables"
 const table rating_gap1_update0001p = rating_gap1
 const table rating_gap2_update0001p = rating_gap2
 const table rating_gap3_update0001p = rating_gap3
+create_indices(rating_gap1_update0001p)
+create_indices(rating_gap2_update0001p)
+create_indices(rating_gap3_update0001p)
+
 rating_gap1_update0001p[random() < 0.000001] update {timestamp: timestamp + 1}
 rating_gap2_update0001p[random() < 0.000001] update {timestamp: timestamp + 1}
 rating_gap3_update0001p[random() < 0.000001] update {timestamp: timestamp + 1}

@@ -120,7 +120,10 @@ class TableSegment:
         )
         duration = time.time() - start
         if duration > RECOMMENDED_CHECKSUM_DURATION:
-            logger.warn(f"Checksum is taking longer than expected ({duration:.2f}s). ")
+            logger.warn(
+                f"Checksum is taking longer than expected ({duration:.2f}s). "
+                "We recommend increasing the bisection-factor."
+            )
 
         # TODO Handle None TODO
         return count or 0, checksum
@@ -243,14 +246,14 @@ class TableDiffer:
     def _diff_tables(self, table1, table2, level=0, segment_index=None, segment_count=None):
         logger.info(
             ". " * level
-            + f"Diffing segment {segment_index}/{segment_count}, key-range: {table1.start_key:x}..{table2.end_key:x}"
+            + f"Diffing segment {segment_index}/{segment_count}, key-range: {table1.start_key}..{table2.end_key}"
         )
 
         (count1, checksum1), (count2, checksum2) = self._threaded_call("count_and_checksum", [table1, table2])
 
-        if not (count1 or count2):
+        if count1 == 0 and count2 == 0:
             logger.warn(
-                "Uneven distribution of keys detected. "
+                "Uneven distribution of keys detected. (big gaps in the key column). "
                 "For better performance, we recommend to increase the bisection-threshold."
             )
             assert checksum1 is None and checksum2 is None
