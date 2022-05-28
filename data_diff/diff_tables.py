@@ -178,6 +178,8 @@ class TableDiffer:
     debug: bool = False
     threaded: bool = True
 
+    stats: dict = {}
+
     # Maximum size of each threadpool. None = auto. Only relevant when threaded is True.
     # There may be many pools, so number of actual threads can be a lot higher.
     max_threadpool_size: int = None
@@ -246,7 +248,9 @@ class TableDiffer:
     def _diff_tables(self, table1, table2, level=0, segment_index=None, segment_count=None):
         logger.info(
             ". " * level
-            + f"Diffing segment {segment_index}/{segment_count}, key-range: {table1.start_key}..{table2.end_key}"
+            + f"Diffing segment {segment_index}/{segment_count}, "
+            f"key-range: {table1.start_key}..{table2.end_key}, "
+            f"size: {table2.end_key-table1.start_key}"
         )
 
         (count1, checksum1), (count2, checksum2) = self._threaded_call("count_and_checksum", [table1, table2])
@@ -258,6 +262,9 @@ class TableDiffer:
             )
             assert checksum1 is None and checksum2 is None
             return
+
+        if level == 1:
+            self.stats["table1_count"] = self.stats.get("table1_count", 0) + count1
 
         if checksum1 != checksum2:
             yield from self._bisect_and_diff_tables(table1, table2, level=level, max_rows=max(count1, count2))
