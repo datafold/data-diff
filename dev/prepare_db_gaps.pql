@@ -62,8 +62,13 @@ table rating_gap3 {
 
 rating_gap3[id == 1000] update {id: 2147483548}
 
+// Create many small gaps, for testing low bisection thresholds
 run_sql("UPDATE rating_gap1 SET id = id * 1000 + 25000000 where 100000 < id and id <= 500000 ")
+
+// Create increasing gaps, to test many gaps of various sizes at once
 run_sql("UPDATE rating_gap2 SET id = cast(id*0.1*id as int) + 26000000 WHERE 10 < id and id < 100000")
+
+// Create one very big gap, to test empty scans and excessive bisection.
 run_sql("INSERT INTO rating_gap3(id, userid, movieid, rating, timestamp) VALUES (2047483548, 1, 1, 5.0, 27)")
 commit()
 
