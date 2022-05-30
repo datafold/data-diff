@@ -3,75 +3,105 @@
 **data-diff is currently under heavy development, if you run into issues,
 please file an issue and we'll help you out ASAP!**
 
-**data-diff** is a command-line tool and Python library to efficiently validate
-whether two different databases are in sync, e.g. Postgres and Redshift. The
-common use-case is to verify replication between two datastores with e.g.
-Fivetran, Debezium, .. and fix missing rows and/or alert on missing/incorrect
-data so you know whether something is wrong before your customer.
+**data-diff** is a command-line tool and Python library to efficiently diff
+rows across two different databases.
 
-**data-diff** doesn't pull down and compare every row, because it is extremely
-slow. It _also_ doesn't just do a `count(*)`, which doesn't yield much
-information--and is too slow to complete on large tables.
+* 🪢 Verifies across [many different databases][dbs] (e.g. Postgres -> Snowflake)
+* 🔍 Outputs diff of rows in detail
+* 🚨 Simple CLI/API to create monitoring and alerts
+* 🔥 Verify 25M+ rows in less than 10s
+* ♾️  Works for tables with 10s of billions of rows
 
-Instead, **data-diff** hits a happy medium between validation confidence and
-performance. It can validate 100M+ rows across databases in 10s of seconds.
+**data-diff** splits the table into smaller segments, then checksums each
+segment in both databases. When the checksums for a segment aren't equal, it
+will further divide that segment into yet smaller segments, cheksumming those
+until it gets to the differing row(s). See [Technical Explanation][tech-explain] for more
+details.
 
-It moves the computation into the databases by splitting the table into segments
-that are each checksummed for the columns you care about, e.g. `id` and
-`updated_at`. If a segment has a different checksum, it further splits that
-segment into smaller segments, binary searching its way to the rows that are
-different:
+This approach has similar performance to `count(*)` when there are few/no
+changes, but is able to output each differing row (and it might even [be
+faster][perf]). By pushing the compute into the databases, it's _much_ faster
+than querying for and comparing every row.
 
-```console
-data-diff \
-    mysql://mysql:Password1@127.0.0.1/mysql rating \
-    mysql://mysql:Password1@127.0.0.1/mysql rating_del1 \
-    --bisection-threshold 10000 \
-    --bisection-factor 6 \
+## Common use-cases
+
+* **Verify data migrations.** Verify all data was copied from a critical e.g.
+  Heroku Postgres to Amazon RDS migration.
+* **Verifying data pipelines.** Moving data from a relational database to a
+  warehouse/data lake with Fivetran, Airbyte, Debezium, or some other pipeline.
+* **Alerting and maintaining data integrity SLOs.** You can create and monitor
+  your SLO of e.g. 99.999% data integrity, and alert your team when data is
+  missing.
+* **Debugging complex data pipelines.** When data gets lost in pipelines that
+  may span a half-dozen systems, without verifying each intermediate datastore
+  it's extremely difficult to track down where a row got lost.
+* **Detecting hard deletes for an `updated_at`-based pipeline**. If you're
+  copying data to your warehouse based on an `updated_at`-style column, then
+  you'll miss hard-deletes that **data-diff** can find for you.
+* **Make your replication self-healing.** You can use **data-diff** to
+  self-heal by using the diff output to write/update rows in the target
+  database.
+
+## Example output
+
+Below we run a comparison with the CLI for 25M rows in Postgres where the
+right-hand table is missing single row with `id=12500048`:
+
+```
+$ data-diff \
+    postgres://postgres:password@localhost/postgres rating \
+    postgres://postgres:password@localhost/postgres rating_del1 \
+    --bisection-threshold 100000 \ # for readability, try default first
+    --bisection-factor 6 \ # for readability, try default first
     --update-column timestamp \
     --verbose
-
-[12:35:09] INFO - Diffing tables | segments: 6, bisection threshold: 10000.
-[12:35:09] INFO - . Diffing segment 1/6, key-range: 1..166667
-[12:35:09] INFO - . Diffing segment 2/6, key-range: 166667..333333
-[12:35:09] INFO - . Diffing segment 3/6, key-range: 333333..499999
-[12:35:09] INFO - . Diffing segment 4/6, key-range: 499999..666665
-[12:35:10] INFO - . . Diffing segment 1/6, key-range: 499999..527776
-[12:35:10] INFO - . . . Diffing segment 1/6, key-range: 499999..504628
-[12:35:10] INFO - . . . Diff found 1 different rows.
-[12:35:10] INFO - . . . Diffing segment 2/6, key-range: 504628..509257
-[12:35:10] INFO - . . . Diffing segment 3/6, key-range: 509257..513886
-[12:35:10] INFO - . . . Diffing segment 4/6, key-range: 513886..518515
-[12:35:10] INFO - . . . Diffing segment 5/6, key-range: 518515..523144
-[12:35:10] INFO - . . . Diffing segment 6/6, key-range: 523144..527776
-[12:35:10] INFO - . . Diffing segment 2/6, key-range: 527776..555553
-[12:35:10] INFO - . . Diffing segment 3/6, key-range: 555553..583330
-[12:35:10] INFO - . . Diffing segment 4/6, key-range: 583330..611107
-[12:35:10] INFO - . . Diffing segment 5/6, key-range: 611107..638884
-[12:35:10] INFO - . . Diffing segment 6/6, key-range: 638884..666665
-+ (500001, 1452897891)
-[12:35:10] INFO - . Diffing segment 5/6, key-range: 666665..833331
-[12:35:10] INFO - . Diffing segment 6/6, key-range: 833331..1000001
+[10:15:00] INFO - Diffing tables | segments: 6, bisection threshold: 100000.
+[10:15:00] INFO - . Diffing segment 1/6, key-range: 1..4166683, size: 4166682
+[10:15:03] INFO - . Diffing segment 2/6, key-range: 4166683..8333365, size: 4166682
+[10:15:06] INFO - . Diffing segment 3/6, key-range: 8333365..12500047, size: 4166682
+[10:15:09] INFO - . Diffing segment 4/6, key-range: 12500047..16666729, size: 4166682
+[10:15:12] INFO - . . Diffing segment 1/6, key-range: 12500047..13194494, size: 694447
+[10:15:13] INFO - . . . Diffing segment 1/6, key-range: 12500047..12615788, size: 115741
+[10:15:13] INFO - . . . . Diffing segment 1/6, key-range: 12500047..12519337, size: 19290
+[10:15:13] INFO - . . . . Diff found 1 different rows.
+[10:15:13] INFO - . . . . Diffing segment 2/6, key-range: 12519337..12538627, size: 19290
+[10:15:13] INFO - . . . . Diffing segment 3/6, key-range: 12538627..12557917, size: 19290
+[10:15:13] INFO - . . . . Diffing segment 4/6, key-range: 12557917..12577207, size: 19290
+[10:15:13] INFO - . . . . Diffing segment 5/6, key-range: 12577207..12596497, size: 19290
+[10:15:13] INFO - . . . . Diffing segment 6/6, key-range: 12596497..12615788, size: 19291
+[10:15:13] INFO - . . . Diffing segment 2/6, key-range: 12615788..12731529, size: 115741
+[10:15:13] INFO - . . . Diffing segment 3/6, key-range: 12731529..12847270, size: 115741
+[10:15:13] INFO - . . . Diffing segment 4/6, key-range: 12847270..12963011, size: 115741
+[10:15:14] INFO - . . . Diffing segment 5/6, key-range: 12963011..13078752, size: 115741
+[10:15:14] INFO - . . . Diffing segment 6/6, key-range: 13078752..13194494, size: 115742
+[10:15:14] INFO - . . Diffing segment 2/6, key-range: 13194494..13888941, size: 694447
+[10:15:14] INFO - . . Diffing segment 3/6, key-range: 13888941..14583388, size: 694447
+[10:15:15] INFO - . . Diffing segment 4/6, key-range: 14583388..15277835, size: 694447
+[10:15:15] INFO - . . Diffing segment 5/6, key-range: 15277835..15972282, size: 694447
+[10:15:15] INFO - . . Diffing segment 6/6, key-range: 15972282..16666729, size: 694447
++ (12500048, 1268104625)
+[10:15:16] INFO - . Diffing segment 5/6, key-range: 16666729..20833411, size: 4166682
+[10:15:19] INFO - . Diffing segment 6/6, key-range: 20833411..25000096, size: 4166685
 ```
 
 ## Supported Databases
 
-| Database      | Connection string                                                             | Time to check 25M rows | Status |
-|---------------|-------------------------------------------------------------------------------|------------------------|--------|
-| Postgres      | `postgres://user:password@hostname:5432/database`                             | 5s                     | 💚      |
-| MySQL         | `mysql://user:password@hostname:5432/database`                                | 5s                     | 💚      |
-| Snowflake     | `snowflake://user:password@account/warehouse?database=database&schema=schema` |                        | 💚      |
-| Oracle        | `oracle://username:password@hostname/database`                                |                        | 💛      |
-| BigQuery      | `bigquery:///`                                                                |                        | 💛      |
-| Redshift      | `redshift://username:password@hostname:5439/database`                         |                        | 💛      |
-| Presto        |                                                                               |                        | ⏳      |
-| ElasticSearch |                                                                               |                        | 📝      |
-| Databricks    |                                                                               |                        | 📝      |
-| Planetscale   |                                                                               |                        | 📝      |
-| Clickhouse    |                                                                               |                        | 📝      |
-| Pinot         |                                                                               |                        | 📝      |
-| Druid         |                                                                               |                        | 📝      |
-| Kafka         |                                                                               |                        | 📝      |
+| Database      | Connection string                                                             | Status |
+|---------------|-------------------------------------------------------------------------------|--------|
+| Postgres      | `postgres://user:password@hostname:5432/database`                             |  💚    |
+| MySQL         | `mysql://user:password@hostname:5432/database`                                |  💚    |
+| Snowflake     | `snowflake://user:password@account/warehouse?database=database&schema=schema` |  💚    |
+| Oracle        | `oracle://username:password@hostname/database`                                |  💛    |
+| BigQuery      | `bigquery:///`                                                                |  💛    |
+| Redshift      | `redshift://username:password@hostname:5439/database`                         |  💛    |
+| Presto        |                                                                               |  ⏳    |
+| ElasticSearch |                                                                               |  📝    |
+| Databricks    |                                                                               |  📝    |
+| Planetscale   |                                                                               |  📝    |
+| Clickhouse    |                                                                               |  📝    |
+| Pinot         |                                                                               |  📝    |
+| Druid         |                                                                               |  📝    |
+| Kafka         |                                                                               |  📝    |
 
 * 💚: Implemented and thoroughly tested.
 * 💛: Implemented, but not thoroughly tested yet.
@@ -116,6 +146,9 @@ Options:
   - `-j` or `--threads` - Number of worker threads to use per database. Default=1.
 
 # Technical Explanation
+
+In this section we'll be doing a walk-through of exactly how **data-diff**
+works, and how to tune `--bisection-factor` and `--bisection-threshold`.
 
 Let's consider a scenario with an `orders` table with 1M rows. Fivetran is
 replicating it contionously from Postgres to Snowflake:
@@ -247,6 +280,37 @@ Finally **data-diff** will output the `(id, updated_at)` for each row that was d
 
 If you pass `--stats` you'll see e.g. what % of rows were different.
 
+## Performance Considerations
+
+* Ensure that you have indexes on the columns you are comparing. Preferably a
+  compound index. You can run with `--interactive` to see an `EXPLAIN` for the
+  queries.
+* Consider increasing the number of simultaneous threads executing
+  queries per database with `--threads`. For databases that limit concurrency
+  per query, e.g. Postgres/MySQL, this can improve performance dramatically.
+  This is how comparisons with **data-diff** can be faster than `count(*)` which
+  has limited concurrency, and in some cases will never complete due to
+  timeouts.
+* If you are only interested in _whether_ something changed, pass `--limit 1`.
+  This can be useful if changes are very rare. This often faster than doing a
+  `count(*)`, for the reason mentioned above.
+* If the table is _very_ large, consider a larger `--bisection-factor`. Explained in
+  the [technical explanation][tech-explain]. Otherwise you may run into timeouts.
+* If there are a lot of changes, consider a larger `--bisection-threshold`.
+  Explained in the [technical explanation][tech-explain].
+* If there are very large gaps in your table, e.g. 10s of millions of
+  continuous rows missing, then **data-diff** may perform poorly doing lots of
+  queries that for rows that do not exist (see [technical
+  explanation][tech-explain]). There are various things we could do to optimize
+  the algorithm for this case with complexity that has not yet been introduced,
+  please open an issue.
+* The fewer columns you verify, the faster **data-diff** will be. On one extreme
+  you can verify every column, on the other you can verify _only_ `updated_at`,
+  if you trust it enough, or `id` if you're just interested in presence. You can
+  do also do a hybrid where you verify `updated_at` and the most critical value,
+  e.g a money value in `amount` but not verify a large serialized column like
+  `json_settings`.
+
 ## Development Setup
 
 The development setup centers around using `docker-compose` to boot up various
@@ -322,3 +386,7 @@ Diff-Split: +250156  -0
 # License
 
 [MIT License](https://github.com/datafold/data-diff/blob/master/LICENSE)
+
+[dbs]: #supported-databases
+[tech-explain]: #technical-explanation
+[perf]: #performance-considerations

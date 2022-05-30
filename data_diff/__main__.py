@@ -41,7 +41,7 @@ def parse_table_name(t):
     "--min-age",
     default=None,
     help="Considers only rows older than specified. "
-    "Example: --min-age=5min coniders only rows from the last 5 minutes. "
+    "Example: --min-age=5min considers only rows from the last 5 minutes. "
     f"\nValid units: {UNITS_STR}",
 )
 @click.option("--max-age", default=None,

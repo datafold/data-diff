@@ -122,7 +122,7 @@ class TableSegment:
         if duration > RECOMMENDED_CHECKSUM_DURATION:
             logger.warn(
                 f"Checksum is taking longer than expected ({duration:.2f}s). "
-                "We recommend increasing the bisection-factor."
+                "We recommend increasing --bisection-factor or decreasing --threads."
             )
 
         # TODO Handle None TODO
