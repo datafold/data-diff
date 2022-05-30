@@ -18,6 +18,7 @@ logger = logging.getLogger("diff_tables")
 RECOMMENDED_CHECKSUM_DURATION = 10
 
 DEFAULT_BISECTION_THRESHOLD = 1024 * 16
+DEFAULT_BISECTION_FACTOR = 32
 
 
 def safezip(*args):
@@ -31,15 +32,32 @@ def split_space(start, end, count):
     return list(range(start, end, (size + 1) // (count + 1)))[1 : count + 1]
 
 
+def parse_table_name(t):
+    return tuple(t.split("."))
+
+
 @dataclass(frozen=False)
 class TableSegment:
+    """Signifies a segment of rows (and selected columns) within a table"""
+
+    # Location of table
     database: Database
     table_path: DbPath
+
+    # Name of the key column, which uniquely identifies each row (usually id)
     key_column: str
+
+    # Name of updated column, which signals that rows changed (usually updated_at or last_update)
     update_column: str = None
+
+    # Extra columns to compare
     extra_columns: Tuple[str, ...] = ()
+
+    # Start/end key_column values, used to restrict the segment
     start_key: DbKey = None
     end_key: DbKey = None
+
+    # Start/end update_column values, used to restrict the segment
     min_time: DbTime = None
     max_time: DbTime = None
 
@@ -111,9 +129,11 @@ class TableSegment:
         return [self.key_column] + list(sorted(extras))
 
     def count(self) -> Tuple[int, int]:
+        """Count how many rows are in the segment, in one pass."""
         return self.database.query(self._make_select(columns=[Count()]), int)
 
     def count_and_checksum(self) -> Tuple[int, int]:
+        """Count and checksum the rows in the segment, in one pass."""
         start = time.time()
         count, checksum = self.database.query(
             self._make_select(columns=[Count(), Checksum(self._relevant_columns)]), tuple
@@ -170,18 +190,23 @@ class TableDiffer:
     Works best for comparing tables that are mostly the name, with minor discrepencies.
     """
 
-    bisection_factor: int = 32  # Into how many segments to bisect per iteration
-    bisection_threshold: int = (
-        DEFAULT_BISECTION_THRESHOLD  # When should we stop bisecting and compare locally (in row count)
-    )
-    debug: bool = False
-    threaded: bool = True
+    # Into how many segments to bisect per iteration
+    bisection_factor: int = DEFAULT_BISECTION_FACTOR
 
-    stats: dict = {}
+    # When should we stop bisecting and compare locally (in row count)
+    bisection_threshold: int = DEFAULT_BISECTION_THRESHOLD
+
+    # Enable/disable threaded diffing. Needed to take advantage of database threads.
+    threaded: bool = True
 
     # Maximum size of each threadpool. None = auto. Only relevant when threaded is True.
     # There may be many pools, so number of actual threads can be a lot higher.
     max_threadpool_size: int = None
+
+    # Enable/disable debug prints
+    debug: bool = False
+
+    stats: dict = {}
 
     def diff_tables(self, table1: TableSegment, table2: TableSegment) -> DiffResult:
         """Diff the given tables.
@@ -246,8 +271,7 @@ class TableDiffer:
 
     def _diff_tables(self, table1, table2, level=0, segment_index=None, segment_count=None):
         logger.info(
-            ". " * level
-            + f"Diffing segment {segment_index}/{segment_count}, "
+            ". " * level + f"Diffing segment {segment_index}/{segment_count}, "
             f"key-range: {table1.start_key}..{table2.end_key}, "
             f"size: {table2.end_key-table1.start_key}"
         )
