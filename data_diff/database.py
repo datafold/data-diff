@@ -5,7 +5,7 @@ from concurrent.futures import ThreadPoolExecutor
 import threading
 
 import dsnparse
-import os
+import sys
 
 from .sql import SqlOrStr, Compiler, Explain, Select
 
@@ -77,7 +77,7 @@ class Database(ABC):
             logger.info(self._query(explained_sql))
             answer = input("Continue? [y/n] ")
             if not answer.lower() in ["y", "yes"]:
-                os.exit(1)
+                sys.exit(1)
 
         res = self._query(sql_code)
         if res_type is int:
@@ -361,7 +361,7 @@ def connect_to_uri(db_uri: str, thread_count: Optional[int] = 1) -> Database:
     elif scheme == "bigquery":
         return BigQuery(dsn.host, path)
     elif scheme == "redshift":
-        return Redshift(dsn.host, dsn.port, path, dsn.user, dsn.password)
+        return Redshift(dsn.host, dsn.port, path, dsn.user, dsn.password, thread_count=thread_count)
     elif scheme == "oracle":
         return Oracle(dsn.host, dsn.port, path, dsn.user, dsn.password, thread_count=thread_count)
 
