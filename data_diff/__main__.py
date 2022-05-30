@@ -46,7 +46,12 @@ def parse_table_name(t):
 @click.option("-v", "--verbose", is_flag=True, help="Print extra info")
 @click.option("-i", "--interactive", is_flag=True, help="Confirm queries, implies --debug")
 @click.option(
-    "-j", "--threads", default=None, help="Number of threads to use. 1 means no threading. Auto if not specified."
+    "-j",
+    "--threads",
+    default="1",
+    help="Number of worker threads to use per database. Default=1. "
+    "A higher number will increase performance, but take more capacity from your database. "
+    "'serial' guarantees a single-threaded execution of the algorithm (useful for debugging).",
 )
 def main(
     db1_uri,
@@ -78,11 +83,20 @@ def main(
     elif verbose:
         logging.basicConfig(level=logging.INFO, format=LOG_FORMAT, datefmt=DATE_FORMAT)
 
+    threaded = True
     if threads is not None:
-        threads = int(threads)
-        if threads < 1:
-            logging.error("Error: threads must be >= 1")
-            return
+        if threads.lower() == "serial":
+            threaded = False
+            threads = 1
+        else:
+            try:
+                threads = int(threads)
+            except ValueError:
+                logger.error("Error: threads must be a number, 'auto', or 'serial'.")
+                return
+            if threads < 1:
+                logging.error("Error: threads must be >= 1")
+                return
 
     db1 = connect_to_uri(db1_uri, threads)
     db2 = connect_to_uri(db2_uri, threads)
@@ -108,8 +122,8 @@ def main(
         bisection_factor=bisection_factor,
         bisection_threshold=bisection_threshold,
         debug=debug,
-        threaded=threads != 1,
-        max_threadpool_size=threads,
+        threaded=threaded,
+        max_threadpool_size=threads and threads * 2,
     )
     diff_iter = differ.diff_tables(table1, table2)
 
