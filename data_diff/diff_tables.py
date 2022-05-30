@@ -4,7 +4,7 @@
 import time
 from operator import methodcaller
 from collections import defaultdict
-from typing import List, Tuple
+from typing import List, Tuple, Iterator
 import logging
 from concurrent.futures import ThreadPoolExecutor
 
@@ -143,7 +143,7 @@ class TableSegment:
         return self.start_key is not None and self.end_key is not None
 
 
-def diff_sets(a: set, b: set) -> iter:
+def diff_sets(a: set, b: set) -> Iterator:
     s1 = set(a)
     s2 = set(b)
     d = defaultdict(list)
@@ -158,7 +158,7 @@ def diff_sets(a: set, b: set) -> iter:
         yield from v
 
 
-DiffResult = iter  # Iterator[Tuple[Literal["+", "-"], tuple]]
+DiffResult = Iterator[Tuple[str, tuple]]  # Iterator[Tuple[Literal["+", "-"], tuple]]
 
 
 @dataclass
