@@ -41,12 +41,10 @@ def parse_table_name(t):
     "--min-age",
     default=None,
     help="Considers only rows older than specified. "
-    "Example: --min-age=5min considers only rows from the last 5 minutes. "
+    "Example: --min-age=5min ignores rows from the last 5 minutes. "
     f"\nValid units: {UNITS_STR}",
 )
-@click.option("--max-age", default=None,
-              help="Considers only rows younger than specified. See --min-age."
-              "Useful for specifying replication lag.")
+@click.option("--max-age", default=None, help="Considers only rows younger than specified. See --min-age.")
 @click.option("-s", "--stats", is_flag=True, help="Print stats instead of a detailed diff")
 @click.option("-d", "--debug", is_flag=True, help="Print debug info")
 @click.option("-v", "--verbose", is_flag=True, help="Print extra info")

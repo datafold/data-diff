@@ -7,7 +7,7 @@ please file an issue and we'll help you out ASAP!**
 rows across two different databases.
 
 * 🪢 Verifies across [many different databases][dbs] (e.g. Postgres -> Snowflake)
-* 🔍 Outputs diff of rows in detail
+* 🔍 Outputs [diff of rows](#example-output) in detail
 * 🚨 Simple CLI/API to create monitoring and alerts
 * 🔥 Verify 25M+ rows in less than 10s
 * ♾️  Works for tables with 10s of billions of rows
@@ -22,6 +22,17 @@ This approach has similar performance to `count(*)` when there are few/no
 changes, but is able to output each differing row (and it might even [be
 faster][perf]). By pushing the compute into the databases, it's _much_ faster
 than querying for and comparing every row.
+
+## Table of Contents
+
+- [Common use-cases](#common-use-cases)
+- [Example output](#example-output)
+- [Supported Databases](#supported-databases)
+- [How to install](#how-to-install)
+- [How to use](#how-to-use)
+- [Technical Explanation](#technical-explanation)
+- [Performance Considerations](#performance-considerations)
+- [Development Setup](#development-setup)
 
 ## Common use-cases
 
@@ -136,11 +147,10 @@ Options:
   - `-d` or `--debug` - Print debug info
   - `-v` or `--verbose` - Print extra info
   - `-i` or `--interactive` - Confirm queries, implies `--debug`
-  - `--max-age` - Considers only rows younger than specified. See `--min-age`.
-                  Useful for specifying replication lag.
   - `--min-age` - Considers only rows older than specified.
-                  Example: `--min-age=5min` considers only rows from the last 5 minutes.
+                  Example: `--min-age=5min` ignores rows from the last 5 minutes.
                   Valid units: `d, days, h, hours, min, minutes, mon, months, s, seconds, w, weeks, y, years`
+  - `--max-age` - Considers only rows younger than specified. See `--min-age`.
   - `--bisection-factor` - Segments per iteration. When set to 2, it performs binary search.
   - `--bisection-threshold` - Minimal bisection threshold. i.e. maximum size of pages to diff locally.
   - `-j` or `--threads` - Number of worker threads to use per database. Default=1.
@@ -300,18 +310,19 @@ If you pass `--stats` you'll see e.g. what % of rows were different.
   Explained in the [technical explanation][tech-explain].
 * If there are very large gaps in your table, e.g. 10s of millions of
   continuous rows missing, then **data-diff** may perform poorly doing lots of
-  queries that for rows that do not exist (see [technical
+  queries for ranges of rows that do not exist (see [technical
   explanation][tech-explain]). There are various things we could do to optimize
   the algorithm for this case with complexity that has not yet been introduced,
   please open an issue.
-* The fewer columns you verify, the faster **data-diff** will be. On one extreme
-  you can verify every column, on the other you can verify _only_ `updated_at`,
-  if you trust it enough, or `id` if you're just interested in presence. You can
-  do also do a hybrid where you verify `updated_at` and the most critical value,
-  e.g a money value in `amount` but not verify a large serialized column like
-  `json_settings`.
+* The fewer columns you verify (passed with `--columns`), the faster
+  **data-diff** will be. On one extreme you can verify every column, on the
+  other you can verify _only_ `updated_at`, if you trust it enough. You can also
+  _only_ verify `id` if you're interested in only presence, e.g. to detect
+  missing hard deletes. You can do also do a hybrid where you verify
+  `updated_at` and the most critical value, e.g a money value in `amount` but
+  not verify a large serialized column like `json_settings`.
 
-## Development Setup
+# Development Setup
 
 The development setup centers around using `docker-compose` to boot up various
 databases, and then inserting data into them.
