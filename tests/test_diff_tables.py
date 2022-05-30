@@ -5,9 +5,18 @@ import preql
 import arrow  # comes with preql
 
 from data_diff.database import connect_to_uri
-from data_diff.diff_tables import TableDiffer, TableSegment
+from data_diff.diff_tables import TableDiffer, TableSegment, split_space
 
 from .common import TEST_MYSQL_CONN_STRING, str_to_checksum
+
+
+class TestUtils(unittest.TestCase):
+    def test_split_space(self):
+        for i in range(0, 10):
+            for j in range(1, 16328, 17):
+                for n in range(1, 32):
+                    r = split_space(i, j + i + n, n)
+                    assert len(r) == n, f"split_space({i}, {j+n}, {n}) = {(r)}"
 
 
 class TestWithConnection(unittest.TestCase):
@@ -61,8 +70,8 @@ class TestDates(TestWithConnection):
         differ = TableDiffer(10, 100)
         a = TableSegment(self.connection, ("a",), "id", "datetime")
         b = TableSegment(self.connection, ("b",), "id", "datetime")
-        assert a.count == 6
-        assert b.count == 5
+        assert a.count() == 6
+        assert b.count() == 5
 
         assert not list(differ.diff_tables(a, a))
         self.assertEqual(len(list(differ.diff_tables(a, b))), 1)
@@ -72,24 +81,24 @@ class TestDates(TestWithConnection):
         sec1 = self.now.shift(seconds=-1).datetime
         a = TableSegment(self.connection, ("a",), "id", "datetime", max_time=sec1)
         b = TableSegment(self.connection, ("b",), "id", "datetime", max_time=sec1)
-        assert a.count == 4
-        assert b.count == 3
+        assert a.count() == 4
+        assert b.count() == 3
 
         assert not list(differ.diff_tables(a, a))
         self.assertEqual(len(list(differ.diff_tables(a, b))), 1)
 
         a = TableSegment(self.connection, ("a",), "id", "datetime", min_time=sec1)
         b = TableSegment(self.connection, ("b",), "id", "datetime", min_time=sec1)
-        assert a.count == 2
-        assert b.count == 2
+        assert a.count() == 2
+        assert b.count() == 2
         assert not list(differ.diff_tables(a, b))
 
         day1 = self.now.shift(days=-1).datetime
 
         a = TableSegment(self.connection, ("a",), "id", "datetime", min_time=day1, max_time=sec1)
         b = TableSegment(self.connection, ("b",), "id", "datetime", min_time=day1, max_time=sec1)
-        assert a.count == 3
-        assert b.count == 2
+        assert a.count() == 3
+        assert b.count() == 2
         assert not list(differ.diff_tables(a, a))
         self.assertEqual(len(list(differ.diff_tables(a, b))), 1)
 
@@ -108,9 +117,9 @@ class TestDiffTables(TestWithConnection):
         self.differ = TableDiffer(3, 4)
 
     def test_properties_on_empty_table(self):
-        self.assertEqual(0, self.table.count)
+        self.assertEqual(0, self.table.count())
         self.assertEqual(["id", "timestamp"], self.table._relevant_columns)
-        self.assertEqual(0, self.table.checksum)
+        self.assertEqual(None, self.table.count_and_checksum()[1])
 
     def test_get_values(self):
         time = "2022-01-01 00:00:00"
@@ -121,22 +130,9 @@ class TestDiffTables(TestWithConnection):
         )
         self.preql.commit()
 
-        self.assertEqual(1, self.table.count)
+        self.assertEqual(1, self.table.count())
         concatted = str(res["id"]) + time
-        self.assertEqual(str_to_checksum(concatted), self.table.checksum)
-
-    def test_checkpoints(self):
-        time = "2022-01-01 00:00:00"
-        self.preql(
-            f"""
-            new ratings_test(userid: 1, movieid: 1, rating: 9, timestamp: '{time}')
-            new ratings_test(userid: 1, movieid: 1, rating: 9, timestamp: '{time}')
-            new ratings_test(userid: 1, movieid: 1, rating: 9, timestamp: '{time}')
-            new ratings_test(userid: 1, movieid: 1, rating: 9, timestamp: '{time}')
-        """
-        )
-        self.preql.commit()
-        self.assertEqual([2, 4], self.table.choose_checkpoints(2))
+        self.assertEqual(str_to_checksum(concatted), self.table.count_and_checksum()[1])
 
     def test_diff_small_tables(self):
         time = "2022-01-01 00:00:00"

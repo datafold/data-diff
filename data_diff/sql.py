@@ -144,15 +144,28 @@ class Count(Sql):
 
 
 @dataclass
+class Min(Sql):
+    column: SqlOrStr
+
+    def compile(self, c: Compiler):
+        return f"min({c.compile(self.column)})"
+
+
+@dataclass
+class Max(Sql):
+    column: SqlOrStr
+
+    def compile(self, c: Compiler):
+        return f"max({c.compile(self.column)})"
+
+
+@dataclass
 class Time(Sql):
     time: datetime
     column: Optional[SqlOrStr] = None
 
     def compile(self, c: Compiler):
         return "'%s'" % self.time.isoformat()
-        if self.column:
-            return f"count({c.compile(self.column)})"
-        return "count(*)"
 
 
 @dataclass

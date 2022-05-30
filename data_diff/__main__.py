@@ -4,7 +4,7 @@ import time
 import logging
 from itertools import islice
 
-from .diff_tables import TableSegment, TableDiffer
+from .diff_tables import TableSegment, TableDiffer, DEFAULT_BISECTION_THRESHOLD
 from .database import connect_to_uri
 from .parse_time import parse_time_before_now, UNITS_STR, ParseError
 
@@ -32,7 +32,11 @@ def parse_table_name(t):
 @click.option("-c", "--columns", default=[], multiple=True, help="Names of extra columns to compare")
 @click.option("-l", "--limit", default=None, help="Maximum number of differences to find")
 @click.option("--bisection-factor", default=32, help="Segments per iteration")
-@click.option("--bisection-threshold", default=1024**2, help="Minimal bisection threshold")
+@click.option(
+    "--bisection-threshold",
+    default=DEFAULT_BISECTION_THRESHOLD,
+    help="Minimal bisection threshold. Below it, data-diff will download the data and compare it locally.",
+)
 @click.option(
     "--min-age",
     default=None,
@@ -133,8 +137,9 @@ def main(
     if stats:
         diff = list(diff_iter)
         unique_diff_count = len({i[0] for _, i in diff})
-        percent = 100 * unique_diff_count / table1.count
-        print(f"Diff-Total: {len(diff)} changed rows out of {table1.count}")
+        table1_count = differ.stats.get("table1_count")
+        percent = 100 * unique_diff_count / (table1_count or 1)
+        print(f"Diff-Total: {len(diff)} changed rows out of {table1_count}")
         print(f"Diff-Percent: {percent:.4f}%")
         plus = len([1 for op, _ in diff if op == "+"])
         minus = len([1 for op, _ in diff if op == "-"])
