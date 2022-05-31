@@ -1,8 +1,8 @@
 [tool.poetry]
 name = "data-diff"
-version = "0.0.3"
-description = "A cross-database, efficient diff between mostly-similar database tables"
-authors = ["Erez Shinnan <erezshin@gmail.com>"]
+version = "0.0.4"
+description = "Command-line tool and Python library to efficiently diff rows across two different databases."
+authors = ["Erez Shinnan <erezshin@gmail.com>", "Simon Eskildsen <simon@sirupsen.com>"]
 license = "MIT"
 readme = "README.md"
 repository = "https://github.com/datafold/data-diff"
