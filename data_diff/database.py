@@ -45,6 +45,12 @@ def import_oracle():
     return cx_Oracle
 
 
+def import_presto():
+    import prestodb
+
+    return prestodb
+
+
 class ConnectError(Exception):
     pass
 
@@ -92,7 +98,7 @@ class Database(ABC):
             if res_type.__args__ == (int,):
                 return [_one(row) for row in res]
             elif res_type.__args__ == (Tuple,):
-                return res
+                return [tuple(row) for row in res]
             else:
                 raise ValueError(res_type)
         return res
@@ -177,6 +183,26 @@ class Postgres(ThreadedDatabase):
     def to_string(self, s: str):
         return f"{s}::varchar"
 
+
+class Presto(Database):
+    def __init__(self, host, port, database, user, password):
+        prestodb = import_presto()
+        self.args = dict(host=host, user=user)
+
+        self._conn = prestodb.dbapi.connect(**self.args)
+
+    def quote(self, s: str):
+        return f'"{s}"'
+
+    def md5_to_int(self, s: str) -> str:
+        return f"cast(from_base(substr(to_hex(md5(to_utf8({s}))), {1+MD5_HEXDIGITS-CHECKSUM_HEXDIGITS}), 16) as decimal(38, 0))"
+
+    def to_string(self, s: str):
+        return f"cast({s} as varchar)"
+
+    def _query(self, sql_code: str) -> list:
+        "Uses the standard SQL cursor interface"
+        return _query_conn(self._conn, sql_code)
 
 class MySQL(ThreadedDatabase):
     def __init__(self, host, port, database, user, password, *, thread_count):
@@ -364,5 +390,7 @@ def connect_to_uri(db_uri: str, thread_count: Optional[int] = 1) -> Database:
         return Redshift(dsn.host, dsn.port, path, dsn.user, dsn.password, thread_count=thread_count)
     elif scheme == "oracle":
         return Oracle(dsn.host, dsn.port, path, dsn.user, dsn.password, thread_count=thread_count)
+    elif scheme == "presto":
+        return Presto(dsn.host, dsn.port, path, dsn.user, dsn.password)
 
     raise NotImplementedError(f"Scheme {dsn.scheme} currently not supported")
