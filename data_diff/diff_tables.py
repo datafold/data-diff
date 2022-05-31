@@ -126,7 +126,7 @@ class TableSegment:
             )
 
         # TODO Handle None TODO
-        return count or 0, checksum
+        return count or 0, int(checksum)
 
     def query_key_range(self) -> Tuple[int, int]:
         """Query database for minimum and maximum key. This is used for setting the initial bounds."""
