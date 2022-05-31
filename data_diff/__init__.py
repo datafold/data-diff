@@ -1,4 +1,4 @@
-from typing import Tuple, Iterator
+from typing import Tuple, Iterator, Optional
 
 from .database import connect_to_uri
 from .diff_tables import (
@@ -50,7 +50,7 @@ def diff_tables(
     threaded: bool = True,
     # Maximum size of each threadpool. None = auto. Only relevant when threaded is True.
     # There may be many pools, so number of actual threads can be a lot higher.
-    max_threadpool_size: int = None,
+    max_threadpool_size: Optional[int] = 1,
     # Enable/disable debug prints
     debug: bool = False,
 ) -> Iterator:
