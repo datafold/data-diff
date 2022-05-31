@@ -125,8 +125,7 @@ class TableSegment:
                 "We recommend increasing the bisection-factor."
             )
 
-        # TODO Handle None TODO
-        return count or 0, int(checksum)
+        return count or 0, checksum if checksum is None else int(checksum)
 
     def query_key_range(self) -> Tuple[int, int]:
         """Query database for minimum and maximum key. This is used for setting the initial bounds."""
