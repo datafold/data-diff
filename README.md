@@ -45,7 +45,8 @@ We currently support the following databases:
 - BigQuery
 - Redshift
 
-We plan to add more, including NoSQL, and even APIs like Shopify!
+We plan to add more, including NoSQL, and even APIs like Shopify! We're very
+open to contributions on this front.
 
 # How to install
 
@@ -78,6 +79,7 @@ Options:
   - `--max-age` - Considers only rows younger than specified.  See `--min-age`.
   - `--bisection-factor` - Segments per iteration. When set to 2, it performs binary search.
   - `--bisection-threshold` - Minimal bisection threshold. i.e. maximum size of pages to diff locally.
+  - `-j` or `--threads` - Number of worker threads to use per database. Default=1.
 
 
 # How does it work?

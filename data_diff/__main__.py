@@ -4,15 +4,23 @@ import time
 import logging
 from itertools import islice
 
-from .diff_tables import TableSegment, TableDiffer
+from .diff_tables import TableSegment, TableDiffer, DEFAULT_BISECTION_THRESHOLD
 from .database import connect_to_uri
 from .parse_time import parse_time_before_now, UNITS_STR, ParseError
 
+import rich
 import click
 
 LOG_FORMAT = "[%(asctime)s] %(levelname)s - %(message)s"
 DATE_FORMAT = "%H:%M:%S"
 
+COLOR_SCHEME = {
+    "+": "green",
+    "-": "red",
+}
+
+def parse_table_name(t):
+    return tuple(t.split('.'))
 
 @click.command()
 @click.argument("db1_uri")
@@ -24,7 +32,11 @@ DATE_FORMAT = "%H:%M:%S"
 @click.option("-c", "--columns", default=[], multiple=True, help="Names of extra columns to compare")
 @click.option("-l", "--limit", default=None, help="Maximum number of differences to find")
 @click.option("--bisection-factor", default=32, help="Segments per iteration")
-@click.option("--bisection-threshold", default=1024**2, help="Minimal bisection threshold")
+@click.option(
+    "--bisection-threshold",
+    default=DEFAULT_BISECTION_THRESHOLD,
+    help="Minimal bisection threshold. Below it, data-diff will download the data and compare it locally.",
+)
 @click.option(
     "--min-age",
     default=None,
@@ -37,6 +49,14 @@ DATE_FORMAT = "%H:%M:%S"
 @click.option("-d", "--debug", is_flag=True, help="Print debug info")
 @click.option("-v", "--verbose", is_flag=True, help="Print extra info")
 @click.option("-i", "--interactive", is_flag=True, help="Confirm queries, implies --debug")
+@click.option(
+    "-j",
+    "--threads",
+    default="1",
+    help="Number of worker threads to use per database. Default=1. "
+    "A higher number will increase performance, but take more capacity from your database. "
+    "'serial' guarantees a single-threaded execution of the algorithm (useful for debugging).",
+)
 def main(
     db1_uri,
     table1_name,
@@ -54,6 +74,7 @@ def main(
     debug,
     verbose,
     interactive,
+    threads,
 ):
     if limit and stats:
         print("Error: cannot specify a limit when using the -s/--stats switch")
@@ -66,8 +87,23 @@ def main(
     elif verbose:
         logging.basicConfig(level=logging.INFO, format=LOG_FORMAT, datefmt=DATE_FORMAT)
 
-    db1 = connect_to_uri(db1_uri)
-    db2 = connect_to_uri(db2_uri)
+    threaded = True
+    if threads is not None:
+        if threads.lower() == "serial":
+            threaded = False
+            threads = 1
+        else:
+            try:
+                threads = int(threads)
+            except ValueError:
+                logger.error("Error: threads must be a number, 'auto', or 'serial'.")
+                return
+            if threads < 1:
+                logging.error("Error: threads must be >= 1")
+                return
+
+    db1 = connect_to_uri(db1_uri, threads)
+    db2 = connect_to_uri(db2_uri, threads)
 
     if interactive:
         db1.enable_interactive()
@@ -83,10 +119,16 @@ def main(
         logging.error("Error while parsing age expression: %s" % e)
         return
 
-    table1 = TableSegment(db1, (table1_name,), key_column, update_column, columns, **options)
-    table2 = TableSegment(db2, (table2_name,), key_column, update_column, columns, **options)
+    table1 = TableSegment(db1, parse_table_name(table1_name), key_column, update_column, columns, **options)
+    table2 = TableSegment(db2, parse_table_name(table2_name), key_column, update_column, columns, **options)
 
-    differ = TableDiffer(bisection_factor=bisection_factor, bisection_threshold=bisection_threshold, debug=debug)
+    differ = TableDiffer(
+        bisection_factor=bisection_factor,
+        bisection_threshold=bisection_threshold,
+        debug=debug,
+        threaded=threaded,
+        max_threadpool_size=threads and threads * 2,
+    )
     diff_iter = differ.diff_tables(table1, table2)
 
     if limit:
@@ -95,15 +137,17 @@ def main(
     if stats:
         diff = list(diff_iter)
         unique_diff_count = len({i[0] for _, i in diff})
-        percent = 100 * unique_diff_count / table1.count
-        print(f"Diff-Total: {len(diff)} changed rows out of {table1.count}")
+        table1_count = differ.stats.get("table1_count")
+        percent = 100 * unique_diff_count / (table1_count or 1)
+        print(f"Diff-Total: {len(diff)} changed rows out of {table1_count}")
         print(f"Diff-Percent: {percent:.4f}%")
         plus = len([1 for op, _ in diff if op == "+"])
         minus = len([1 for op, _ in diff if op == "-"])
         print(f"Diff-Split: +{plus}  -{minus}")
     else:
         for op, key in diff_iter:
-            print(op, key)
+            color = COLOR_SCHEME[op]
+            rich.print(f"[{color}]{op} {key!r}[/{color}]")
             sys.stdout.flush()
 
     end = time.time()
