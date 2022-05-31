@@ -1,52 +1,126 @@
-# Data Diff
+# **data-diff**
 
-**`data-diff` is currently under heavy development, if you run into issues,
+**data-diff is currently under heavy development, if you run into issues,
 please file an issue and we'll help you out ASAP!**
 
-A cross-database, efficient diff using checksums between mostly-similar database
-tables.
+**data-diff** is a command-line tool and Python library to efficiently diff
+rows across two different databases.
 
-- Validate that a table was copied properly
-- Be alerted before your customer finds out, or your report is wrong
-- Validate that your replication mechnism is working correctly
-- Find changes between two versions of the same table
+* 🪢 Verifies across [many different databases][dbs] (e.g. Postgres -> Snowflake)
+* 🔍 Outputs [diff of rows](#example-output) in detail
+* 🚨 Simple CLI/API to create monitoring and alerts
+* 🔥 Verify 25M+ rows in less than 10s
+* ♾️  Works for tables with 10s of billions of rows
 
-It uses a bisection algorithm and checksums to efficiently check if e.g. a table
-is the same between MySQL and Postgres, or Postgres and Snowflake, or MySQL and
-RDS!
+**data-diff** splits the table into smaller segments, then checksums each
+segment in both databases. When the checksums for a segment aren't equal, it
+will further divide that segment into yet smaller segments, cheksumming those
+until it gets to the differing row(s). See [Technical Explanation][tech-explain] for more
+details.
 
-```python
-$ data-diff postgres:/// Original  postgres:/// Original_1diff -t timestamp -v --bisection-factor=4
-[16:57:36] INFO - Diffing tables of size 25000095 and 25000095 | segments: 4, bisection threshold: 1048576.
-[16:58:03] INFO - Diffing segment 1/4 of size 8333364 and 8333364
-[16:58:12] INFO - Diffing segment 2/4 of size 8333365 and 8333365
-[16:58:29] INFO - . Diffing segment 1/4 of size 2777787 and 2777787
-[16:58:32] INFO - . Diffing segment 2/4 of size 2777788 and 2777788
-[16:58:45] INFO - . . Diffing segment 1/4 of size 925925 and 925925
-[16:58:46] INFO - . . Diffing segment 2/4 of size 925929 and 925929
-[16:58:48] INFO - . . . Diff found 2 different rows.
+This approach has similar performance to `count(*)` when there are few/no
+changes, but is able to output each differing row (and it might even [be
+faster][perf]). By pushing the compute into the databases, it's _much_ faster
+than querying for and comparing every row.
+
+## Table of Contents
+
+- [Common use-cases](#common-use-cases)
+- [Example output](#example-output)
+- [Supported Databases](#supported-databases)
+- [How to install](#how-to-install)
+- [How to use](#how-to-use)
+- [Technical Explanation](#technical-explanation)
+- [Performance Considerations](#performance-considerations)
+- [Development Setup](#development-setup)
+
+## Common use-cases
+
+* **Verify data migrations.** Verify all data was copied from a critical e.g.
+  Heroku Postgres to Amazon RDS migration.
+* **Verifying data pipelines.** Moving data from a relational database to a
+  warehouse/data lake with Fivetran, Airbyte, Debezium, or some other pipeline.
+* **Alerting and maintaining data integrity SLOs.** You can create and monitor
+  your SLO of e.g. 99.999% data integrity, and alert your team when data is
+  missing.
+* **Debugging complex data pipelines.** When data gets lost in pipelines that
+  may span a half-dozen systems, without verifying each intermediate datastore
+  it's extremely difficult to track down where a row got lost.
+* **Detecting hard deletes for an `updated_at`-based pipeline**. If you're
+  copying data to your warehouse based on an `updated_at`-style column, then
+  you'll miss hard-deletes that **data-diff** can find for you.
+* **Make your replication self-healing.** You can use **data-diff** to
+  self-heal by using the diff output to write/update rows in the target
+  database.
+
+## Example output
+
+Below we run a comparison with the CLI for 25M rows in Postgres where the
+right-hand table is missing single row with `id=12500048`:
+
+```
+$ data-diff \
+    postgres://postgres:password@localhost/postgres rating \
+    postgres://postgres:password@localhost/postgres rating_del1 \
+    --bisection-threshold 100000 \ # for readability, try default first
+    --bisection-factor 6 \ # for readability, try default first
+    --update-column timestamp \
+    --verbose
+[10:15:00] INFO - Diffing tables | segments: 6, bisection threshold: 100000.
+[10:15:00] INFO - . Diffing segment 1/6, key-range: 1..4166683, size: 4166682
+[10:15:03] INFO - . Diffing segment 2/6, key-range: 4166683..8333365, size: 4166682
+[10:15:06] INFO - . Diffing segment 3/6, key-range: 8333365..12500047, size: 4166682
+[10:15:09] INFO - . Diffing segment 4/6, key-range: 12500047..16666729, size: 4166682
+[10:15:12] INFO - . . Diffing segment 1/6, key-range: 12500047..13194494, size: 694447
+[10:15:13] INFO - . . . Diffing segment 1/6, key-range: 12500047..12615788, size: 115741
+[10:15:13] INFO - . . . . Diffing segment 1/6, key-range: 12500047..12519337, size: 19290
+[10:15:13] INFO - . . . . Diff found 1 different rows.
+[10:15:13] INFO - . . . . Diffing segment 2/6, key-range: 12519337..12538627, size: 19290
+[10:15:13] INFO - . . . . Diffing segment 3/6, key-range: 12538627..12557917, size: 19290
+[10:15:13] INFO - . . . . Diffing segment 4/6, key-range: 12557917..12577207, size: 19290
+[10:15:13] INFO - . . . . Diffing segment 5/6, key-range: 12577207..12596497, size: 19290
+[10:15:13] INFO - . . . . Diffing segment 6/6, key-range: 12596497..12615788, size: 19291
+[10:15:13] INFO - . . . Diffing segment 2/6, key-range: 12615788..12731529, size: 115741
+[10:15:13] INFO - . . . Diffing segment 3/6, key-range: 12731529..12847270, size: 115741
+[10:15:13] INFO - . . . Diffing segment 4/6, key-range: 12847270..12963011, size: 115741
+[10:15:14] INFO - . . . Diffing segment 5/6, key-range: 12963011..13078752, size: 115741
+[10:15:14] INFO - . . . Diffing segment 6/6, key-range: 13078752..13194494, size: 115742
+[10:15:14] INFO - . . Diffing segment 2/6, key-range: 13194494..13888941, size: 694447
+[10:15:14] INFO - . . Diffing segment 3/6, key-range: 13888941..14583388, size: 694447
+[10:15:15] INFO - . . Diffing segment 4/6, key-range: 14583388..15277835, size: 694447
+[10:15:15] INFO - . . Diffing segment 5/6, key-range: 15277835..15972282, size: 694447
+[10:15:15] INFO - . . Diffing segment 6/6, key-range: 15972282..16666729, size: 694447
 + (12500048, 1268104625)
-- (12500048, 1268104626)
-[16:58:48] INFO - . . Diffing segment 3/4 of size 925929 and 925929
-[16:58:49] INFO - . . Diffing segment 4/4 of size 5 and 5
-[16:58:50] INFO - . Diffing segment 3/4 of size 2777788 and 2777788
-[16:58:52] INFO - . Diffing segment 4/4 of size 2 and 2
-[16:58:55] INFO - Diffing segment 3/4 of size 8333365 and 8333365
-[16:59:00] INFO - Diffing segment 4/4 of size 1 and 1
-[16:59:00] INFO - Duration: 89.92 seconds.
+[10:15:16] INFO - . Diffing segment 5/6, key-range: 16666729..20833411, size: 4166682
+[10:15:19] INFO - . Diffing segment 6/6, key-range: 20833411..25000096, size: 4166685
 ```
 
-We currently support the following databases:
+## Supported Databases
 
-- PostgreSQL
-- MySQL
-- Oracle
-- Snowflake
-- BigQuery
-- Redshift
+| Database      | Connection string                                                             | Status |
+|---------------|-------------------------------------------------------------------------------|--------|
+| Postgres      | `postgres://user:password@hostname:5432/database`                             |  💚    |
+| MySQL         | `mysql://user:password@hostname:5432/database`                                |  💚    |
+| Snowflake     | `snowflake://user:password@account/warehouse?database=database&schema=schema` |  💚    |
+| Oracle        | `oracle://username:password@hostname/database`                                |  💛    |
+| BigQuery      | `bigquery:///`                                                                |  💛    |
+| Redshift      | `redshift://username:password@hostname:5439/database`                         |  💛    |
+| Presto        |                                                                               |  ⏳    |
+| ElasticSearch |                                                                               |  📝    |
+| Databricks    |                                                                               |  📝    |
+| Planetscale   |                                                                               |  📝    |
+| Clickhouse    |                                                                               |  📝    |
+| Pinot         |                                                                               |  📝    |
+| Druid         |                                                                               |  📝    |
+| Kafka         |                                                                               |  📝    |
 
-We plan to add more, including NoSQL, and even APIs like Shopify! We're very
-open to contributions on this front.
+* 💚: Implemented and thoroughly tested.
+* 💛: Implemented, but not thoroughly tested yet.
+* ⏳: Implementation in progress.
+* 📝: Implementation planned. Contributions welcome.
+
+If a database is not on the list, we'd still love to support it. Open an issue
+to discuss it.
 
 # How to install
 
@@ -65,7 +139,7 @@ Usage: `data-diff DB1_URI TABLE1_NAME DB2_URI TABLE2_NAME [OPTIONS]`
 Options:
 
   - `--help` - Show help message and exit.
-  - `-k` or `--key_column` - Name of the primary key column
+  - `-k` or `--key-column` - Name of the primary key column
   - `-t` or `--update-column` - Name of updated_at/last_updated column
   - `-c` or `--columns` - List of names of extra columns to compare
   - `-l` or `--limit` - Maximum number of differences to find (limits maximum bandwidth and runtime)
@@ -76,57 +150,179 @@ Options:
   - `--min-age` - Considers only rows older than specified.
                   Example: `--min-age=5min` ignores rows from the last 5 minutes.
                   Valid units: `d, days, h, hours, min, minutes, mon, months, s, seconds, w, weeks, y, years`
-  - `--max-age` - Considers only rows younger than specified.  See `--min-age`.
+  - `--max-age` - Considers only rows younger than specified. See `--min-age`.
   - `--bisection-factor` - Segments per iteration. When set to 2, it performs binary search.
   - `--bisection-threshold` - Minimal bisection threshold. i.e. maximum size of pages to diff locally.
   - `-j` or `--threads` - Number of worker threads to use per database. Default=1.
 
+# Technical Explanation
 
-# How does it work?
+In this section we'll be doing a walk-through of exactly how **data-diff**
+works, and how to tune `--bisection-factor` and `--bisection-threshold`.
 
-Data Diff finds the differences between two tables by utilizing checksum calculations and logarithmic search.
+Let's consider a scenario with an `orders` table with 1M rows. Fivetran is
+replicating it contionously from Postgres to Snowflake:
 
-Instead of comparing the entire table, it compares the tuple (primary_key, version_column), where the primary key is a unique identifier of the rows, and the version_column updates each time the row changes to a new value, that is unique to that update. Usually the versioning column would be a timestamp like `updated_at`, that would auto-update by the database. But it could also be an auto-counting integer, and so on.
+```
+┌─────────────┐                        ┌─────────────┐
+│  Postgres   │                        │  Snowflake  │
+├─────────────┤                        ├─────────────┤
+│             │                        │             │
+│             │                        │             │
+│             │  ┌─────────────┐       │ table with  │
+│ table with  ├──┤ replication ├──────▶│ ?maybe? all │
+│lots of rows!│  └─────────────┘       │  the same   │
+│             │                        │    rows.    │
+│             │                        │             │
+│             │                        │             │
+│             │                        │             │
+└─────────────┘                        └─────────────┘
+```
 
-Data Diff runs a checksum on these columns using MD5. If the checksums are not the same, we know the tables are different. We then split each table into "n" different segments of similar size (determined by the bisection factor), and repeat the comparison for each matching pair of segments. When segments are below a certain size (bisection threshold), we instead download the segments to the client, and diff them locally.
+In order to check whether the two tables are the same, **data-diff** splits
+the table into `--bisection-factor=10` segments.
 
-Data Diff splits the segments using "checkpoints", to ensure that inserted or deleted rows don't affect the quality of the diff.
+We also have to choose which columns we want to checksum. In our case, we care
+about the primary key, `--key-column=id` and the update column
+`--update-column=updated_at`. `updated_at` is updated every time the row is, and
+we have an index on it.
 
-This process is incremental, so differences are printed to stdout as they are found. Users can ensure Data Diff quits after finding some number of differences, either by providing the `--limit` option, or by closing the pipe (for example, by piping to `head`).
+**data-diff** starts by querying both databases for the `min(id)` and `max(id)`
+of the table. Then it splits the table into `--bisection-factor=10` segments of
+`1M/10 = 100K` keys each:
 
-The algorithm goes like this:
+```
+┌──────────────────────┐              ┌──────────────────────┐
+│       Postgres       │              │      Snowflake       │
+├──────────────────────┤              ├──────────────────────┤
+│      id=1..100k      │              │      id=1..100k      │
+├──────────────────────┤              ├──────────────────────┤
+│    id=100k..200k     │              │    id=100k..200k     │
+├──────────────────────┤              ├──────────────────────┤
+│    id=200k..300k     ├─────────────▶│    id=200k..300k     │
+├──────────────────────┤              ├──────────────────────┤
+│    id=300k..400k     │              │    id=300k..400k     │
+├──────────────────────┤              ├──────────────────────┤
+│         ...          │              │         ...          │
+├──────────────────────┤              ├──────────────────────┤
+│      900k..100k      │              │      900k..100k      │
+└───────────────────▲──┘              └▲─────────────────────┘
+                    ┃                  ┃
+                    ┃                  ┃
+                    ┃ checksum queries ┃
+                    ┃                  ┃
+                  ┌─┻──────────────────┻────┐
+                  │        data-diff        │
+                  └─────────────────────────┘
+```
 
-0. Table segments `A` and `B` are set to the two tables for comparison.
+Now **data-diff** will start running `--threads=1` queries in parallel that
+checksum each segment. The queries for checksumming each segment will look
+something like this, depending on the database:
 
-1. Calculate the checksums on `A` and `B` using MD5.
+```sql
+SELECT count(*),
+    sum(cast(conv(substring(md5(concat(cast(id as char), cast(timestamp as char))), 18), 16, 10) as unsigned))
+FROM `rating_del1`
+WHERE (id >= 1) AND (id < 100000)
+```
 
-    1. If they are the same, the tables are considered equal. Stop.
+This keeps the amount of data that has to be transferred between the databases
+to a minimum, making it very performant! Additionally, if you have an index on
+`updated_at` (highly recommended) then the query will be fast as the database
+only has to do a partial index scan between `id=1..100k`.
 
-    2. If their size is below the threshold, diff them locally and print the results.
+If you are not sure whether the queries are using an index, you can run it with
+`--interactive`. This puts **data-diff** in interactive mode where it shows an
+`EXPLAIN` before executing each query, requiring confirmation to proceed.
 
-    3. Else:  (they are different and above the threshold)
+After running the checksum queries on both sides, we see that all segments
+are the same except `id=100k..200k`:
 
-        1. Select `n-1` rows (checkpoints) in table `A`, splitting it into `n` segments of similar size.
+```
+┌──────────────────────┐              ┌──────────────────────┐
+│       Postgres       │              │      Snowflake       │
+├──────────────────────┤              ├──────────────────────┤
+│    checksum=0102     │              │    checksum=0102     │
+├──────────────────────┤   mismatch!  ├──────────────────────┤
+│    checksum=ffff     ◀──────────────▶    checksum=aaab     │
+├──────────────────────┤              ├──────────────────────┤
+│    checksum=abab     │              │    checksum=abab     │
+├──────────────────────┤              ├──────────────────────┤
+│    checksum=f0f0     │              │    checksum=f0f0     │
+├──────────────────────┤              ├──────────────────────┤
+│         ...          │              │         ...          │
+├──────────────────────┤              ├──────────────────────┤
+│    checksum=9494     │              │    checksum=9494     │
+└──────────────────────┘              └──────────────────────┘
+```
 
-        2. Filter out checkpoints that don't exist in table `B`.
+Now **data-diff** will do exactly as it just did for the _whole table_ for only
+this segment: Split it into `--bisection-factor` segments.
 
-        3. Split both `A` and `B` into `m <= n` segments according to the mutual checkpoints. `m` must be at least 2.
+However, this time, because each segment has `100k/10=10k` entries, which is
+less than the `--bisection-threshold` it will pull down every row in the segment
+and compare them in memory in **data-diff**.
 
-        4. For each pair of segments `Ai` and `Bi` (where `1 <= i <= m`), recurse into step 1.
+```
+┌──────────────────────┐              ┌──────────────────────┐
+│       Postgres       │              │      Snowflake       │
+├──────────────────────┤              ├──────────────────────┤
+│    id=100k..110k     │              │    id=100k..110k     │
+├──────────────────────┤              ├──────────────────────┤
+│    id=110k..120k     │              │    id=110k..120k     │
+├──────────────────────┤              ├──────────────────────┤
+│    id=120k..130k     │              │    id=120k..130k     │
+├──────────────────────┤              ├──────────────────────┤
+│    id=130k..140k     │              │    id=130k..140k     │
+├──────────────────────┤              ├──────────────────────┤
+│         ...          │              │         ...          │
+├──────────────────────┤              ├──────────────────────┤
+│      190k..200k      │              │      190k..200k      │
+└──────────────────────┘              └──────────────────────┘
+```
 
-## Example
+Finally **data-diff** will output the `(id, updated_at)` for each row that was different:
 
-The following printout shows the diff of two tables, Original and Original_1diff, with 25 million rows each, and just 1 different row between them.
+```
+(122001, 1653672821)
+```
 
-We ran it with a very low bisection factor, and with the verbose flag, to demonstrate how it works.
+If you pass `--stats` you'll see e.g. what % of rows were different.
 
-Note: It's usually much faster to use high bisection factors, especially when there are very few changes, like in this example.
+## Performance Considerations
 
-## Tips for performance
+* Ensure that you have indexes on the columns you are comparing. Preferably a
+  compound index. You can run with `--interactive` to see an `EXPLAIN` for the
+  queries.
+* Consider increasing the number of simultaneous threads executing
+  queries per database with `--threads`. For databases that limit concurrency
+  per query, e.g. Postgres/MySQL, this can improve performance dramatically.
+  This is how comparisons with **data-diff** can be faster than `count(*)` which
+  has limited concurrency, and in some cases will never complete due to
+  timeouts.
+* If you are only interested in _whether_ something changed, pass `--limit 1`.
+  This can be useful if changes are very rare. This often faster than doing a
+  `count(*)`, for the reason mentioned above.
+* If the table is _very_ large, consider a larger `--bisection-factor`. Explained in
+  the [technical explanation][tech-explain]. Otherwise you may run into timeouts.
+* If there are a lot of changes, consider a larger `--bisection-threshold`.
+  Explained in the [technical explanation][tech-explain].
+* If there are very large gaps in your table, e.g. 10s of millions of
+  continuous rows missing, then **data-diff** may perform poorly doing lots of
+  queries for ranges of rows that do not exist (see [technical
+  explanation][tech-explain]). There are various things we could do to optimize
+  the algorithm for this case with complexity that has not yet been introduced,
+  please open an issue.
+* The fewer columns you verify (passed with `--columns`), the faster
+  **data-diff** will be. On one extreme you can verify every column, on the
+  other you can verify _only_ `updated_at`, if you trust it enough. You can also
+  _only_ verify `id` if you're interested in only presence, e.g. to detect
+  missing hard deletes. You can do also do a hybrid where you verify
+  `updated_at` and the most critical value, e.g a money value in `amount` but
+  not verify a large serialized column like `json_settings`.
 
-It's highly recommended that all involved columns are indexed.
-
-## Development Setup
+# Development Setup
 
 The development setup centers around using `docker-compose` to boot up various
 databases, and then inserting data into them.
@@ -201,3 +397,7 @@ Diff-Split: +250156  -0
 # License
 
 [MIT License](https://github.com/datafold/data-diff/blob/master/LICENSE)
+
+[dbs]: #supported-databases
+[tech-explain]: #technical-explanation
+[perf]: #performance-considerations
