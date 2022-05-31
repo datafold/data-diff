@@ -147,7 +147,7 @@ class Postgres(Database):
 class Presto(Database):
     def __init__(self, host, port, database, user, password):
         prestodb = import_presto()
-        self.args = dict(host=host, port=port, database=database, user=user, password=password)
+        self.args = dict(host=host, user=user)
 
         self._conn = prestodb.dbapi.connect(**self.args)
 
@@ -332,5 +332,7 @@ def connect_to_uri(db_uri: str) -> Database:
         return Redshift(dsn.host, dsn.port, path, dsn.user, dsn.password)
     elif scheme == "oracle":
         return Oracle(dsn.host, dsn.port, path, dsn.user, dsn.password)
+    elif scheme == "presto":
+        return Presto(dsn.host, dsn.port, path, dsn.user, dsn.password)
 
     raise NotImplementedError(f"Scheme {dsn.scheme} currently not supported")
