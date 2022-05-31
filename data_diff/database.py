@@ -61,9 +61,9 @@ def _one(seq):
 
 
 def _query_conn(conn, sql_code: str) -> list:
-    c = conn.cursor()
-    c.execute(sql_code)
-    return c.fetchall()
+    cursor = conn.cursor()
+    cursor.execute(sql_code)
+    return cursor.fetchall()
 
 
 class Database(ABC):
@@ -182,6 +182,13 @@ class Postgres(ThreadedDatabase):
 
     def to_string(self, s: str):
         return f"{s}::varchar"
+
+    def _query_in_worker(self, sql_code: str):
+        postgres = import_postgres()
+        try:
+            return _query_conn(self.thread_local.conn, sql_code)
+        except postgres.ProgrammingError:
+            return []
 
 
 class Presto(Database):

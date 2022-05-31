@@ -41,6 +41,7 @@ preql = "^0.2.14"
 snowflake-connector-python = "*"
 psycopg2 = "*"
 presto-python-client = "*"
+parameterized = "*"
 
 [tool.poetry.extras]
 # When adding, update also: README + dev deps just above
