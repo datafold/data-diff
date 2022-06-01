@@ -8,7 +8,7 @@ also find us in `#tools-data-diff` in the [Locally Optimistic Slack.][slack]**
 rows across two different databases.
 
 * ⇄  Verifies across [many different databases][dbs] (e.g. Postgres -> Snowflake)
-* 🔍 Outputs [diff of rows](#example-output) in detail
+* 🔍 Outputs [diff of rows](#example-command-and-output) in detail
 * 🚨 Simple CLI/API to create monitoring and alerts
 * 🔥 Verify 25M+ rows in less than 10s
 * ♾️  Works for tables with 10s of billions of rows
@@ -307,18 +307,18 @@ If you pass `--stats` you'll see e.g. what % of rows were different.
   queries per database with `--threads`. For databases that limit concurrency
   per query, e.g. Postgres/MySQL, this can improve performance dramatically.
 * If you are only interested in _whether_ something changed, pass `--limit 1`.
-  This can be useful if changes are very rare. This often faster than doing a
+  This can be useful if changes are very rare. This is often faster than doing a
   `count(*)`, for the reason mentioned above.
 * If the table is _very_ large, consider a larger `--bisection-factor`. Explained in
   the [technical explanation][tech-explain]. Otherwise you may run into timeouts.
 * If there are a lot of changes, consider a larger `--bisection-threshold`.
   Explained in the [technical explanation][tech-explain].
-* If there are very large gaps in your table, e.g. 10s of millions of
+* If there are very large gaps in your key column, e.g. 10s of millions of
   continuous rows missing, then **data-diff** may perform poorly doing lots of
   queries for ranges of rows that do not exist (see [technical
-  explanation][tech-explain]). There are various things we could do to optimize
-  the algorithm for this case with complexity that has not yet been introduced,
-  please open an issue.
+  explanation][tech-explain]). We have ideas on how to tackle this issue, which we have
+  yet to implement. If you're experiencing this effect, please open an issue and we
+  will prioritize it.
 * The fewer columns you verify (passed with `--columns`), the faster
   **data-diff** will be. On one extreme you can verify every column, on the
   other you can verify _only_ `updated_at`, if you trust it enough. You can also
@@ -326,12 +326,12 @@ If you pass `--stats` you'll see e.g. what % of rows were different.
   missing hard deletes. You can do also do a hybrid where you verify
   `updated_at` and the most critical value, e.g a money value in `amount` but
   not verify a large serialized column like `json_settings`.
-* There are performance improvements to make **data-diff** even faster that
-  haven't been implemented yet: faster checksumming by doing less type-casting
-  and using something cheaper than MD5, dynamic adaptation of
+* We have ideas for making **data-diff** even faster that
+  we haven't implemented yet: faster checksums by reducing type-casts
+  and using a faster hash than MD5, dynamic adaptation of
   `bisection_factor`/`threads`/`bisection_threshold` (especially with large key
-  gaps), and when we are below the `bisection_threshold` and pull down records
-  we're at the mercy at the driver/Python performance.
+  gaps), and improvements to bypass Python/driver performance limitations when
+  comparing huge amounts of rows locally (i.e. for very high `bisection_threshold` values).
 
 # Development Setup
 
