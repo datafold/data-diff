@@ -386,13 +386,13 @@ Now you can insert it into the testing database(s):
 
 ```shell-session
 # It's optional to seed more than one to run data-diff(1) against.
-$ preql -f dev/prepare_db.pql mysql://mysql:Password1@127.0.0.1:3306/mysql
-$ preql -f dev/prepare_db.pql postgres://postgres:Password1@127.0.0.1:5432/postgres
+$ poetry run preql -f dev/prepare_db.pql mysql://mysql:Password1@127.0.0.1:3306/mysql
+$ poetry run preql -f dev/prepare_db.pql postgres://postgres:Password1@127.0.0.1:5432/postgres
 
 # Cloud databases
-$ preql -f dev/prepare_db.psq snowflake://<uri>
-$ preql -f dev/prepare_db.psq mssql://<uri>
-$ preql -f dev/prepare_db_bigquery.pql bigquery:///<project> # Bigquery has its own scripts
+$ poetry run preql -f dev/prepare_db.psq snowflake://<uri>
+$ poetry run preql -f dev/prepare_db.psq mssql://<uri>
+$ poetry run preql -f dev/prepare_db_bigquery.pql bigquery:///<project> # Bigquery has its own scripts
 ```
 
 **5. Run **data-diff** against seeded database**
