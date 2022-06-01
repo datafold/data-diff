@@ -19,11 +19,12 @@ class TableRef:
     """
 
     def __init__(self, db_uri: str, table_name: str):
-        self.db = connect_to_uri(db_uri)
+        self.db_uri = db_uri
         self.table_name = table_name
 
-    def create_table_segment(self, **kwargs):
-        return TableSegment(self.db, parse_table_name(self.table_name), **kwargs)
+    def create_table_segment(self, thread_count=1, **kwargs):
+        db = connect_to_uri(self.db_uri, thread_count=thread_count)
+        return TableSegment(db, parse_table_name(self.table_name), **kwargs)
 
 
 def diff_tables(
@@ -53,6 +54,7 @@ def diff_tables(
     max_threadpool_size: Optional[int] = 1,
     # Enable/disable debug prints
     debug: bool = False,
+    db_thread_count: int = 1,
 ) -> Iterator:
     """Efficiently finds the diff between table1 and table2.
 
@@ -72,6 +74,7 @@ def diff_tables(
             end_key=end_key,
             min_time=min_time,
             max_time=max_time,
+            thread_count=db_thread_count,
         )
         for t in tables
     ]

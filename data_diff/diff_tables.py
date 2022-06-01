@@ -201,14 +201,14 @@ class TableDiffer:
 
     # Maximum size of each threadpool. None = auto. Only relevant when threaded is True.
     # There may be many pools, so number of actual threads can be a lot higher.
-    max_threadpool_size: int = None
+    max_threadpool_size: int = 1
 
     # Enable/disable debug prints
     debug: bool = False
 
     stats: dict = {}
 
-    def diff_tables(self, table1: TableSegment, table2: TableSegment) -> DiffResult:
+    def diff_tables(self, table1: TableSegment, table2: TableSegment, stats_tree=None) -> DiffResult:
         """Diff the given tables.
 
         Returned value is an iterator that yield pair-tuples, representing the diff. Items can be either
@@ -235,9 +235,12 @@ class TableDiffer:
         table1 = table1.new(start_key=start_key, end_key=end_key)
         table2 = table2.new(start_key=start_key, end_key=end_key)
 
-        return self._bisect_and_diff_tables(table1, table2)
+        if stats_tree:
+            stats_tree.update_tables(table1, table2)
 
-    def _bisect_and_diff_tables(self, table1, table2, level=0, max_rows=None):
+        return self._bisect_and_diff_tables(table1, table2, stats_tree=stats_tree)
+
+    def _bisect_and_diff_tables(self, table1, table2, level=0, max_rows=None, stats_tree=None):
         assert table1.is_bounded and table2.is_bounded
 
         if max_rows is None:
@@ -250,6 +253,9 @@ class TableDiffer:
             rows1, rows2 = self._threaded_call("get_values", [table1, table2])
             diff = list(diff_sets(rows1, rows2))
             logger.info(". " * level + f"Diff found {len(diff)} different rows.")
+            if stats_tree:
+                stats_tree.set_diff(diff)
+                # stats_tree.set_count_and_checksum([1, 2], [3, 4])
             yield from diff
             return
 
@@ -262,14 +268,14 @@ class TableDiffer:
 
         # Recursively compare each pair of corresponding segments between table1 and table2
         diff_iters = [
-            self._diff_tables(t1, t2, level + 1, i + 1, len(segmented1))
+            self._diff_tables(t1, t2, level + 1, i + 1, len(segmented1), stats_tree=stats_tree.add(t1, t2) if stats_tree else None)
             for i, (t1, t2) in enumerate(safezip(segmented1, segmented2))
         ]
 
         for res in self._thread_map(list, diff_iters):
             yield from res
 
-    def _diff_tables(self, table1, table2, level=0, segment_index=None, segment_count=None):
+    def _diff_tables(self, table1, table2, level=0, segment_index=None, segment_count=None, stats_tree=None):
         logger.info(
             ". " * level + f"Diffing segment {segment_index}/{segment_count}, "
             f"key-range: {table1.start_key}..{table2.end_key}, "
@@ -277,6 +283,9 @@ class TableDiffer:
         )
 
         (count1, checksum1), (count2, checksum2) = self._threaded_call("count_and_checksum", [table1, table2])
+
+        if stats_tree:
+            stats_tree.set_count_and_checksum([count1, count2], [checksum1, checksum2])
 
         if count1 == 0 and count2 == 0:
             logger.warn(
@@ -290,7 +299,7 @@ class TableDiffer:
             self.stats["table1_count"] = self.stats.get("table1_count", 0) + count1
 
         if checksum1 != checksum2:
-            yield from self._bisect_and_diff_tables(table1, table2, level=level, max_rows=max(count1, count2))
+            yield from self._bisect_and_diff_tables(table1, table2, level=level, max_rows=max(count1, count2), stats_tree=stats_tree)
 
     def _thread_map(self, func, iter):
         if not self.threaded:

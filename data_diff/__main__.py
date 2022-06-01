@@ -4,7 +4,7 @@ import time
 import logging
 from itertools import islice
 
-from .diff_tables import TableSegment, TableDiffer, DEFAULT_BISECTION_THRESHOLD, parse_table_name
+from .diff_tables import TableSegment, TableDiffer, DEFAULT_BISECTION_THRESHOLD, DEFAULT_BISECTION_FACTOR, parse_table_name
 from .database import connect_to_uri
 from .parse_time import parse_time_before_now, UNITS_STR, ParseError
 
