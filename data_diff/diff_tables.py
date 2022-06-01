@@ -268,7 +268,9 @@ class TableDiffer:
 
         # Recursively compare each pair of corresponding segments between table1 and table2
         diff_iters = [
-            self._diff_tables(t1, t2, level + 1, i + 1, len(segmented1), stats_tree=stats_tree.add(t1, t2) if stats_tree else None)
+            self._diff_tables(
+                t1, t2, level + 1, i + 1, len(segmented1), stats_tree=stats_tree.add(t1, t2) if stats_tree else None
+            )
             for i, (t1, t2) in enumerate(safezip(segmented1, segmented2))
         ]
 
@@ -299,7 +301,9 @@ class TableDiffer:
             self.stats["table1_count"] = self.stats.get("table1_count", 0) + count1
 
         if checksum1 != checksum2:
-            yield from self._bisect_and_diff_tables(table1, table2, level=level, max_rows=max(count1, count2), stats_tree=stats_tree)
+            yield from self._bisect_and_diff_tables(
+                table1, table2, level=level, max_rows=max(count1, count2), stats_tree=stats_tree
+            )
 
     def _thread_map(self, func, iter):
         if not self.threaded:
