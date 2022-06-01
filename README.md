@@ -27,7 +27,7 @@ comparing every row.
 ## Table of Contents
 
 - [Common use-cases](#common-use-cases)
-- [Example output](#example-output)
+- [Example command and output](#example-command-and-output)
 - [Supported Databases](#supported-databases)
 - [How to install](#how-to-install)
 - [How to use](#how-to-use)
@@ -54,7 +54,7 @@ comparing every row.
   self-heal by using the diff output to write/update rows in the target
   database.
 
-## Example output
+## Example Command and Output
 
 Below we run a comparison with the CLI for 25M rows in Postgres where the
 right-hand table is missing single row with `id=12500048`:
@@ -67,6 +67,10 @@ $ data-diff \
     --bisection-factor 6 \ # for readability, try default first
     --update-column timestamp \
     --verbose
+
+    # Consider running with --interactive the first time.
+    # Runs `EXPLAIN` for you to verify the queries are using indexes.
+    # --interactive
 [10:15:00] INFO - Diffing tables | segments: 6, bisection threshold: 100000.
 [10:15:00] INFO - . Diffing segment 1/6, key-range: 1..4166683, size: 4166682
 [10:15:03] INFO - . Diffing segment 2/6, key-range: 4166683..8333365, size: 4166682
@@ -136,6 +140,9 @@ or when you need extras like mysql and postgres
 # How to use
 
 Usage: `data-diff DB1_URI TABLE1_NAME DB2_URI TABLE2_NAME [OPTIONS]`
+
+See the [example command](#example-command-and-output) and the [sample
+connection strings](#supported-databases).
 
 Options:
 
