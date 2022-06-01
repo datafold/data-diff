@@ -37,8 +37,8 @@ comparing every row.
 
 ## Common use-cases
 
-* **Verify data migrations.** Verify all data was copied from a critical e.g.
-  Heroku Postgres to Amazon RDS migration.
+* **Verify data migrations.** Verify that all data was copied when doing a
+  critical data migration. For example, migrating from Heroku Postgres to Amazon RDS.
 * **Verifying data pipelines.** Moving data from a relational database to a
   warehouse/data lake with Fivetran, Airbyte, Debezium, or some other pipeline.
 * **Alerting and maintaining data integrity SLOs.** You can create and monitor
