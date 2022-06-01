@@ -6,7 +6,7 @@ please file an issue and we'll help you out ASAP!**
 **data-diff** is a command-line tool and Python library to efficiently diff
 rows across two different databases.
 
-* 🪢 Verifies across [many different databases][dbs] (e.g. Postgres -> Snowflake)
+* ⇄  Verifies across [many different databases][dbs] (e.g. Postgres -> Snowflake)
 * 🔍 Outputs [diff of rows](#example-output) in detail
 * 🚨 Simple CLI/API to create monitoring and alerts
 * 🔥 Verify 25M+ rows in less than 10s
