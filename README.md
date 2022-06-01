@@ -1,7 +1,7 @@
 # **data-diff**
 
-**data-diff is currently under heavy development, if you run into issues,
-please file an issue and we'll help you out ASAP!**
+**data-diff is in shape to be run in production, but also under development. If
+you run into issues, please file an issue and we'll help you out ASAP!**
 
 **data-diff** is a command-line tool and Python library to efficiently diff
 rows across two different databases.
@@ -14,7 +14,7 @@ rows across two different databases.
 
 **data-diff** splits the table into smaller segments, then checksums each
 segment in both databases. When the checksums for a segment aren't equal, it
-will further divide that segment into yet smaller segments, cheksumming those
+will further divide that segment into yet smaller segments, checksumming those
 until it gets to the differing row(s). See [Technical Explanation][tech-explain] for more
 details.
 
