@@ -1,7 +1,8 @@
 # **data-diff**
 
 **data-diff is in shape to be run in production, but also under development. If
-you run into issues, please file an issue and we'll help you out ASAP!**
+you run into issues, please file an issue and we'll help you out ASAP! You can
+also find us in `#tools-data-diff` in the [Locally Optimistic Slack.][slack]**
 
 **data-diff** is a command-line tool and Python library to efficiently diff
 rows across two different databases.
@@ -401,3 +402,4 @@ Diff-Split: +250156  -0
 [dbs]: #supported-databases
 [tech-explain]: #technical-explanation
 [perf]: #performance-considerations
+[slack]: https://locallyoptimistic.com/community/
