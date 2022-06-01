@@ -19,10 +19,10 @@ will further divide that segment into yet smaller segments, checksumming those
 until it gets to the differing row(s). See [Technical Explanation][tech-explain] for more
 details.
 
-This approach has similar performance to `count(*)` when there are few/no
-changes, but is able to output each differing row (and it might even [be
-faster][perf]). By pushing the compute into the databases, it's _much_ faster
-than querying for and comparing every row.
+This approach has performance within an order of magnitude of `count(*)` when
+there are few/no changes, but is able to output each differing row! By pushing
+the compute into the databases, it's _much_ faster than querying for and
+comparing every row.
 
 ## Table of Contents
 
@@ -299,9 +299,6 @@ If you pass `--stats` you'll see e.g. what % of rows were different.
 * Consider increasing the number of simultaneous threads executing
   queries per database with `--threads`. For databases that limit concurrency
   per query, e.g. Postgres/MySQL, this can improve performance dramatically.
-  This is how comparisons with **data-diff** can be faster than `count(*)` which
-  has limited concurrency, and in some cases will never complete due to
-  timeouts.
 * If you are only interested in _whether_ something changed, pass `--limit 1`.
   This can be useful if changes are very rare. This often faster than doing a
   `count(*)`, for the reason mentioned above.
@@ -322,6 +319,12 @@ If you pass `--stats` you'll see e.g. what % of rows were different.
   missing hard deletes. You can do also do a hybrid where you verify
   `updated_at` and the most critical value, e.g a money value in `amount` but
   not verify a large serialized column like `json_settings`.
+* There are performance improvements to make **data-diff** even faster that
+  haven't been implemented yet: faster checksumming by doing less type-casting
+  and using something cheaper than MD5, dynamic adaptation of
+  `bisection_factor`/`threads`/`bisection_threshold` (especially with large key
+  gaps), and when we are below the `bisection_threshold` and pull down records
+  we're at the mercy at the driver/Python performance.
 
 # Development Setup
 
