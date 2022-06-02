@@ -10,7 +10,7 @@ rows across two different databases.
 * ⇄  Verifies across [many different databases][dbs] (e.g. Postgres -> Snowflake)
 * 🔍 Outputs [diff of rows](#example-command-and-output) in detail
 * 🚨 Simple CLI/API to create monitoring and alerts
-* 🔥 Verify 25M+ rows in less than 10s
+* 🔥 Verify 25M+ rows in <10s, and 1B+ rows in ~5min.
 * ♾️  Works for tables with 10s of billions of rows
 
 **data-diff** splits the table into smaller segments, then checksums each
@@ -392,17 +392,13 @@ $ poetry run preql -f dev/prepare_db.pql postgres://postgres:Password1@127.0.0.1
 # Cloud databases
 $ poetry run preql -f dev/prepare_db.psq snowflake://<uri>
 $ poetry run preql -f dev/prepare_db.psq mssql://<uri>
-$ poetry run preql -f dev/prepare_db_bigquery.pql bigquery:///<project> # Bigquery has its own scripts
+$ poetry run preql -f dev/prepare_db.pql bigquery:///<project>
 ```
 
 **5. Run **data-diff** against seeded database**
 
 ```bash
-poetry run python3 -m data_diff postgres://user:password@host:db Rating mysql://user:password@host:db Rating_del1 -c timestamp --stats
-
-Diff-Total: 250156 changed rows out of 25000095
-Diff-Percent: 1.0006%
-Diff-Split: +250156  -0
+poetry run python3 -m data_diff postgres://postgres:Password1@localhost/postgres rating postgres://postgres:Password1@localhost/postgres rating_del1 --verbose
 ```
 
 # License
