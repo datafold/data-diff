@@ -225,7 +225,7 @@ wcwidth = "*"
 
 [[package]]
 name = "protobuf"
-version = "4.21.0"
+version = "4.21.1"
 description = ""
 category = "main"
 optional = false
@@ -390,12 +390,24 @@ pandas = ["pandas (>=1.0.0,<1.5.0)", "pyarrow (>=6.0.0,<6.1.0)"]
 secure-local-storage = ["keyring (!=16.1.0,<24.0.0)"]
 
 [[package]]
+name = "textual"
+version = "0.1.13"
+description = "Text User Interface using Rich"
+category = "main"
+optional = true
+python-versions = ">=3.7,<4.0"
+
+[package.dependencies]
+rich = ">=10.7.0,<11.0.0"
+typing-extensions = {version = ">=3.10.0,<4.0.0", markers = "python_version < \"3.8\""}
+
+[[package]]
 name = "typing-extensions"
-version = "4.2.0"
-description = "Backported and Experimental Type Hints for Python 3.7+"
+version = "3.10.0.2"
+description = "Backported and Experimental Type Hints for Python 3.5+"
 category = "main"
 optional = false
-python-versions = ">=3.7"
+python-versions = "*"
 
 [[package]]
 name = "urllib3"
@@ -440,7 +452,7 @@ snowflake = ["snowflake-connector-python"]
 [metadata]
 lock-version = "1.1"
 python-versions = "^3.7"
-content-hash = "b9f87019323402df457070b091dbbede45ee0a4d9f9c23545d1ff8b48cc79942"
+content-hash = "d7afeb57a841e9b9ff658700f44fdbf562963fda3442124b851123f849e3f04e"
 
 [metadata.files]
 arrow = [
@@ -596,20 +608,20 @@ prompt-toolkit = [
     {file = "prompt_toolkit-3.0.29.tar.gz", hash = "sha256:bd640f60e8cecd74f0dc249713d433ace2ddc62b65ee07f96d358e0b152b6ea7"},
 ]
 protobuf = [
-    {file = "protobuf-4.21.0-cp310-abi3-win32.whl", hash = "sha256:bc78d6c23873ebf33076f0851ef64d050e7246d5b1e651b38a7e92c05f14881d"},
-    {file = "protobuf-4.21.0-cp310-abi3-win_amd64.whl", hash = "sha256:182b626615043e191e994672b7bbf1036bad5edc9f8f300a2f3a1fe77409a444"},
-    {file = "protobuf-4.21.0-cp37-abi3-macosx_10_9_universal2.whl", hash = "sha256:157e4ad67bf75d5719516fbf13fd652c634fd71338e01d2ac872bf365213b7a6"},
-    {file = "protobuf-4.21.0-cp37-abi3-manylinux2014_aarch64.whl", hash = "sha256:da3bb1acd646f01b4bdec128462441838e596899c5a5e1d2e8e31975f36cd0c4"},
-    {file = "protobuf-4.21.0-cp37-abi3-manylinux2014_x86_64.whl", hash = "sha256:9a65e012bc06022e98a57165ea48438b3b9f652eee33db7cbecb883588f9f169"},
-    {file = "protobuf-4.21.0-cp37-cp37m-win32.whl", hash = "sha256:b33660b14d582a700a47c8808a3f2da33f5bb3be576a8ae419d608db6b4f19b0"},
-    {file = "protobuf-4.21.0-cp37-cp37m-win_amd64.whl", hash = "sha256:f12e26fda74c40f308d37525e5276883388f25ff9a0c880f40f79d3ce9097d81"},
-    {file = "protobuf-4.21.0-cp38-cp38-win32.whl", hash = "sha256:2188063b59e1606cc45a1ad68beae7b94bec36e6d27d5e857dd611b79cdda99f"},
-    {file = "protobuf-4.21.0-cp38-cp38-win_amd64.whl", hash = "sha256:c8fc31d44e239178da6a698e0b69798387469b89172de3470a49d799550523a7"},
-    {file = "protobuf-4.21.0-cp39-cp39-win32.whl", hash = "sha256:2c753c5aa0943479a3f84b90e8c5bb28fef8cc3eb79c2c35e1bbf00d56cc435f"},
-    {file = "protobuf-4.21.0-cp39-cp39-win_amd64.whl", hash = "sha256:c92a9e2a94b9df945a6c578c3f53ace862ed3a50e849f41c27106007cc63ca8c"},
-    {file = "protobuf-4.21.0-py2.py3-none-any.whl", hash = "sha256:14c5fa41122e270d815b954ecdc25cb107d44b7d039def5cc57a5e5a9ab8d741"},
-    {file = "protobuf-4.21.0-py3-none-any.whl", hash = "sha256:4e78116673ba04e01e563f6a9cca2c72db0be8a3e1629094816357e81cc39d36"},
-    {file = "protobuf-4.21.0.tar.gz", hash = "sha256:6efbe40afb1b0303def53b3c5ce211b14e10d73d63a3f8b669ac0e3b74e8f863"},
+    {file = "protobuf-4.21.1-cp310-abi3-win32.whl", hash = "sha256:52c1e44e25f2949be7ffa7c66acbfea940b0945dd416920231f7cb30ea5ac6db"},
+    {file = "protobuf-4.21.1-cp310-abi3-win_amd64.whl", hash = "sha256:72d357cc4d834cc85bd957e8b8e1f4b64c2eac9ca1a942efeb8eb2e723fca852"},
+    {file = "protobuf-4.21.1-cp37-abi3-macosx_10_9_universal2.whl", hash = "sha256:3767c64593a49c7ac0accd08ed39ce42744405f0989d468f0097a17496fdbe84"},
+    {file = "protobuf-4.21.1-cp37-abi3-manylinux2014_aarch64.whl", hash = "sha256:0d4719e724472e296062ba8e82a36d64693fcfdb550d9dff98af70ca79eafe3d"},
+    {file = "protobuf-4.21.1-cp37-abi3-manylinux2014_x86_64.whl", hash = "sha256:a4c0c6f2f95a559e59a0258d3e4b186f340cbdc5adec5ce1bc06d01972527c88"},
+    {file = "protobuf-4.21.1-cp37-cp37m-win32.whl", hash = "sha256:32fff501b6df3050936d1839b80ea5899bf34db24792d223d7640611f67de15a"},
+    {file = "protobuf-4.21.1-cp37-cp37m-win_amd64.whl", hash = "sha256:b3d7d4b4945fe3c001403b6c24442901a5e58c0a3059290f5a63523ed4435f82"},
+    {file = "protobuf-4.21.1-cp38-cp38-win32.whl", hash = "sha256:34400fd76f85bdae9a2e9c1444ea4699c0280962423eff4418765deceebd81b5"},
+    {file = "protobuf-4.21.1-cp38-cp38-win_amd64.whl", hash = "sha256:c8829092c5aeb61619161269b2f8a2e36fd7cb26abbd9282d3bc453f02769146"},
+    {file = "protobuf-4.21.1-cp39-cp39-win32.whl", hash = "sha256:2b35602cb65d53c168c104469e714bf68670335044c38eee3c899d6a8af03ffc"},
+    {file = "protobuf-4.21.1-cp39-cp39-win_amd64.whl", hash = "sha256:3f2ed842e8ca43b790cb4a101bcf577226e0ded98a6a6ba2d5e12095a08dc4da"},
+    {file = "protobuf-4.21.1-py2.py3-none-any.whl", hash = "sha256:b309fda192850ac4184ca1777aab9655564bc8d10a9cc98f10e1c8bf11295c22"},
+    {file = "protobuf-4.21.1-py3-none-any.whl", hash = "sha256:79cd8d0a269b714f6b32641f86928c718e8d234466919b3f552bfb069dbb159b"},
+    {file = "protobuf-4.21.1.tar.gz", hash = "sha256:5d9b5c8270461706973c3871c6fbdd236b51dfe9dab652f1fb6a36aa88287e47"},
 ]
 psycopg2 = [
     {file = "psycopg2-2.9.3-cp310-cp310-win32.whl", hash = "sha256:083707a696e5e1c330af2508d8fab36f9700b26621ccbcb538abe22e15485362"},
@@ -711,9 +723,14 @@ snowflake-connector-python = [
     {file = "snowflake_connector_python-2.7.8-cp39-cp39-manylinux_2_12_x86_64.manylinux2010_x86_64.manylinux_2_17_x86_64.manylinux2014_x86_64.whl", hash = "sha256:ca7a26c4d628a552811d2235a88d5ba9bce2b1931d46c6f3aaa7db4edc20a616"},
     {file = "snowflake_connector_python-2.7.8-cp39-cp39-win_amd64.whl", hash = "sha256:ac18f39e1dfc703fb4668e1a133887fab999a314acec7ad7c55dfeab50b5a247"},
 ]
+textual = [
+    {file = "textual-0.1.13-py3-none-any.whl", hash = "sha256:3c65eb2edf67ea6258b36817c555f423a68f40165bfb9d1cccf614e75aaf927f"},
+    {file = "textual-0.1.13.tar.gz", hash = "sha256:5acb7d4d7e50dfb14d9c29a65ad1a158612f25c220187f2ba01c93398ddf5060"},
+]
 typing-extensions = [
-    {file = "typing_extensions-4.2.0-py3-none-any.whl", hash = "sha256:6657594ee297170d19f67d55c05852a874e7eb634f4f753dbd667855e07c1708"},
-    {file = "typing_extensions-4.2.0.tar.gz", hash = "sha256:f1c24655a0da0d1b67f07e17a5e6b2a105894e6824b92096378bb3668ef02376"},
+    {file = "typing_extensions-3.10.0.2-py2-none-any.whl", hash = "sha256:d8226d10bc02a29bcc81df19a26e56a9647f8b0a6d4a83924139f4a8b01f17b7"},
+    {file = "typing_extensions-3.10.0.2-py3-none-any.whl", hash = "sha256:f1d25edafde516b146ecd0613dabcc61409817af4766fbbcfb8d1ad4ec441a34"},
+    {file = "typing_extensions-3.10.0.2.tar.gz", hash = "sha256:49f75d16ff11f1cd258e1b988ccff82a3ca5570217d7ad8c5f48205dd99a677e"},
 ]
 urllib3 = [
     {file = "urllib3-1.26.9-py2.py3-none-any.whl", hash = "sha256:44ece4d53fb1706f667c9bd1c648f5469a2ec925fcf3a776667042d645472c14"},
