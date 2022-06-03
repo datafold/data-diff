@@ -331,6 +331,7 @@ class Snowflake(Database):
         user: str,
         password: str,
         path: str,
+        role: str,
         schema: str,
         database: str,
         print_sql: bool = False,
@@ -338,10 +339,15 @@ class Snowflake(Database):
         snowflake = import_snowflake()
         logging.getLogger("snowflake.connector").setLevel(logging.WARNING)
 
-        self._conn = snowflake.connector.connect(user=user, password=password, account=account)
-        self._conn.cursor().execute(f"USE WAREHOUSE {path.lstrip('/')}")
-        self._conn.cursor().execute(f"USE DATABASE {database}")
-        self._conn.cursor().execute(f"USE SCHEMA {schema}")
+        self._conn = snowflake.connector.connect(
+            user=user,
+            password=password,
+            account=account,
+            role=role,
+            database=database,
+            warehouse=path.lstrip('/'),
+            schema=schema,
+        )
 
     def _query(self, sql_code: str) -> list:
         "Uses the standard SQL cursor interface"
