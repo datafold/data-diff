@@ -325,7 +325,16 @@ class BigQuery(Database):
 
 
 class Snowflake(Database):
-    def __init__(self, account, user, password, path, schema, database, print_sql=False):
+    def __init__(
+        self,
+        account: str,
+        user: str,
+        password: str,
+        path: str,
+        schema: str,
+        database: str,
+        print_sql: bool = False,
+    ):
         snowflake = import_snowflake()
         logging.getLogger("snowflake.connector").setLevel(logging.WARNING)
 
