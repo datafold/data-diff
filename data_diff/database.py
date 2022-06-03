@@ -339,6 +339,11 @@ class Snowflake(Database):
         snowflake = import_snowflake()
         logging.getLogger("snowflake.connector").setLevel(logging.WARNING)
 
+        # Got an error: snowflake.connector.network.RetryRequest: could not find io module state (interpreter shutdown?)
+        # It's a known issue: https://github.com/snowflakedb/snowflake-connector-python/issues/145
+        # Found a quick solution in comments
+        logging.getLogger("snowflake.connector.network").disabled = True
+
         self._conn = snowflake.connector.connect(
             user=user,
             password=password,
