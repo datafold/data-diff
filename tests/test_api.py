@@ -14,7 +14,6 @@ class TestApi(unittest.TestCase):
         # cause deadlocks for table-level modifications.
         cls.preql = preql.Preql(TEST_MYSQL_CONN_STRING)
 
-
     def setUp(self) -> None:
         self.preql(
             r"""
@@ -43,8 +42,8 @@ class TestApi(unittest.TestCase):
         self.preql.commit()
 
     def tearDown(self) -> None:
-        self.preql.run_statement('drop table if exists test_api')
-        self.preql.run_statement('drop table if exists test_api_2')
+        self.preql.run_statement("drop table if exists test_api")
+        self.preql.run_statement("drop table if exists test_api_2")
         self.preql.commit()
         self.preql.close()
 

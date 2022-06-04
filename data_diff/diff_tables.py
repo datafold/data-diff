@@ -11,7 +11,7 @@ from concurrent.futures import ThreadPoolExecutor
 from runtype import dataclass
 
 from .sql import Select, Checksum, Compare, DbPath, DbKey, DbTime, Count, TableName, Time, Min, Max
-from .database import Database
+from .database import Database, PrecisionType
 
 logger = logging.getLogger("diff_tables")
 
@@ -61,6 +61,8 @@ class TableSegment:
     min_update: DbTime = None
     max_update: DbTime = None
 
+    _schema: dict = None
+
     def __post_init__(self):
         if not self.update_column and (self.min_update or self.max_update):
             raise ValueError("Error: min_update/max_update feature requires to specify 'update_column'")
@@ -70,6 +72,13 @@ class TableSegment:
 
         if self.min_update is not None and self.max_update is not None and self.min_update >= self.max_update:
             raise ValueError("Error: min_update expected to be smaller than max_update!")
+
+    def with_schema(self) -> "TableSegment":
+        "Queries the table schema from the database, and returns a new instance of TableSegmentWithSchema."
+        if self._schema:
+            return self
+        schema = self.database.query_table_schema(self.table_path)
+        return self.new(_schema=schema)
 
     def _make_key_range(self):
         if self.min_key is not None:
@@ -98,7 +107,7 @@ class TableSegment:
 
     def get_values(self) -> list:
         "Download all the relevant values of the segment from the database"
-        select = self._make_select(columns=self._relevant_columns)
+        select = self._make_select(columns=self._relevant_columns_repr)
         return self.database.query(select, List[Tuple])
 
     def choose_checkpoints(self, count: int) -> List[DbKey]:
@@ -107,7 +116,7 @@ class TableSegment:
         return split_space(self.min_key, self.max_key, count)
 
     def segment_by_checkpoints(self, checkpoints: List[DbKey]) -> List["TableSegment"]:
-        "Split the current TableSegment to a bunch of smaller ones, separate by the given checkpoints"
+        "Split the current TableSegment to a bunch of smaller ones, separated by the given checkpoints"
 
         if self.min_key and self.max_key:
             assert all(self.min_key <= c < self.max_key for c in checkpoints)
@@ -123,16 +132,24 @@ class TableSegment:
         return tables
 
     def new(self, **kwargs) -> "TableSegment":
-        """Using new() creates a copy of the instance using 'replace()', and makes sure the cache is reset"""
+        """Using new() creates a copy of the instance using 'replace()'"""
         return self.replace(**kwargs)
 
     @property
     def _relevant_columns(self) -> List[str]:
-        extras = set(self.extra_columns)
-        if self.update_column:
-            extras.add(self.update_column)
+        extras = list(self.extra_columns)
+        if self.update_column and self.update_column not in extras:
+            extras = [self.update_column] + extras
 
-        return [self.key_column] + list(sorted(extras))
+        return [self.key_column] + list(extras)
+
+    @property
+    def _relevant_columns_repr(self) -> List[str]:
+        if not self._schema:
+            raise RuntimeError(
+                "Cannot compile query when the schema is unknown. Please use TableSegment.with_schema()."
+            )
+        return [self.database.normalize_value_by_type(c, self._schema[c]) for c in self._relevant_columns]
 
     def count(self) -> Tuple[int, int]:
         """Count how many rows are in the segment, in one pass."""
@@ -142,7 +159,7 @@ class TableSegment:
         """Count and checksum the rows in the segment, in one pass."""
         start = time.time()
         count, checksum = self.database.query(
-            self._make_select(columns=[Count(), Checksum(self._relevant_columns)]), tuple
+            self._make_select(columns=[Count(), Checksum(self._relevant_columns_repr)]), tuple
         )
         duration = time.time() - start
         if duration > RECOMMENDED_CHECKSUM_DURATION:
@@ -227,6 +244,9 @@ class TableDiffer:
         if self.bisection_factor < 2:
             raise ValueError("Must have at least two segments per iteration (i.e. bisection_factor >= 2)")
 
+        table1, table2 = self._threaded_call("with_schema", [table1, table2])
+        self._validate_and_adjust_columns(table1, table2)
+
         key_ranges = self._threaded_call("query_key_range", [table1, table2])
         mins, maxs = zip(*key_ranges)
 
@@ -244,6 +264,27 @@ class TableDiffer:
         )
 
         return self._bisect_and_diff_tables(table1, table2)
+
+    def _validate_and_adjust_columns(self, table1, table2):
+        for c in table1._relevant_columns:
+            if c not in table1._schema:
+                raise ValueError(f"Column '{c}' not found in schema for table {table1}")
+            if c not in table2._schema:
+                raise ValueError(f"Column '{c}' not found in schema for table {table2}")
+
+            # Update schemas to minimal mutual precision
+            col1 = table1._schema[c]
+            col2 = table2._schema[c]
+            if isinstance(col1, PrecisionType):
+                if not isinstance(col2, PrecisionType):
+                    raise TypeError(f"Incompatible types for column {c}:  {col1} <-> {col2}")
+
+                min_precision = min(col1.precision, col2.precision)
+                if min_precision < col1.precision or min_precision < col2.precision:
+                    logger.warn(f"Using reduced precision {min_precision} for column {c}. Types={col1}, {col2}")
+
+                table1._schema[c] = col1.replace(precision=min_precision)
+                table2._schema[c] = col2.replace(precision=min_precision)
 
     def _bisect_and_diff_tables(self, table1, table2, level=0, max_rows=None):
         assert table1.is_bounded and table2.is_bounded
