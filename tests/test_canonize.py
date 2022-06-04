@@ -32,6 +32,7 @@ class TestCanonize(unittest.TestCase):
         all_returned = {}
 
         for db_id, conn_string in CONN_STRINGS.items():
+            print(f"Testing {db_id}")
 
             sample_date1 = datetime(2022, 6, 3, 12, 24, 35, 69296)
             sample_date2 = datetime(2021, 5, 2, 11, 23, 34, 58185, tzinfo=timezone.utc)

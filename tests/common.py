@@ -14,13 +14,17 @@ try:
 except ImportError:
     pass  # No local settings
 
-assert TEST_MYSQL_CONN_STRING and TEST_POSTGRES_CONN_STRING and TEST_SNOWFLAKE_CONN_STRING
-
 CONN_STRINGS = {
     db.MySQL: TEST_MYSQL_CONN_STRING,
     db.Postgres: TEST_POSTGRES_CONN_STRING,
     db.Snowflake: TEST_SNOWFLAKE_CONN_STRING,
 }
+
+for k, v in CONN_STRINGS.items():
+    if v is None:
+        print(f"Warning: Connection to {k} not configured")
+
+CONN_STRINGS = {k: v for k, v in CONN_STRINGS.items() if v is not None}
 
 
 def str_to_checksum(str: str):

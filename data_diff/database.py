@@ -184,7 +184,7 @@ class Database(ABC):
 
     def _canonize_path(self, path: DbPath) -> DbPath:
         if len(path) == 1:
-            return self.default_schema, *path
+            return self.default_schema, path[0]
         elif len(path) == 2:
             return path
 
