@@ -1,13 +1,15 @@
 from abc import ABC, abstractmethod
+from runtype import dataclass
 import logging
 from typing import Tuple, Optional
 from concurrent.futures import ThreadPoolExecutor
 import threading
+from typing import Dict
 
 import dsnparse
 import sys
 
-from .sql import SqlOrStr, Compiler, Explain, Select
+from .sql import DbPath, SqlOrStr, Compiler, Explain, Select
 
 
 logger = logging.getLogger("database")
@@ -66,11 +68,40 @@ def _query_conn(conn, sql_code: str) -> list:
     return c.fetchall()
 
 
+class ColType:
+    pass
+
+
+@dataclass
+class PrecisionType(ColType):
+    precision: Optional[int]
+
+
+class Timestamp(PrecisionType):
+    pass
+
+
+class TimestampTZ(PrecisionType):
+    pass
+
+
+class Datetime(PrecisionType):
+    pass
+
+
+@dataclass
+class UnknownColType(ColType):
+    text: str
+
+
 class Database(ABC):
     """Base abstract class for databases.
 
     Used for providing connection code and implementation specific SQL utilities.
     """
+
+    DATETIME_TYPES = NotImplemented
+    default_schema = NotImplemented
 
     def query(self, sql_ast: SqlOrStr, res_type: type):
         "Query the given SQL AST, and attempt to convert the result to type 'res_type'"
@@ -91,7 +122,7 @@ class Database(ABC):
             if res is None:  # May happen due to sum() of 0 items
                 return None
             return int(res)
-        if res_type is tuple:
+        elif res_type is tuple:
             assert len(res) == 1
             return res[0]
         elif getattr(res_type, "__origin__", None) is list and len(res_type.__args__) == 1:
@@ -126,6 +157,39 @@ class Database(ABC):
         "Send query to database and return result"
         ...
 
+    @abstractmethod
+    def select_table_schema(self, path: DbPath) -> str:
+        "Provide SQL for selecting the table schema as (name, type, date_prec, num_prec)"
+        ...
+
+    @abstractmethod
+    def close(self):
+        "Close connection(s) to the database instance. Querying will stop functioning."
+        ...
+
+    def _parse_type(self, type_repr: str, datetime_precision: int = None, numeric_precision: int = None) -> ColType:
+        """ """
+
+        cls = self.DATETIME_TYPES.get(type_repr)
+        if cls:
+            return cls(precision=datetime_precision or DEFAULT_PRECISION)
+
+        return UnknownColType(type_repr)
+
+    def query_table_schema(self, path: DbPath) -> Dict[str, ColType]:
+        rows = self.query(self.select_table_schema(path), list)
+
+        # Return a dict of form {name: type} after canonizaation
+        return {row[0].lower(): self._parse_type(*row[1:]) for row in rows}
+
+    def _canonize_path(self, path: DbPath) -> DbPath:
+        if len(path) == 1:
+            return self.default_schema, *path
+        elif len(path) == 2:
+            return path
+
+        raise ValueError(f"Bad table path for {self}: '{'.'.join(path)}'. Expected form: schema.table")
+
 
 class ThreadedDatabase(Database):
     """Access the database through singleton threads.
@@ -149,6 +213,9 @@ class ThreadedDatabase(Database):
         "This method runs in a worker thread"
         return _query_conn(self.thread_local.conn, sql_code)
 
+    def close(self):
+        self._queue.shutdown(True)
+
     @abstractmethod
     def create_connection(self):
         ...
@@ -160,8 +227,18 @@ MD5_HEXDIGITS = 32
 _CHECKSUM_BITSIZE = CHECKSUM_HEXDIGITS << 2
 CHECKSUM_MASK = (2**_CHECKSUM_BITSIZE) - 1
 
+DEFAULT_PRECISION = 6
+
 
 class Postgres(ThreadedDatabase):
+    DATETIME_TYPES = {
+        "timestamp with time zone": TimestampTZ,
+        "timestamp without time zone": Timestamp,
+        "timestamp": Timestamp,
+        "datetime": Datetime,
+    }
+    default_schema = "public"
+
     def __init__(self, host, port, database, user, password, *, thread_count):
         self.args = dict(host=host, port=port, database=database, user=user, password=password)
 
@@ -182,6 +259,19 @@ class Postgres(ThreadedDatabase):
 
     def to_string(self, s: str):
         return f"{s}::varchar"
+
+    def select_table_schema(self, path: DbPath) -> str:
+        schema, table = self._canonize_path(path)
+
+        return (
+            "SELECT column_name, data_type, datetime_precision, numeric_precision FROM information_schema.columns "
+            f"WHERE table_name = '{table}' AND table_schema = '{schema}'"
+        )
+
+    def canonize_by_type(self, value, coltype: ColType) -> str:
+        if isinstance(coltype, (Timestamp, TimestampTZ)):
+            return self.to_string(f"{value}::timestamp({coltype.precision})")
+        return self.to_string(f"{value}")
 
 
 class Presto(Database):
@@ -204,12 +294,20 @@ class Presto(Database):
         "Uses the standard SQL cursor interface"
         return _query_conn(self._conn, sql_code)
 
+
 class MySQL(ThreadedDatabase):
+    DATETIME_TYPES = {
+        "datetime": Datetime,
+        "timestamp": Timestamp,
+    }
+
     def __init__(self, host, port, database, user, password, *, thread_count):
         args = dict(host=host, port=port, database=database, user=user, password=password)
         self._args = {k: v for k, v in args.items() if v is not None}
 
         super().__init__(thread_count=thread_count)
+
+        self.default_schema = user
 
     def create_connection(self):
         mysql = import_mysql()
@@ -231,6 +329,19 @@ class MySQL(ThreadedDatabase):
 
     def to_string(self, s: str):
         return f"cast({s} as char)"
+
+    def canonize_by_type(self, value, coltype: ColType) -> str:
+        if isinstance(coltype, (Timestamp, TimestampTZ)):
+            return self.to_string(f"cast({value} as datetime(6))")
+        return self.to_string(f"{value}")
+
+    def select_table_schema(self, path: DbPath) -> str:
+        schema, table = self._canonize_path(path)
+
+        return (
+            "SELECT column_name, data_type, datetime_precision, numeric_precision FROM information_schema.columns "
+            f"WHERE table_name = '{table}' AND table_schema = '{schema}'"
+        )
 
 
 class Oracle(ThreadedDatabase):
@@ -325,6 +436,12 @@ class BigQuery(Database):
 
 
 class Snowflake(Database):
+    DATETIME_TYPES = {
+        "TIMESTAMP_NTZ": Timestamp,
+        "TIMESTAMP_LTZ": Timestamp,
+        "TIMESTAMP_TZ": TimestampTZ,
+    }
+
     def __init__(self, account, user, password, path, schema, database, print_sql=False):
         snowflake = import_snowflake()
         logging.getLogger("snowflake.connector").setLevel(logging.WARNING)
@@ -333,6 +450,11 @@ class Snowflake(Database):
         self._conn.cursor().execute(f"USE WAREHOUSE {path.lstrip('/')}")
         self._conn.cursor().execute(f"USE DATABASE {database}")
         self._conn.cursor().execute(f"USE SCHEMA {schema}")
+
+        self.default_schema = schema
+
+    def close(self):
+        self._conn.close()
 
     def _query(self, sql_code: str) -> list:
         "Uses the standard SQL cursor interface"
@@ -346,6 +468,19 @@ class Snowflake(Database):
 
     def to_string(self, s: str):
         return f"cast({s} as string)"
+
+    def select_table_schema(self, path: DbPath) -> str:
+        schema, table = self._canonize_path(path)
+
+        return (
+            "SELECT column_name, data_type, datetime_precision, numeric_precision FROM information_schema.columns "
+            f"WHERE table_name = '{table.upper()}' AND table_schema = '{schema.upper()}'"
+        )
+
+    def canonize_by_type(self, value, coltype: ColType) -> str:
+        if isinstance(coltype, (Timestamp, TimestampTZ)):
+            return f"{value}::timestamp({coltype.precision})::text"
+        return f"{value}::text"
 
 
 def connect_to_uri(db_uri: str, thread_count: Optional[int] = 1) -> Database:

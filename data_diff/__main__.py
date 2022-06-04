@@ -19,8 +19,10 @@ COLOR_SCHEME = {
     "-": "red",
 }
 
+
 def parse_table_name(t):
-    return tuple(t.split('.'))
+    return tuple(t.split("."))
+
 
 @click.command()
 @click.argument("db1_uri")

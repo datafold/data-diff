@@ -246,8 +246,7 @@ class TableDiffer:
 
     def _diff_tables(self, table1, table2, level=0, segment_index=None, segment_count=None):
         logger.info(
-            ". " * level
-            + f"Diffing segment {segment_index}/{segment_count}, "
+            ". " * level + f"Diffing segment {segment_index}/{segment_count}, "
             f"key-range: {table1.start_key}..{table2.end_key}, "
             f"size: {table2.end_key-table1.start_key}"
         )
