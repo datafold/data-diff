@@ -26,6 +26,10 @@ COLOR_SCHEME = {
 }
 
 
+def parse_table_name(t):
+    return tuple(t.split("."))
+
+
 @click.command()
 @click.argument("db1_uri")
 @click.argument("table1_name")
