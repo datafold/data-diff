@@ -94,7 +94,39 @@ class UnknownColType(ColType):
     text: str
 
 
-class Database(ABC):
+class AbstractDatabase(ABC):
+    @abstractmethod
+    def quote(self, s: str):
+        "Quote SQL name (implementation specific)"
+        ...
+
+    @abstractmethod
+    def to_string(self, s: str) -> str:
+        "Provide SQL for casting a column to string"
+        ...
+
+    @abstractmethod
+    def md5_to_int(self, s: str) -> str:
+        "Provide SQL for computing md5 and returning an int"
+        ...
+
+    @abstractmethod
+    def _query(self, sql_code: str) -> list:
+        "Send query to database and return result"
+        ...
+
+    @abstractmethod
+    def select_table_schema(self, path: DbPath) -> str:
+        "Provide SQL for selecting the table schema as (name, type, date_prec, num_prec)"
+        ...
+
+    @abstractmethod
+    def close(self):
+        "Close connection(s) to the database instance. Querying will stop functioning."
+        ...
+
+
+class Database(AbstractDatabase):
     """Base abstract class for databases.
 
     Used for providing connection code and implementation specific SQL utilities.
@@ -137,36 +169,6 @@ class Database(ABC):
     def enable_interactive(self):
         self._interactive = True
 
-    @abstractmethod
-    def quote(self, s: str):
-        "Quote SQL name (implementation specific)"
-        ...
-
-    @abstractmethod
-    def to_string(self, s: str) -> str:
-        "Provide SQL for casting a column to string"
-        ...
-
-    @abstractmethod
-    def md5_to_int(self, s: str) -> str:
-        "Provide SQL for computing md5 and returning an int"
-        ...
-
-    @abstractmethod
-    def _query(self, sql_code: str) -> list:
-        "Send query to database and return result"
-        ...
-
-    @abstractmethod
-    def select_table_schema(self, path: DbPath) -> str:
-        "Provide SQL for selecting the table schema as (name, type, date_prec, num_prec)"
-        ...
-
-    @abstractmethod
-    def close(self):
-        "Close connection(s) to the database instance. Querying will stop functioning."
-        ...
-
     def _parse_type(self, type_repr: str, datetime_precision: int = None, numeric_precision: int = None) -> ColType:
         """ """
 
@@ -175,6 +177,14 @@ class Database(ABC):
             return cls(precision=datetime_precision or DEFAULT_PRECISION)
 
         return UnknownColType(type_repr)
+
+    def select_table_schema(self, path: DbPath) -> str:
+        schema, table = self._canonize_path(path)
+
+        return (
+            "SELECT column_name, data_type, datetime_precision, numeric_precision FROM information_schema.columns "
+            f"WHERE table_name = '{table}' AND table_schema = '{schema}'"
+        )
 
     def query_table_schema(self, path: DbPath) -> Dict[str, ColType]:
         rows = self.query(self.select_table_schema(path), list)
@@ -263,14 +273,6 @@ class Postgres(ThreadedDatabase):
     def to_string(self, s: str):
         return f"{s}::varchar"
 
-    def select_table_schema(self, path: DbPath) -> str:
-        schema, table = self._canonize_path(path)
-
-        return (
-            "SELECT column_name, data_type, datetime_precision, numeric_precision FROM information_schema.columns "
-            f"WHERE table_name = '{table}' AND table_schema = '{schema}'"
-        )
-
     def canonize_by_type(self, value, coltype: ColType) -> str:
         if isinstance(coltype, (Timestamp, TimestampTZ)):
             return self.to_string(f"{value}::timestamp({coltype.precision})")
@@ -335,16 +337,8 @@ class MySQL(ThreadedDatabase):
 
     def canonize_by_type(self, value, coltype: ColType) -> str:
         if isinstance(coltype, (Timestamp, TimestampTZ)):
-            return self.to_string(f"cast({value} as datetime(6))")
+            return self.to_string(f"cast({value} as datetime({coltype.precision}))")
         return self.to_string(f"{value}")
-
-    def select_table_schema(self, path: DbPath) -> str:
-        schema, table = self._canonize_path(path)
-
-        return (
-            "SELECT column_name, data_type, datetime_precision, numeric_precision FROM information_schema.columns "
-            f"WHERE table_name = '{table}' AND table_schema = '{schema}'"
-        )
 
 
 class Oracle(ThreadedDatabase):
@@ -494,11 +488,7 @@ class Snowflake(Database):
 
     def select_table_schema(self, path: DbPath) -> str:
         schema, table = self._canonize_path(path)
-
-        return (
-            "SELECT column_name, data_type, datetime_precision, numeric_precision FROM information_schema.columns "
-            f"WHERE table_name = '{table.upper()}' AND table_schema = '{schema.upper()}'"
-        )
+        return super().select_table_schema((schema.upper(), table.upper()))
 
     def canonize_by_type(self, value, coltype: ColType) -> str:
         if isinstance(coltype, (Timestamp, TimestampTZ)):
