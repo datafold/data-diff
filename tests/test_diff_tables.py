@@ -63,8 +63,8 @@ class TestDates(TestWithConnection):
         self.preql.commit()
 
     def test_init(self):
-        a = TableSegment(self.connection, ("a",), "id", "datetime", max_time=self.now.datetime)
-        self.assertRaises(ValueError, TableSegment, self.connection, ("a",), "id", max_time=self.now.datetime)
+        a = TableSegment(self.connection, ("a",), "id", "datetime", max_update=self.now.datetime)
+        self.assertRaises(ValueError, TableSegment, self.connection, ("a",), "id", max_update=self.now.datetime)
 
     def test_basic(self):
         differ = TableDiffer(10, 100)
@@ -79,24 +79,24 @@ class TestDates(TestWithConnection):
     def test_offset(self):
         differ = TableDiffer(2, 10)
         sec1 = self.now.shift(seconds=-1).datetime
-        a = TableSegment(self.connection, ("a",), "id", "datetime", max_time=sec1)
-        b = TableSegment(self.connection, ("b",), "id", "datetime", max_time=sec1)
+        a = TableSegment(self.connection, ("a",), "id", "datetime", max_update=sec1)
+        b = TableSegment(self.connection, ("b",), "id", "datetime", max_update=sec1)
         assert a.count() == 4
         assert b.count() == 3
 
         assert not list(differ.diff_tables(a, a))
         self.assertEqual(len(list(differ.diff_tables(a, b))), 1)
 
-        a = TableSegment(self.connection, ("a",), "id", "datetime", min_time=sec1)
-        b = TableSegment(self.connection, ("b",), "id", "datetime", min_time=sec1)
+        a = TableSegment(self.connection, ("a",), "id", "datetime", min_update=sec1)
+        b = TableSegment(self.connection, ("b",), "id", "datetime", min_update=sec1)
         assert a.count() == 2
         assert b.count() == 2
         assert not list(differ.diff_tables(a, b))
 
         day1 = self.now.shift(days=-1).datetime
 
-        a = TableSegment(self.connection, ("a",), "id", "datetime", min_time=day1, max_time=sec1)
-        b = TableSegment(self.connection, ("b",), "id", "datetime", min_time=day1, max_time=sec1)
+        a = TableSegment(self.connection, ("a",), "id", "datetime", min_update=day1, max_update=sec1)
+        b = TableSegment(self.connection, ("b",), "id", "datetime", min_update=day1, max_update=sec1)
         assert a.count() == 3
         assert b.count() == 2
         assert not list(differ.diff_tables(a, a))

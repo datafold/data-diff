@@ -37,11 +37,11 @@ def diff_tables(
     # Extra columns to compare
     extra_columns: Tuple[str, ...] = (),
     # Start/end key_column values, used to restrict the segment
-    start_key: DbKey = None,
-    end_key: DbKey = None,
+    min_key: DbKey = None,
+    max_key: DbKey = None,
     # Start/end update_column values, used to restrict the segment
-    min_time: DbTime = None,
-    max_time: DbTime = None,
+    min_updated: DbTime = None,
+    max_updated: DbTime = None,
     # Into how many segments to bisect per iteration
     bisection_factor: int = DEFAULT_BISECTION_FACTOR,
     # When should we stop bisecting and compare locally (in row count)
@@ -68,10 +68,10 @@ def diff_tables(
             key_column=key_column,
             update_column=update_column,
             extra_columns=extra_columns,
-            start_key=start_key,
-            end_key=end_key,
-            min_time=min_time,
-            max_time=max_time,
+            min_key=min_key,
+            max_key=max_key,
+            min_updated=min_updated,
+            max_updated=max_updated,
         )
         for t in tables
     ]

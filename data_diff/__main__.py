@@ -111,7 +111,8 @@ def main(
 
     try:
         options = dict(
-            min_time=min_age and parse_time_before_now(min_age), max_time=max_age and parse_time_before_now(max_age)
+            min_updated=max_age and parse_time_before_now(max_age),
+            max_updated=min_age and parse_time_before_now(min_age),
         )
     except ParseError as e:
         logging.error("Error while parsing age expression: %s" % e)

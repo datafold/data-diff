@@ -54,28 +54,28 @@ class TableSegment:
     extra_columns: Tuple[str, ...] = ()
 
     # Start/end key_column values, used to restrict the segment
-    start_key: DbKey = None
-    end_key: DbKey = None
+    min_key: DbKey = None
+    max_key: DbKey = None
 
     # Start/end update_column values, used to restrict the segment
-    min_time: DbTime = None
-    max_time: DbTime = None
+    min_update: DbTime = None
+    max_update: DbTime = None
 
     def __post_init__(self):
-        if not self.update_column and (self.min_time or self.max_time):
-            raise ValueError("Error: min_time/max_time feature requires to specify 'update_column'")
+        if not self.update_column and (self.min_update or self.max_update):
+            raise ValueError("Error: min_update/max_update feature requires to specify 'update_column'")
 
     def _make_key_range(self):
-        if self.start_key is not None:
-            yield Compare("<=", str(self.start_key), self.key_column)
-        if self.end_key is not None:
-            yield Compare("<", self.key_column, str(self.end_key))
+        if self.min_key is not None:
+            yield Compare("<=", str(self.min_key), self.key_column)
+        if self.max_key is not None:
+            yield Compare("<", self.key_column, str(self.max_key))
 
     def _make_update_range(self):
-        if self.min_time is not None:
-            yield Compare("<=", Time(self.min_time), self.update_column)
-        if self.max_time is not None:
-            yield Compare("<", self.update_column, Time(self.max_time))
+        if self.min_update is not None:
+            yield Compare("<=", Time(self.min_update), self.update_column)
+        if self.max_update is not None:
+            yield Compare("<", self.update_column, Time(self.max_update))
 
     def _make_select(self, *, table=None, columns=None, where=None, group_by=None, order_by=None):
         if columns is None:
@@ -98,21 +98,21 @@ class TableSegment:
     def choose_checkpoints(self, count: int) -> List[DbKey]:
         "Suggests a bunch of evenly-spaced checkpoints to split by (not including start, end)"
         assert self.is_bounded
-        return split_space(self.start_key, self.end_key, count)
+        return split_space(self.min_key, self.max_key, count)
 
     def segment_by_checkpoints(self, checkpoints: List[DbKey]) -> List["TableSegment"]:
         "Split the current TableSegment to a bunch of smaller ones, separate by the given checkpoints"
 
-        if self.start_key and self.end_key:
-            assert all(self.start_key <= c < self.end_key for c in checkpoints)
+        if self.min_key and self.max_key:
+            assert all(self.min_key <= c < self.max_key for c in checkpoints)
         checkpoints.sort()
 
         # Calculate sub-segments
-        positions = [self.start_key] + checkpoints + [self.end_key]
+        positions = [self.min_key] + checkpoints + [self.max_key]
         ranges = list(zip(positions[:-1], positions[1:]))
 
         # Create table segments
-        tables = [self.new(start_key=s, end_key=e) for s, e in ranges]
+        tables = [self.new(min_key=s, max_key=e) for s, e in ranges]
 
         return tables
 
@@ -159,7 +159,7 @@ class TableSegment:
 
     @property
     def is_bounded(self):
-        return self.start_key is not None and self.end_key is not None
+        return self.min_key is not None and self.max_key is not None
 
 
 def diff_sets(a: set, b: set) -> Iterator:
@@ -229,11 +229,11 @@ class TableDiffer:
         mins, maxs = zip(*key_ranges)
 
         # We add 1 because our ranges are exclusive of the end (like in Python)
-        start_key = min(mins)
-        end_key = max(maxs) + 1
+        min_key = min(mins)
+        max_key = max(maxs) + 1
 
-        table1 = table1.new(start_key=start_key, end_key=end_key)
-        table2 = table2.new(start_key=start_key, end_key=end_key)
+        table1 = table1.new(min_key=min_key, max_key=max_key)
+        table2 = table2.new(min_key=min_key, max_key=max_key)
 
         return self._bisect_and_diff_tables(table1, table2)
 
@@ -242,7 +242,7 @@ class TableDiffer:
 
         if max_rows is None:
             # We can be sure that row_count <= max_rows
-            max_rows = table1.end_key - table1.start_key
+            max_rows = table1.max_key - table1.min_key
 
         # If count is below the threshold, just download and compare the columns locally
         # This saves time, as bisection speed is limited by ping and query performance.
@@ -253,7 +253,7 @@ class TableDiffer:
             yield from diff
             return
 
-        # Choose evenly spaced checkpoints (according to start_key and end_key)
+        # Choose evenly spaced checkpoints (according to min_key and max_key)
         checkpoints = table1.choose_checkpoints(self.bisection_factor - 1)
 
         # Create new instances of TableSegment between each checkpoint
@@ -272,8 +272,8 @@ class TableDiffer:
     def _diff_tables(self, table1, table2, level=0, segment_index=None, segment_count=None):
         logger.info(
             ". " * level + f"Diffing segment {segment_index}/{segment_count}, "
-            f"key-range: {table1.start_key}..{table2.end_key}, "
-            f"size: {table2.end_key-table1.start_key}"
+            f"key-range: {table1.min_key}..{table2.max_key}, "
+            f"size: {table2.max_key-table1.min_key}"
         )
 
         (count1, checksum1), (count2, checksum2) = self._threaded_call("count_and_checksum", [table1, table2])
