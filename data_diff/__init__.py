@@ -40,8 +40,8 @@ def diff_tables(
     min_key: DbKey = None,
     max_key: DbKey = None,
     # Start/end update_column values, used to restrict the segment
-    min_updated: DbTime = None,
-    max_updated: DbTime = None,
+    min_update: DbTime = None,
+    max_update: DbTime = None,
     # Into how many segments to bisect per iteration
     bisection_factor: int = DEFAULT_BISECTION_FACTOR,
     # When should we stop bisecting and compare locally (in row count)

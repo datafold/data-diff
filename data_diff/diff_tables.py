@@ -4,7 +4,7 @@
 import time
 from operator import methodcaller
 from collections import defaultdict
-from typing import List, Tuple, Iterator
+from typing import List, Tuple, Iterator, Optional
 import logging
 from concurrent.futures import ThreadPoolExecutor
 
@@ -201,7 +201,7 @@ class TableDiffer:
 
     # Maximum size of each threadpool. None = auto. Only relevant when threaded is True.
     # There may be many pools, so number of actual threads can be a lot higher.
-    max_threadpool_size: int = None
+    max_threadpool_size: Optional[int] = 1
 
     # Enable/disable debug prints
     debug: bool = False
@@ -221,10 +221,6 @@ class TableDiffer:
         if self.bisection_factor < 2:
             raise ValueError("Must have at least two segments per iteration (i.e. bisection_factor >= 2)")
 
-        logger.info(
-            f"Diffing tables | segments: {self.bisection_factor}, bisection threshold: {self.bisection_threshold}."
-        )
-
         key_ranges = self._threaded_call("query_key_range", [table1, table2])
         mins, maxs = zip(*key_ranges)
 
@@ -234,6 +230,12 @@ class TableDiffer:
 
         table1 = table1.new(min_key=min_key, max_key=max_key)
         table2 = table2.new(min_key=min_key, max_key=max_key)
+
+        logger.info(
+            f"Diffing tables | segments: {self.bisection_factor}, bisection threshold: {self.bisection_threshold}. "
+            f"key-range: {table1.min_key}..{table2.max_key}, "
+            f"size: {table2.max_key-table1.min_key}"
+        )
 
         return self._bisect_and_diff_tables(table1, table2)
 

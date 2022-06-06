@@ -4,7 +4,13 @@ import time
 import logging
 from itertools import islice
 
-from .diff_tables import TableSegment, TableDiffer, DEFAULT_BISECTION_THRESHOLD, parse_table_name
+from .diff_tables import (
+    TableSegment,
+    TableDiffer,
+    DEFAULT_BISECTION_THRESHOLD,
+    DEFAULT_BISECTION_FACTOR,
+    parse_table_name,
+)
 from .database import connect_to_uri
 from .parse_time import parse_time_before_now, UNITS_STR, ParseError
 
@@ -111,8 +117,8 @@ def main(
 
     try:
         options = dict(
-            min_updated=max_age and parse_time_before_now(max_age),
-            max_updated=min_age and parse_time_before_now(min_age),
+            min_update=max_age and parse_time_before_now(max_age),
+            max_update=min_age and parse_time_before_now(min_age),
         )
     except ParseError as e:
         logging.error("Error while parsing age expression: %s" % e)
