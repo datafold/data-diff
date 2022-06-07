@@ -106,7 +106,7 @@ $ data-diff \
 |---------------|-----------------------------------------------------------------------------------------|--------|
 | Postgres      | `postgres://user:password@hostname:5432/database`                                       |  💚    |
 | MySQL         | `mysql://user:password@hostname:5432/database`                                          |  💚    |
-| Snowflake     | `snowflake://user:password@account/warehouse?database=database&schema=schema&role=role` |  💚    |
+| Snowflake     | `snowflake://user:password@account/database/schema?warehouse=warehouse&role=role`       |  💚    |
 | Oracle        | `oracle://username:password@hostname/database`                                          |  💛    |
 | BigQuery      | `bigquery:///`                                                                          |  💛    |
 | Redshift      | `redshift://username:password@hostname:5439/database`                                   |  💛    |
