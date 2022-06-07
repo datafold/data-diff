@@ -8,6 +8,7 @@ logging.basicConfig(level=logging.WARN)
 TEST_MYSQL_CONN_STRING: str = "mysql://mysql:Password1@localhost/mysql"
 TEST_POSTGRES_CONN_STRING: str = None
 TEST_SNOWFLAKE_CONN_STRING: str = None
+TEST_BIGQUERY_CONN_STRING: str = None
 
 try:
     from .local_settings import *
@@ -17,6 +18,7 @@ except ImportError:
 CONN_STRINGS = {
     db.MySQL: TEST_MYSQL_CONN_STRING,
     db.Postgres: TEST_POSTGRES_CONN_STRING,
+    db.BigQuery: TEST_BIGQUERY_CONN_STRING,     # TODO BigQuery after Snowflake causes an error!
     db.Snowflake: TEST_SNOWFLAKE_CONN_STRING,
 }
 

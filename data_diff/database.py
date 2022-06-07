@@ -399,10 +399,17 @@ class MsSQL(ThreadedDatabase):
 
 
 class BigQuery(Database):
+    DATETIME_TYPES = {
+        "TIMESTAMP": Timestamp,
+        "DATETIME": Datetime,
+    }
+
     def __init__(self, project, dataset):
         from google.cloud import bigquery
 
         self._client = bigquery.Client(project)
+        self.project = project
+        self.dataset = dataset
 
     def quote(self, s: str):
         return f"`{s}`"
@@ -430,6 +437,22 @@ class BigQuery(Database):
 
     def to_string(self, s: str):
         return f"cast({s} as string)"
+
+    def close(self):
+        self._client.close()
+
+    def select_table_schema(self, path: DbPath) -> str:
+        schema, table = self._canonize_path(path)
+
+        return (
+            f"SELECT column_name, data_type, 6 as datetime_precision, 6 as numeric_precision FROM {self.dataset}.INFORMATION_SCHEMA.COLUMNS "
+            f"WHERE table_name = '{table}' AND table_schema = '{schema}'"
+        )
+
+    def canonize_by_type(self, value, coltype: ColType) -> str:
+        if isinstance(coltype, PrecisionType):
+            return self.to_string(f'FORMAT_TIMESTAMP("%F %H:%M:%E6S", {value})')
+        return self.to_string(f"{value}")
 
 
 class Snowflake(Database):
