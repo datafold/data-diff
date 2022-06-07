@@ -8,6 +8,7 @@ logging.basicConfig(level=logging.WARN)
 TEST_MYSQL_CONN_STRING: str = "mysql://mysql:Password1@localhost/mysql"
 TEST_POSTGRES_CONN_STRING: str = None
 TEST_SNOWFLAKE_CONN_STRING: str = None
+TEST_BIGQUERY_CONN_STRING: str = None
 
 try:
     from .local_settings import *
