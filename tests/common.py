@@ -17,6 +17,7 @@ except ImportError:
 CONN_STRINGS = {
     db.MySQL: TEST_MYSQL_CONN_STRING,
     db.Postgres: TEST_POSTGRES_CONN_STRING,
+    db.BigQuery: TEST_BIGQUERY_CONN_STRING,     # TODO BigQuery after Snowflake causes an error!
     db.Snowflake: TEST_SNOWFLAKE_CONN_STRING,
 }
 
