@@ -1,7 +1,5 @@
 from typing import Tuple, Iterator, Optional, Union
 
-from numpy import isin
-
 from .database import connect_to_uri
 from .diff_tables import (
     TableSegment,

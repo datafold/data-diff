@@ -27,6 +27,11 @@ class TestWithConnection(unittest.TestCase):
         cls.preql = preql.Preql(TEST_MYSQL_CONN_STRING)
         cls.connection = connect_to_uri(TEST_MYSQL_CONN_STRING)
 
+    @classmethod
+    def tearDownClass(cls):
+        cls.preql.close()
+        cls.connection.close()
+
 
 class TestDates(TestWithConnection):
     def setUp(self):
@@ -146,7 +151,7 @@ class TestDiffTables(TestWithConnection):
         )
         self.preql.commit()
         diff = list(self.differ.diff_tables(self.table, self.table2))
-        expected = [("+", (2, datetime.datetime(2022, 1, 1, 0, 0)))]
+        expected = [("-", (2, datetime.datetime(2022, 1, 1, 0, 0)))]
         self.assertEqual(expected, diff)
 
     def test_diff_table_above_bisection_threshold(self):
@@ -167,7 +172,7 @@ class TestDiffTables(TestWithConnection):
         )
         self.preql.commit()
         diff = list(self.differ.diff_tables(self.table, self.table2))
-        expected = [("+", (5, datetime.datetime(2022, 1, 1, 0, 0)))]
+        expected = [("-", (5, datetime.datetime(2022, 1, 1, 0, 0)))]
         self.assertEqual(expected, diff)
 
     def test_return_empty_array_when_same(self):
@@ -204,10 +209,10 @@ class TestDiffTables(TestWithConnection):
         differ = TableDiffer()
         diff = list(differ.diff_tables(self.table, self.table2))
         expected = [
-            ("+", (2, datetime.datetime(2021, 1, 1, 0, 0))),
-            ("-", (2, datetime.datetime(2022, 1, 1, 0, 0))),
-            ("+", (4, datetime.datetime(2021, 1, 1, 0, 0))),
-            ("-", (4, datetime.datetime(2022, 1, 1, 0, 0))),
+            ("-", (2, datetime.datetime(2021, 1, 1, 0, 0))),
+            ("+", (2, datetime.datetime(2022, 1, 1, 0, 0))),
+            ("-", (4, datetime.datetime(2021, 1, 1, 0, 0))),
+            ("+", (4, datetime.datetime(2022, 1, 1, 0, 0))),
         ]
         self.assertEqual(expected, diff)
 
