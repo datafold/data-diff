@@ -175,9 +175,9 @@ def diff_sets(a: set, b: set) -> Iterator:
 
     # The first item is always the key (see TableDiffer._relevant_columns)
     for i in s1 - s2:
-        d[i[0]].append(("+", i))
-    for i in s2 - s1:
         d[i[0]].append(("-", i))
+    for i in s2 - s1:
+        d[i[0]].append(("+", i))
 
     for k, v in sorted(d.items(), key=lambda i: i[0]):
         yield from v
