@@ -330,10 +330,10 @@ class Snowflake(Database):
         account: str,
         user: str,
         password: str,
-        path: str,
-        role: str,
+        warehouse: str,
         schema: str,
         database: str,
+        role: str = None,
         print_sql: bool = False,
     ):
         snowflake = import_snowflake()
@@ -350,7 +350,7 @@ class Snowflake(Database):
             account=account,
             role=role,
             database=database,
-            warehouse=path.lstrip('/'),
+            warehouse=warehouse,
             schema=schema,
         )
 
@@ -389,6 +389,14 @@ def connect_to_uri(db_uri: str, thread_count: Optional[int] = 1) -> Database:
         raise NotImplementedError("No support for multiple schemes")
     (scheme,) = dsn.schemes
 
+    if scheme == 'snowflake':
+        database, schema = dsn.paths
+        try:
+            warehouse = dsn.query['warehouse']
+        except KeyError:
+            raise ValueError("Must provide warehouse. Format: 'snowflake://<user>:<pass>@<account>/<database>/<schema>?warehouse=<warehouse>'")
+        return Snowflake(dsn.host, dsn.user, dsn.password, warehouse=warehouse, database=database, schema=schema)
+
     if len(dsn.paths) == 0:
         path = ""
     elif len(dsn.paths) == 1:
@@ -400,8 +408,6 @@ def connect_to_uri(db_uri: str, thread_count: Optional[int] = 1) -> Database:
         return Postgres(dsn.host, dsn.port, path, dsn.user, dsn.password, thread_count=thread_count)
     elif scheme == "mysql":
         return MySQL(dsn.host, dsn.port, path, dsn.user, dsn.password, thread_count=thread_count)
-    elif scheme == "snowflake":
-        return Snowflake(dsn.host, dsn.user, dsn.password, path, **dsn.query)
     elif scheme == "mssql":
         return MsSQL(dsn.host, dsn.port, path, dsn.user, dsn.password, thread_count=thread_count)
     elif scheme == "bigquery":
