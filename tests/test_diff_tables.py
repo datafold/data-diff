@@ -211,6 +211,7 @@ class TestDiffTables(TestWithConnection):
         ]
         self.assertEqual(expected, diff)
 
+
 class TestTableSegment(TestWithConnection):
     def setUp(self) -> None:
         self.table = TableSegment(self.connection, ("ratings_test",), "id", "timestamp")

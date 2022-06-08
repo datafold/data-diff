@@ -1,4 +1,6 @@
-from typing import Tuple, Iterator, Optional
+from typing import Tuple, Iterator, Optional, Union
+
+from numpy import isin
 
 from .database import connect_to_uri
 from .diff_tables import (
@@ -8,27 +10,26 @@ from .diff_tables import (
     DEFAULT_BISECTION_FACTOR,
     DbKey,
     DbTime,
+    DbPath,
     parse_table_name,
 )
 
 
-class TableRef:
-    """Connects to a URI and creates a table ref
+def connect_to_table(
+    db_uri: str, table_name: Union[DbPath, str], key_column: str = "id", thread_count: Optional[int] = 1, **kwargs
+):
+    """Connects to a URI and creates a TableSegment instance"""
 
-    This is an auxiliary class for diff_tables()
-    """
+    if isinstance(table_name, str):
+        table_name = parse_table_name(table_name)
 
-    def __init__(self, db_uri: str, table_name: str):
-        self.db = connect_to_uri(db_uri)
-        self.table_name = table_name
-
-    def create_table_segment(self, **kwargs):
-        return TableSegment(self.db, parse_table_name(self.table_name), **kwargs)
+    db = connect_to_uri(db_uri, thread_count=thread_count)
+    return TableSegment(db, table_name, key_column, **kwargs)
 
 
 def diff_tables(
-    table1: TableRef,
-    table2: TableRef,
+    table1: TableSegment,
+    table2: TableSegment,
     *,
     # Name of the key column, which uniquely identifies each row (usually id)
     key_column: str = "id",
@@ -57,21 +58,21 @@ def diff_tables(
     """Efficiently finds the diff between table1 and table2.
 
     Example:
-        >>> table1 = TableRef('postgres:///', 'Rating')
+        >>> table1 = connect_to_table('postgres:///', 'Rating', 'id')
         >>> list(diff_tables(table1, table1))
         []
 
     """
     tables = [table1, table2]
     segments = [
-        t.create_table_segment(
+        t.new(
             key_column=key_column,
             update_column=update_column,
             extra_columns=extra_columns,
             min_key=min_key,
             max_key=max_key,
-            min_updated=min_updated,
-            max_updated=max_updated,
+            min_update=min_update,
+            max_update=max_update,
         )
         for t in tables
     ]

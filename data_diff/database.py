@@ -204,6 +204,7 @@ class Presto(Database):
         "Uses the standard SQL cursor interface"
         return _query_conn(self._conn, sql_code)
 
+
 class MySQL(ThreadedDatabase):
     def __init__(self, host, port, database, user, password, *, thread_count):
         args = dict(host=host, port=port, database=database, user=user, password=password)
