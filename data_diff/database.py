@@ -179,7 +179,7 @@ class Database(AbstractDatabase):
         return UnknownColType(type_repr)
 
     def select_table_schema(self, path: DbPath) -> str:
-        schema, table = self._canonize_path(path)
+        schema, table = self._normalize_path(path)
 
         return (
             "SELECT column_name, data_type, datetime_precision, numeric_precision FROM information_schema.columns "
@@ -192,7 +192,7 @@ class Database(AbstractDatabase):
         # Return a dict of form {name: type} after canonizaation
         return {row[0].lower(): self._parse_type(*row[1:]) for row in rows}
 
-    def _canonize_path(self, path: DbPath) -> DbPath:
+    def _normalize_path(self, path: DbPath) -> DbPath:
         if len(path) == 1:
             return self.default_schema, path[0]
         elif len(path) == 2:
@@ -260,7 +260,9 @@ class Postgres(ThreadedDatabase):
     def create_connection(self):
         postgres = import_postgres()
         try:
-            return postgres.connect(**self.args)
+            c = postgres.connect(**self.args)
+            c.cursor().execute("SET TIME ZONE 'UTC'")
+            return c
         except postgres.OperationalError as e:
             raise ConnectError(*e.args) from e
 
@@ -273,7 +275,7 @@ class Postgres(ThreadedDatabase):
     def to_string(self, s: str):
         return f"{s}::varchar"
 
-    def canonize_by_type(self, value, coltype: ColType) -> str:
+    def normalize_value_by_type(self, value, coltype: ColType) -> str:
         if isinstance(coltype, (Timestamp, TimestampTZ)):
             return self.to_string(f"{value}::timestamp({coltype.precision})")
         return self.to_string(f"{value}")
@@ -335,7 +337,7 @@ class MySQL(ThreadedDatabase):
     def to_string(self, s: str):
         return f"cast({s} as char)"
 
-    def canonize_by_type(self, value, coltype: ColType) -> str:
+    def normalize_value_by_type(self, value, coltype: ColType) -> str:
         if isinstance(coltype, (Timestamp, TimestampTZ)):
             return self.to_string(f"cast({value} as datetime({coltype.precision}))")
         return self.to_string(f"{value}")
@@ -417,7 +419,7 @@ class BigQuery(Database):
     def md5_to_int(self, s: str) -> str:
         return f"cast(cast( ('0x' || substr(TO_HEX(md5({s})), 18)) as int64) as numeric)"
 
-    def _canonize_value(self, value):
+    def _normalize_returned_value(self, value):
         if isinstance(value, bytes):
             return value.decode()
         return value
@@ -432,7 +434,7 @@ class BigQuery(Database):
             raise ConnectError(msg % (sql_code, e))
 
         if res and isinstance(res[0], bigquery.table.Row):
-            res = [tuple(self._canonize_value(v) for v in row.values()) for row in res]
+            res = [tuple(self._normalize_returned_value(v) for v in row.values()) for row in res]
         return res
 
     def to_string(self, s: str):
@@ -442,14 +444,14 @@ class BigQuery(Database):
         self._client.close()
 
     def select_table_schema(self, path: DbPath) -> str:
-        schema, table = self._canonize_path(path)
+        schema, table = self._normalize_path(path)
 
         return (
             f"SELECT column_name, data_type, 6 as datetime_precision, 6 as numeric_precision FROM {self.dataset}.INFORMATION_SCHEMA.COLUMNS "
             f"WHERE table_name = '{table}' AND table_schema = '{schema}'"
         )
 
-    def canonize_by_type(self, value, coltype: ColType) -> str:
+    def normalize_value_by_type(self, value, coltype: ColType) -> str:
         if isinstance(coltype, PrecisionType):
             return self.to_string(f'FORMAT_TIMESTAMP("%F %H:%M:%E6S", {value})')
         return self.to_string(f"{value}")
@@ -510,10 +512,10 @@ class Snowflake(Database):
         return f"cast({s} as string)"
 
     def select_table_schema(self, path: DbPath) -> str:
-        schema, table = self._canonize_path(path)
+        schema, table = self._normalize_path(path)
         return super().select_table_schema((schema.upper(), table.upper()))
 
-    def canonize_by_type(self, value, coltype: ColType) -> str:
+    def normalize_value_by_type(self, value, coltype: ColType) -> str:
         if isinstance(coltype, (Timestamp, TimestampTZ)):
             return f"{value}::timestamp({coltype.precision})::text"
         return f"{value}::text"
