@@ -21,22 +21,22 @@ DATE_TYPES = {
 }
 
 
-class TestCanonize(unittest.TestCase):
+class TestNormalize(unittest.TestCase):
     i = 0
 
     def _new_table(self, name):
         self.i += 1
         return f"t_{self.i}"
 
-    def test_canonize(self):
+    def test_normalize(self):
         all_returned = {}
 
         for db_id, conn_string in CONN_STRINGS.items():
             print(f"Testing {db_id}")
 
-            sample_date1 = datetime(2022, 6, 3, 12, 24, 35, 69296)
+            sample_date1 = datetime(2022, 6, 3, 12, 24, 35, 69296, tzinfo=timezone.utc)
             sample_date2 = datetime(2021, 5, 2, 11, 23, 34, 58185, tzinfo=timezone.utc)
-            if db_id in (MySQL, BigQuery):
+            if db_id in (BigQuery,):
                 # TODO Issue when adding timezone to mysql
                 dates = [sample_date1, sample_date2.replace(tzinfo=None)]
             else:
@@ -73,7 +73,7 @@ class TestCanonize(unittest.TestCase):
                     schema = conn.query_table_schema(table.split('.'))
 
                     returned_dates = tuple(
-                        x for x, in conn.query(Select([conn.canonize_by_type("v", schema["v"])], table), list)
+                        x for x, in conn.query(Select([conn.normalize_value_by_type("v", schema["v"])], table), list)
                     )
 
                     # print("@@", db_id, date_type, " --> ", returned_dates)
