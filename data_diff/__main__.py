@@ -4,7 +4,13 @@ import time
 import logging
 from itertools import islice
 
-from .diff_tables import TableSegment, TableDiffer, DEFAULT_BISECTION_THRESHOLD
+from .diff_tables import (
+    TableSegment,
+    TableDiffer,
+    DEFAULT_BISECTION_THRESHOLD,
+    DEFAULT_BISECTION_FACTOR,
+    parse_table_name,
+)
 from .database import connect_to_uri
 from .parse_time import parse_time_before_now, UNITS_STR, ParseError
 
@@ -19,8 +25,6 @@ COLOR_SCHEME = {
     "-": "red",
 }
 
-def parse_table_name(t):
-    return tuple(t.split('.'))
 
 @click.command()
 @click.argument("db1_uri")
@@ -31,7 +35,7 @@ def parse_table_name(t):
 @click.option("-t", "--update-column", default=None, help="Name of updated_at/last_updated column")
 @click.option("-c", "--columns", default=[], multiple=True, help="Names of extra columns to compare")
 @click.option("-l", "--limit", default=None, help="Maximum number of differences to find")
-@click.option("--bisection-factor", default=32, help="Segments per iteration")
+@click.option("--bisection-factor", default=DEFAULT_BISECTION_FACTOR, help="Segments per iteration")
 @click.option(
     "--bisection-threshold",
     default=DEFAULT_BISECTION_THRESHOLD,
@@ -57,6 +61,9 @@ def parse_table_name(t):
     "A higher number will increase performance, but take more capacity from your database. "
     "'serial' guarantees a single-threaded execution of the algorithm (useful for debugging).",
 )
+@click.option(
+    "--tui", is_flag=True, help="Display the diff in an interactive TUI app! (Requires 'textual'; experimental)"
+)
 def main(
     db1_uri,
     table1_name,
@@ -75,17 +82,20 @@ def main(
     verbose,
     interactive,
     threads,
+    tui,
 ):
     if limit and stats:
         print("Error: cannot specify a limit when using the -s/--stats switch")
         return
     if interactive:
+        assert not tui
         debug = True
 
-    if debug:
-        logging.basicConfig(level=logging.DEBUG, format=LOG_FORMAT, datefmt=DATE_FORMAT)
-    elif verbose:
-        logging.basicConfig(level=logging.INFO, format=LOG_FORMAT, datefmt=DATE_FORMAT)
+    if not tui:
+        if debug:
+            logging.basicConfig(level=logging.DEBUG, format=LOG_FORMAT, datefmt=DATE_FORMAT)
+        elif verbose:
+            logging.basicConfig(level=logging.INFO, format=LOG_FORMAT, datefmt=DATE_FORMAT)
 
     threaded = True
     if threads is not None:
@@ -125,33 +135,38 @@ def main(
     differ = TableDiffer(
         bisection_factor=bisection_factor,
         bisection_threshold=bisection_threshold,
-        debug=debug,
         threaded=threaded,
         max_threadpool_size=threads and threads * 2,
+        debug=debug,
     )
-    diff_iter = differ.diff_tables(table1, table2)
 
-    if limit:
-        diff_iter = islice(diff_iter, int(limit))
+    if tui:
+        from .tui import start_app
 
-    if stats:
-        diff = list(diff_iter)
-        unique_diff_count = len({i[0] for _, i in diff})
-        table1_count = differ.stats.get("table1_count")
-        percent = 100 * unique_diff_count / (table1_count or 1)
-        print(f"Diff-Total: {len(diff)} changed rows out of {table1_count}")
-        print(f"Diff-Percent: {percent:.4f}%")
-        plus = len([1 for op, _ in diff if op == "+"])
-        minus = len([1 for op, _ in diff if op == "-"])
-        print(f"Diff-Split: +{plus}  -{minus}")
+        start_app(differ, table1, table2)
     else:
-        for op, key in diff_iter:
-            color = COLOR_SCHEME[op]
-            rich.print(f"[{color}]{op} {key!r}[/{color}]")
-            sys.stdout.flush()
+        diff_iter = differ.diff_tables(table1, table2)
+
+        if limit:
+            diff_iter = islice(diff_iter, int(limit))
+
+        if stats:
+            diff = list(diff_iter)
+            unique_diff_count = len({i[0] for _, i in diff})
+            table1_count = differ.stats.get("table1_count")
+            percent = 100 * unique_diff_count / (table1_count or 1)
+            print(f"Diff-Total: {len(diff)} changed rows out of {table1_count}")
+            print(f"Diff-Percent: {percent:.4f}%")
+            plus = len([1 for op, _ in diff if op == "+"])
+            minus = len([1 for op, _ in diff if op == "-"])
+            print(f"Diff-Split: +{plus}  -{minus}")
+        else:
+            for op, key in diff_iter:
+                color = COLOR_SCHEME[op]
+                rich.print(f"[{color}]{op} {key!r}[/{color}]")
+                sys.stdout.flush()
 
     end = time.time()
-
     logging.info(f"Duration: {end-start:.2f} seconds.")
 
 

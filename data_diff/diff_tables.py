@@ -18,6 +18,7 @@ logger = logging.getLogger("diff_tables")
 RECOMMENDED_CHECKSUM_DURATION = 10
 
 DEFAULT_BISECTION_THRESHOLD = 1024 * 16
+DEFAULT_BISECTION_FACTOR = 32
 
 
 def safezip(*args):
@@ -31,15 +32,32 @@ def split_space(start, end, count):
     return list(range(start, end, (size + 1) // (count + 1)))[1 : count + 1]
 
 
+def parse_table_name(t):
+    return tuple(t.split("."))
+
+
 @dataclass(frozen=False)
 class TableSegment:
+    """Signifies a segment of rows (and selected columns) within a table"""
+
+    # Location of table
     database: Database
     table_path: DbPath
+
+    # Name of the key column, which uniquely identifies each row (usually id)
     key_column: str
+
+    # Name of updated column, which signals that rows changed (usually updated_at or last_update)
     update_column: str = None
+
+    # Extra columns to compare
     extra_columns: Tuple[str, ...] = ()
+
+    # Start/end key_column values, used to restrict the segment
     start_key: DbKey = None
     end_key: DbKey = None
+
+    # Start/end update_column values, used to restrict the segment
     min_time: DbTime = None
     max_time: DbTime = None
 
@@ -111,9 +129,11 @@ class TableSegment:
         return [self.key_column] + list(sorted(extras))
 
     def count(self) -> Tuple[int, int]:
+        """Count how many rows are in the segment, in one pass."""
         return self.database.query(self._make_select(columns=[Count()]), int)
 
     def count_and_checksum(self) -> Tuple[int, int]:
+        """Count and checksum the rows in the segment, in one pass."""
         start = time.time()
         count, checksum = self.database.query(
             self._make_select(columns=[Count(), Checksum(self._relevant_columns)]), tuple
@@ -170,20 +190,25 @@ class TableDiffer:
     Works best for comparing tables that are mostly the name, with minor discrepencies.
     """
 
-    bisection_factor: int = 32  # Into how many segments to bisect per iteration
-    bisection_threshold: int = (
-        DEFAULT_BISECTION_THRESHOLD  # When should we stop bisecting and compare locally (in row count)
-    )
-    debug: bool = False
-    threaded: bool = True
+    # Into how many segments to bisect per iteration
+    bisection_factor: int = DEFAULT_BISECTION_FACTOR
 
-    stats: dict = {}
+    # When should we stop bisecting and compare locally (in row count)
+    bisection_threshold: int = DEFAULT_BISECTION_THRESHOLD
+
+    # Enable/disable threaded diffing. Needed to take advantage of database threads.
+    threaded: bool = True
 
     # Maximum size of each threadpool. None = auto. Only relevant when threaded is True.
     # There may be many pools, so number of actual threads can be a lot higher.
-    max_threadpool_size: int = None
+    max_threadpool_size: int = 1
 
-    def diff_tables(self, table1: TableSegment, table2: TableSegment) -> DiffResult:
+    # Enable/disable debug prints
+    debug: bool = False
+
+    stats: dict = {}
+
+    def diff_tables(self, table1: TableSegment, table2: TableSegment, stats_tree=None) -> DiffResult:
         """Diff the given tables.
 
         Returned value is an iterator that yield pair-tuples, representing the diff. Items can be either
@@ -210,9 +235,12 @@ class TableDiffer:
         table1 = table1.new(start_key=start_key, end_key=end_key)
         table2 = table2.new(start_key=start_key, end_key=end_key)
 
-        return self._bisect_and_diff_tables(table1, table2)
+        if stats_tree:
+            stats_tree.update_tables(table1, table2)
 
-    def _bisect_and_diff_tables(self, table1, table2, level=0, max_rows=None):
+        return self._bisect_and_diff_tables(table1, table2, stats_tree=stats_tree)
+
+    def _bisect_and_diff_tables(self, table1, table2, level=0, max_rows=None, stats_tree=None):
         assert table1.is_bounded and table2.is_bounded
 
         if max_rows is None:
@@ -225,6 +253,9 @@ class TableDiffer:
             rows1, rows2 = self._threaded_call("get_values", [table1, table2])
             diff = list(diff_sets(rows1, rows2))
             logger.info(". " * level + f"Diff found {len(diff)} different rows.")
+            if stats_tree:
+                stats_tree.set_diff(diff)
+                # stats_tree.set_count_and_checksum([1, 2], [3, 4])
             yield from diff
             return
 
@@ -237,22 +268,26 @@ class TableDiffer:
 
         # Recursively compare each pair of corresponding segments between table1 and table2
         diff_iters = [
-            self._diff_tables(t1, t2, level + 1, i + 1, len(segmented1))
+            self._diff_tables(
+                t1, t2, level + 1, i + 1, len(segmented1), stats_tree=stats_tree.add(t1, t2) if stats_tree else None
+            )
             for i, (t1, t2) in enumerate(safezip(segmented1, segmented2))
         ]
 
         for res in self._thread_map(list, diff_iters):
             yield from res
 
-    def _diff_tables(self, table1, table2, level=0, segment_index=None, segment_count=None):
+    def _diff_tables(self, table1, table2, level=0, segment_index=None, segment_count=None, stats_tree=None):
         logger.info(
-            ". " * level
-            + f"Diffing segment {segment_index}/{segment_count}, "
+            ". " * level + f"Diffing segment {segment_index}/{segment_count}, "
             f"key-range: {table1.start_key}..{table2.end_key}, "
             f"size: {table2.end_key-table1.start_key}"
         )
 
         (count1, checksum1), (count2, checksum2) = self._threaded_call("count_and_checksum", [table1, table2])
+
+        if stats_tree:
+            stats_tree.set_count_and_checksum([count1, count2], [checksum1, checksum2])
 
         if count1 == 0 and count2 == 0:
             logger.warn(
@@ -266,7 +301,9 @@ class TableDiffer:
             self.stats["table1_count"] = self.stats.get("table1_count", 0) + count1
 
         if checksum1 != checksum2:
-            yield from self._bisect_and_diff_tables(table1, table2, level=level, max_rows=max(count1, count2))
+            yield from self._bisect_and_diff_tables(
+                table1, table2, level=level, max_rows=max(count1, count2), stats_tree=stats_tree
+            )
 
     def _thread_map(self, func, iter):
         if not self.threaded:
