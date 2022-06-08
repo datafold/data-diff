@@ -4,7 +4,13 @@ import time
 import logging
 from itertools import islice
 
-from .diff_tables import TableSegment, TableDiffer, DEFAULT_BISECTION_THRESHOLD
+from .diff_tables import (
+    TableSegment,
+    TableDiffer,
+    DEFAULT_BISECTION_THRESHOLD,
+    DEFAULT_BISECTION_FACTOR,
+    parse_table_name,
+)
 from .database import connect_to_uri
 from .parse_time import parse_time_before_now, UNITS_STR, ParseError
 
@@ -19,8 +25,6 @@ COLOR_SCHEME = {
     "-": "red",
 }
 
-def parse_table_name(t):
-    return tuple(t.split('.'))
 
 @click.command()
 @click.argument("db1_uri")
@@ -31,7 +35,7 @@ def parse_table_name(t):
 @click.option("-t", "--update-column", default=None, help="Name of updated_at/last_updated column")
 @click.option("-c", "--columns", default=[], multiple=True, help="Names of extra columns to compare")
 @click.option("-l", "--limit", default=None, help="Maximum number of differences to find")
-@click.option("--bisection-factor", default=32, help="Segments per iteration")
+@click.option("--bisection-factor", default=DEFAULT_BISECTION_FACTOR, help="Segments per iteration")
 @click.option(
     "--bisection-threshold",
     default=DEFAULT_BISECTION_THRESHOLD,
@@ -113,7 +117,8 @@ def main(
 
     try:
         options = dict(
-            min_time=min_age and parse_time_before_now(min_age), max_time=max_age and parse_time_before_now(max_age)
+            min_update=max_age and parse_time_before_now(max_age),
+            max_update=min_age and parse_time_before_now(min_age),
         )
     except ParseError as e:
         logging.error("Error while parsing age expression: %s" % e)
@@ -125,9 +130,9 @@ def main(
     differ = TableDiffer(
         bisection_factor=bisection_factor,
         bisection_threshold=bisection_threshold,
-        debug=debug,
         threaded=threaded,
         max_threadpool_size=threads and threads * 2,
+        debug=debug,
     )
     diff_iter = differ.diff_tables(table1, table2)
 

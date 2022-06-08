@@ -27,6 +27,11 @@ class TestWithConnection(unittest.TestCase):
         cls.preql = preql.Preql(TEST_MYSQL_CONN_STRING)
         cls.connection = connect_to_uri(TEST_MYSQL_CONN_STRING)
 
+    @classmethod
+    def tearDownClass(cls):
+        cls.preql.close()
+        cls.connection.close()
+
 
 class TestDates(TestWithConnection):
     def setUp(self):
@@ -63,8 +68,8 @@ class TestDates(TestWithConnection):
         self.preql.commit()
 
     def test_init(self):
-        a = TableSegment(self.connection, ("a",), "id", "datetime", max_time=self.now.datetime)
-        self.assertRaises(ValueError, TableSegment, self.connection, ("a",), "id", max_time=self.now.datetime)
+        a = TableSegment(self.connection, ("a",), "id", "datetime", max_update=self.now.datetime)
+        self.assertRaises(ValueError, TableSegment, self.connection, ("a",), "id", max_update=self.now.datetime)
 
     def test_basic(self):
         differ = TableDiffer(10, 100)
@@ -79,24 +84,24 @@ class TestDates(TestWithConnection):
     def test_offset(self):
         differ = TableDiffer(2, 10)
         sec1 = self.now.shift(seconds=-1).datetime
-        a = TableSegment(self.connection, ("a",), "id", "datetime", max_time=sec1)
-        b = TableSegment(self.connection, ("b",), "id", "datetime", max_time=sec1)
+        a = TableSegment(self.connection, ("a",), "id", "datetime", max_update=sec1)
+        b = TableSegment(self.connection, ("b",), "id", "datetime", max_update=sec1)
         assert a.count() == 4
         assert b.count() == 3
 
         assert not list(differ.diff_tables(a, a))
         self.assertEqual(len(list(differ.diff_tables(a, b))), 1)
 
-        a = TableSegment(self.connection, ("a",), "id", "datetime", min_time=sec1)
-        b = TableSegment(self.connection, ("b",), "id", "datetime", min_time=sec1)
+        a = TableSegment(self.connection, ("a",), "id", "datetime", min_update=sec1)
+        b = TableSegment(self.connection, ("b",), "id", "datetime", min_update=sec1)
         assert a.count() == 2
         assert b.count() == 2
         assert not list(differ.diff_tables(a, b))
 
         day1 = self.now.shift(days=-1).datetime
 
-        a = TableSegment(self.connection, ("a",), "id", "datetime", min_time=day1, max_time=sec1)
-        b = TableSegment(self.connection, ("b",), "id", "datetime", min_time=day1, max_time=sec1)
+        a = TableSegment(self.connection, ("a",), "id", "datetime", min_update=day1, max_update=sec1)
+        b = TableSegment(self.connection, ("b",), "id", "datetime", min_update=day1, max_update=sec1)
         assert a.count() == 3
         assert b.count() == 2
         assert not list(differ.diff_tables(a, a))
@@ -146,7 +151,7 @@ class TestDiffTables(TestWithConnection):
         )
         self.preql.commit()
         diff = list(self.differ.diff_tables(self.table, self.table2))
-        expected = [("+", (2, datetime.datetime(2022, 1, 1, 0, 0)))]
+        expected = [("-", (2, datetime.datetime(2022, 1, 1, 0, 0)))]
         self.assertEqual(expected, diff)
 
     def test_diff_table_above_bisection_threshold(self):
@@ -167,7 +172,7 @@ class TestDiffTables(TestWithConnection):
         )
         self.preql.commit()
         diff = list(self.differ.diff_tables(self.table, self.table2))
-        expected = [("+", (5, datetime.datetime(2022, 1, 1, 0, 0)))]
+        expected = [("-", (5, datetime.datetime(2022, 1, 1, 0, 0)))]
         self.assertEqual(expected, diff)
 
     def test_return_empty_array_when_same(self):
@@ -204,9 +209,23 @@ class TestDiffTables(TestWithConnection):
         differ = TableDiffer()
         diff = list(differ.diff_tables(self.table, self.table2))
         expected = [
-            ("+", (2, datetime.datetime(2021, 1, 1, 0, 0))),
-            ("-", (2, datetime.datetime(2022, 1, 1, 0, 0))),
-            ("+", (4, datetime.datetime(2021, 1, 1, 0, 0))),
-            ("-", (4, datetime.datetime(2022, 1, 1, 0, 0))),
+            ("-", (2, datetime.datetime(2021, 1, 1, 0, 0))),
+            ("+", (2, datetime.datetime(2022, 1, 1, 0, 0))),
+            ("-", (4, datetime.datetime(2021, 1, 1, 0, 0))),
+            ("+", (4, datetime.datetime(2022, 1, 1, 0, 0))),
         ]
         self.assertEqual(expected, diff)
+
+
+class TestTableSegment(TestWithConnection):
+    def setUp(self) -> None:
+        self.table = TableSegment(self.connection, ("ratings_test",), "id", "timestamp")
+        self.table2 = TableSegment(self.connection, ("ratings_test2",), "id", "timestamp")
+        return super().setUp()
+
+    def test_table_segment(self):
+        early = datetime.datetime(2021, 1, 1, 0, 0)
+        late = datetime.datetime(2022, 1, 1, 0, 0)
+        self.assertRaises(ValueError, self.table.replace, min_update=late, max_update=early)
+
+        self.assertRaises(ValueError, self.table.replace, min_key=10, max_key=0)
