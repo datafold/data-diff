@@ -210,3 +210,16 @@ class TestDiffTables(TestWithConnection):
             ("-", (4, datetime.datetime(2022, 1, 1, 0, 0))),
         ]
         self.assertEqual(expected, diff)
+
+class TestTableSegment(TestWithConnection):
+    def setUp(self) -> None:
+        self.table = TableSegment(self.connection, ("ratings_test",), "id", "timestamp")
+        self.table2 = TableSegment(self.connection, ("ratings_test2",), "id", "timestamp")
+        return super().setUp()
+
+    def test_table_segment(self):
+        early = datetime.datetime(2021, 1, 1, 0, 0)
+        late = datetime.datetime(2022, 1, 1, 0, 0)
+        self.assertRaises(ValueError, self.table.replace, min_update=late, max_update=early)
+
+        self.assertRaises(ValueError, self.table.replace, min_key=10, max_key=0)

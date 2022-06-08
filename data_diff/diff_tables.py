@@ -65,6 +65,12 @@ class TableSegment:
         if not self.update_column and (self.min_update or self.max_update):
             raise ValueError("Error: min_update/max_update feature requires to specify 'update_column'")
 
+        if self.min_key is not None and self.max_key is not None and self.min_key >= self.max_key:
+            raise ValueError("Error: min_key expected to be smaller than max_key!")
+
+        if self.min_update is not None and self.max_update is not None and self.min_update >= self.max_update:
+            raise ValueError("Error: min_update expected to be smaller than max_update!")
+
     def _make_key_range(self):
         if self.min_key is not None:
             yield Compare("<=", str(self.min_key), self.key_column)
