@@ -139,6 +139,8 @@ or when you need extras like mysql and postgres
 
 # How to use
 
+## How to use from the command-line
+
 Usage: `data-diff DB1_URI TABLE1_NAME DB2_URI TABLE2_NAME [OPTIONS]`
 
 See the [example command](#example-command-and-output) and the [sample
@@ -162,6 +164,25 @@ Options:
   - `--bisection-factor` - Segments per iteration. When set to 2, it performs binary search.
   - `--bisection-threshold` - Minimal bisection threshold. i.e. maximum size of pages to diff locally.
   - `-j` or `--threads` - Number of worker threads to use per database. Default=1.
+
+## How to use from Python
+
+```python
+# Optional: Set logging to display the progress of the diff
+import logging
+logging.basicConfig(level=logging.INFO)
+
+from datadiff import connect_to_table, diff_tables
+
+table1 = connect_to_table("postgres:///", "table_name", "id")
+table2 = connect_to_table("mysql:///", "table_name", "id")
+
+for different_row in diff_tables(table1, table2):
+    plus_or_minus, columns = different_row
+    print(plus_or_minus, columns)
+```
+
+Run `help(diff_tables)` or read the docs [ADD LINK] to learn about the different options.
 
 # Technical Explanation
 
