@@ -145,6 +145,8 @@ class TableSegment:
 
     @property
     def _relevant_columns_repr(self) -> List[str]:
+        if not self._schema:
+            raise RuntimeError("Cannot compile query when the schema is unknown. Please use TableSegment.with_schema().")
         return [self.database.normalize_value_by_type(c, self._schema[c])
                 for c in self._relevant_columns]
 

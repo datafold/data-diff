@@ -115,19 +115,20 @@ class TestDiffTables(TestWithConnection):
         self.preql.load("./tests/setup.pql")
         self.preql.commit()
 
-        self.table = TableSegment(self.connection, ("ratings_test",), "id", "timestamp").with_schema()
+        self.table = TableSegment(self.connection, ("ratings_test",), "id", "timestamp")
 
-        self.table2 = TableSegment(self.connection, ("ratings_test2",), "id", "timestamp").with_schema()
+        self.table2 = TableSegment(self.connection, ("ratings_test2",), "id", "timestamp")
 
         self.differ = TableDiffer(3, 4)
 
     def test_properties_on_empty_table(self):
-        self.assertEqual(0, self.table.count())
-        self.assertEqual(["id", "timestamp"], self.table._relevant_columns)
-        self.assertEqual(None, self.table.count_and_checksum()[1])
+        table = self.table.with_schema()
+        self.assertEqual(0, table.count())
+        self.assertEqual(["id", "timestamp"], table._relevant_columns)
+        self.assertEqual(None, table.count_and_checksum()[1])
 
     def test_get_values(self):
-        time = "2022-01-01 00:00:00"
+        time = "2022-01-01 00:00:00.000000"
         res = self.preql(
             f"""
             new ratings_test(1, 1, 9, '{time}')
@@ -135,9 +136,11 @@ class TestDiffTables(TestWithConnection):
         )
         self.preql.commit()
 
-        self.assertEqual(1, self.table.count())
+        table = self.table.with_schema()
+
+        self.assertEqual(1, table.count())
         concatted = str(res["id"]) + time
-        self.assertEqual(str_to_checksum(concatted), self.table.count_and_checksum()[1])
+        self.assertEqual(str_to_checksum(concatted), table.count_and_checksum()[1])
 
     def test_diff_small_tables(self):
         time = "2022-01-01 00:00:00"
