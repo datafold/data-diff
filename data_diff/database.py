@@ -1,3 +1,4 @@
+from functools import lru_cache
 import re
 from abc import ABC, abstractmethod
 from runtype import dataclass
@@ -196,6 +197,10 @@ class Database(AbstractDatabase):
 
         # Return a dict of form {name: type} after canonizaation
         return {row[0].lower(): self._parse_type(*row[1:]) for row in rows}
+
+    @lru_cache()
+    def get_table_schema(self, path: DbPath) -> Dict[str, ColType]:
+        return self.query_table_schema(path)
 
     def _normalize_path(self, path: DbPath) -> DbPath:
         if len(path) == 1:
