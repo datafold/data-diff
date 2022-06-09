@@ -10,6 +10,8 @@ TEST_POSTGRES_CONN_STRING: str = None
 TEST_SNOWFLAKE_CONN_STRING: str = None
 TEST_BIGQUERY_CONN_STRING: str = None
 TEST_REDSHIFT_CONN_STRING: str = None
+TEST_ORACLE_CONN_STRING: str = None
+
 
 try:
     from .local_settings import *
@@ -22,7 +24,7 @@ CONN_STRINGS = {
     db.Postgres: TEST_POSTGRES_CONN_STRING,
     db.Snowflake: TEST_SNOWFLAKE_CONN_STRING,
     db.Redshift: TEST_REDSHIFT_CONN_STRING,
-    db.Oracle: "oracle://oracle:TzR2n6e4i7ULgSzN@127.0.0.1/ORACLE",
+    db.Oracle: TEST_ORACLE_CONN_STRING,
 }
 
 for k, v in CONN_STRINGS.items():

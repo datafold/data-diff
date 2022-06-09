@@ -4,7 +4,7 @@ from datetime import datetime, timezone
 
 import preql
 
-from data_diff.database import BigQuery, MySQL, Snowflake, connect_to_uri, Oracle
+from data_diff.database import BigQuery, MySQL, Snowflake, connect_to_uri, Oracle, DEFAULT_PRECISION
 from data_diff.sql import Select
 from data_diff import database as db
 
@@ -12,12 +12,12 @@ from .common import CONN_STRINGS
 
 
 DATE_TYPES = {
-    db.Postgres: ["timestamp(6) with time zone", "timestamp(6) without time zone"],
-    db.MySQL: ["datetime(6)", "timestamp(6)"],
-    db.Snowflake: ["timestamp(6)", "timestamp_tz(6)", "timestamp_ntz(6)"],
+    db.Postgres: ["timestamp({p}) with time zone", "timestamp({p}) without time zone"],
+    db.MySQL: ["datetime({p})", "timestamp({p})"],
+    db.Snowflake: ["timestamp({p})", "timestamp_tz({p})", "timestamp_ntz({p})"],
     db.BigQuery: ["timestamp", "datetime"],
     db.Redshift: ["timestamp", "timestamp with time zone"],
-    db.Oracle: ["timestamp(6) with time zone", "timestamp(6) with local time zone"],
+    db.Oracle: ["timestamp({p}) with time zone", "timestamp({p}) with local time zone"],
     # db.Presto: ["timestamp", "timestamp with zone"],
 }
 
@@ -29,13 +29,13 @@ class TestNormalize(unittest.TestCase):
         self.i += 1
         return f"t_{self.i}"
 
-    def _test_dates_for_db(self, item):
+    def _test_dates_for_db(self, item, precision=6):
         db_id, conn_string = item
 
         print(f"Testing {db_id}")
 
         sample_date1 = datetime(2022, 6, 3, 12, 24, 35, 69296, tzinfo=timezone.utc)
-        sample_date2 = datetime(2021, 5, 2, 11, 23, 34, 58185, tzinfo=timezone.utc)
+        sample_date2 = datetime(2021, 5, 2, 11, 23, 34, 500001, tzinfo=timezone.utc)
         if db_id in (BigQuery, Oracle):
             # TODO BigQuery doesn't seem to support timezone for datetime
             dates = [sample_date1.replace(tzinfo=None), sample_date2.replace(tzinfo=None)]
@@ -44,7 +44,8 @@ class TestNormalize(unittest.TestCase):
 
         pql = preql.Preql(conn_string)
 
-        date_type_tables = {dt: self._new_table(dt) for dt in DATE_TYPES[db_id]}
+        date_types = [t.format(p=precision) for t in DATE_TYPES[db_id]]
+        date_type_tables = {dt: self._new_table(dt) for dt in date_types}
         if db_id is BigQuery:
             date_type_tables = {dt: f"data_diff.{name}" for dt, name in date_type_tables.items()}
 
@@ -73,9 +74,11 @@ class TestNormalize(unittest.TestCase):
 
             for date_type, table in date_type_tables.items():
                 schema = conn.query_table_schema(table.split("."))
+                v_type = schema["v"]
+                v_type = v_type.replace(precision=precision)
 
                 returned_dates = tuple(
-                    x for x, in conn.query(Select([conn.normalize_value_by_type("v", schema["v"])], table), list)
+                    x for x, in conn.query(Select([conn.normalize_value_by_type("v", v_type)], table), list)
                 )
 
                 # print("@@", db_id, date_type, " --> ", returned_dates)
