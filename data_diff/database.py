@@ -77,16 +77,19 @@ class ColType:
 class PrecisionType(ColType):
     precision: Optional[int]
 
-
-class Timestamp(PrecisionType):
+class TemporalType(PrecisionType):
     pass
 
 
-class TimestampTZ(PrecisionType):
+class Timestamp(TemporalType):
     pass
 
 
-class Datetime(PrecisionType):
+class TimestampTZ(TemporalType):
+    pass
+
+
+class Datetime(TemporalType):
     pass
 
 
@@ -249,7 +252,7 @@ class Postgres(ThreadedDatabase):
         "timestamp with time zone": TimestampTZ,
         "timestamp without time zone": Timestamp,
         "timestamp": Timestamp,
-        "datetime": Datetime,
+        # "datetime": Datetime,
     }
     default_schema = "public"
 
@@ -277,7 +280,7 @@ class Postgres(ThreadedDatabase):
         return f"{s}::varchar"
 
     def normalize_value_by_type(self, value, coltype: ColType) -> str:
-        if isinstance(coltype, (Timestamp, TimestampTZ)):
+        if isinstance(coltype, TemporalType):
             return self.to_string(f"{value}::timestamp({coltype.precision})")
         return self.to_string(f"{value}")
 
@@ -339,7 +342,7 @@ class MySQL(ThreadedDatabase):
         return f"cast({s} as char)"
 
     def normalize_value_by_type(self, value, coltype: ColType) -> str:
-        if isinstance(coltype, (Timestamp, TimestampTZ)):
+        if isinstance(coltype, TemporalType):
             return self.to_string(f"cast({value} as datetime({coltype.precision}))")
         return self.to_string(f"{value}")
 
@@ -547,7 +550,7 @@ class Snowflake(Database):
         return super().select_table_schema((schema.upper(), table.upper()))
 
     def normalize_value_by_type(self, value, coltype: ColType) -> str:
-        if isinstance(coltype, (Timestamp, TimestampTZ)):
+        if isinstance(coltype, TemporalType):
             return f"{value}::timestamp({coltype.precision})::text"
         return f"{value}::text"
 

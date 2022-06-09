@@ -61,6 +61,8 @@ class TableSegment:
     min_update: DbTime = None
     max_update: DbTime = None
 
+    _schema = None
+
     def __post_init__(self):
         if not self.update_column and (self.min_update or self.max_update):
             raise ValueError("Error: min_update/max_update feature requires to specify 'update_column'")
@@ -70,6 +72,11 @@ class TableSegment:
 
         if self.min_update is not None and self.max_update is not None and self.min_update >= self.max_update:
             raise ValueError("Error: min_update expected to be smaller than max_update!")
+
+    def with_schema(self):
+        "Queries the table schema from the database, and returns a new instance of TableSegmentWithSchema."
+        schema = self.database.query_table_schema(self.table_path)
+        return self.new(_schema=schema)
 
     def _make_key_range(self):
         if self.min_key is not None:
@@ -123,7 +130,7 @@ class TableSegment:
         return tables
 
     def new(self, **kwargs) -> "TableSegment":
-        """Using new() creates a copy of the instance using 'replace()', and makes sure the cache is reset"""
+        """Using new() creates a copy of the instance using 'replace()'"""
         return self.replace(**kwargs)
 
     @property
