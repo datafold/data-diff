@@ -22,6 +22,7 @@ CONN_STRINGS = {
     db.Postgres: TEST_POSTGRES_CONN_STRING,
     db.Snowflake: TEST_SNOWFLAKE_CONN_STRING,
     db.Redshift: TEST_REDSHIFT_CONN_STRING,
+    db.Oracle: "oracle://oracle:TzR2n6e4i7ULgSzN@127.0.0.1/ORACLE",
 }
 
 for k, v in CONN_STRINGS.items():

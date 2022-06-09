@@ -61,6 +61,8 @@ class TableSegment:
     min_update: DbTime = None
     max_update: DbTime = None
 
+    _schema: dict = None
+
     def __post_init__(self):
         if not self.update_column and (self.min_update or self.max_update):
             raise ValueError("Error: min_update/max_update feature requires to specify 'update_column'")
@@ -70,6 +72,12 @@ class TableSegment:
 
         if self.min_update is not None and self.max_update is not None and self.min_update >= self.max_update:
             raise ValueError("Error: min_update expected to be smaller than max_update!")
+
+    def with_schema(self) -> "TableSegment":
+        "Queries the table schema from the database, and returns a new instance of TableSegmentWithSchema."
+        assert not self._schema
+        schema = self.database.query_table_schema(self.table_path)
+        return self.new(_schema=schema)
 
     def _make_key_range(self):
         if self.min_key is not None:
@@ -107,7 +115,7 @@ class TableSegment:
         return split_space(self.min_key, self.max_key, count)
 
     def segment_by_checkpoints(self, checkpoints: List[DbKey]) -> List["TableSegment"]:
-        "Split the current TableSegment to a bunch of smaller ones, separate by the given checkpoints"
+        "Split the current TableSegment to a bunch of smaller ones, separated by the given checkpoints"
 
         if self.min_key and self.max_key:
             assert all(self.min_key <= c < self.max_key for c in checkpoints)
@@ -123,7 +131,7 @@ class TableSegment:
         return tables
 
     def new(self, **kwargs) -> "TableSegment":
-        """Using new() creates a copy of the instance using 'replace()', and makes sure the cache is reset"""
+        """Using new() creates a copy of the instance using 'replace()'"""
         return self.replace(**kwargs)
 
     @property
@@ -226,6 +234,8 @@ class TableDiffer:
             raise ValueError("Incorrect param values (bisection factor must be lower than threshold)")
         if self.bisection_factor < 2:
             raise ValueError("Must have at least two segments per iteration (i.e. bisection_factor >= 2)")
+
+        table1, table2 = self._threaded_call("with_schema", [table1, table2])
 
         key_ranges = self._threaded_call("query_key_range", [table1, table2])
         mins, maxs = zip(*key_ranges)

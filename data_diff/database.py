@@ -1,3 +1,4 @@
+import re
 from abc import ABC, abstractmethod
 from runtype import dataclass
 import logging
@@ -77,15 +78,19 @@ class PrecisionType(ColType):
     precision: Optional[int]
 
 
-class Timestamp(PrecisionType):
+class TemporalType(PrecisionType):
     pass
 
 
-class TimestampTZ(PrecisionType):
+class Timestamp(TemporalType):
     pass
 
 
-class Datetime(PrecisionType):
+class TimestampTZ(TemporalType):
+    pass
+
+
+class Datetime(TemporalType):
     pass
 
 
@@ -248,7 +253,7 @@ class Postgres(ThreadedDatabase):
         "timestamp with time zone": TimestampTZ,
         "timestamp without time zone": Timestamp,
         "timestamp": Timestamp,
-        "datetime": Datetime,
+        # "datetime": Datetime,
     }
     default_schema = "public"
 
@@ -261,7 +266,7 @@ class Postgres(ThreadedDatabase):
         postgres = import_postgres()
         try:
             c = postgres.connect(**self.args)
-            c.cursor().execute("SET TIME ZONE 'UTC'")
+            # c.cursor().execute("SET TIME ZONE 'UTC'")
             return c
         except postgres.OperationalError as e:
             raise ConnectError(*e.args) from e
@@ -276,7 +281,7 @@ class Postgres(ThreadedDatabase):
         return f"{s}::varchar"
 
     def normalize_value_by_type(self, value, coltype: ColType) -> str:
-        if isinstance(coltype, (Timestamp, TimestampTZ)):
+        if isinstance(coltype, TemporalType):
             return self.to_string(f"{value}::timestamp({coltype.precision})")
         return self.to_string(f"{value}")
 
@@ -338,7 +343,7 @@ class MySQL(ThreadedDatabase):
         return f"cast({s} as char)"
 
     def normalize_value_by_type(self, value, coltype: ColType) -> str:
-        if isinstance(coltype, (Timestamp, TimestampTZ)):
+        if isinstance(coltype, TemporalType):
             return self.to_string(f"cast({value} as datetime({coltype.precision}))")
         return self.to_string(f"{value}")
 
@@ -366,6 +371,35 @@ class Oracle(ThreadedDatabase):
 
     def to_string(self, s: str):
         return f"cast({s} as varchar(1024))"
+
+    def select_table_schema(self, path: DbPath) -> str:
+        if len(path) > 1:
+            raise ValueError("Unexpected table path for oracle")
+        (table,) = path
+
+        return (
+            f"SELECT column_name, data_type, 9 as datetime_precision, data_precision as numeric_precision"
+            f" FROM USER_TAB_COLUMNS WHERE table_name = '{table.upper()}'"
+        )
+
+    def normalize_value_by_type(self, value, coltype: ColType) -> str:
+        if isinstance(coltype, PrecisionType):
+            return f"to_char(cast({value} as timestamp), 'YYYY-MM-DD HH24:MI:SS.FF6')"
+        return self.to_string(f"{value}")
+
+    def _parse_type(self, type_repr: str, datetime_precision: int = None, numeric_precision: int = None) -> ColType:
+        """ """
+        regexps = {
+            r"TIMESTAMP\((\d)\) WITH LOCAL TIME ZONE": Timestamp,
+            r"TIMESTAMP\((\d)\) WITH TIME ZONE": TimestampTZ,
+        }
+        for regexp, cls in regexps.items():
+            m = re.match(regexp + "$", type_repr)
+            if m:
+                datetime_precision = int(m.group(1))
+                return cls(precision=datetime_precision or DEFAULT_PRECISION)
+
+        return UnknownColType(type_repr)
 
 
 class Redshift(Postgres):
@@ -516,7 +550,7 @@ class Snowflake(Database):
         return super().select_table_schema((schema.upper(), table.upper()))
 
     def normalize_value_by_type(self, value, coltype: ColType) -> str:
-        if isinstance(coltype, (Timestamp, TimestampTZ)):
+        if isinstance(coltype, TemporalType):
             return f"{value}::timestamp({coltype.precision})::text"
         return f"{value}::text"
 
@@ -542,12 +576,14 @@ def connect_to_uri(db_uri: str, thread_count: Optional[int] = 1) -> Database:
         raise NotImplementedError("No support for multiple schemes")
     (scheme,) = dsn.schemes
 
-    if scheme == 'snowflake':
+    if scheme == "snowflake":
         database, schema = dsn.paths
         try:
-            warehouse = dsn.query['warehouse']
+            warehouse = dsn.query["warehouse"]
         except KeyError:
-            raise ValueError("Must provide warehouse. Format: 'snowflake://<user>:<pass>@<account>/<database>/<schema>?warehouse=<warehouse>'")
+            raise ValueError(
+                "Must provide warehouse. Format: 'snowflake://<user>:<pass>@<account>/<database>/<schema>?warehouse=<warehouse>'"
+            )
         return Snowflake(dsn.host, dsn.user, dsn.password, warehouse=warehouse, database=database, schema=schema)
 
     if len(dsn.paths) == 0:
