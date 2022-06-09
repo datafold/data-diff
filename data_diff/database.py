@@ -77,6 +77,7 @@ class ColType:
 class PrecisionType(ColType):
     precision: Optional[int]
 
+
 class TemporalType(PrecisionType):
     pass
 
@@ -348,7 +349,6 @@ class MySQL(ThreadedDatabase):
 
 
 class Oracle(ThreadedDatabase):
-
     def __init__(self, host, port, database, user, password, *, thread_count):
         assert not port
         self.kwargs = dict(user=user, password=password, dsn="%s/%s" % (host, database))
@@ -375,7 +375,7 @@ class Oracle(ThreadedDatabase):
     def select_table_schema(self, path: DbPath) -> str:
         if len(path) > 1:
             raise ValueError("Unexpected table path for oracle")
-        table ,= path
+        (table,) = path
 
         return (
             f"SELECT column_name, data_type, 9 as datetime_precision, data_precision as numeric_precision"
@@ -394,7 +394,7 @@ class Oracle(ThreadedDatabase):
             r"TIMESTAMP\((\d)\) WITH TIME ZONE": TimestampTZ,
         }
         for regexp, cls in regexps.items():
-            m = re.match(regexp+'$', type_repr)
+            m = re.match(regexp + "$", type_repr)
             if m:
                 datetime_precision = int(m.group(1))
                 return cls(precision=datetime_precision or DEFAULT_PRECISION)
@@ -576,12 +576,14 @@ def connect_to_uri(db_uri: str, thread_count: Optional[int] = 1) -> Database:
         raise NotImplementedError("No support for multiple schemes")
     (scheme,) = dsn.schemes
 
-    if scheme == 'snowflake':
+    if scheme == "snowflake":
         database, schema = dsn.paths
         try:
-            warehouse = dsn.query['warehouse']
+            warehouse = dsn.query["warehouse"]
         except KeyError:
-            raise ValueError("Must provide warehouse. Format: 'snowflake://<user>:<pass>@<account>/<database>/<schema>?warehouse=<warehouse>'")
+            raise ValueError(
+                "Must provide warehouse. Format: 'snowflake://<user>:<pass>@<account>/<database>/<schema>?warehouse=<warehouse>'"
+            )
         return Snowflake(dsn.host, dsn.user, dsn.password, warehouse=warehouse, database=database, schema=schema)
 
     if len(dsn.paths) == 0:
