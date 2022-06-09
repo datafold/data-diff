@@ -16,7 +16,7 @@ DATE_TYPES = {
     db.MySQL: ["datetime(6)", "timestamp(6)"],
     db.Snowflake: ["timestamp(6)", "timestamp_tz(6)", "timestamp_ntz(6)"],
     db.BigQuery: ["timestamp", "datetime"],
-    db.Redshift: ["timestamp(6)", "timestampz(6)"],
+    db.Redshift: ["timestamp", "timestamp with time zone"],
     db.Oracle: ["timestamp(n) with timezone", "timestamp(n) with local time zone"],
     db.Presto: ["timestamp", "timestamp with zone"],
 }
