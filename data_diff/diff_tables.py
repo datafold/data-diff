@@ -115,7 +115,7 @@ class TableSegment:
         return split_space(self.min_key, self.max_key, count)
 
     def segment_by_checkpoints(self, checkpoints: List[DbKey]) -> List["TableSegment"]:
-        "Split the current TableSegment to a bunch of smaller ones, separate by the given checkpoints"
+        "Split the current TableSegment to a bunch of smaller ones, separated by the given checkpoints"
 
         if self.min_key and self.max_key:
             assert all(self.min_key <= c < self.max_key for c in checkpoints)
