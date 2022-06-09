@@ -115,9 +115,9 @@ class TestDiffTables(TestWithConnection):
         self.preql.load("./tests/setup.pql")
         self.preql.commit()
 
-        self.table = TableSegment(self.connection, ("ratings_test",), "id", "timestamp")
+        self.table = TableSegment(self.connection, ("ratings_test",), "id", "timestamp").with_schema()
 
-        self.table2 = TableSegment(self.connection, ("ratings_test2",), "id", "timestamp")
+        self.table2 = TableSegment(self.connection, ("ratings_test2",), "id", "timestamp").with_schema()
 
         self.differ = TableDiffer(3, 4)
 
@@ -150,8 +150,9 @@ class TestDiffTables(TestWithConnection):
         """
         )
         self.preql.commit()
+        breakpoint()
         diff = list(self.differ.diff_tables(self.table, self.table2))
-        expected = [("-", (2, datetime.datetime(2022, 1, 1, 0, 0)))]
+        expected = [("-", ('2', time + '.000000'))]
         self.assertEqual(expected, diff)
 
     def test_diff_table_above_bisection_threshold(self):
@@ -172,7 +173,7 @@ class TestDiffTables(TestWithConnection):
         )
         self.preql.commit()
         diff = list(self.differ.diff_tables(self.table, self.table2))
-        expected = [("-", (5, datetime.datetime(2022, 1, 1, 0, 0)))]
+        expected = [("-", ('5', time + '.000000'))]
         self.assertEqual(expected, diff)
 
     def test_return_empty_array_when_same(self):
@@ -209,10 +210,10 @@ class TestDiffTables(TestWithConnection):
         differ = TableDiffer()
         diff = list(differ.diff_tables(self.table, self.table2))
         expected = [
-            ("-", (2, datetime.datetime(2021, 1, 1, 0, 0))),
-            ("+", (2, datetime.datetime(2022, 1, 1, 0, 0))),
-            ("-", (4, datetime.datetime(2021, 1, 1, 0, 0))),
-            ("+", (4, datetime.datetime(2022, 1, 1, 0, 0))),
+            ("-", ('2', time2 + '.000000')),
+            ("+", ('2', time + '.000000')),
+            ("-", ('4', time2 + '.000000')),
+            ("+", ('4', time + '.000000')),
         ]
         self.assertEqual(expected, diff)
 

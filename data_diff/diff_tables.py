@@ -75,7 +75,8 @@ class TableSegment:
 
     def with_schema(self) -> "TableSegment":
         "Queries the table schema from the database, and returns a new instance of TableSegmentWithSchema."
-        assert not self._schema
+        if self._schema:
+            return self
         schema = self.database.query_table_schema(self.table_path)
         return self.new(_schema=schema)
 

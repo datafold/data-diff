@@ -81,7 +81,7 @@ class TestNormalize(unittest.TestCase):
                     x for x, in conn.query(Select([conn.normalize_value_by_type("v", v_type)], table), list)
                 )
 
-                print("@@", db_id, date_type, " --> ", returned_dates)
+                # print("@@", db_id, date_type, " --> ", returned_dates)
                 results.append((db_id, date_type, returned_dates))
 
         finally:
@@ -105,5 +105,5 @@ class TestNormalize(unittest.TestCase):
         }
 
         all_reprs = set(all_returned.values())
-        print("@@", all_reprs)
+        # print("@@", all_reprs)
         assert len(all_reprs) == 1
