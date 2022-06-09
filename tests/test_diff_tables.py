@@ -150,7 +150,6 @@ class TestDiffTables(TestWithConnection):
         """
         )
         self.preql.commit()
-        breakpoint()
         diff = list(self.differ.diff_tables(self.table, self.table2))
         expected = [("-", ('2', time + '.000000'))]
         self.assertEqual(expected, diff)
