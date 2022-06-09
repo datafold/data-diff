@@ -4,7 +4,7 @@ from datetime import datetime, timezone
 
 import preql
 
-from data_diff.database import BigQuery, MySQL, Snowflake, connect_to_uri
+from data_diff.database import BigQuery, MySQL, Snowflake, connect_to_uri, Oracle
 from data_diff.sql import Select
 from data_diff import database as db
 
@@ -17,8 +17,8 @@ DATE_TYPES = {
     db.Snowflake: ["timestamp(6)", "timestamp_tz(6)", "timestamp_ntz(6)"],
     db.BigQuery: ["timestamp", "datetime"],
     db.Redshift: ["timestamp", "timestamp with time zone"],
-    db.Oracle: ["timestamp(n) with timezone", "timestamp(n) with local time zone"],
-    db.Presto: ["timestamp", "timestamp with zone"],
+    db.Oracle: ["timestamp(6) with time zone", "timestamp(6) with local time zone"],
+    # db.Presto: ["timestamp", "timestamp with zone"],
 }
 
 
@@ -36,7 +36,7 @@ class TestNormalize(unittest.TestCase):
 
         sample_date1 = datetime(2022, 6, 3, 12, 24, 35, 69296, tzinfo=timezone.utc)
         sample_date2 = datetime(2021, 5, 2, 11, 23, 34, 58185, tzinfo=timezone.utc)
-        if db_id in (BigQuery,):
+        if db_id in (BigQuery, Oracle):
             # TODO BigQuery doesn't seem to support timezone for datetime
             dates = [sample_date1.replace(tzinfo=None), sample_date2.replace(tzinfo=None)]
         else:
@@ -53,7 +53,8 @@ class TestNormalize(unittest.TestCase):
         results = []
         try:
             for date_type, table in date_type_tables.items():
-                pql.run_statement(f"DROP TABLE IF EXISTS {table}")
+                if db_id is not Oracle:
+                    pql.run_statement(f"DROP TABLE IF EXISTS {table}")
                 pql.run_statement(f"CREATE TABLE {table}(v {date_type})")
             pql.commit()
 
@@ -62,7 +63,7 @@ class TestNormalize(unittest.TestCase):
 
                 for date in dates:
                     # print(f"insert into {table}(v) values ('{date}')")
-                    pql.run_statement(f"insert into {table}(v) values ('{date}')")
+                    pql.run_statement(f"insert into {table}(v) values (timestamp '{date}')")
             pql.commit()
 
             conn = connect_to_uri(conn_string)

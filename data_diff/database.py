@@ -1,3 +1,4 @@
+import re
 from abc import ABC, abstractmethod
 from runtype import dataclass
 import logging
@@ -258,7 +259,7 @@ class Postgres(ThreadedDatabase):
         postgres = import_postgres()
         try:
             c = postgres.connect(**self.args)
-            c.cursor().execute("SET TIME ZONE 'UTC'")
+            # c.cursor().execute("SET TIME ZONE 'UTC'")
             return c
         except postgres.OperationalError as e:
             raise ConnectError(*e.args) from e
@@ -341,6 +342,7 @@ class MySQL(ThreadedDatabase):
 
 
 class Oracle(ThreadedDatabase):
+
     def __init__(self, host, port, database, user, password, *, thread_count):
         assert not port
         self.kwargs = dict(user=user, password=password, dsn="%s/%s" % (host, database))
@@ -363,6 +365,35 @@ class Oracle(ThreadedDatabase):
 
     def to_string(self, s: str):
         return f"cast({s} as varchar(1024))"
+
+    def select_table_schema(self, path: DbPath) -> str:
+        if len(path) > 1:
+            raise ValueError("Unexpected table path for oracle")
+        table ,= path
+
+        return (
+            f"SELECT column_name, data_type, 9 as datetime_precision, data_precision as numeric_precision"
+            f" FROM USER_TAB_COLUMNS WHERE table_name = '{table.upper()}'"
+        )
+
+    def normalize_value_by_type(self, value, coltype: ColType) -> str:
+        if isinstance(coltype, PrecisionType):
+            return f"to_char(cast({value} as timestamp), 'YYYY-MM-DD HH24:MI:SS.FF6')"
+        return self.to_string(f"{value}")
+
+    def _parse_type(self, type_repr: str, datetime_precision: int = None, numeric_precision: int = None) -> ColType:
+        """ """
+        regexps = {
+            r"TIMESTAMP\((\d)\) WITH LOCAL TIME ZONE": Timestamp,
+            r"TIMESTAMP\((\d)\) WITH TIME ZONE": TimestampTZ,
+        }
+        for regexp, cls in regexps.items():
+            m = re.match(regexp+'$', type_repr)
+            if m:
+                datetime_precision = int(m.group(1))
+                return cls(precision=datetime_precision or DEFAULT_PRECISION)
+
+        return UnknownColType(type_repr)
 
 
 class Redshift(Postgres):
