@@ -252,6 +252,7 @@ CHECKSUM_MASK = (2**_CHECKSUM_BITSIZE) - 1
 
 DEFAULT_PRECISION = 6
 
+TIMESTAMP_BASE_LEN = 20
 
 class Postgres(ThreadedDatabase):
     DATETIME_TYPES = {
@@ -287,7 +288,8 @@ class Postgres(ThreadedDatabase):
 
     def normalize_value_by_type(self, value, coltype: ColType) -> str:
         if isinstance(coltype, TemporalType):
-            return self.to_string(f"{value}::timestamp({coltype.precision})")
+            timestamp = self.to_string(f"{value}::timestamp({coltype.precision})")
+            return f"RPAD({timestamp}, {TIMESTAMP_BASE_LEN + coltype.precision}, '0')"
         return self.to_string(f"{value}")
 
 
@@ -389,7 +391,7 @@ class Oracle(ThreadedDatabase):
 
     def normalize_value_by_type(self, value, coltype: ColType) -> str:
         if isinstance(coltype, PrecisionType):
-            return f"to_char(cast({value} as timestamp), 'YYYY-MM-DD HH24:MI:SS.FF6')"
+            return f"to_char(cast({value} as timestamp), 'YYYY-MM-DD HH24:MI:SS.FF{coltype.precision or ''}')"
         return self.to_string(f"{value}")
 
     def _parse_type(self, type_repr: str, datetime_precision: int = None, numeric_precision: int = None) -> ColType:
@@ -411,6 +413,10 @@ class Redshift(Postgres):
     def md5_to_int(self, s: str) -> str:
         return f"strtol(substring(md5({s}), {1+MD5_HEXDIGITS-CHECKSUM_HEXDIGITS}), 16)::decimal(38)"
 
+    def normalize_value_by_type(self, value, coltype: ColType) -> str:
+        if coltype.precision != 6:
+            raise TypeError(f"Bad precision for Redshift: {coltype})")
+        return super().normalize_value_by_type(value, coltype)
 
 class MsSQL(ThreadedDatabase):
     "AKA sql-server"
