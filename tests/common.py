@@ -9,6 +9,7 @@ TEST_MYSQL_CONN_STRING: str = "mysql://mysql:Password1@localhost/mysql"
 TEST_POSTGRES_CONN_STRING: str = None
 TEST_SNOWFLAKE_CONN_STRING: str = None
 TEST_BIGQUERY_CONN_STRING: str = None
+TEST_REDSHIFT_CONN_STRING: str = None
 
 try:
     from .local_settings import *
@@ -20,6 +21,7 @@ CONN_STRINGS = {
     db.MySQL: TEST_MYSQL_CONN_STRING,
     db.Postgres: TEST_POSTGRES_CONN_STRING,
     db.Snowflake: TEST_SNOWFLAKE_CONN_STRING,
+    db.Redshift: TEST_REDSHIFT_CONN_STRING,
 }
 
 for k, v in CONN_STRINGS.items():
