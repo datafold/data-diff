@@ -591,6 +591,8 @@ class Snowflake(Database):
 
     def normalize_value_by_type(self, value: str, coltype: ColType) -> str:
         if isinstance(coltype, PrecisionType):
+            if coltype.precision == 0:
+                return f"to_char(cast({value} as timestamp({coltype.precision})), 'YYYY-MM-DD HH24:MI:SS')"
             return f"to_char(cast({value} as timestamp({coltype.precision})), 'YYYY-MM-DD HH24:MI:SS.FF{coltype.precision or ''}')"
         return self.to_string(f"{value}")
 
