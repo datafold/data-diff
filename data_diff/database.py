@@ -138,8 +138,10 @@ class AbstractDatabase(ABC):
         The returned expression must accept any SQL value, and return a string.
 
         - Dates are expected in the format:
-            YYYY-MM-DD HH:mm:SS.FFFFFF
+            "YYYY-MM-DD HH:mm:SS.FFFFFF"
             (number of F depends on coltype.precision)
+            Or if precision=0 then
+            "YYYY-MM-DD HH:mm:SS"     (without the dot)
 
         """
         ...
@@ -174,7 +176,7 @@ class Database(AbstractDatabase):
                 return None
             return int(res)
         elif res_type is tuple:
-            assert len(res) == 1
+            assert len(res) == 1, (sql_code, res)
             return res[0]
         elif getattr(res_type, "__origin__", None) is list and len(res_type.__args__) == 1:
             if res_type.__args__ == (int,):
@@ -193,7 +195,7 @@ class Database(AbstractDatabase):
 
         cls = self.DATETIME_TYPES.get(type_repr)
         if cls:
-            return cls(precision=datetime_precision or DEFAULT_PRECISION)
+            return cls(precision=datetime_precision if datetime_precision is not None else DEFAULT_PRECISION)
 
         return UnknownColType(type_repr)
 
@@ -302,8 +304,16 @@ class Postgres(ThreadedDatabase):
 
     def normalize_value_by_type(self, value: str, coltype: ColType) -> str:
         if isinstance(coltype, TemporalType):
-            timestamp = self.to_string(f"{value}::timestamp({coltype.precision})")
-            return f"RPAD({timestamp}, {TIMESTAMP_PRECISION_POS + coltype.precision}, '0')"
+            # if coltype.precision == 0:
+            #     return f"to_char({value}::timestamp(0), 'YYYY-mm-dd HH24:MI:SS')"
+            # if coltype.precision == 3:
+            #     return f"to_char({value}, 'YYYY-mm-dd HH24:MI:SS.US')"
+            # elif coltype.precision == 6:
+            return f"to_char({value}::timestamp({coltype.precision}), 'YYYY-mm-dd HH24:MI:SS.US')"
+            # else:
+            #     # Postgres/Redshift doesn't support arbitrary precision
+            #     raise TypeError(f"Bad precision for {type(self).__name__}: {coltype})")
+
         return self.to_string(f"{value}")
 
     def _query_in_worker(self, sql_code: str):
@@ -372,7 +382,7 @@ class MySQL(ThreadedDatabase):
 
     def normalize_value_by_type(self, value: str, coltype: ColType) -> str:
         if isinstance(coltype, TemporalType):
-            return self.to_string(f"cast({value} as datetime({coltype.precision}))")
+            return self.to_string(f"cast( cast({value} as datetime({coltype.precision})) as datetime(6))")
         return self.to_string(f"{value}")
 
 
@@ -406,13 +416,15 @@ class Oracle(ThreadedDatabase):
         (table,) = path
 
         return (
-            f"SELECT column_name, data_type, 9 as datetime_precision, data_precision as numeric_precision"
+            f"SELECT column_name, data_type, 6 as datetime_precision, data_precision as numeric_precision"
             f" FROM USER_TAB_COLUMNS WHERE table_name = '{table.upper()}'"
         )
 
     def normalize_value_by_type(self, value: str, coltype: ColType) -> str:
         if isinstance(coltype, PrecisionType):
-            return f"to_char(cast({value} as timestamp), 'YYYY-MM-DD HH24:MI:SS.FF{coltype.precision or ''}')"
+            if coltype.precision == 0:
+                return f"to_char(cast({value} as timestamp({coltype.precision})), 'YYYY-MM-DD HH24:MI:SS')"
+            return f"to_char(cast({value} as timestamp({coltype.precision})), 'YYYY-MM-DD HH24:MI:SS.FF{coltype.precision or ''}')"
         return self.to_string(f"{value}")
 
     def _parse_type(self, type_repr: str, datetime_precision: int = None, numeric_precision: int = None) -> ColType:
@@ -425,7 +437,7 @@ class Oracle(ThreadedDatabase):
             m = re.match(regexp + "$", type_repr)
             if m:
                 datetime_precision = int(m.group(1))
-                return cls(precision=datetime_precision or DEFAULT_PRECISION)
+                return cls(precision=datetime_precision if datetime_precision is not None else DEFAULT_PRECISION)
 
         return UnknownColType(type_repr)
 
@@ -433,15 +445,6 @@ class Oracle(ThreadedDatabase):
 class Redshift(Postgres):
     def md5_to_int(self, s: str) -> str:
         return f"strtol(substring(md5({s}), {1+MD5_HEXDIGITS-CHECKSUM_HEXDIGITS}), 16)::decimal(38)"
-
-    def normalize_value_by_type(self, value: str, coltype: ColType) -> str:
-        if isinstance(coltype, PrecisionType):
-            if coltype.precision == 3:
-                return f"to_char({value}, 'YYYY-mm-dd HH24:MI:SS.MS')"
-            if coltype.precision != 6:
-                # Redshift doesn't support arbitrary precision
-                raise TypeError(f"Bad precision for Redshift: {coltype})")
-        return super().normalize_value_by_type(value, coltype)
 
 
 class MsSQL(ThreadedDatabase):
@@ -587,10 +590,9 @@ class Snowflake(Database):
         return super().select_table_schema((schema.upper(), table.upper()))
 
     def normalize_value_by_type(self, value: str, coltype: ColType) -> str:
-        if isinstance(coltype, TemporalType):
-            return f"{value}::timestamp({coltype.precision})::text"
-        return f"{value}::text"
-
+        if isinstance(coltype, PrecisionType):
+            return f"to_char(cast({value} as timestamp({coltype.precision})), 'YYYY-MM-DD HH24:MI:SS.FF{coltype.precision or ''}')"
+        return self.to_string(f"{value}")
 
 def connect_to_uri(db_uri: str, thread_count: Optional[int] = 1) -> Database:
     """Connect to the given database uri
