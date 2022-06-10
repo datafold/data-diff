@@ -302,8 +302,14 @@ class Postgres(ThreadedDatabase):
 
     def normalize_value_by_type(self, value: str, coltype: ColType) -> str:
         if isinstance(coltype, TemporalType):
-            timestamp = self.to_string(f"{value}::timestamp({coltype.precision})")
-            return f"RPAD({timestamp}, {TIMESTAMP_PRECISION_POS + coltype.precision}, '0')"
+            if coltype.precision == 3:
+                return f"to_char({value}, 'YYYY-mm-dd HH24:MI:SS.MS')"
+            elif coltype.precision == 6:
+                return f"to_char({value}, 'YYYY-mm-dd HH24:MI:SS.US')"
+            else:
+                # Postgres/Redshift doesn't support arbitrary precision
+                raise TypeError(f"Bad precision for {type(self).__name__}: {coltype})")
+
         return self.to_string(f"{value}")
 
     def _query_in_worker(self, sql_code: str):
@@ -433,15 +439,6 @@ class Oracle(ThreadedDatabase):
 class Redshift(Postgres):
     def md5_to_int(self, s: str) -> str:
         return f"strtol(substring(md5({s}), {1+MD5_HEXDIGITS-CHECKSUM_HEXDIGITS}), 16)::decimal(38)"
-
-    def normalize_value_by_type(self, value: str, coltype: ColType) -> str:
-        if isinstance(coltype, PrecisionType):
-            if coltype.precision == 3:
-                return f"to_char({value}, 'YYYY-mm-dd HH24:MI:SS.MS')"
-            if coltype.precision != 6:
-                # Redshift doesn't support arbitrary precision
-                raise TypeError(f"Bad precision for Redshift: {coltype})")
-        return super().normalize_value_by_type(value, coltype)
 
 
 class MsSQL(ThreadedDatabase):

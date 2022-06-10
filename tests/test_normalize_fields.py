@@ -36,11 +36,12 @@ class TestNormalize(unittest.TestCase):
 
         sample_date1 = datetime(2022, 6, 3, 12, 24, 35, 69296, tzinfo=timezone.utc)
         sample_date2 = datetime(2021, 5, 2, 11, 23, 34, 500001, tzinfo=timezone.utc)
+        sample_date3 = datetime(2021, 5, 2, 11, 23, 34, 000000, tzinfo=timezone.utc)
+
+        dates = [sample_date1, sample_date2, sample_date3]
         if db_id in (BigQuery, Oracle):
             # TODO BigQuery doesn't seem to support timezone for datetime
-            dates = [sample_date1.replace(tzinfo=None), sample_date2.replace(tzinfo=None)]
-        else:
-            dates = [sample_date1, sample_date2]
+            dates = [d.replace(tzinfo=None) for d in dates]
 
         pql = preql.Preql(conn_string)
 
