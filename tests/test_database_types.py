@@ -16,10 +16,12 @@ TYPE_SAMPLES = {
     "int": [127, -3, -9, 37, 15, 127],
     "datetime_no_timezone": [
         "2020-01-01 15:10:10",
-        "2022-01-01 15:10:01.131",
+        "2020-01-01 9:9:9",
+        "999-1-1 9:9:9",
+        "999-1-1 9:9:9.991",
+        "2022-01-01 15:10:01.139",
         "2022-01-01 15:10:02.020409",
         "2022-01-01 15:10:03.003030",
-        "2022-01-01 15:10:04.7",
         "2022-01-01 15:10:05.009900",
     ],
 }
@@ -35,7 +37,7 @@ DATABASE_TYPES = {
         # https://www.postgresql.org/docs/current/datatype-datetime.html
         "datetime_no_timezone": [
             "timestamp(6) without time zone",
-            "timestamp without time zone",
+            "timestamp(0) without time zone",
         ]
     },
     db.MySQL: {
@@ -50,6 +52,7 @@ DATABASE_TYPES = {
         # https://dev.mysql.com/doc/refman/8.0/en/datetime.html
         "datetime_no_timezone": [
             "timestamp(6)",
+            "timestamp(0)",
             "timestamp",
             "datetime(6)"
         ]
@@ -108,6 +111,7 @@ class TestDiffCrossDatabaseTables(unittest.TestCase):
         self.preql2, self.connection2 = CONNS[target_db][0], CONNS[target_db][1]
 
         self.connections = [self.connection1, self.connection2]
+        sample_values = TYPE_SAMPLES[type_category]
 
         for i, connection in enumerate(self.connections):
             db_type = type(connection)
@@ -126,15 +130,15 @@ class TestDiffCrossDatabaseTables(unittest.TestCase):
 
             connection.query("COMMIT", None)
 
-            for j, sample in enumerate(TYPE_SAMPLES[type_category]):
+            for j, sample in enumerate(sample_values):
                 connection.query(f"INSERT INTO {table} (id, col) VALUES ({j+1}, '{sample}')", None)
             connection.query("COMMIT", None)
 
         self.table = TableSegment(self.connection1, ("a",), "id", None, ("col", ))
         self.table2 = TableSegment(self.connection2, ("b",), "id", None, ("col", ))
 
-        self.assertEqual(6, self.table.count())
-        self.assertEqual(6, self.table2.count())
+        self.assertEqual(len(sample_values), self.table.count())
+        self.assertEqual(len(sample_values), self.table2.count())
 
         differ = TableDiffer(bisection_threshold=3, bisection_factor=2) # ensure we actually checksum
         diff = list(differ.diff_tables(self.table, self.table2))
@@ -147,7 +151,7 @@ class TestDiffCrossDatabaseTables(unittest.TestCase):
         diff = list(differ.diff_tables(self.table, self.table2))
         expected = []
         self.assertEqual(expected, diff)
-        self.assertEqual(6, differ.stats.get("rows_downloaded", 0))
+        self.assertEqual(len(sample_values), differ.stats.get("rows_downloaded", 0))
 
         duration = time.time() - start
         print(f"source_db={source_db.__name__} target_db={target_db.__name__} source_type={source_type} target_type={target_type} duration={round(duration * 1000, 2)}ms")
