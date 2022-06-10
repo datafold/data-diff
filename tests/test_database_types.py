@@ -139,16 +139,15 @@ class TestDiffCrossDatabaseTables(unittest.TestCase):
         differ = TableDiffer(bisection_threshold=3, bisection_factor=2) # ensure we actually checksum
         diff = list(differ.diff_tables(self.table, self.table2))
         expected = []
-        # self.assertEqual(0, differ.stats.get("rows_inspected", 0))
-        print(diff)
         self.assertEqual(expected, diff)
+        self.assertEqual(0, differ.stats.get("rows_downloaded", 0))
 
         # Ensure that Python agrees with the checksum!
         differ = TableDiffer(bisection_threshold=1000000000)
         diff = list(differ.diff_tables(self.table, self.table2))
         expected = []
-        # self.assertEqual(6, differ.stats.get("rows_inspected", 0))
         self.assertEqual(expected, diff)
+        self.assertEqual(6, differ.stats.get("rows_downloaded", 0))
 
         duration = time.time() - start
         print(f"source_db={source_db.__name__} target_db={target_db.__name__} source_type={source_type} target_type={target_type} duration={round(duration * 1000, 2)}ms")
