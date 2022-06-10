@@ -131,6 +131,19 @@ class AbstractDatabase(ABC):
         "Close connection(s) to the database instance. Querying will stop functioning."
         ...
 
+    @abstractmethod
+    def normalize_value_by_type(value: str, coltype: ColType) -> str:
+        """Creates an SQL expression, that converts 'value' to a normalized representation.
+
+        The returned expression must accept any SQL value, and return a string.
+
+        - Dates are expected in the format:
+            YYYY-MM-DD HH:mm:SS.FFFFFF
+            (number of F depends on coltype.precision)
+
+        """
+        ...
+
 
 class Database(AbstractDatabase):
     """Base abstract class for databases.
@@ -287,7 +300,7 @@ class Postgres(ThreadedDatabase):
     def to_string(self, s: str):
         return f"{s}::varchar"
 
-    def normalize_value_by_type(self, value, coltype: ColType) -> str:
+    def normalize_value_by_type(self, value: str, coltype: ColType) -> str:
         if isinstance(coltype, TemporalType):
             timestamp = self.to_string(f"{value}::timestamp({coltype.precision})")
             return f"RPAD({timestamp}, {TIMESTAMP_BASE_LEN + coltype.precision}, '0')"
@@ -350,7 +363,7 @@ class MySQL(ThreadedDatabase):
     def to_string(self, s: str):
         return f"cast({s} as char)"
 
-    def normalize_value_by_type(self, value, coltype: ColType) -> str:
+    def normalize_value_by_type(self, value: str, coltype: ColType) -> str:
         if isinstance(coltype, TemporalType):
             return self.to_string(f"cast({value} as datetime({coltype.precision}))")
         return self.to_string(f"{value}")
@@ -390,7 +403,7 @@ class Oracle(ThreadedDatabase):
             f" FROM USER_TAB_COLUMNS WHERE table_name = '{table.upper()}'"
         )
 
-    def normalize_value_by_type(self, value, coltype: ColType) -> str:
+    def normalize_value_by_type(self, value: str, coltype: ColType) -> str:
         if isinstance(coltype, PrecisionType):
             return f"to_char(cast({value} as timestamp), 'YYYY-MM-DD HH24:MI:SS.FF{coltype.precision or ''}')"
         return self.to_string(f"{value}")
@@ -414,8 +427,9 @@ class Redshift(Postgres):
     def md5_to_int(self, s: str) -> str:
         return f"strtol(substring(md5({s}), {1+MD5_HEXDIGITS-CHECKSUM_HEXDIGITS}), 16)::decimal(38)"
 
-    def normalize_value_by_type(self, value, coltype: ColType) -> str:
+    def normalize_value_by_type(self, value: str, coltype: ColType) -> str:
         if coltype.precision != 6:
+            # Redshift doesn't support arbitrary precision
             raise TypeError(f"Bad precision for Redshift: {coltype})")
         return super().normalize_value_by_type(value, coltype)
 
@@ -498,7 +512,7 @@ class BigQuery(Database):
             f"WHERE table_name = '{table}' AND table_schema = '{schema}'"
         )
 
-    def normalize_value_by_type(self, value, coltype: ColType) -> str:
+    def normalize_value_by_type(self, value: str, coltype: ColType) -> str:
         if isinstance(coltype, PrecisionType):
             return self.to_string(f'FORMAT_TIMESTAMP("%F %H:%M:%E6S", {value})')
         return self.to_string(f"{value}")
@@ -562,7 +576,7 @@ class Snowflake(Database):
         schema, table = self._normalize_path(path)
         return super().select_table_schema((schema.upper(), table.upper()))
 
-    def normalize_value_by_type(self, value, coltype: ColType) -> str:
+    def normalize_value_by_type(self, value: str, coltype: ColType) -> str:
         if isinstance(coltype, TemporalType):
             return f"{value}::timestamp({coltype.precision})::text"
         return f"{value}::text"

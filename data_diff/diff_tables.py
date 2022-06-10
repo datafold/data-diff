@@ -259,6 +259,9 @@ class TableDiffer:
                     raise TypeError(f"Incompatible types for column {c}:  {col1} <-> {col2}")
 
                 min_precision = min(col1.precision, col2.precision)
+                if min_precision < col1.precision or min_precision < col2.precision:
+                    logger.warn(f"Using reduced precision {min_precision} for column {c}. Types={col1}, {col2}")
+
                 table1._schema[c] = col1.replace(precision=min_precision)
                 table2._schema[c] = col2.replace(precision=min_precision)
 
