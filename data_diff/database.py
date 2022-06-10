@@ -195,7 +195,7 @@ class Database(AbstractDatabase):
 
         cls = self.DATETIME_TYPES.get(type_repr)
         if cls:
-            return cls(precision=datetime_precision or DEFAULT_PRECISION)
+            return cls(precision=datetime_precision if datetime_precision is not None else DEFAULT_PRECISION)
 
         return UnknownColType(type_repr)
 
@@ -437,7 +437,7 @@ class Oracle(ThreadedDatabase):
             m = re.match(regexp + "$", type_repr)
             if m:
                 datetime_precision = int(m.group(1))
-                return cls(precision=datetime_precision or DEFAULT_PRECISION)
+                return cls(precision=datetime_precision if datetime_precision is not None else DEFAULT_PRECISION)
 
         return UnknownColType(type_repr)
 
