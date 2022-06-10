@@ -265,7 +265,7 @@ CHECKSUM_MASK = (2**_CHECKSUM_BITSIZE) - 1
 
 DEFAULT_PRECISION = 6
 
-TIMESTAMP_BASE_LEN = 20
+TIMESTAMP_PRECISION_POS = 20  # len("2022-06-03 12:24:35.") == 20
 
 
 class Postgres(ThreadedDatabase):
@@ -303,7 +303,7 @@ class Postgres(ThreadedDatabase):
     def normalize_value_by_type(self, value: str, coltype: ColType) -> str:
         if isinstance(coltype, TemporalType):
             timestamp = self.to_string(f"{value}::timestamp({coltype.precision})")
-            return f"RPAD({timestamp}, {TIMESTAMP_BASE_LEN + coltype.precision}, '0')"
+            return f"RPAD({timestamp}, {TIMESTAMP_PRECISION_POS + coltype.precision}, '0')"
         return self.to_string(f"{value}")
 
 
@@ -428,9 +428,12 @@ class Redshift(Postgres):
         return f"strtol(substring(md5({s}), {1+MD5_HEXDIGITS-CHECKSUM_HEXDIGITS}), 16)::decimal(38)"
 
     def normalize_value_by_type(self, value: str, coltype: ColType) -> str:
-        if coltype.precision != 6:
-            # Redshift doesn't support arbitrary precision
-            raise TypeError(f"Bad precision for Redshift: {coltype})")
+        if isinstance(coltype, PrecisionType):
+            if coltype.precision == 3:
+                return f"to_char({value}, 'YYYY-mm-dd HH24:MI:SS.MS')"
+            if coltype.precision != 6:
+                # Redshift doesn't support arbitrary precision
+                raise TypeError(f"Bad precision for Redshift: {coltype})")
         return super().normalize_value_by_type(value, coltype)
 
 

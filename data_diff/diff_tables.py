@@ -245,6 +245,27 @@ class TableDiffer:
             raise ValueError("Must have at least two segments per iteration (i.e. bisection_factor >= 2)")
 
         table1, table2 = self._threaded_call("with_schema", [table1, table2])
+        self._validate_and_adjust_columns(table1, table2)
+
+        key_ranges = self._threaded_call("query_key_range", [table1, table2])
+        mins, maxs = zip(*key_ranges)
+
+        # We add 1 because our ranges are exclusive of the end (like in Python)
+        min_key = min(mins)
+        max_key = max(maxs) + 1
+
+        table1 = table1.new(min_key=min_key, max_key=max_key)
+        table2 = table2.new(min_key=min_key, max_key=max_key)
+
+        logger.info(
+            f"Diffing tables | segments: {self.bisection_factor}, bisection threshold: {self.bisection_threshold}. "
+            f"key-range: {table1.min_key}..{table2.max_key}, "
+            f"size: {table2.max_key-table1.min_key}"
+        )
+
+        return self._bisect_and_diff_tables(table1, table2)
+
+    def _validate_and_adjust_columns(self, table1, table2):
         for c in table1._relevant_columns:
             if c not in table1._schema:
                 raise ValueError(f"Column '{c}' not found in schema for table {table1}")
@@ -264,24 +285,6 @@ class TableDiffer:
 
                 table1._schema[c] = col1.replace(precision=min_precision)
                 table2._schema[c] = col2.replace(precision=min_precision)
-
-        key_ranges = self._threaded_call("query_key_range", [table1, table2])
-        mins, maxs = zip(*key_ranges)
-
-        # We add 1 because our ranges are exclusive of the end (like in Python)
-        min_key = min(mins)
-        max_key = max(maxs) + 1
-
-        table1 = table1.new(min_key=min_key, max_key=max_key)
-        table2 = table2.new(min_key=min_key, max_key=max_key)
-
-        logger.info(
-            f"Diffing tables | segments: {self.bisection_factor}, bisection threshold: {self.bisection_threshold}. "
-            f"key-range: {table1.min_key}..{table2.max_key}, "
-            f"size: {table2.max_key-table1.min_key}"
-        )
-
-        return self._bisect_and_diff_tables(table1, table2)
 
     def _bisect_and_diff_tables(self, table1, table2, level=0, max_rows=None):
         assert table1.is_bounded and table2.is_bounded
