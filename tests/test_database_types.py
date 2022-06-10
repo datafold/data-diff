@@ -17,8 +17,6 @@ TYPE_SAMPLES = {
     "datetime_no_timezone": [
         "2020-01-01 15:10:10",
         "2020-01-01 9:9:9",
-        "999-1-1 9:9:9",
-        "999-1-1 9:9:9.991",
         "2022-01-01 15:10:01.139",
         "2022-01-01 15:10:02.020409",
         "2022-01-01 15:10:03.003030",
@@ -30,9 +28,9 @@ DATABASE_TYPES = {
     db.Postgres: {
         # https://www.postgresql.org/docs/current/datatype-numeric.html#DATATYPE-INT
         "int": [
-            "smallint",  # 2 bytes
-            "int", # 4 bytes
-            "bigint", # 8 bytes
+            # "smallint",  # 2 bytes
+            # "int", # 4 bytes
+            # "bigint", # 8 bytes
         ],
         # https://www.postgresql.org/docs/current/datatype-datetime.html
         "datetime_no_timezone": [
@@ -61,7 +59,7 @@ DATABASE_TYPES = {
         # https://docs.snowflake.com/en/sql-reference/data-types-numeric.html#int-integer-bigint-smallint-tinyint-byteint
         "int": [
             # all 38 digits with 0 precision, don't need to test all
-            "int",
+            # "int",
             # "integer",
             # "bigint",
             # "smallint",
@@ -76,7 +74,7 @@ DATABASE_TYPES = {
     },
     db.Redshift: {
         "int": [
-            "int",
+            # "int",
         ],
         "datetime_no_timezone": [
             "TIMESTAMP",
@@ -84,7 +82,7 @@ DATABASE_TYPES = {
     },
     db.Oracle: {
         "int": [
-            "int",
+            # "int",
         ],
         "datetime_no_timezone": [
             "timestamp",
