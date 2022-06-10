@@ -22,6 +22,7 @@ TYPE_SAMPLES = {
         "2022-01-01 15:10:03.003030",
         "2022-01-01 15:10:05.009900",
     ],
+    "float": [0.0, 0.1, 0.10, 10.0, 100.98]
 }
 
 DATABASE_TYPES = {
@@ -34,25 +35,39 @@ DATABASE_TYPES = {
         ],
         # https://www.postgresql.org/docs/current/datatype-datetime.html
         "datetime_no_timezone": [
-            "timestamp(6) without time zone",
-            "timestamp(0) without time zone",
-        ]
+            # "timestamp(6) without time zone",
+            # "timestamp(3) without time zone",
+            # "timestamp(0) without time zone",
+        ],
+        # https://www.postgresql.org/docs/current/datatype-numeric.html
+        "float": [
+            # "real",
+            # "double precision",
+            # "numeric(6,3)",
+        ],
     },
     db.MySQL: {
          # https://dev.mysql.com/doc/refman/8.0/en/integer-types.html
         "int": [
-            "tinyint", # 1 byte
-            "smallint", # 2 bytes
-            "mediumint", # 3 bytes
-            "int", # 4 bytes
-            "bigint", # 8 bytes
+            # "tinyint", # 1 byte
+            # "smallint", # 2 bytes
+            # "mediumint", # 3 bytes
+            # "int", # 4 bytes
+            # "bigint", # 8 bytes
         ],
         # https://dev.mysql.com/doc/refman/8.0/en/datetime.html
         "datetime_no_timezone": [
-            "timestamp(6)",
-            "timestamp(0)",
-            "timestamp",
-            "datetime(6)"
+            # "timestamp(6)",
+            # "timestamp(3)",
+            # "timestamp(0)",
+            # "timestamp",
+            # "datetime(6)"
+        ],
+        # https://dev.mysql.com/doc/refman/8.0/en/numeric-types.html
+        "float": [
+            # "float",
+            # "double",
+            # "numeric",
         ]
     },
     db.Snowflake: {
@@ -68,27 +83,42 @@ DATABASE_TYPES = {
         ],
         # https://docs.snowflake.com/en/sql-reference/data-types-datetime.html
         "datetime_no_timezone": [
-            "timestamp(6)",
-            "timestamp(9)",
-        ]
+            # "timestamp(6)",
+            # "timestamp(9)",
+        ],
+        # https://docs.snowflake.com/en/sql-reference/data-types-numeric.html#decimal-numeric
+        "float": [
+            # "float"
+            # "numeric",
+        ],
     },
     db.Redshift: {
         "int": [
             # "int",
         ],
         "datetime_no_timezone": [
-            "TIMESTAMP",
-        ]
+            # "TIMESTAMP",
+        ],
+        # https://docs.aws.amazon.com/redshift/latest/dg/r_Numeric_types201.html#r_Numeric_types201-floating-point-types
+        "float": [
+            # "float4",
+            # "float8",
+            # "numeric",
+        ],
     },
     db.Oracle: {
         "int": [
             # "int",
         ],
         "datetime_no_timezone": [
-            "timestamp",
-            "timestamp(6)",
-            "timestamp(9)",
-        ]
+            # "timestamp",
+            # "timestamp(6)",
+            # "timestamp(9)",
+        ],
+        "float": [
+            # "float",
+            # "numeric",
+        ],
     }
 }
 
