@@ -10,7 +10,7 @@ import logging
 logging.getLogger("diff_tables").setLevel(logging.WARN)
 logging.getLogger("database").setLevel(logging.WARN)
 
-CONNS = {k: (preql.Preql(v), db.connect_to_uri(v)) for k, v in CONN_STRINGS.items()}
+CONNS = {k: db.connect_to_uri(v) for k, v in CONN_STRINGS.items()}
 
 TYPE_SAMPLES = {
     "int": [127, -3, -9, 37, 15, 127],
@@ -70,9 +70,28 @@ DATABASE_TYPES = {
         ],
         # https://docs.snowflake.com/en/sql-reference/data-types-datetime.html
         "datetime_no_timezone": [
-            # "timestamp(6)",
+            "timestamp(6)",
+            "timestamp(9)",
         ]
     },
+    db.Redshift: {
+        "int": [
+            "int",
+        ],
+        "datetime_no_timezone": [
+            "TIMESTAMP",
+        ]
+    },
+    db.Oracle: {
+        "int": [
+            "int",
+        ],
+        "datetime_no_timezone": [
+            "timestamp",
+            "timestamp(6)",
+            "timestamp(9)",
+        ]
+    }
 }
 
 
@@ -107,8 +126,8 @@ class TestDiffCrossDatabaseTables(unittest.TestCase):
     def test_wip_int_different(self, source_db, target_db, source_type, target_type, type_category):
         start = time.time()
 
-        self.preql1, self.connection1 = CONNS[source_db][0], CONNS[source_db][1]
-        self.preql2, self.connection2 = CONNS[target_db][0], CONNS[target_db][1]
+        self.connection1 = CONNS[source_db]
+        self.connection2 = CONNS[target_db]
 
         self.connections = [self.connection1, self.connection2]
         sample_values = TYPE_SAMPLES[type_category]
@@ -119,19 +138,13 @@ class TestDiffCrossDatabaseTables(unittest.TestCase):
             col_type = source_type if i == 0 else target_type
 
             connection.query(f"DROP TABLE IF EXISTS {table}", None)
-            connection.query("COMMIT", None)
+            connection.query(f"CREATE TABLE {table}(id int, col {col_type});", None)
 
-            if db_type == db.MySQL:
-                connection.query(f"CREATE TABLE {table}(id int, col {col_type});", None)
-            elif db_type == db.Postgres:
-                connection.query(f"CREATE TABLE {table}(id serial, col {col_type});", None)
-            elif db_type == db.Snowflake:
-                connection.query(f"CREATE TABLE {table}(id int, col {col_type});", None)
-
-            connection.query("COMMIT", None)
-
+            insertion_query = f"INSERT INTO {table} (id, col) VALUES "
             for j, sample in enumerate(sample_values):
-                connection.query(f"INSERT INTO {table} (id, col) VALUES ({j+1}, '{sample}')", None)
+                insertion_query += f"({j+1}, '{sample}'),"
+
+            connection.query(insertion_query[0:-1], None)
             connection.query("COMMIT", None)
 
         self.table = TableSegment(self.connection1, ("a",), "id", None, ("col", ))
