@@ -584,10 +584,9 @@ class Snowflake(Database):
         return super().select_table_schema((schema.upper(), table.upper()))
 
     def normalize_value_by_type(self, value: str, coltype: ColType) -> str:
-        if isinstance(coltype, TemporalType):
-            return f"{value}::timestamp({coltype.precision})::text"
-        return f"{value}::text"
-
+        if isinstance(coltype, PrecisionType):
+            return f"to_char(cast({value} as timestamp), 'YYYY-MM-DD HH24:MI:SS.FF{coltype.precision or ''}')"
+        return self.to_string(f"{value}")
 
 def connect_to_uri(db_uri: str, thread_count: Optional[int] = 1) -> Database:
     """Connect to the given database uri
