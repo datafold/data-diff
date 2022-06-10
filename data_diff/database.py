@@ -306,6 +306,13 @@ class Postgres(ThreadedDatabase):
             return f"RPAD({timestamp}, {TIMESTAMP_PRECISION_POS + coltype.precision}, '0')"
         return self.to_string(f"{value}")
 
+    def _query_in_worker(self, sql_code: str):
+        postgres = import_postgres()
+        try:
+            return _query_conn(self.thread_local.conn, sql_code)
+        except postgres.ProgrammingError:
+            return []
+
 
 class Presto(Database):
     def __init__(self, host, port, database, user, password):
