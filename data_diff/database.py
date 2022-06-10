@@ -176,7 +176,7 @@ class Database(AbstractDatabase):
                 return None
             return int(res)
         elif res_type is tuple:
-            assert len(res) == 1
+            assert len(res) == 1, (sql_code, res)
             return res[0]
         elif getattr(res_type, "__origin__", None) is list and len(res_type.__args__) == 1:
             if res_type.__args__ == (int,):
@@ -304,15 +304,15 @@ class Postgres(ThreadedDatabase):
 
     def normalize_value_by_type(self, value: str, coltype: ColType) -> str:
         if isinstance(coltype, TemporalType):
-            if coltype.precision == 0:
-                return f"to_char({value}::timestamp(0), 'YYYY-mm-dd HH24:MI:SS')"
-            if coltype.precision == 3:
-                return f"to_char({value}, 'YYYY-mm-dd HH24:MI:SS.MS')"
-            elif coltype.precision == 6:
-                return f"to_char({value}, 'YYYY-mm-dd HH24:MI:SS.US')"
-            else:
-                # Postgres/Redshift doesn't support arbitrary precision
-                raise TypeError(f"Bad precision for {type(self).__name__}: {coltype})")
+            # if coltype.precision == 0:
+            #     return f"to_char({value}::timestamp(0), 'YYYY-mm-dd HH24:MI:SS')"
+            # if coltype.precision == 3:
+            #     return f"to_char({value}, 'YYYY-mm-dd HH24:MI:SS.US')"
+            # elif coltype.precision == 6:
+            return f"to_char({value}::timestamp({coltype.precision}), 'YYYY-mm-dd HH24:MI:SS.US')"
+            # else:
+            #     # Postgres/Redshift doesn't support arbitrary precision
+            #     raise TypeError(f"Bad precision for {type(self).__name__}: {coltype})")
 
         return self.to_string(f"{value}")
 
@@ -382,7 +382,7 @@ class MySQL(ThreadedDatabase):
 
     def normalize_value_by_type(self, value: str, coltype: ColType) -> str:
         if isinstance(coltype, TemporalType):
-            return self.to_string(f"cast({value} as datetime({coltype.precision}))")
+            return self.to_string(f"cast( cast({value} as datetime({coltype.precision})) as datetime(6))")
         return self.to_string(f"{value}")
 
 
@@ -591,8 +591,6 @@ class Snowflake(Database):
 
     def normalize_value_by_type(self, value: str, coltype: ColType) -> str:
         if isinstance(coltype, PrecisionType):
-            if coltype.precision == 0:
-                return f"to_char(cast({value} as timestamp({coltype.precision})), 'YYYY-MM-DD HH24:MI:SS')"
             return f"to_char(cast({value} as timestamp({coltype.precision})), 'YYYY-MM-DD HH24:MI:SS.FF{coltype.precision or ''}')"
         return self.to_string(f"{value}")
 
