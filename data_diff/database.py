@@ -138,8 +138,10 @@ class AbstractDatabase(ABC):
         The returned expression must accept any SQL value, and return a string.
 
         - Dates are expected in the format:
-            YYYY-MM-DD HH:mm:SS.FFFFFF
+            "YYYY-MM-DD HH:mm:SS.FFFFFF"
             (number of F depends on coltype.precision)
+            Or if precision=0 then
+            "YYYY-MM-DD HH:mm:SS"     (without the dot)
 
         """
         ...
@@ -302,6 +304,8 @@ class Postgres(ThreadedDatabase):
 
     def normalize_value_by_type(self, value: str, coltype: ColType) -> str:
         if isinstance(coltype, TemporalType):
+            if coltype.precision == 0:
+                return f"to_char({value}::timestamp(0), 'YYYY-mm-dd HH24:MI:SS')"
             if coltype.precision == 3:
                 return f"to_char({value}, 'YYYY-mm-dd HH24:MI:SS.MS')"
             elif coltype.precision == 6:
@@ -418,7 +422,9 @@ class Oracle(ThreadedDatabase):
 
     def normalize_value_by_type(self, value: str, coltype: ColType) -> str:
         if isinstance(coltype, PrecisionType):
-            return f"to_char(cast({value} as timestamp), 'YYYY-MM-DD HH24:MI:SS.FF{coltype.precision or ''}')"
+            if coltype.precision == 0:
+                return f"to_char(cast({value} as timestamp({coltype.precision})), 'YYYY-MM-DD HH24:MI:SS')"
+            return f"to_char(cast({value} as timestamp({coltype.precision})), 'YYYY-MM-DD HH24:MI:SS.FF{coltype.precision or ''}')"
         return self.to_string(f"{value}")
 
     def _parse_type(self, type_repr: str, datetime_precision: int = None, numeric_precision: int = None) -> ColType:
@@ -585,7 +591,7 @@ class Snowflake(Database):
 
     def normalize_value_by_type(self, value: str, coltype: ColType) -> str:
         if isinstance(coltype, PrecisionType):
-            return f"to_char(cast({value} as timestamp), 'YYYY-MM-DD HH24:MI:SS.FF{coltype.precision or ''}')"
+            return f"to_char(cast({value} as timestamp({coltype.precision})), 'YYYY-MM-DD HH24:MI:SS.FF{coltype.precision or ''}')"
         return self.to_string(f"{value}")
 
 def connect_to_uri(db_uri: str, thread_count: Optional[int] = 1) -> Database:
