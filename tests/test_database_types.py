@@ -113,15 +113,22 @@ for source_db, source_type_categories in DATABASE_TYPES.items():
                           type_category,
                         ))
 
+# Pass --verbose to test run to get a nice output.
 def expand_params(testcase_func, param_num, param):
-    return "%s_%s" %(
+    source_db, target_db, source_type, target_type, type_category = param.args
+    source_db_type = source_db.__name__
+    target_db_type = target_db.__name__
+    return "%s_%s_%s_to_%s_%s" %(
         testcase_func.__name__,
-        parameterized.to_safe_name("_".join(str(x) for x in param.args)),
+        source_db_type,
+        parameterized.to_safe_name(source_type),
+        target_db_type,
+        parameterized.to_safe_name(target_type),
     )
 
 class TestDiffCrossDatabaseTables(unittest.TestCase):
     @parameterized.expand(type_pairs, name_func=expand_params)
-    def test_wip_int_different(self, source_db, target_db, source_type, target_type, type_category):
+    def test_types(self, source_db, target_db, source_type, target_type, type_category):
         start = time.time()
 
         self.connection1 = CONNS[source_db]
@@ -165,4 +172,4 @@ class TestDiffCrossDatabaseTables(unittest.TestCase):
         self.assertEqual(len(sample_values), differ.stats.get("rows_downloaded", 0))
 
         duration = time.time() - start
-        print(f"source_db={source_db.__name__} target_db={target_db.__name__} source_type={source_type} target_type={target_type} duration={round(duration * 1000, 2)}ms")
+        # print(f"source_db={source_db.__name__} target_db={target_db.__name__} source_type={source_type} target_type={target_type} duration={round(duration * 1000, 2)}ms")
