@@ -411,8 +411,8 @@ $ poetry run preql -f dev/prepare_db.pql mysql://mysql:Password1@127.0.0.1:3306/
 $ poetry run preql -f dev/prepare_db.pql postgres://postgres:Password1@127.0.0.1:5432/postgres
 
 # Cloud databases
-$ poetry run preql -f dev/prepare_db.psq snowflake://<uri>
-$ poetry run preql -f dev/prepare_db.psq mssql://<uri>
+$ poetry run preql -f dev/prepare_db.pql snowflake://<uri>
+$ poetry run preql -f dev/prepare_db.pql mssql://<uri>
 $ poetry run preql -f dev/prepare_db.pql bigquery:///<project>
 ```
 
