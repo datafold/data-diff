@@ -406,7 +406,7 @@ class Oracle(ThreadedDatabase):
         (table,) = path
 
         return (
-            f"SELECT column_name, data_type, 9 as datetime_precision, data_precision as numeric_precision"
+            f"SELECT column_name, data_type, 6 as datetime_precision, data_precision as numeric_precision"
             f" FROM USER_TAB_COLUMNS WHERE table_name = '{table.upper()}'"
         )
 
