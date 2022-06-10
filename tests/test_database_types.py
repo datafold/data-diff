@@ -35,9 +35,9 @@ DATABASE_TYPES = {
         ],
         # https://www.postgresql.org/docs/current/datatype-datetime.html
         "datetime_no_timezone": [
-            # "timestamp(6) without time zone",
-            # "timestamp(3) without time zone",
-            # "timestamp(0) without time zone",
+            "timestamp(6) without time zone",
+            "timestamp(3) without time zone",
+            "timestamp(0) without time zone",
         ],
         # https://www.postgresql.org/docs/current/datatype-numeric.html
         "float": [
@@ -57,11 +57,11 @@ DATABASE_TYPES = {
         ],
         # https://dev.mysql.com/doc/refman/8.0/en/datetime.html
         "datetime_no_timezone": [
-            # "timestamp(6)",
-            # "timestamp(3)",
-            # "timestamp(0)",
-            # "timestamp",
-            # "datetime(6)"
+            "timestamp(6)",
+            "timestamp(3)",
+            "timestamp(0)",
+            "timestamp",
+            "datetime(6)"
         ],
         # https://dev.mysql.com/doc/refman/8.0/en/numeric-types.html
         "float": [
@@ -83,8 +83,10 @@ DATABASE_TYPES = {
         ],
         # https://docs.snowflake.com/en/sql-reference/data-types-datetime.html
         "datetime_no_timezone": [
-            # "timestamp(6)",
-            # "timestamp(9)",
+            "timestamp(0)",
+            "timestamp(3)",
+            "timestamp(6)",
+            "timestamp(9)",
         ],
         # https://docs.snowflake.com/en/sql-reference/data-types-numeric.html#decimal-numeric
         "float": [
