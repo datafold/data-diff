@@ -204,8 +204,8 @@ class TableDiffer:
         mins, maxs = zip(*key_ranges)
 
         # We add 1 because our ranges are exclusive of the end (like in Python)
-        start_key = min(mins)
-        end_key = max(maxs) + 1
+        start_key = min([int(i) for i in mins])
+        end_key = max([int(i) for i in maxs]) + 1
 
         table1 = table1.new(start_key=start_key, end_key=end_key)
         table2 = table2.new(start_key=start_key, end_key=end_key)
@@ -225,6 +225,7 @@ class TableDiffer:
             rows1, rows2 = self._threaded_call("get_values", [table1, table2])
             diff = list(diff_sets(rows1, rows2))
             logger.info(". " * level + f"Diff found {len(diff)} different rows.")
+            self.stats["rows_inspected"] = self.stats.get("rows_inspected", 0) + max(len(rows1), len(rows2))
             yield from diff
             return
 

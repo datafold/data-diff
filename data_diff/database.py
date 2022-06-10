@@ -338,9 +338,9 @@ class Snowflake(Database):
         user: str,
         password: str,
         path: str,
-        role: str,
         schema: str,
         database: str,
+        role: str = "PUBLIC",
         print_sql: bool = False,
     ):
         snowflake = import_snowflake()
