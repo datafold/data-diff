@@ -57,14 +57,17 @@ class TestNormalize(unittest.TestCase):
             for date_type, table in date_type_tables.items():
                 if db_id is not Oracle:
                     pql.run_statement(f"DROP TABLE IF EXISTS {table}")
-                pql.run_statement(f"CREATE TABLE {table}(v {date_type})")
+                pql.run_statement(f"CREATE TABLE {table}(id int, v {date_type})")
             pql.commit()
 
             for date_type, table in date_type_tables.items():
 
-                for date in dates:
+                for index, date in enumerate(dates, 1):
                     # print(f"insert into {table}(v) values ('{date}')")
-                    pql.run_statement(f"insert into {table}(v) values (timestamp '{date}')")
+                    if db_id is BigQuery:
+                        pql.run_statement(f"insert into {table}(id, v) values ({index}, cast(timestamp '{date}' as {date_type}))")
+                    else:
+                        pql.run_statement(f"insert into {table}(id, v) values ({index}, timestamp '{date}')")
             pql.commit()
 
             conn = connect_to_uri(conn_string)
@@ -79,7 +82,7 @@ class TestNormalize(unittest.TestCase):
                 v_type = v_type.replace(precision=precision)
 
                 returned_dates = tuple(
-                    x for x, in conn.query(Select([conn.normalize_value_by_type("v", v_type)], table), list)
+                    x for x, in conn.query(Select([conn.normalize_value_by_type("v", v_type)], table, order_by=['id']), list)
                 )
 
                 # print("@@", db_id, date_type, " --> ", returned_dates)
@@ -106,5 +109,6 @@ class TestNormalize(unittest.TestCase):
         }
 
         all_reprs = set(all_returned.values())
-        # print("@@", all_reprs)
+        # for r in all_reprs:
+        #     print('-', r)
         assert len(all_reprs) == 1

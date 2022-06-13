@@ -491,6 +491,7 @@ class BigQuery(Database):
         "TIMESTAMP": Timestamp,
         "DATETIME": Datetime,
     }
+    ROUNDS_ON_PREC_LOSS = False     # Technically BigQuery doesn't allow implicit rounding or truncation
 
     def __init__(self, project, dataset):
         from google.cloud import bigquery
@@ -533,12 +534,14 @@ class BigQuery(Database):
         schema, table = self._normalize_path(path)
 
         return (
-            f"SELECT column_name, data_type, 6 as datetime_precision, 6 as numeric_precision FROM {self.dataset}.INFORMATION_SCHEMA.COLUMNS "
+            f"SELECT column_name, data_type, 6 as datetime_precision, 6 as numeric_precision FROM {schema}.INFORMATION_SCHEMA.COLUMNS "
             f"WHERE table_name = '{table}' AND table_schema = '{schema}'"
         )
 
     def normalize_value_by_type(self, value: str, coltype: ColType) -> str:
         if isinstance(coltype, PrecisionType):
+            if coltype.precision != 6:
+                raise TypeError(f"Unexpected column precision for BigQuery: {coltype.precision}. Must be 6.")
             return self.to_string(f'FORMAT_TIMESTAMP("%F %H:%M:%E6S", {value})')
         return self.to_string(f"{value}")
 
