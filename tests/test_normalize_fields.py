@@ -49,11 +49,14 @@ class TestNormalize(unittest.TestCase):
         date_type_tables = {dt: self._new_table(dt) for dt in date_types}
         if db_id is BigQuery:
             date_type_tables = {dt: f"data_diff.{name}" for dt, name in date_type_tables.items()}
+        elif db_id is MySQL:
+            pql.run_statement("SET @@session.time_zone='+00:00'")
 
         used_tables = list(date_type_tables.values())
         conn = None
         results = []
         try:
+
             for date_type, table in date_type_tables.items():
                 if db_id is not Oracle:
                     pql.run_statement(f"DROP TABLE IF EXISTS {table}")
@@ -75,6 +78,9 @@ class TestNormalize(unittest.TestCase):
             if db_id is Snowflake:
                 conn.query("alter session set timestamp_output_format = 'YYYY-MM-DD HH24:MI:SS.FF6TZH'", None)
                 conn.query("alter session set timestamp_ntz_output_format = 'YYYY-MM-DD HH24:MI:SS.FF6'", None)
+
+            if db_id is MySQL:
+                conn.query("SET @@session.time_zone='+00:00'", None)
 
             for date_type, table in date_type_tables.items():
                 schema = conn.query_table_schema(table.split("."))
