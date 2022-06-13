@@ -16,6 +16,9 @@ from .sql import DbPath, SqlOrStr, Compiler, Explain, Select
 
 logger = logging.getLogger("database")
 
+def parse_table_name(t):
+    return tuple(t.split("."))
+
 
 def import_postgres():
     import psycopg2
@@ -202,7 +205,7 @@ class Database(AbstractDatabase):
         return UnknownColType(type_repr)
 
     def select_table_schema(self, path: DbPath) -> str:
-        schema, table = self._normalize_path(path)
+        schema, table = self._normalize_table_path(path)
 
         return (
             "SELECT column_name, data_type, datetime_precision, numeric_precision FROM information_schema.columns "
@@ -219,13 +222,16 @@ class Database(AbstractDatabase):
     def get_table_schema(self, path: DbPath) -> Dict[str, ColType]:
         return self.query_table_schema(path)
 
-    def _normalize_path(self, path: DbPath) -> DbPath:
+    def _normalize_table_path(self, path: DbPath) -> DbPath:
         if len(path) == 1:
             return self.default_schema, path[0]
         elif len(path) == 2:
             return path
 
         raise ValueError(f"Bad table path for {self}: '{'.'.join(path)}'. Expected form: schema.table")
+
+    def parse_table_name(self, name: str) -> DbPath:
+        return parse_table_name(name)
 
 
 class ThreadedDatabase(Database):
@@ -500,6 +506,8 @@ class BigQuery(Database):
         self.project = project
         self.dataset = dataset
 
+        self.default_schema = dataset
+
     def quote(self, s: str):
         return f"`{s}`"
 
@@ -531,7 +539,7 @@ class BigQuery(Database):
         self._client.close()
 
     def select_table_schema(self, path: DbPath) -> str:
-        schema, table = self._normalize_path(path)
+        schema, table = self._normalize_table_path(path)
 
         return (
             f"SELECT column_name, data_type, 6 as datetime_precision, 6 as numeric_precision FROM {schema}.INFORMATION_SCHEMA.COLUMNS "
@@ -540,10 +548,23 @@ class BigQuery(Database):
 
     def normalize_value_by_type(self, value: str, coltype: ColType) -> str:
         if isinstance(coltype, PrecisionType):
-            if coltype.precision != 6:
-                raise TypeError(f"Unexpected column precision for BigQuery: {coltype.precision}. Must be 6.")
-            return self.to_string(f'FORMAT_TIMESTAMP("%F %H:%M:%E6S", {value})')
+            if coltype.rounds:
+                timestamp = f"timestamp_micros(cast(round(unix_micros(cast({value} as timestamp))/1000000, {coltype.precision})*1000000 as int))"
+                return f"FORMAT_TIMESTAMP('%F %H:%M:%E6S', {timestamp})"
+            else:
+                if coltype.precision == 0:
+                    return f"FORMAT_TIMESTAMP('%F %H:%M:%S.000000, {value})"
+                elif coltype.precision == 6:
+                    return f"FORMAT_TIMESTAMP('%F %H:%M:%E6S', {value})"
+
+                timestamp6 = f"FORMAT_TIMESTAMP('%F %H:%M:%E6S', {value})"
+                return f"RPAD(LEFT({timestamp6}, {TIMESTAMP_PRECISION_POS+coltype.precision}), {TIMESTAMP_PRECISION_POS+6}, '0')"
+
         return self.to_string(f"{value}")
+
+    def parse_table_name(self, name: str) -> DbPath:
+        path = parse_table_name(name)
+        return self._normalize_table_path(path)
 
 
 class Snowflake(Database):
@@ -602,7 +623,7 @@ class Snowflake(Database):
         return f"cast({s} as string)"
 
     def select_table_schema(self, path: DbPath) -> str:
-        schema, table = self._normalize_path(path)
+        schema, table = self._normalize_table_path(path)
         return super().select_table_schema((schema.upper(), table.upper()))
 
     def normalize_value_by_type(self, value: str, coltype: ColType) -> str:

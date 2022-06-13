@@ -70,6 +70,12 @@ DATABASE_TYPES = {
             # "numeric",
         ]
     },
+    db.BigQuery: {
+        "datetime_no_timezone": [
+            "timestamp",
+            # "datetime",
+        ],
+    },
     db.Snowflake: {
         # https://docs.snowflake.com/en/sql-reference/data-types-numeric.html#int-integer-bigint-smallint-tinyint-byteint
         "int": [
@@ -164,7 +170,8 @@ def _insert_to_table(conn, table, values):
         insertion_query += f"({j}, '{sample}'),"
 
     conn.query(insertion_query[0:-1], None)
-    conn.query("COMMIT", None)
+    if not isinstance(conn, db.BigQuery):
+        conn.query("COMMIT", None)
 
 class TestDiffCrossDatabaseTables(unittest.TestCase):
     @parameterized.expand(type_pairs, name_func=expand_params)
@@ -177,18 +184,23 @@ class TestDiffCrossDatabaseTables(unittest.TestCase):
         self.connections = [self.connection1, self.connection2]
         sample_values = TYPE_SAMPLES[type_category]
 
-        src_conn.query(f"DROP TABLE IF EXISTS src", None)
-        src_conn.query(f"CREATE TABLE src(id int, col {source_type});", None)
-        _insert_to_table(src_conn, 'src', enumerate(sample_values, 1))
+        src_table_path = src_conn.parse_table_name("src")
+        dst_table_path = dst_conn.parse_table_name("dst")
+        src_table = '.'.join(src_table_path)
+        dst_table = '.'.join(dst_table_path)
 
-        values_in_source = src_conn.query(f"SELECT id, col FROM src", list)
+        src_conn.query(f"DROP TABLE IF EXISTS {src_table}", None)
+        src_conn.query(f"CREATE TABLE {src_table}(id int, col {source_type});", None)
+        _insert_to_table(src_conn, src_table, enumerate(sample_values, 1))
 
-        dst_conn.query(f"DROP TABLE IF EXISTS dst", None)
-        dst_conn.query(f"CREATE TABLE dst(id int, col {target_type});", None)
-        _insert_to_table(dst_conn, 'dst', values_in_source)
+        values_in_source = src_conn.query(f"SELECT id, col FROM {src_table}", list)
 
-        self.table = TableSegment(self.connection1, ("src",), "id", None, ("col", ))
-        self.table2 = TableSegment(self.connection2, ("dst",), "id", None, ("col", ))
+        dst_conn.query(f"DROP TABLE IF EXISTS {dst_table}", None)
+        dst_conn.query(f"CREATE TABLE {dst_table}(id int, col {target_type});", None)
+        _insert_to_table(dst_conn, dst_table, values_in_source)
+
+        self.table = TableSegment(self.connection1, src_table_path, "id", None, ("col", ))
+        self.table2 = TableSegment(self.connection2, dst_table_path, "id", None, ("col", ))
 
         self.assertEqual(len(sample_values), self.table.count())
         self.assertEqual(len(sample_values), self.table2.count())
