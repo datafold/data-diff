@@ -158,34 +158,37 @@ def expand_params(testcase_func, param_num, param):
         parameterized.to_safe_name(target_type),
     )
 
+def _insert_to_table(conn, table, values):
+    insertion_query = f"INSERT INTO {table} (id, col) VALUES "
+    for j, sample in values:
+        insertion_query += f"({j}, '{sample}'),"
+
+    conn.query(insertion_query[0:-1], None)
+    conn.query("COMMIT", None)
+
 class TestDiffCrossDatabaseTables(unittest.TestCase):
     @parameterized.expand(type_pairs, name_func=expand_params)
     def test_types(self, source_db, target_db, source_type, target_type, type_category):
         start = time.time()
 
-        self.connection1 = CONNS[source_db]
-        self.connection2 = CONNS[target_db]
+        self.connection1 = src_conn = CONNS[source_db]
+        self.connection2 = dst_conn = CONNS[target_db]
 
         self.connections = [self.connection1, self.connection2]
         sample_values = TYPE_SAMPLES[type_category]
 
-        for i, connection in enumerate(self.connections):
-            db_type = type(connection)
-            table = "a" if i == 0 else "b"
-            col_type = source_type if i == 0 else target_type
+        src_conn.query(f"DROP TABLE IF EXISTS src", None)
+        src_conn.query(f"CREATE TABLE src(id int, col {source_type});", None)
+        _insert_to_table(src_conn, 'src', enumerate(sample_values, 1))
 
-            connection.query(f"DROP TABLE IF EXISTS {table}", None)
-            connection.query(f"CREATE TABLE {table}(id int, col {col_type});", None)
+        values_in_source = src_conn.query(f"SELECT id, col FROM src", list)
 
-            insertion_query = f"INSERT INTO {table} (id, col) VALUES "
-            for j, sample in enumerate(sample_values):
-                insertion_query += f"({j+1}, '{sample}'),"
+        dst_conn.query(f"DROP TABLE IF EXISTS dst", None)
+        dst_conn.query(f"CREATE TABLE dst(id int, col {target_type});", None)
+        _insert_to_table(dst_conn, 'dst', values_in_source)
 
-            connection.query(insertion_query[0:-1], None)
-            connection.query("COMMIT", None)
-
-        self.table = TableSegment(self.connection1, ("a",), "id", None, ("col", ))
-        self.table2 = TableSegment(self.connection2, ("b",), "id", None, ("col", ))
+        self.table = TableSegment(self.connection1, ("src",), "id", None, ("col", ))
+        self.table2 = TableSegment(self.connection2, ("dst",), "id", None, ("col", ))
 
         self.assertEqual(len(sample_values), self.table.count())
         self.assertEqual(len(sample_values), self.table2.count())

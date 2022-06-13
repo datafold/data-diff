@@ -67,7 +67,8 @@ def _one(seq):
 def _query_conn(conn, sql_code: str) -> list:
     c = conn.cursor()
     c.execute(sql_code)
-    return c.fetchall()
+    if sql_code.lower().startswith('select'):
+        return c.fetchall()
 
 
 class ColType:
@@ -77,6 +78,7 @@ class ColType:
 @dataclass
 class PrecisionType(ColType):
     precision: Optional[int]
+    rounds: bool
 
 
 class TemporalType(PrecisionType):
@@ -195,7 +197,7 @@ class Database(AbstractDatabase):
 
         cls = self.DATETIME_TYPES.get(type_repr)
         if cls:
-            return cls(precision=datetime_precision if datetime_precision is not None else DEFAULT_PRECISION)
+            return cls(precision=datetime_precision if datetime_precision is not None else DEFAULT_PRECISION, rounds=self.ROUNDS_ON_PREC_LOSS)
 
         return UnknownColType(type_repr)
 
@@ -277,6 +279,8 @@ class Postgres(ThreadedDatabase):
         "timestamp": Timestamp,
         # "datetime": Datetime,
     }
+    ROUNDS_ON_PREC_LOSS = True
+
     default_schema = "public"
 
     def __init__(self, host, port, database, user, password, *, thread_count):
@@ -309,19 +313,21 @@ class Postgres(ThreadedDatabase):
             # if coltype.precision == 3:
             #     return f"to_char({value}, 'YYYY-mm-dd HH24:MI:SS.US')"
             # elif coltype.precision == 6:
-            return f"to_char({value}::timestamp({coltype.precision}), 'YYYY-mm-dd HH24:MI:SS.US')"
+            # return f"to_char({value}::timestamp({coltype.precision}), 'YYYY-mm-dd HH24:MI:SS.US')"
             # else:
             #     # Postgres/Redshift doesn't support arbitrary precision
             #     raise TypeError(f"Bad precision for {type(self).__name__}: {coltype})")
+            if coltype.rounds:
+                return f"to_char({value}::timestamp({coltype.precision}), 'YYYY-mm-dd HH24:MI:SS.US')"
+            else:
+                timestamp6 = f"to_char({value}::timestamp(6), 'YYYY-mm-dd HH24:MI:SS.US')"
+                return f"RPAD(LEFT({timestamp6}, {TIMESTAMP_PRECISION_POS+coltype.precision}), {TIMESTAMP_PRECISION_POS+6}, '0')"
 
         return self.to_string(f"{value}")
 
-    def _query_in_worker(self, sql_code: str):
-        postgres = import_postgres()
-        try:
-            return _query_conn(self.thread_local.conn, sql_code)
-        except postgres.ProgrammingError:
-            return []
+
+    # def _query_in_worker(self, sql_code: str):
+    #     return _query_conn(self.thread_local.conn, sql_code)
 
 
 class Presto(Database):
@@ -350,6 +356,7 @@ class MySQL(ThreadedDatabase):
         "datetime": Datetime,
         "timestamp": Timestamp,
     }
+    ROUNDS_ON_PREC_LOSS = True
 
     def __init__(self, host, port, database, user, password, *, thread_count):
         args = dict(host=host, port=port, database=database, user=user, password=password)
@@ -382,7 +389,12 @@ class MySQL(ThreadedDatabase):
 
     def normalize_value_by_type(self, value: str, coltype: ColType) -> str:
         if isinstance(coltype, TemporalType):
-            return self.to_string(f"cast( cast({value} as datetime({coltype.precision})) as datetime(6))")
+            if coltype.rounds:
+                return self.to_string(f"cast( cast({value} as datetime({coltype.precision})) as datetime(6))")
+            else:
+                s = self.to_string(f"cast({value} as datetime(6))")
+                return f"RPAD(RPAD({s}, {TIMESTAMP_PRECISION_POS+coltype.precision}, '.'), {TIMESTAMP_PRECISION_POS+6}, '0')"
+
         return self.to_string(f"{value}")
 
 
@@ -537,6 +549,7 @@ class Snowflake(Database):
         "TIMESTAMP_LTZ": Timestamp,
         "TIMESTAMP_TZ": TimestampTZ,
     }
+    ROUNDS_ON_PREC_LOSS = False
 
     def __init__(
         self,
@@ -591,7 +604,13 @@ class Snowflake(Database):
 
     def normalize_value_by_type(self, value: str, coltype: ColType) -> str:
         if isinstance(coltype, PrecisionType):
-            return f"to_char(cast({value} as timestamp({coltype.precision})), 'YYYY-MM-DD HH24:MI:SS.FF{coltype.precision or ''}')"
+            if coltype.rounds:
+                timestamp = f"to_timestamp(round(date_part(epoch_nanosecond, {value}::timestamp(9))/1000000000, {coltype.precision}))"
+            else:
+                timestamp = f"cast({value} as timestamp({coltype.precision}))"
+
+            return f"to_char({timestamp}, 'YYYY-MM-DD HH24:MI:SS.FF6')"
+
         return self.to_string(f"{value}")
 
 def connect_to_uri(db_uri: str, thread_count: Optional[int] = 1) -> Database:

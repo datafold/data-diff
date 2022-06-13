@@ -2,7 +2,7 @@
 """
 
 import time
-from operator import methodcaller
+from operator import attrgetter, methodcaller
 from collections import defaultdict
 from typing import List, Tuple, Iterator, Optional
 import logging
@@ -279,12 +279,13 @@ class TableDiffer:
                 if not isinstance(col2, PrecisionType):
                     raise TypeError(f"Incompatible types for column {c}:  {col1} <-> {col2}")
 
-                min_precision = min(col1.precision, col2.precision)
-                if min_precision < col1.precision or min_precision < col2.precision:
-                    logger.warn(f"Using reduced precision {min_precision} for column {c}. Types={col1}, {col2}")
+                lowest = min(col1, col2, key=attrgetter('precision'))
 
-                table1._schema[c] = col1.replace(precision=min_precision)
-                table2._schema[c] = col2.replace(precision=min_precision)
+                if col1.precision != col2.precision:
+                    logger.warn(f"Using reduced precision {lowest} for column '{c}'. Types={col1}, {col2}")
+
+                table1._schema[c] = col1.replace(precision=lowest.precision, rounds=lowest.rounds)
+                table2._schema[c] = col2.replace(precision=lowest.precision, rounds=lowest.rounds)
 
     def _bisect_and_diff_tables(self, table1, table2, level=0, max_rows=None):
         assert table1.is_bounded and table2.is_bounded
