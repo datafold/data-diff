@@ -348,6 +348,7 @@ class Snowflake(Database):
         # Found a quick solution in comments
         logging.getLogger("snowflake.connector.network").disabled = True
 
+        assert '"' not in schema, "Schema name should not contain quotes!"
         self._conn = snowflake.connector.connect(
             user=user,
             password=password,
@@ -355,7 +356,7 @@ class Snowflake(Database):
             role=role,
             database=database,
             warehouse=warehouse,
-            schema=schema,
+            schema=f'"{schema}"',
         )
 
     def _query(self, sql_code: str) -> list:
@@ -363,7 +364,7 @@ class Snowflake(Database):
         return _query_conn(self._conn, sql_code)
 
     def quote(self, s: str):
-        return s
+        return f'"{s}"'
 
     def md5_to_int(self, s: str) -> str:
         return f"BITAND(md5_number_lower64({s}), {CHECKSUM_MASK})"
@@ -371,6 +372,8 @@ class Snowflake(Database):
     def to_string(self, s: str):
         return f"cast({s} as string)"
 
+
+HELP_SNOWFLAKE_URI_FORMAT = 'snowflake://<user>:<pass>@<account>/<database>/<schema>?warehouse=<warehouse>'
 
 def connect_to_uri(db_uri: str, thread_count: Optional[int] = 1) -> Database:
     """Connect to the given database uri
@@ -394,11 +397,17 @@ def connect_to_uri(db_uri: str, thread_count: Optional[int] = 1) -> Database:
     (scheme,) = dsn.schemes
 
     if scheme == 'snowflake':
-        database, schema = dsn.paths
+        if len(dsn.paths) == 1:
+            database, = dsn.paths
+            schema = dsn.query['schema']
+        elif len(dsn.paths) == 2:
+            database, schema = dsn.paths
+        else:
+            raise ValueError(f"Too many parts in path. Expected format: '{HELP_SNOWFLAKE_URI_FORMAT}'")
         try:
             warehouse = dsn.query['warehouse']
         except KeyError:
-            raise ValueError("Must provide warehouse. Format: 'snowflake://<user>:<pass>@<account>/<database>/<schema>?warehouse=<warehouse>'")
+            raise ValueError(f"Must provide warehouse. Expected format: '{HELP_SNOWFLAKE_URI_FORMAT}'")
         return Snowflake(dsn.host, dsn.user, dsn.password, warehouse=warehouse, database=database, schema=schema)
 
     if len(dsn.paths) == 0:

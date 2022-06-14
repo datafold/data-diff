@@ -10,7 +10,7 @@ from concurrent.futures import ThreadPoolExecutor
 
 from runtype import dataclass
 
-from .sql import Select, Checksum, Compare, DbPath, DbKey, DbTime, Count, TableName, Time, Min, Max
+from .sql import Select, Checksum, Compare, DbPath, DbKey, DbTime, Count, TableName, Time, Min, Max, ColumnName
 from .database import Database
 
 logger = logging.getLogger("diff_tables")
@@ -71,21 +71,29 @@ class TableSegment:
         if self.min_update is not None and self.max_update is not None and self.min_update >= self.max_update:
             raise ValueError("Error: min_update expected to be smaller than max_update!")
 
+    @property
+    def _key_column(self):
+        return ColumnName(self.key_column)
+
+    @property
+    def _update_column(self):
+        return ColumnName(self.update_column)
+
     def _make_key_range(self):
         if self.min_key is not None:
-            yield Compare("<=", str(self.min_key), self.key_column)
+            yield Compare("<=", str(self.min_key), self._key_column)
         if self.max_key is not None:
-            yield Compare("<", self.key_column, str(self.max_key))
+            yield Compare("<", self._key_column, str(self.max_key))
 
     def _make_update_range(self):
         if self.min_update is not None:
-            yield Compare("<=", Time(self.min_update), self.update_column)
+            yield Compare("<=", Time(self.min_update), self._update_column)
         if self.max_update is not None:
-            yield Compare("<", self.update_column, Time(self.max_update))
+            yield Compare("<", self._update_column, Time(self.max_update))
 
     def _make_select(self, *, table=None, columns=None, where=None, group_by=None, order_by=None):
         if columns is None:
-            columns = [self.key_column]
+            columns = [self._key_column]
         where = list(self._make_key_range()) + list(self._make_update_range()) + ([] if where is None else [where])
         order_by = None if order_by is None else [order_by]
         return Select(
@@ -128,11 +136,11 @@ class TableSegment:
 
     @property
     def _relevant_columns(self) -> List[str]:
-        extras = set(self.extra_columns)
+        extras = set(map(ColumnName, self.extra_columns))
         if self.update_column:
-            extras.add(self.update_column)
+            extras.add(self._update_column)
 
-        return [self.key_column] + list(sorted(extras))
+        return [self._key_column] + list(sorted(extras))
 
     def count(self) -> Tuple[int, int]:
         """Count how many rows are in the segment, in one pass."""
@@ -155,7 +163,7 @@ class TableSegment:
 
     def query_key_range(self) -> Tuple[int, int]:
         """Query database for minimum and maximum key. This is used for setting the initial bounds."""
-        select = self._make_select(columns=[Min(self.key_column), Max(self.key_column)])
+        select = self._make_select(columns=[Min(self._key_column), Max(self._key_column)])
         min_key, max_key = self.database.query(select, tuple)
 
         if min_key is None or max_key is None:
@@ -231,8 +239,8 @@ class TableDiffer:
         mins, maxs = zip(*key_ranges)
 
         # We add 1 because our ranges are exclusive of the end (like in Python)
-        min_key = min(mins)
-        max_key = max(maxs) + 1
+        min_key = min(map(int, mins))
+        max_key = max(map(int, maxs)) + 1
 
         table1 = table1.new(min_key=min_key, max_key=max_key)
         table2 = table2.new(min_key=min_key, max_key=max_key)

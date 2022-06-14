@@ -123,7 +123,6 @@ class TestDiffTables(TestWithConnection):
 
     def test_properties_on_empty_table(self):
         self.assertEqual(0, self.table.count())
-        self.assertEqual(["id", "timestamp"], self.table._relevant_columns)
         self.assertEqual(None, self.table.count_and_checksum()[1])
 
     def test_get_values(self):
