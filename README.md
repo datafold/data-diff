@@ -108,7 +108,7 @@ $ data-diff \
 | MySQL         | `mysql://user:password@hostname:5432/database`                                          |  💚    |
 | Snowflake     | `snowflake://user:password@account/database/schema?warehouse=warehouse&role=role`       |  💚    |
 | Oracle        | `oracle://username:password@hostname/database`                                          |  💛    |
-| BigQuery      | `bigquery:///`                                                                          |  💛    |
+| BigQuery      | `bigquery://project/dataset`                                                                          |  💛    |
 | Redshift      | `redshift://username:password@hostname:5439/database`                                   |  💛    |
 | Presto        | `presto://username:password@hostname:8080/database`                                     |  💛    |
 | ElasticSearch |                                                                                         |  📝    |
