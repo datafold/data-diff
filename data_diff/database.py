@@ -348,6 +348,7 @@ class Snowflake(Database):
         # Found a quick solution in comments
         logging.getLogger("snowflake.connector.network").disabled = True
 
+        assert '"' not in schema, "Schema name should not contain quotes!"
         self._conn = snowflake.connector.connect(
             user=user,
             password=password,
@@ -355,7 +356,7 @@ class Snowflake(Database):
             role=role,
             database=database,
             warehouse=warehouse,
-            schema=schema,
+            schema=f'"{schema}"',
         )
 
     def _query(self, sql_code: str) -> list:
