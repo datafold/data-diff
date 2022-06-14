@@ -10,7 +10,7 @@ from concurrent.futures import ThreadPoolExecutor
 
 from runtype import dataclass
 
-from .sql import Select, Checksum, Compare, DbPath, DbKey, DbTime, Count, TableName, Time, Min, Max, ColumnName
+from .sql import Select, Checksum, Compare, DbPath, DbKey, DbTime, Count, TableName, Time, Min, Max
 from .database import Database, PrecisionType
 
 logger = logging.getLogger("diff_tables")
@@ -75,11 +75,11 @@ class TableSegment:
 
     @property
     def _key_column(self):
-        return ColumnName(self.key_column)
+        return self.database.quote(self.key_column)
 
     @property
     def _update_column(self):
-        return ColumnName(self.update_column)
+        return self.database.quote(self.update_column)
 
     def with_schema(self) -> "TableSegment":
         "Queries the table schema from the database, and returns a new instance of TableSegmentWithSchema."
@@ -145,12 +145,12 @@ class TableSegment:
 
     @property
     def _relevant_columns(self) -> List[str]:
-        extras = list(map(ColumnName, self.extra_columns))
+        extras = list(self.extra_columns)
 
-        if self.update_column and self._update_column not in extras:
-            extras = [self._update_column] + extras
+        if self.update_column and self.update_column not in extras:
+            extras = [self.update_column] + extras
 
-        return [self._key_column] + extras
+        return [self.key_column] + extras
 
     @property
     def _relevant_columns_repr(self) -> List[str]:
@@ -158,7 +158,7 @@ class TableSegment:
             raise RuntimeError(
                 "Cannot compile query when the schema is unknown. Please use TableSegment.with_schema()."
             )
-        return [self.database.normalize_value_by_type(c, self._schema[c]) for c in self._relevant_columns]
+        return [self.database.normalize_value_by_type(self.database.quote(c), self._schema[c]) for c in self._relevant_columns]
 
     def count(self) -> Tuple[int, int]:
         """Count how many rows are in the segment, in one pass."""
