@@ -61,6 +61,7 @@ class TableSegment:
     min_update: DbTime = None
     max_update: DbTime = None
 
+    quote_columns: bool = True
     _schema: dict = None
 
     def __post_init__(self):
@@ -75,11 +76,16 @@ class TableSegment:
 
     @property
     def _key_column(self):
-        return self.database.quote(self.key_column)
+        return self._quote_column(self.key_column)
 
     @property
     def _update_column(self):
-        return self.database.quote(self.update_column)
+        return self._quote_column(self.update_column)
+
+    def _quote_column(self, c):
+        if self.quote_columns:
+            return self.database.quote(c)
+        return c
 
     def with_schema(self) -> "TableSegment":
         "Queries the table schema from the database, and returns a new instance of TableSegmentWithSchema."
@@ -158,7 +164,7 @@ class TableSegment:
             raise RuntimeError(
                 "Cannot compile query when the schema is unknown. Please use TableSegment.with_schema()."
             )
-        return [self.database.normalize_value_by_type(self.database.quote(c), self._schema[c]) for c in self._relevant_columns]
+        return [self.database.normalize_value_by_type(self._quote_column(c), self._schema[c]) for c in self._relevant_columns]
 
     def count(self) -> Tuple[int, int]:
         """Count how many rows are in the segment, in one pass."""

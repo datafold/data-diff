@@ -178,16 +178,16 @@ class TestDiffCrossDatabaseTables(unittest.TestCase):
     def test_types(self, source_db, target_db, source_type, target_type, type_category):
         start = time.time()
 
-        self.connection1 = src_conn = CONNS[source_db]
-        self.connection2 = dst_conn = CONNS[target_db]
+        self.src_conn = src_conn = CONNS[source_db]
+        self.dst_conn = dst_conn = CONNS[target_db]
 
-        self.connections = [self.connection1, self.connection2]
+        self.connections = [self.src_conn, self.dst_conn]
         sample_values = TYPE_SAMPLES[type_category]
 
         src_table_path = src_conn.parse_table_name("src")
         dst_table_path = dst_conn.parse_table_name("dst")
-        src_table = '.'.join(src_table_path)
-        dst_table = '.'.join(dst_table_path)
+        src_table = src_conn.quote('.'.join(src_table_path))
+        dst_table = dst_conn.quote('.'.join(dst_table_path))
 
         src_conn.query(f"DROP TABLE IF EXISTS {src_table}", None)
         src_conn.query(f"CREATE TABLE {src_table}(id int, col {source_type});", None)
@@ -199,8 +199,8 @@ class TestDiffCrossDatabaseTables(unittest.TestCase):
         dst_conn.query(f"CREATE TABLE {dst_table}(id int, col {target_type});", None)
         _insert_to_table(dst_conn, dst_table, values_in_source)
 
-        self.table = TableSegment(self.connection1, src_table_path, "id", None, ("col", ))
-        self.table2 = TableSegment(self.connection2, dst_table_path, "id", None, ("col", ))
+        self.table = TableSegment(self.src_conn, src_table_path, "id", None, ("col", ), quote_columns=False)
+        self.table2 = TableSegment(self.dst_conn, dst_table_path, "id", None, ("col", ), quote_columns=False)
 
         self.assertEqual(len(sample_values), self.table.count())
         self.assertEqual(len(sample_values), self.table2.count())

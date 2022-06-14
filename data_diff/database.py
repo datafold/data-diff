@@ -625,7 +625,7 @@ class Snowflake(Database):
 
     def select_table_schema(self, path: DbPath) -> str:
         schema, table = self._normalize_table_path(path)
-        return super().select_table_schema((schema.upper(), table.upper()))
+        return super().select_table_schema((schema, table))
 
     def normalize_value_by_type(self, value: str, coltype: ColType) -> str:
         if isinstance(coltype, PrecisionType):

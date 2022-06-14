@@ -83,8 +83,13 @@ class TestNormalize(unittest.TestCase):
                 conn.query("SET @@session.time_zone='+00:00'", None)
 
             for date_type, table in date_type_tables.items():
+                if db_id is Snowflake:
+                    table = table.upper()
                 schema = conn.query_table_schema(table.split("."))
-                v_type = schema["v"]
+                try:
+                    v_type = schema["v"]
+                except KeyError:
+                    raise AssertionError(f"Bad schema {schema} for table {table}, data type {date_type}, conn {conn}")
                 v_type = v_type.replace(precision=precision)
 
                 returned_dates = tuple(
