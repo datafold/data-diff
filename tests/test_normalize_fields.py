@@ -32,7 +32,7 @@ class TestNormalize(unittest.TestCase):
     def _test_dates_for_db(self, item, precision=6):
         db_id, conn_string = item
 
-        print(f"Testing {db_id}")
+        # print(f"Testing {db_id}")
 
         sample_date1 = datetime(2022, 6, 3, 12, 24, 35, 69296, tzinfo=timezone.utc)
         sample_date2 = datetime(2021, 5, 2, 11, 23, 34, 500001, tzinfo=timezone.utc)
@@ -75,9 +75,6 @@ class TestNormalize(unittest.TestCase):
 
             conn = connect_to_uri(conn_string)
             assert type(conn) is db_id  # Might change in the future
-            if db_id is Snowflake:
-                conn.query("alter session set timestamp_output_format = 'YYYY-MM-DD HH24:MI:SS.FF6TZH'", None)
-                conn.query("alter session set timestamp_ntz_output_format = 'YYYY-MM-DD HH24:MI:SS.FF6'", None)
 
             if db_id is MySQL:
                 conn.query("SET @@session.time_zone='+00:00'", None)
