@@ -11,7 +11,7 @@ from .diff_tables import (
     DEFAULT_BISECTION_FACTOR,
     parse_table_name,
 )
-from .database import connect_to_uri
+from .database import connect_to_uri, parse_table_name
 from .parse_time import parse_time_before_now, UNITS_STR, ParseError
 
 import rich
@@ -24,6 +24,7 @@ COLOR_SCHEME = {
     "+": "green",
     "-": "red",
 }
+
 
 
 @click.command()

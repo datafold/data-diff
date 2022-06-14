@@ -113,7 +113,7 @@ class Checksum(Sql):
     exprs: List[SqlOrStr]
 
     def compile(self, c: Compiler):
-        compiled_exprs = ", ".join(c.database.to_string(s) for s in map(c.compile, self.exprs))
+        compiled_exprs = ", ".join(map(c.compile, self.exprs))
         expr = f"concat({compiled_exprs})"
         md5 = c.database.md5_to_int(expr)
         return f"sum({md5})"
