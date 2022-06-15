@@ -1,0 +1,8 @@
+# https://docs.readthedocs.io/en/stable/guides/specifying-dependencies.html#specifying-a-requirements-file
+sphinx-gallery
+sphinx_markdown_tables
+sphinx-copybutton
+sphinx-rtd-theme
+recommonmark
+
+# Requirements. TODO Use poetry instead of this redundant list
