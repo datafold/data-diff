@@ -58,7 +58,13 @@ class CaseInsensitiveDict(Mapping):
 
 @dataclass(frozen=False)
 class TableSegment:
-    """Signifies a segment of rows (and selected columns) within a table"""
+    """Signifies a segment of rows (and selected columns) within a table
+
+    Parameters:
+        database (Database):
+        table_path (DbPath): Path to table in form of a tuple. e.g. `('my_dataset', 'table_name')`
+
+    """
 
     # Location of table
     database: Database
@@ -251,19 +257,18 @@ class TableDiffer:
     bisection search recursively to find the differences efficiently.
 
     Works best for comparing tables that are mostly the name, with minor discrepencies.
+
+    Parameters:
+        bisection_factor (int): Into how many segments to bisect per iteration.
+        bisection_threshold (int): When should we stop bisecting and compare locally (in row count).
+        threaded (bool): Enable/disable threaded diffing. Needed to take advantage of database threads.
+        max_threadpool_size (int): Maximum size of each threadpool. ``None`` means auto. Only relevant when `threaded` is ``True``.
+                                   There may be many pools, so number of actual threads can be a lot higher.
     """
 
-    # Into how many segments to bisect per iteration
     bisection_factor: int = DEFAULT_BISECTION_FACTOR
-
-    # When should we stop bisecting and compare locally (in row count)
     bisection_threshold: int = DEFAULT_BISECTION_THRESHOLD
-
-    # Enable/disable threaded diffing. Needed to take advantage of database threads.
     threaded: bool = True
-
-    # Maximum size of each threadpool. None = auto. Only relevant when threaded is True.
-    # There may be many pools, so number of actual threads can be a lot higher.
     max_threadpool_size: Optional[int] = 1
 
     # Enable/disable debug prints
@@ -274,7 +279,12 @@ class TableDiffer:
     def diff_tables(self, table1: TableSegment, table2: TableSegment) -> DiffResult:
         """Diff the given tables.
 
-        Returned value is an iterator that yield pair-tuples, representing the diff. Items can be either
+        Parameters:
+            table1 (TableSegment): The "before" table to compare. Or: source table
+            table2 (TableSegment): The "after" table to compare. Or: target table
+
+        Returns:
+            An iterator that yield pair-tuples, representing the diff. Items can be either
             ('+', columns) for items in table1 but not in table2
             ('-', columns) for items in table2 but not in table1
             Where `columns` is a tuple of values for the involved columns, i.e. (id, ...extra)
