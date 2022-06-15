@@ -6,3 +6,4 @@ sphinx-rtd-theme
 recommonmark
 
 # Requirements. TODO Use poetry instead of this redundant list
+data_diff
