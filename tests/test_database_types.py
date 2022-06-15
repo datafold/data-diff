@@ -129,7 +129,28 @@ DATABASE_TYPES = {
             # "float",
             # "numeric",
         ],
-    }
+    },
+    db.Presto: {
+        "int": [
+            # "tinyint", # 1 byte
+            # "smallint", # 2 bytes
+            # "mediumint", # 3 bytes
+            # "int", # 4 bytes
+            # "bigint", # 8 bytes
+        ],
+        "datetime_no_timezone": [
+            "timestamp(6)",
+            "timestamp(3)",
+            "timestamp(0)",
+            "timestamp",
+            "datetime(6)"
+        ],
+        "float": [
+            # "float",
+            # "double",
+            # "numeric",
+        ]
+    },
 }
 
 

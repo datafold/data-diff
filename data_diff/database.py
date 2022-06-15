@@ -381,7 +381,8 @@ class Presto(Database):
                 # datetime = f"date_format(cast({value} as timestamp(6), '%Y-%m-%d %H:%i:%S.%f'))"
                 # datetime = self.to_string(f"cast({value} as datetime(6))")
 
-        return f"RPAD(RPAD({s}, {TIMESTAMP_PRECISION_POS+coltype.precision}, '.'), {TIMESTAMP_PRECISION_POS+6}, '0')"
+            return f"RPAD(RPAD({s}, {TIMESTAMP_PRECISION_POS+coltype.precision}, '.'), {TIMESTAMP_PRECISION_POS+6}, '0')"
+
         return self.to_string(value)
 
     def select_table_schema(self, path: DbPath) -> str:
