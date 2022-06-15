@@ -1,6 +1,7 @@
 from concurrent.futures import ThreadPoolExecutor
 import unittest
 from datetime import datetime, timezone
+import logging
 
 import preql
 
@@ -10,6 +11,7 @@ from data_diff import database as db
 
 from .common import CONN_STRINGS
 
+logger = logging.getLogger()
 
 DATE_TYPES = {
     db.Postgres: ["timestamp({p}) with time zone", "timestamp({p}) without time zone"],
@@ -32,7 +34,7 @@ class TestNormalize(unittest.TestCase):
     def _test_dates_for_db(self, item, precision=6):
         db_id, conn_string = item
 
-        # print(f"Testing {db_id}")
+        logger.info(f"Testing {db_id}")
 
         sample_date1 = datetime(2022, 6, 3, 12, 24, 35, 69296, tzinfo=timezone.utc)
         sample_date2 = datetime(2021, 5, 2, 11, 23, 34, 500001, tzinfo=timezone.utc)
