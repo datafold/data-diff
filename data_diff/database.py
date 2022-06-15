@@ -4,8 +4,11 @@ from typing import Tuple, Optional
 from concurrent.futures import ThreadPoolExecutor
 import threading
 
+from time import sleep
 import dsnparse
 import sys
+from cryptography.hazmat.backends import default_backend
+from cryptography.hazmat.primitives import serialization
 
 from .sql import SqlOrStr, Compiler, Explain, Select
 
@@ -62,6 +65,7 @@ def _one(seq):
 
 def _query_conn(conn, sql_code: str) -> list:
     c = conn.cursor()
+    sleep(.5)
     c.execute(sql_code)
     return c.fetchall()
 
@@ -188,11 +192,27 @@ class Postgres(ThreadedDatabase):
 
 
 class Presto(Database):
-    def __init__(self, host, port, database, user, password):
+    def __init__(self, host, port, user, password, schema, database, print_sql=True):
         prestodb = import_presto()
-        self.args = dict(host=host, user=user)
 
-        self._conn = prestodb.dbapi.connect(**self.args)
+        def get_presto_connection(user, password):
+            import prestodb
+            conn = prestodb.dbapi.connect(
+                host=host,
+                port=port,
+                user=user,
+                schema=schema,
+                catalog=database,
+                http_scheme='https',
+                source="odbc",
+                auth=prestodb.auth.BasicAuthentication(user, password),
+            )
+            #update to your local path
+            conn._http_session.verify = '/Users/sfenner/ebca.cer'
+            conn.cursor().execute(f"USE {database}.{schema}")
+            return conn
+
+        self._conn = get_presto_connection(user, password)
 
     def quote(self, s: str):
         return f'"{s}"'
@@ -205,6 +225,7 @@ class Presto(Database):
 
     def _query(self, sql_code: str) -> list:
         "Uses the standard SQL cursor interface"
+        print(sql_code)
         return _query_conn(self._conn, sql_code)
 
 
@@ -337,12 +358,22 @@ class Snowflake(Database):
         warehouse: str,
         schema: str,
         database: str,
-        role: str = None,
+        role: str,
         print_sql: bool = False,
     ):
         snowflake = import_snowflake()
         logging.getLogger("snowflake.connector").setLevel(logging.WARNING)
+        with open("/Users/sfenner/.ssh/snowflake_rsa_key.p8", "rb") as key:
+            p_key = serialization.load_pem_private_key(
+                key.read(),
+                password=None,
+                backend=default_backend()
+            )
 
+        pkb = p_key.private_bytes(
+            encoding=serialization.Encoding.DER,
+            format=serialization.PrivateFormat.PKCS8,
+            encryption_algorithm=serialization.NoEncryption())
         # Got an error: snowflake.connector.network.RetryRequest: could not find io module state (interpreter shutdown?)
         # It's a known issue: https://github.com/snowflakedb/snowflake-connector-python/issues/145
         # Found a quick solution in comments
@@ -351,12 +382,12 @@ class Snowflake(Database):
         assert '"' not in schema, "Schema name should not contain quotes!"
         self._conn = snowflake.connector.connect(
             user=user,
-            password=password,
+            private_key=pkb,
             account=account,
             role=role,
             database=database,
+            schema=schema,
             warehouse=warehouse,
-            schema=f'"{schema}"',
         )
 
     def _query(self, sql_code: str) -> list:
@@ -408,7 +439,11 @@ def connect_to_uri(db_uri: str, thread_count: Optional[int] = 1) -> Database:
             warehouse = dsn.query['warehouse']
         except KeyError:
             raise ValueError(f"Must provide warehouse. Expected format: '{HELP_SNOWFLAKE_URI_FORMAT}'")
-        return Snowflake(dsn.host, dsn.user, dsn.password, warehouse=warehouse, database=database, schema=schema)
+        try:
+            role = dsn.query['role']
+        except KeyError:
+            raise ValueError(f"Must provide role. Expected format: '{HELP_SNOWFLAKE_URI_FORMAT}'")
+        return Snowflake(dsn.host, dsn.user, dsn.password, warehouse=warehouse, database=database, schema=schema, role=role)
 
     if len(dsn.paths) == 0:
         path = ""
@@ -430,6 +465,6 @@ def connect_to_uri(db_uri: str, thread_count: Optional[int] = 1) -> Database:
     elif scheme == "oracle":
         return Oracle(dsn.host, dsn.port, path, dsn.user, dsn.password, thread_count=thread_count)
     elif scheme == "presto":
-        return Presto(dsn.host, dsn.port, path, dsn.user, dsn.password)
+        return Presto(dsn.host, dsn.port, dsn.user, dsn.password, **dsn.query)
 
     raise NotImplementedError(f"Scheme {dsn.scheme} currently not supported")
