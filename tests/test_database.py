@@ -18,6 +18,7 @@ class TestDatabase(unittest.TestCase):
 
         self.assertEqual(str_to_checksum(str), self.mysql.query(query, int))
 
+
 class TestConnect(unittest.TestCase):
     def test_bad_uris(self):
         self.assertRaises(ValueError, connect_to_uri, "p")
