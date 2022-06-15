@@ -12,6 +12,8 @@ logging.getLogger("database").setLevel(logging.WARN)
 
 CONNS = {k: db.connect_to_uri(v) for k, v in CONN_STRINGS.items()}
 
+CONNS[db.MySQL].query("SET @@session.time_zone='+00:00'", None)
+
 TYPE_SAMPLES = {
     "int": [127, -3, -9, 37, 15, 127],
     "datetime_no_timezone": [

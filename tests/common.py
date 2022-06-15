@@ -3,7 +3,7 @@ import hashlib
 from data_diff import database as db
 import logging
 
-logging.basicConfig(level=logging.WARN)
+logging.basicConfig(level=logging.INFO)
 
 TEST_MYSQL_CONN_STRING: str = "mysql://mysql:Password1@localhost/mysql"
 TEST_POSTGRES_CONN_STRING: str = None
@@ -29,7 +29,9 @@ CONN_STRINGS = {
 
 for k, v in CONN_STRINGS.items():
     if v is None:
-        print(f"Warning: Connection to {k} not configured")
+        logging.warn(f"Connection to {k} not configured")
+    else:
+        logging.info(f"Testing database: {k}")
 
 CONN_STRINGS = {k: v for k, v in CONN_STRINGS.items() if v is not None}
 
