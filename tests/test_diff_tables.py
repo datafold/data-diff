@@ -122,11 +122,12 @@ class TestDiffTables(TestWithConnection):
         self.differ = TableDiffer(3, 4)
 
     def test_properties_on_empty_table(self):
-        self.assertEqual(0, self.table.count())
-        self.assertEqual(None, self.table.count_and_checksum()[1])
+        table = self.table.with_schema()
+        self.assertEqual(0, table.count())
+        self.assertEqual(None, table.count_and_checksum()[1])
 
     def test_get_values(self):
-        time = "2022-01-01 00:00:00"
+        time = "2022-01-01 00:00:00.000000"
         res = self.preql(
             f"""
             new ratings_test(1, 1, 9, '{time}')
@@ -134,9 +135,11 @@ class TestDiffTables(TestWithConnection):
         )
         self.preql.commit()
 
-        self.assertEqual(1, self.table.count())
+        table = self.table.with_schema()
+
+        self.assertEqual(1, table.count())
         concatted = str(res["id"]) + time
-        self.assertEqual(str_to_checksum(concatted), self.table.count_and_checksum()[1])
+        self.assertEqual(str_to_checksum(concatted), table.count_and_checksum()[1])
 
     def test_diff_small_tables(self):
         time = "2022-01-01 00:00:00"
@@ -150,7 +153,7 @@ class TestDiffTables(TestWithConnection):
         )
         self.preql.commit()
         diff = list(self.differ.diff_tables(self.table, self.table2))
-        expected = [("-", (2, datetime.datetime(2022, 1, 1, 0, 0)))]
+        expected = [("-", ("2", time + ".000000"))]
         self.assertEqual(expected, diff)
 
     def test_diff_table_above_bisection_threshold(self):
@@ -171,7 +174,7 @@ class TestDiffTables(TestWithConnection):
         )
         self.preql.commit()
         diff = list(self.differ.diff_tables(self.table, self.table2))
-        expected = [("-", (5, datetime.datetime(2022, 1, 1, 0, 0)))]
+        expected = [("-", ("5", time + ".000000"))]
         self.assertEqual(expected, diff)
 
     def test_return_empty_array_when_same(self):
@@ -208,10 +211,10 @@ class TestDiffTables(TestWithConnection):
         differ = TableDiffer()
         diff = list(differ.diff_tables(self.table, self.table2))
         expected = [
-            ("-", (2, datetime.datetime(2021, 1, 1, 0, 0))),
-            ("+", (2, datetime.datetime(2022, 1, 1, 0, 0))),
-            ("-", (4, datetime.datetime(2021, 1, 1, 0, 0))),
-            ("+", (4, datetime.datetime(2022, 1, 1, 0, 0))),
+            ("-", ("2", time2 + ".000000")),
+            ("+", ("2", time + ".000000")),
+            ("-", ("4", time2 + ".000000")),
+            ("+", ("4", time + ".000000")),
         ]
         self.assertEqual(expected, diff)
 

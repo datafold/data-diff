@@ -1,16 +1,41 @@
 import hashlib
 
-from data_diff.database import CHECKSUM_HEXDIGITS, MD5_HEXDIGITS
+from data_diff import database as db
 import logging
 
-logging.basicConfig(level=logging.WARN)
+logging.basicConfig(level=logging.INFO)
 
-TEST_MYSQL_CONN_STRING = "mysql://mysql:Password1@localhost/mysql"
+TEST_MYSQL_CONN_STRING: str = "mysql://mysql:Password1@localhost/mysql"
+TEST_POSTGRES_CONN_STRING: str = None
+TEST_SNOWFLAKE_CONN_STRING: str = None
+TEST_BIGQUERY_CONN_STRING: str = None
+TEST_REDSHIFT_CONN_STRING: str = None
+TEST_ORACLE_CONN_STRING: str = None
+TEST_PRESTO_CONN_STRING: str = None
+
 
 try:
     from .local_settings import *
 except ImportError:
     pass  # No local settings
+
+CONN_STRINGS = {
+    # db.BigQuery: TEST_BIGQUERY_CONN_STRING,     # TODO BigQuery before/after Snowflake causes an error!
+    db.MySQL: TEST_MYSQL_CONN_STRING,
+    db.Postgres: TEST_POSTGRES_CONN_STRING,
+    db.Snowflake: TEST_SNOWFLAKE_CONN_STRING,
+    db.Redshift: TEST_REDSHIFT_CONN_STRING,
+    db.Oracle: TEST_ORACLE_CONN_STRING,
+    db.Presto: TEST_PRESTO_CONN_STRING,
+}
+
+for k, v in CONN_STRINGS.items():
+    if v is None:
+        logging.warn(f"Connection to {k} not configured")
+    else:
+        logging.info(f"Testing database: {k}")
+
+CONN_STRINGS = {k: v for k, v in CONN_STRINGS.items() if v is not None}
 
 
 def str_to_checksum(str: str):
@@ -22,5 +47,5 @@ def str_to_checksum(str: str):
     m.update(str.encode("utf-8"))  # encode to binary
     md5 = m.hexdigest()
     # 0-indexed, unlike DBs which are 1-indexed here, so +1 in dbs
-    half_pos = MD5_HEXDIGITS - CHECKSUM_HEXDIGITS
+    half_pos = db.MD5_HEXDIGITS - db.CHECKSUM_HEXDIGITS
     return int(md5[half_pos:], 16)

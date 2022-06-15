@@ -44,17 +44,17 @@ class TestSQL(unittest.TestCase):
             ),
         )
 
-    def test_checksum(self):
-        expected_sql = "SELECT name, sum(cast(conv(substring(md5(concat(cast(id as char), cast(timestamp as char))), 18), 16, 10) as unsigned)) FROM `marine_mammals`.`walrus`"
-        self.assertEqual(
-            expected_sql,
-            self.compiler.compile(
-                Select(
-                    ["name", Checksum(["id", "timestamp"])],
-                    TableName(("marine_mammals", "walrus")),
-                )
-            ),
-        )
+    # def test_checksum(self):
+    #     expected_sql = "SELECT name, sum(cast(conv(substring(md5(concat(cast(id as char), cast(timestamp as char))), 18), 16, 10) as unsigned)) FROM `marine_mammals`.`walrus`"
+    #     self.assertEqual(
+    #         expected_sql,
+    #         self.compiler.compile(
+    #             Select(
+    #                 ["name", Checksum(["id", "timestamp"])],
+    #                 TableName(("marine_mammals", "walrus")),
+    #             )
+    #         ),
+    #     )
 
     def test_compare(self):
         expected_sql = "SELECT name FROM `marine_mammals`.`walrus` WHERE (id <= 1000) AND (id > 1)"
