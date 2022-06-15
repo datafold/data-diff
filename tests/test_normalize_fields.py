@@ -20,7 +20,7 @@ DATE_TYPES = {
     db.BigQuery: ["timestamp", "datetime"],
     db.Redshift: ["timestamp", "timestamp with time zone"],
     db.Oracle: ["timestamp({p}) with time zone", "timestamp({p}) with local time zone"],
-    # db.Presto: ["timestamp", "timestamp with zone"],
+    db.Presto: ["timestamp", "timestamp with zone"],
 }
 
 
@@ -31,7 +31,7 @@ class TestNormalize(unittest.TestCase):
         self.i += 1
         return f"t_{self.i}"
 
-    def _test_dates_for_db(self, item, precision=6):
+    def _test_dates_for_db(self, item, precision=3):
         db_id, conn_string = item
 
         logger.info(f"Testing {db_id}")

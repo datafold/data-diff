@@ -339,9 +339,18 @@ class Postgres(ThreadedDatabase):
 
 
 class Presto(Database):
-    def __init__(self, host, port, database, user, password):
+    default_schema = "public"
+    DATETIME_TYPES = {
+        "timestamp with time zone": TimestampTZ,
+        "timestamp without time zone": Timestamp,
+        "timestamp": Timestamp,
+        # "datetime": Datetime,
+    }
+    ROUNDS_ON_PREC_LOSS = True
+
+    def __init__(self, host, port, user, password, catalog, schema=None):
         prestodb = import_presto()
-        self.args = dict(host=host, user=user)
+        self.args = dict(host=host, user=user, catalog=catalog, schema=schema)
 
         self._conn = prestodb.dbapi.connect(**self.args)
 
@@ -358,6 +367,44 @@ class Presto(Database):
         "Uses the standard SQL cursor interface"
         return _query_conn(self._conn, sql_code)
 
+    def close(self):
+        self._conn.close()
+
+    def normalize_value_by_type(self, value: str, coltype: ColType) -> str:
+        if isinstance(coltype, TemporalType):
+            if coltype.rounds:
+                if coltype.precision > 3:
+                    pass
+                s = f"date_format(cast({value} as timestamp(6)), '%Y-%m-%d %H:%i:%S.%f')"
+            else:
+                s = f"date_format(cast({value} as timestamp(6)), '%Y-%m-%d %H:%i:%S.%f')"
+                # datetime = f"date_format(cast({value} as timestamp(6), '%Y-%m-%d %H:%i:%S.%f'))"
+                # datetime = self.to_string(f"cast({value} as datetime(6))")
+
+        return f"RPAD(RPAD({s}, {TIMESTAMP_PRECISION_POS+coltype.precision}, '.'), {TIMESTAMP_PRECISION_POS+6}, '0')"
+        return self.to_string(value)
+
+    def select_table_schema(self, path: DbPath) -> str:
+        schema, table = self._normalize_table_path(path)
+
+        return (
+            f"SELECT column_name, data_type, 3 as datetime_precision, 3 as numeric_precision FROM INFORMATION_SCHEMA.COLUMNS "
+            f"WHERE table_name = '{table}' AND table_schema = '{schema}'"
+        )
+
+    def _parse_type(self, type_repr: str, datetime_precision: int = None, numeric_precision: int = None) -> ColType:
+        """ """
+        regexps = {
+            r"timestamp\((\d)\)": Timestamp,
+            r"timestamp\((\d)\) with time zone": TimestampTZ,
+        }
+        for regexp, cls in regexps.items():
+            m = re.match(regexp + "$", type_repr)
+            if m:
+                datetime_precision = int(m.group(1))
+                return cls(precision=datetime_precision if datetime_precision is not None else DEFAULT_PRECISION, rounds=False)
+
+        return UnknownColType(type_repr)
 
 class MySQL(ThreadedDatabase):
     DATETIME_TYPES = {
@@ -641,6 +688,7 @@ class Snowflake(Database):
         return self.to_string(f"{value}")
 
 HELP_SNOWFLAKE_URI_FORMAT = 'snowflake://<user>:<pass>@<account>/<database>/<schema>?warehouse=<warehouse>'
+HELP_PRESTO_URI_FORMAT = 'presto://<user>@<host>/<catalog>/<schema>'
 
 def connect_to_uri(db_uri: str, thread_count: Optional[int] = 1) -> Database:
     """Connect to the given database uri
@@ -676,6 +724,16 @@ def connect_to_uri(db_uri: str, thread_count: Optional[int] = 1) -> Database:
         except KeyError:
             raise ValueError(f"Must provide warehouse. Expected format: '{HELP_SNOWFLAKE_URI_FORMAT}'")
         return Snowflake(dsn.host, dsn.user, dsn.password, warehouse=warehouse, database=database, schema=schema)
+    elif scheme == "presto":
+        if len(dsn.paths) == 1:
+            catalog, = dsn.paths
+            schema = dsn.query.get('schema')
+        elif len(dsn.paths) == 2:
+            catalog, schema = dsn.paths
+        else:
+            raise ValueError(f"Too many parts in path. Expected format: '{HELP_PRESTO_URI_FORMAT}'")
+
+        return Presto(dsn.host, dsn.port, dsn.user, dsn.password, catalog=catalog, schema=schema)
 
     if len(dsn.paths) == 0:
         path = ""
@@ -696,7 +754,5 @@ def connect_to_uri(db_uri: str, thread_count: Optional[int] = 1) -> Database:
         return Redshift(dsn.host, dsn.port, path, dsn.user, dsn.password, thread_count=thread_count)
     elif scheme == "oracle":
         return Oracle(dsn.host, dsn.port, path, dsn.user, dsn.password, thread_count=thread_count)
-    elif scheme == "presto":
-        return Presto(dsn.host, dsn.port, path, dsn.user, dsn.password)
 
     raise NotImplementedError(f"Scheme {dsn.scheme} currently not supported")
