@@ -54,6 +54,7 @@ COLOR_SCHEME = {
 @click.option("-d", "--debug", is_flag=True, help="Print debug info")
 @click.option("-v", "--verbose", is_flag=True, help="Print extra info")
 @click.option("-i", "--interactive", is_flag=True, help="Confirm queries, implies --debug")
+@click.option("--any-case", is_flag=True, help="Case-insensitive column names. Disables quoting.")
 @click.option(
     "-j",
     "--threads",
@@ -80,6 +81,7 @@ def main(
     verbose,
     interactive,
     threads,
+    any_case,
 ):
     if limit and stats:
         print("Error: cannot specify a limit when using the -s/--stats switch")
@@ -120,6 +122,7 @@ def main(
         options = dict(
             min_update=max_age and parse_time_before_now(max_age),
             max_update=min_age and parse_time_before_now(min_age),
+            case_sensitive = not any_case,
         )
     except ParseError as e:
         logging.error("Error while parsing age expression: %s" % e)

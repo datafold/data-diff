@@ -82,7 +82,7 @@ class TableSegment:
     min_update: DbTime = None
     max_update: DbTime = None
 
-    quote_columns: bool = True
+    case_sensitive: bool = True
     _schema: Mapping[str, ColType] = None
 
     def __post_init__(self):
@@ -104,7 +104,7 @@ class TableSegment:
         return self._quote_column(self.update_column)
 
     def _quote_column(self, c):
-        if self.quote_columns:
+        if self.case_sensitive:
             return self.database.quote(c)
         return c
 
@@ -113,7 +113,10 @@ class TableSegment:
         if self._schema:
             return self
         schema = self.database.query_table_schema(self.table_path)
-        if not self.quote_columns:
+        if not self.case_sensitive:
+            if len({k.lower() for k in schema}) < len(schema):
+                logger.warn(f'Ambiguous schema for {self.database}:{".".join(self.table_path)} | Columns = {", ".join(list(schema))}')
+                logger.warn("We recommend to disable case-insensitivity (remove --any-case).")
             schema = CaseInsensitiveDict(schema)
         return self.new(_schema=schema)
 
