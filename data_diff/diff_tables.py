@@ -7,11 +7,12 @@ from collections import defaultdict
 from typing import List, Tuple, Iterator, Optional
 import logging
 from concurrent.futures import ThreadPoolExecutor
+from collections.abc import Mapping
 
 from runtype import dataclass
 
 from .sql import Select, Checksum, Compare, DbPath, DbKey, DbTime, Count, TableName, Time, Min, Max
-from .database import Database, PrecisionType
+from .database import Database, PrecisionType, ColType
 
 logger = logging.getLogger("diff_tables")
 
@@ -34,6 +35,26 @@ def split_space(start, end, count):
 
 def parse_table_name(t):
     return tuple(t.split("."))
+
+
+class CaseInsensitiveDict(Mapping):
+    def __init__(self, initial=()):
+        self._dict = {k.lower(): v for k,v in dict(initial).items()}
+
+    def __setitem__(self, key, value):
+        self._dict[key.lower()] = value
+
+    def __getitem__(self, key):
+        try:
+            return self._dict[key.lower()]
+        except KeyError:
+            raise
+
+    def __iter__(self):
+        return iter(self._dict)
+
+    def __len__(self):
+        return len(self._dict)
 
 
 @dataclass(frozen=False)
@@ -62,7 +83,7 @@ class TableSegment:
     max_update: DbTime = None
 
     quote_columns: bool = True
-    _schema: dict = None
+    _schema: Mapping[str, ColType] = None
 
     def __post_init__(self):
         if not self.update_column and (self.min_update or self.max_update):
@@ -92,6 +113,8 @@ class TableSegment:
         if self._schema:
             return self
         schema = self.database.query_table_schema(self.table_path)
+        if not self.quote_columns:
+            schema = CaseInsensitiveDict(schema)
         return self.new(_schema=schema)
 
     def _make_key_range(self):

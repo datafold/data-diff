@@ -85,6 +85,7 @@ class TestNormalize(unittest.TestCase):
                 if db_id is Snowflake:
                     table = table.upper()
                 schema = conn.query_table_schema(table.split("."))
+                schema = {k.lower():v for k, v in schema.items()}
                 try:
                     v_type = schema["v"]
                 except KeyError:

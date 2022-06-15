@@ -214,9 +214,11 @@ class Database(AbstractDatabase):
 
     def query_table_schema(self, path: DbPath) -> Dict[str, ColType]:
         rows = self.query(self.select_table_schema(path), list)
+        if not rows:
+            raise RuntimeError(f"Table {'.'.join(path)} does not exist, or has no columns")
 
         # Return a dict of form {name: type} after canonizaation
-        return {row[0].lower(): self._parse_type(*row[1:]) for row in rows}
+        return {row[0]: self._parse_type(*row[1:]) for row in rows}
 
     @lru_cache()
     def get_table_schema(self, path: DbPath) -> Dict[str, ColType]:
