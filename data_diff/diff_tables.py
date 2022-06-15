@@ -4,10 +4,9 @@
 import time
 from operator import attrgetter, methodcaller
 from collections import defaultdict
-from typing import List, Tuple, Iterator, Optional
+from typing import List, Tuple, Iterator, Optional, Mapping
 import logging
 from concurrent.futures import ThreadPoolExecutor
-from collections.abc import Mapping
 
 from runtype import dataclass
 
