@@ -61,8 +61,15 @@ class TableSegment:
     """Signifies a segment of rows (and selected columns) within a table
 
     Parameters:
-        database (Database):
-        table_path (DbPath): Path to table in form of a tuple. e.g. `('my_dataset', 'table_name')`
+        database (Database): Database instance. See :meth:`connect_to_uri`
+        table_path (:data:`DbPath`): Path to table in form of a tuple. e.g. `('my_dataset', 'table_name')`
+        key_column (str): Name of the key column, which uniquely identifies each row (usually id)
+        update_column (str, optional): Name of updated column, which signals that rows changed (usually updated_at or last_update)
+        extra_columns (Tuple[str, ...], optional): Extra columns to compare
+        min_key (:data:`DbKey`, optional): Lowest key_column value, used to restrict the segment
+        max_key (:data:`DbKey`, optional): Highest key_column value, used to restrict the segment
+        min_update (:data:`DbTime`, optional): Lowest update_column value, used to restrict the segment
+        max_update (:data:`DbTime`, optional): Highest update_column value, used to restrict the segment
 
     """
 
@@ -70,20 +77,14 @@ class TableSegment:
     database: Database
     table_path: DbPath
 
-    # Name of the key column, which uniquely identifies each row (usually id)
+    # Columns
     key_column: str
-
-    # Name of updated column, which signals that rows changed (usually updated_at or last_update)
     update_column: str = None
-
-    # Extra columns to compare
     extra_columns: Tuple[str, ...] = ()
 
-    # Start/end key_column values, used to restrict the segment
+    # Restrict the segment
     min_key: DbKey = None
     max_key: DbKey = None
-
-    # Start/end update_column values, used to restrict the segment
     min_update: DbTime = None
     max_update: DbTime = None
 

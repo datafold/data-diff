@@ -133,6 +133,16 @@ class AbstractDatabase(ABC):
         ...
 
     @abstractmethod
+    def query_table_schema(self, path: DbPath) -> Dict[str, ColType]:
+        "Query the table for its schema for table in 'path', and return {column: type}"
+        ...
+
+    @abstractmethod
+    def parse_table_name(self, name: str) -> DbPath:
+        "Parse the given table name into a DbPath"
+        ...
+
+    @abstractmethod
     def close(self):
         "Close connection(s) to the database instance. Querying will stop functioning."
         ...
@@ -157,13 +167,16 @@ class Database(AbstractDatabase):
     """Base abstract class for databases.
 
     Used for providing connection code and implementation specific SQL utilities.
+
+    Instanciated using :meth:`~data_diff.connect_to_uri`
     """
 
     DATETIME_TYPES = NotImplemented
     default_schema = NotImplemented
 
     def query(self, sql_ast: SqlOrStr, res_type: type):
-        "Query the given SQL AST, and attempt to convert the result to type 'res_type'"
+        "Query the given SQL code/AST, and attempt to convert the result to type 'res_type'"
+
         compiler = Compiler(self)
         sql_code = compiler.compile(sql_ast)
         logger.debug("Running SQL (%s): %s", type(self).__name__, sql_code)
@@ -224,9 +237,9 @@ class Database(AbstractDatabase):
         # Return a dict of form {name: type} after canonizaation
         return {row[0]: self._parse_type(*row[1:]) for row in rows}
 
-    @lru_cache()
-    def get_table_schema(self, path: DbPath) -> Dict[str, ColType]:
-        return self.query_table_schema(path)
+    # @lru_cache()
+    # def get_table_schema(self, path: DbPath) -> Dict[str, ColType]:
+    #     return self.query_table_schema(path)
 
     def _normalize_table_path(self, path: DbPath) -> DbPath:
         if len(path) == 1:
@@ -706,6 +719,12 @@ def connect_to_uri(db_uri: str, thread_count: Optional[int] = 1) -> Database:
 
     thread_count determines the max number of worker threads per database,
     if relevant. None means no limit.
+
+    Parameters:
+        db_uri (str): The URI for the database to connect
+        thread_count (int, optional): Size of the threadpool. Ignored by cloud databases. (default: 1)
+
+    Note: For non-cloud databases, a low thread-pool size may be a performance bottleneck.
 
     Supported databases:
     - postgres
