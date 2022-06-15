@@ -16,6 +16,7 @@ from .sql import DbPath, SqlOrStr, Compiler, Explain, Select
 
 logger = logging.getLogger("database")
 
+
 def parse_table_name(t):
     return tuple(t.split("."))
 
@@ -70,7 +71,7 @@ def _one(seq):
 def _query_conn(conn, sql_code: str) -> list:
     c = conn.cursor()
     c.execute(sql_code)
-    if sql_code.lower().startswith('select'):
+    if sql_code.lower().startswith("select"):
         return c.fetchall()
 
 
@@ -200,7 +201,10 @@ class Database(AbstractDatabase):
 
         cls = self.DATETIME_TYPES.get(type_repr)
         if cls:
-            return cls(precision=datetime_precision if datetime_precision is not None else DEFAULT_PRECISION, rounds=self.ROUNDS_ON_PREC_LOSS)
+            return cls(
+                precision=datetime_precision if datetime_precision is not None else DEFAULT_PRECISION,
+                rounds=self.ROUNDS_ON_PREC_LOSS,
+            )
 
         return UnknownColType(type_repr)
 
@@ -333,7 +337,6 @@ class Postgres(ThreadedDatabase):
 
         return self.to_string(f"{value}")
 
-
     # def _query_in_worker(self, sql_code: str):
     #     return _query_conn(self.thread_local.conn, sql_code)
 
@@ -381,7 +384,9 @@ class Presto(Database):
                 # datetime = f"date_format(cast({value} as timestamp(6), '%Y-%m-%d %H:%i:%S.%f'))"
                 # datetime = self.to_string(f"cast({value} as datetime(6))")
 
-            return f"RPAD(RPAD({s}, {TIMESTAMP_PRECISION_POS+coltype.precision}, '.'), {TIMESTAMP_PRECISION_POS+6}, '0')"
+            return (
+                f"RPAD(RPAD({s}, {TIMESTAMP_PRECISION_POS+coltype.precision}, '.'), {TIMESTAMP_PRECISION_POS+6}, '0')"
+            )
 
         return self.to_string(value)
 
@@ -403,9 +408,12 @@ class Presto(Database):
             m = re.match(regexp + "$", type_repr)
             if m:
                 datetime_precision = int(m.group(1))
-                return cls(precision=datetime_precision if datetime_precision is not None else DEFAULT_PRECISION, rounds=False)
+                return cls(
+                    precision=datetime_precision if datetime_precision is not None else DEFAULT_PRECISION, rounds=False
+                )
 
         return UnknownColType(type_repr)
+
 
 class MySQL(ThreadedDatabase):
     DATETIME_TYPES = {
@@ -547,7 +555,7 @@ class BigQuery(Database):
         "TIMESTAMP": Timestamp,
         "DATETIME": Datetime,
     }
-    ROUNDS_ON_PREC_LOSS = False     # Technically BigQuery doesn't allow implicit rounding or truncation
+    ROUNDS_ON_PREC_LOSS = False  # Technically BigQuery doesn't allow implicit rounding or truncation
 
     def __init__(self, project, dataset):
         from google.cloud import bigquery
@@ -688,8 +696,10 @@ class Snowflake(Database):
 
         return self.to_string(f"{value}")
 
-HELP_SNOWFLAKE_URI_FORMAT = 'snowflake://<user>:<pass>@<account>/<database>/<schema>?warehouse=<warehouse>'
-HELP_PRESTO_URI_FORMAT = 'presto://<user>@<host>/<catalog>/<schema>'
+
+HELP_SNOWFLAKE_URI_FORMAT = "snowflake://<user>:<pass>@<account>/<database>/<schema>?warehouse=<warehouse>"
+HELP_PRESTO_URI_FORMAT = "presto://<user>@<host>/<catalog>/<schema>"
+
 
 def connect_to_uri(db_uri: str, thread_count: Optional[int] = 1) -> Database:
     """Connect to the given database uri
@@ -712,10 +722,10 @@ def connect_to_uri(db_uri: str, thread_count: Optional[int] = 1) -> Database:
         raise NotImplementedError("No support for multiple schemes")
     (scheme,) = dsn.schemes
 
-    if scheme == 'snowflake':
+    if scheme == "snowflake":
         if len(dsn.paths) == 1:
-            database, = dsn.paths
-            schema = dsn.query['schema']
+            (database,) = dsn.paths
+            schema = dsn.query["schema"]
         elif len(dsn.paths) == 2:
             database, schema = dsn.paths
         else:
@@ -727,8 +737,8 @@ def connect_to_uri(db_uri: str, thread_count: Optional[int] = 1) -> Database:
         return Snowflake(dsn.host, dsn.user, dsn.password, warehouse=warehouse, database=database, schema=schema)
     elif scheme == "presto":
         if len(dsn.paths) == 1:
-            catalog, = dsn.paths
-            schema = dsn.query.get('schema')
+            (catalog,) = dsn.paths
+            schema = dsn.query.get("schema")
         elif len(dsn.paths) == 2:
             catalog, schema = dsn.paths
         else:

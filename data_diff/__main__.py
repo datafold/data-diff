@@ -26,7 +26,6 @@ COLOR_SCHEME = {
 }
 
 
-
 @click.command()
 @click.argument("db1_uri")
 @click.argument("table1_name")

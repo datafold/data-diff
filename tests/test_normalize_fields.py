@@ -70,7 +70,9 @@ class TestNormalize(unittest.TestCase):
                 for index, date in enumerate(dates, 1):
                     # print(f"insert into {table}(v) values ('{date}')")
                     if db_id is BigQuery:
-                        pql.run_statement(f"insert into {table}(id, v) values ({index}, cast(timestamp '{date}' as {date_type}))")
+                        pql.run_statement(
+                            f"insert into {table}(id, v) values ({index}, cast(timestamp '{date}' as {date_type}))"
+                        )
                     else:
                         pql.run_statement(f"insert into {table}(id, v) values ({index}, timestamp '{date}')")
             pql.commit()
@@ -85,7 +87,7 @@ class TestNormalize(unittest.TestCase):
                 if db_id is Snowflake:
                     table = table.upper()
                 schema = conn.query_table_schema(table.split("."))
-                schema = {k.lower():v for k, v in schema.items()}
+                schema = {k.lower(): v for k, v in schema.items()}
                 try:
                     v_type = schema["v"]
                 except KeyError:
@@ -93,7 +95,10 @@ class TestNormalize(unittest.TestCase):
                 v_type = v_type.replace(precision=precision)
 
                 returned_dates = tuple(
-                    x for x, in conn.query(Select([conn.normalize_value_by_type("v", v_type)], table, order_by=['id']), list)
+                    x
+                    for x, in conn.query(
+                        Select([conn.normalize_value_by_type("v", v_type)], table, order_by=["id"]), list
+                    )
                 )
 
                 # print("@@", db_id, date_type, " --> ", returned_dates)

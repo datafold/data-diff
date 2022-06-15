@@ -48,12 +48,14 @@ class TableName(Sql):
     def compile(self, c: Compiler):
         return ".".join(map(c.quote, self.name))
 
+
 @dataclass
 class ColumnName(Sql):
     name: str
 
     def compile(self, c: Compiler):
         return c.quote(self.name)
+
 
 @dataclass
 class Value(Sql):

@@ -39,7 +39,7 @@ def parse_table_name(t):
 
 class CaseInsensitiveDict(Mapping):
     def __init__(self, initial=()):
-        self._dict = {k.lower(): v for k,v in dict(initial).items()}
+        self._dict = {k.lower(): v for k, v in dict(initial).items()}
 
     def __setitem__(self, key, value):
         self._dict[key.lower()] = value
@@ -187,7 +187,10 @@ class TableSegment:
             raise RuntimeError(
                 "Cannot compile query when the schema is unknown. Please use TableSegment.with_schema()."
             )
-        return [self.database.normalize_value_by_type(self._quote_column(c), self._schema[c]) for c in self._relevant_columns]
+        return [
+            self.database.normalize_value_by_type(self._quote_column(c), self._schema[c])
+            for c in self._relevant_columns
+        ]
 
     def count(self) -> Tuple[int, int]:
         """Count how many rows are in the segment, in one pass."""
@@ -317,7 +320,7 @@ class TableDiffer:
                 if not isinstance(col2, PrecisionType):
                     raise TypeError(f"Incompatible types for column {c}:  {col1} <-> {col2}")
 
-                lowest = min(col1, col2, key=attrgetter('precision'))
+                lowest = min(col1, col2, key=attrgetter("precision"))
 
                 if col1.precision != col2.precision:
                     logger.warn(f"Using reduced precision {lowest} for column '{c}'. Types={col1}, {col2}")
