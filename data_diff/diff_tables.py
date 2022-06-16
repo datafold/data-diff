@@ -10,7 +10,7 @@ from concurrent.futures import ThreadPoolExecutor
 
 from runtype import dataclass
 
-from .sql import Select, Checksum, Compare, DbPath, DbKey, DbTime, Count, TableName, Time, Min, Max, ColumnName
+from .sql import Select, Checksum, Compare, DbPath, DbKey, DbTime, Count, TableName, Time, Min, Max, ColumnName, Compiler
 from .database import Database
 
 logger = logging.getLogger("diff_tables")
@@ -106,7 +106,8 @@ class TableSegment:
 
     def get_values(self) -> list:
         "Download all the relevant values of the segment from the database"
-        select = self._make_select(columns=self._relevant_columns)
+        select = self._make_select(
+            columns=[self.database.to_string(s) for s in [str(x.name) for x in self._relevant_columns]]);
         return self.database.query(select, List[Tuple])
 
     def choose_checkpoints(self, count: int) -> List[DbKey]:
@@ -136,11 +137,11 @@ class TableSegment:
 
     @property
     def _relevant_columns(self) -> List[str]:
-        extras = set(map(ColumnName, self.extra_columns))
+        extras = set(self.extra_columns)
         if self.update_column:
-            extras.add(self._update_column)
+            extras.add(self.update_column)
 
-        return [self._key_column] + list(sorted(extras))
+        return [self._key_column] + list(map(ColumnName, sorted(extras)))
 
     def count(self) -> Tuple[int, int]:
         """Count how many rows are in the segment, in one pass."""
@@ -180,6 +181,9 @@ def diff_sets(a: set, b: set) -> Iterator:
     s1 = set(a)
     s2 = set(b)
     d = defaultdict(list)
+
+    print(list(s1)[0])
+    print(list(s2)[0])
 
     # The first item is always the key (see TableDiffer._relevant_columns)
     for i in s1 - s2:

@@ -65,7 +65,6 @@ def _one(seq):
 
 def _query_conn(conn, sql_code: str) -> list:
     c = conn.cursor()
-    sleep(.5)
     c.execute(sql_code)
     return c.fetchall()
 
@@ -146,6 +145,7 @@ class ThreadedDatabase(Database):
         self.thread_local.conn = self.create_connection()
 
     def _query(self, sql_code: str):
+        # print(sql_code)
         r = self._queue.submit(self._query_in_worker, sql_code)
         return r.result()
 
@@ -204,6 +204,7 @@ class Presto(Database):
                 schema=schema,
                 catalog=database,
                 http_scheme='https',
+                http_headers={'X-Presto-Time-Zone': 'UTC'},
                 source="odbc",
                 auth=prestodb.auth.BasicAuthentication(user, password),
             )
@@ -225,7 +226,7 @@ class Presto(Database):
 
     def _query(self, sql_code: str) -> list:
         "Uses the standard SQL cursor interface"
-        print(sql_code)
+        # print(sql_code)
         return _query_conn(self._conn, sql_code)
 
 
@@ -401,7 +402,7 @@ class Snowflake(Database):
         return f"BITAND(md5_number_lower64({s}), {CHECKSUM_MASK})"
 
     def to_string(self, s: str):
-        return f"cast({s} as string)"
+        return f"cast({s} as varchar)"
 
 
 HELP_SNOWFLAKE_URI_FORMAT = 'snowflake://<user>:<pass>@<account>/<database>/<schema>?warehouse=<warehouse>'
