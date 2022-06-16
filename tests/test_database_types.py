@@ -1,10 +1,9 @@
 import unittest
-import preql
 import time
 from data_diff import database as db
-from data_diff.diff_tables import TableDiffer, TableSegment, split_space
+from data_diff.diff_tables import TableDiffer, TableSegment
 from parameterized import parameterized, parameterized_class
-from .common import CONN_STRINGS, str_to_checksum
+from .common import CONN_STRINGS
 import logging
 
 logging.getLogger("diff_tables").setLevel(logging.WARN)
@@ -115,9 +114,9 @@ DATABASE_TYPES = {
             # "int",
         ],
         "datetime_no_timezone": [
-            # "timestamp",
-            # "timestamp(6)",
-            # "timestamp(9)",
+            "timestamp with local time zone",
+            "timestamp(6) with local time zone",
+            "timestamp(9) with local time zone",
         ],
         "float": [
             # "float",
@@ -179,11 +178,20 @@ def expand_params(testcase_func, param_num, param):
 
 
 def _insert_to_table(conn, table, values):
-    insertion_query = f"INSERT INTO {table} (id, col) VALUES "
-    for j, sample in values:
-        insertion_query += f"({j}, '{sample}'),"
+    insertion_query = f"INSERT INTO {table} (id, col) "
 
-    conn.query(insertion_query[0:-1], None)
+    if isinstance(conn, db.Oracle):
+        selects = []
+        for j, sample in values:
+            selects.append( f"SELECT {j}, timestamp '{sample}' FROM dual" )
+        insertion_query += ' UNION ALL '.join(selects)
+    else:
+        insertion_query += ' VALUES '
+        for j, sample in values:
+            insertion_query += f"({j}, '{sample}'),"
+        insertion_query = insertion_query[0:-1]
+
+    conn.query(insertion_query, None)
     if not isinstance(conn, db.BigQuery):
         conn.query("COMMIT", None)
 
@@ -204,14 +212,22 @@ class TestDiffCrossDatabaseTables(unittest.TestCase):
         src_table = src_conn.quote(".".join(src_table_path))
         dst_table = dst_conn.quote(".".join(dst_table_path))
 
-        src_conn.query(f"DROP TABLE IF EXISTS {src_table}", None)
-        src_conn.query(f"CREATE TABLE {src_table}(id int, col {source_type});", None)
+        if isinstance(src_conn, db.Oracle):
+            src_conn.query(f"DROP TABLE {src_table}", None)
+        else:
+            src_conn.query(f"DROP TABLE IF EXISTS {src_table}", None)
+
+        src_conn.query(f"CREATE TABLE {src_table}(id int, col {source_type})", None)
         _insert_to_table(src_conn, src_table, enumerate(sample_values, 1))
 
         values_in_source = src_conn.query(f"SELECT id, col FROM {src_table}", list)
 
-        dst_conn.query(f"DROP TABLE IF EXISTS {dst_table}", None)
-        dst_conn.query(f"CREATE TABLE {dst_table}(id int, col {target_type});", None)
+        if isinstance(dst_conn, db.Oracle):
+            dst_conn.query(f"DROP TABLE {dst_table}", None)
+        else:
+            dst_conn.query(f"DROP TABLE IF EXISTS {dst_table}", None)
+
+        dst_conn.query(f"CREATE TABLE {dst_table}(id int, col {target_type})", None)
         _insert_to_table(dst_conn, dst_table, values_in_source)
 
         self.table = TableSegment(self.src_conn, src_table_path, "id", None, ("col",), quote_columns=False)

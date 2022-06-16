@@ -156,9 +156,8 @@ class AbstractDatabase(ABC):
 
         - Dates are expected in the format:
             "YYYY-MM-DD HH:mm:SS.FFFFFF"
-            (number of F depends on coltype.precision)
-            Or if precision=0 then
-            "YYYY-MM-DD HH:mm:SS"     (without the dot)
+
+            Rounded up/down according to coltype.rounds
 
         """
         ...
@@ -474,6 +473,8 @@ class MySQL(ThreadedDatabase):
 
 
 class Oracle(ThreadedDatabase):
+    ROUNDS_ON_PREC_LOSS = True
+
     def __init__(self, host, port, user, password, *, database, thread_count, **kw):
         assert not port
         self.kwargs = dict(user=user, password=password, dsn="%s/%s" % (host, database), **kw)
@@ -509,9 +510,7 @@ class Oracle(ThreadedDatabase):
 
     def normalize_value_by_type(self, value: str, coltype: ColType) -> str:
         if isinstance(coltype, PrecisionType):
-            if coltype.precision == 0:
-                return f"to_char(cast({value} as timestamp({coltype.precision})), 'YYYY-MM-DD HH24:MI:SS')"
-            return f"to_char(cast({value} as timestamp({coltype.precision})), 'YYYY-MM-DD HH24:MI:SS.FF{coltype.precision or ''}')"
+            return f"to_char(cast({value} as timestamp({coltype.precision})), 'YYYY-MM-DD HH24:MI:SS.FF6')"
         return self.to_string(f"{value}")
 
     def _parse_type(self, type_repr: str, datetime_precision: int = None, numeric_precision: int = None) -> ColType:
@@ -524,7 +523,9 @@ class Oracle(ThreadedDatabase):
             m = re.match(regexp + "$", type_repr)
             if m:
                 datetime_precision = int(m.group(1))
-                return cls(precision=datetime_precision if datetime_precision is not None else DEFAULT_PRECISION)
+                return cls(precision=datetime_precision if datetime_precision is not None else DEFAULT_PRECISION,
+                    rounds=self.ROUNDS_ON_PREC_LOSS
+                )
 
         return UnknownColType(type_repr)
 
