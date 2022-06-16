@@ -4,7 +4,6 @@ from typing import Tuple, Optional
 from concurrent.futures import ThreadPoolExecutor
 import threading
 
-from time import sleep
 import dsnparse
 import sys
 from cryptography.hazmat.backends import default_backend
@@ -145,7 +144,6 @@ class ThreadedDatabase(Database):
         self.thread_local.conn = self.create_connection()
 
     def _query(self, sql_code: str):
-        # print(sql_code)
         r = self._queue.submit(self._query_in_worker, sql_code)
         return r.result()
 
@@ -204,7 +202,6 @@ class Presto(Database):
                 schema=schema,
                 catalog=database,
                 http_scheme='https',
-                http_headers={'X-Presto-Time-Zone': 'UTC'},
                 source="odbc",
                 auth=prestodb.auth.BasicAuthentication(user, password),
             )
@@ -226,7 +223,6 @@ class Presto(Database):
 
     def _query(self, sql_code: str) -> list:
         "Uses the standard SQL cursor interface"
-        # print(sql_code)
         return _query_conn(self._conn, sql_code)
 
 
