@@ -182,9 +182,6 @@ def diff_sets(a: set, b: set) -> Iterator:
     s2 = set(b)
     d = defaultdict(list)
 
-    print(list(s1)[0])
-    print(list(s2)[0])
-
     # The first item is always the key (see TableDiffer._relevant_columns)
     for i in s1 - s2:
         d[i[0]].append(("-", i))
