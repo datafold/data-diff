@@ -58,26 +58,33 @@ class CaseInsensitiveDict(Mapping):
 
 @dataclass(frozen=False)
 class TableSegment:
-    """Signifies a segment of rows (and selected columns) within a table"""
+    """Signifies a segment of rows (and selected columns) within a table
+
+    Parameters:
+        database (Database): Database instance. See :meth:`connect_to_uri`
+        table_path (:data:`DbPath`): Path to table in form of a tuple. e.g. `('my_dataset', 'table_name')`
+        key_column (str): Name of the key column, which uniquely identifies each row (usually id)
+        update_column (str, optional): Name of updated column, which signals that rows changed (usually updated_at or last_update)
+        extra_columns (Tuple[str, ...], optional): Extra columns to compare
+        min_key (:data:`DbKey`, optional): Lowest key_column value, used to restrict the segment
+        max_key (:data:`DbKey`, optional): Highest key_column value, used to restrict the segment
+        min_update (:data:`DbTime`, optional): Lowest update_column value, used to restrict the segment
+        max_update (:data:`DbTime`, optional): Highest update_column value, used to restrict the segment
+
+    """
 
     # Location of table
     database: Database
     table_path: DbPath
 
-    # Name of the key column, which uniquely identifies each row (usually id)
+    # Columns
     key_column: str
-
-    # Name of updated column, which signals that rows changed (usually updated_at or last_update)
     update_column: str = None
-
-    # Extra columns to compare
     extra_columns: Tuple[str, ...] = ()
 
-    # Start/end key_column values, used to restrict the segment
+    # Restrict the segment
     min_key: DbKey = None
     max_key: DbKey = None
-
-    # Start/end update_column values, used to restrict the segment
     min_update: DbTime = None
     max_update: DbTime = None
 
@@ -251,19 +258,18 @@ class TableDiffer:
     bisection search recursively to find the differences efficiently.
 
     Works best for comparing tables that are mostly the name, with minor discrepencies.
+
+    Parameters:
+        bisection_factor (int): Into how many segments to bisect per iteration.
+        bisection_threshold (int): When should we stop bisecting and compare locally (in row count).
+        threaded (bool): Enable/disable threaded diffing. Needed to take advantage of database threads.
+        max_threadpool_size (int): Maximum size of each threadpool. ``None`` means auto. Only relevant when `threaded` is ``True``.
+                                   There may be many pools, so number of actual threads can be a lot higher.
     """
 
-    # Into how many segments to bisect per iteration
     bisection_factor: int = DEFAULT_BISECTION_FACTOR
-
-    # When should we stop bisecting and compare locally (in row count)
     bisection_threshold: int = DEFAULT_BISECTION_THRESHOLD
-
-    # Enable/disable threaded diffing. Needed to take advantage of database threads.
     threaded: bool = True
-
-    # Maximum size of each threadpool. None = auto. Only relevant when threaded is True.
-    # There may be many pools, so number of actual threads can be a lot higher.
     max_threadpool_size: Optional[int] = 1
 
     # Enable/disable debug prints
@@ -274,7 +280,12 @@ class TableDiffer:
     def diff_tables(self, table1: TableSegment, table2: TableSegment) -> DiffResult:
         """Diff the given tables.
 
-        Returned value is an iterator that yield pair-tuples, representing the diff. Items can be either
+        Parameters:
+            table1 (TableSegment): The "before" table to compare. Or: source table
+            table2 (TableSegment): The "after" table to compare. Or: target table
+
+        Returns:
+            An iterator that yield pair-tuples, representing the diff. Items can be either
             ('+', columns) for items in table1 but not in table2
             ('-', columns) for items in table2 but not in table1
             Where `columns` is a tuple of values for the involved columns, i.e. (id, ...extra)
