@@ -308,8 +308,8 @@ class Postgres(ThreadedDatabase):
 
     default_schema = "public"
 
-    def __init__(self, host, port, user, password, *, database, thread_count):
-        self.args = dict(host=host, port=port, database=database, user=user, password=password)
+    def __init__(self, host, port, user, password, *, database, thread_count, **kw):
+        self.args = dict(host=host, port=port, database=database, user=user, password=password, **kw)
 
         super().__init__(thread_count=thread_count)
 
@@ -361,9 +361,9 @@ class Presto(Database):
     }
     ROUNDS_ON_PREC_LOSS = True
 
-    def __init__(self, host, port, user, password, *, catalog, schema=None):
+    def __init__(self, host, port, user, password, *, catalog, schema=None, **kw):
         prestodb = import_presto()
-        self.args = dict(host=host, user=user, catalog=catalog, schema=schema)
+        self.args = dict(host=host, user=user, catalog=catalog, schema=schema, **kw)
 
         self._conn = prestodb.dbapi.connect(**self.args)
 
@@ -432,8 +432,8 @@ class MySQL(ThreadedDatabase):
     }
     ROUNDS_ON_PREC_LOSS = True
 
-    def __init__(self, host, port, user, password, *, database, thread_count):
-        args = dict(host=host, port=port, database=database, user=user, password=password)
+    def __init__(self, host, port, user, password, *, database, thread_count, **kw):
+        args = dict(host=host, port=port, database=database, user=user, password=password, **kw)
         self._args = {k: v for k, v in args.items() if v is not None}
 
         super().__init__(thread_count=thread_count)
@@ -475,9 +475,9 @@ class MySQL(ThreadedDatabase):
 class Oracle(ThreadedDatabase):
     ROUNDS_ON_PREC_LOSS = True
 
-    def __init__(self, host, port, user, password, *, database, thread_count):
+    def __init__(self, host, port, user, password, *, database, thread_count, **kw):
         assert not port
-        self.kwargs = dict(user=user, password=password, dsn="%s/%s" % (host, database))
+        self.kwargs = dict(user=user, password=password, dsn="%s/%s" % (host, database), **kw)
         super().__init__(thread_count=thread_count)
 
     def create_connection(self):
@@ -538,8 +538,8 @@ class Redshift(Postgres):
 class MsSQL(ThreadedDatabase):
     "AKA sql-server"
 
-    def __init__(self, host, port, user, password, *, database, thread_count):
-        args = dict(server=host, port=port, database=database, user=user, password=password)
+    def __init__(self, host, port, user, password, *, database, thread_count, **kw):
+        args = dict(server=host, port=port, database=database, user=user, password=password, **kw)
         self._args = {k: v for k, v in args.items() if v is not None}
 
         super().__init__(thread_count=thread_count)
@@ -569,10 +569,10 @@ class BigQuery(Database):
     }
     ROUNDS_ON_PREC_LOSS = False  # Technically BigQuery doesn't allow implicit rounding or truncation
 
-    def __init__(self, project, *, dataset):
+    def __init__(self, project, *, dataset, **kw):
         from google.cloud import bigquery
 
-        self._client = bigquery.Client(project)
+        self._client = bigquery.Client(project, **kw)
         self.project = project
         self.dataset = dataset
 
@@ -656,6 +656,7 @@ class Snowflake(Database):
         schema: str,
         database: str,
         role: str = None,
+        **kw,
     ):
         snowflake = import_snowflake()
         logging.getLogger("snowflake.connector").setLevel(logging.WARNING)
@@ -674,6 +675,7 @@ class Snowflake(Database):
             database=database,
             warehouse=warehouse,
             schema=f'"{schema}"',
+            **kw,
         )
 
         self.default_schema = schema
