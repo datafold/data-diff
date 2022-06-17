@@ -17,3 +17,12 @@ class TestDatabase(unittest.TestCase):
         query = f"SELECT {query_fragment}"
 
         self.assertEqual(str_to_checksum(str), self.mysql.query(query, int))
+
+class TestConnect(unittest.TestCase):
+    def test_bad_uris(self):
+        self.assertRaises(ValueError, connect_to_uri, "p")
+        self.assertRaises(ValueError, connect_to_uri, "postgres:///bla/foo")
+        self.assertRaises(ValueError, connect_to_uri, "snowflake://erez:erez27Snow@bya42734/xdiffdev/TEST1")
+        self.assertRaises(
+            ValueError, connect_to_uri, "snowflake://erez:erez27Snow@bya42734/xdiffdev/TEST1?warehouse=ha&schema=dup"
+        )

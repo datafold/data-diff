@@ -1,9 +1,10 @@
 from functools import lru_cache
+from itertools import zip_longest
 import re
 from abc import ABC, abstractmethod
 from runtype import dataclass
 import logging
-from typing import Tuple, Optional
+from typing import Tuple, Optional, List
 from concurrent.futures import ThreadPoolExecutor
 import threading
 from typing import Dict
@@ -308,8 +309,8 @@ class Postgres(ThreadedDatabase):
 
     default_schema = "public"
 
-    def __init__(self, host, port, database, user, password, *, thread_count):
-        self.args = dict(host=host, port=port, database=database, user=user, password=password)
+    def __init__(self, host, port, user, password, *, database, thread_count, **kw):
+        self.args = dict(host=host, port=port, database=database, user=user, password=password, **kw)
 
         super().__init__(thread_count=thread_count)
 
@@ -350,9 +351,6 @@ class Postgres(ThreadedDatabase):
 
         return self.to_string(f"{value}")
 
-    # def _query_in_worker(self, sql_code: str):
-    #     return _query_conn(self.thread_local.conn, sql_code)
-
 
 class Presto(Database):
     default_schema = "public"
@@ -364,9 +362,9 @@ class Presto(Database):
     }
     ROUNDS_ON_PREC_LOSS = True
 
-    def __init__(self, host, port, user, password, catalog, schema=None):
+    def __init__(self, host, port, user, password, *, catalog, schema=None, **kw):
         prestodb = import_presto()
-        self.args = dict(host=host, user=user, catalog=catalog, schema=schema)
+        self.args = dict(host=host, user=user, catalog=catalog, schema=schema, **kw)
 
         self._conn = prestodb.dbapi.connect(**self.args)
 
@@ -435,8 +433,8 @@ class MySQL(ThreadedDatabase):
     }
     ROUNDS_ON_PREC_LOSS = True
 
-    def __init__(self, host, port, database, user, password, *, thread_count):
-        args = dict(host=host, port=port, database=database, user=user, password=password)
+    def __init__(self, host, port, user, password, *, database, thread_count, **kw):
+        args = dict(host=host, port=port, database=database, user=user, password=password, **kw)
         self._args = {k: v for k, v in args.items() if v is not None}
 
         super().__init__(thread_count=thread_count)
@@ -476,9 +474,9 @@ class MySQL(ThreadedDatabase):
 
 
 class Oracle(ThreadedDatabase):
-    def __init__(self, host, port, database, user, password, *, thread_count):
+    def __init__(self, host, port, user, password, *, database, thread_count, **kw):
         assert not port
-        self.kwargs = dict(user=user, password=password, dsn="%s/%s" % (host, database))
+        self.kwargs = dict(user=user, password=password, dsn="%s/%s" % (host, database), **kw)
         super().__init__(thread_count=thread_count)
 
     def create_connection(self):
@@ -539,8 +537,8 @@ class Redshift(Postgres):
 class MsSQL(ThreadedDatabase):
     "AKA sql-server"
 
-    def __init__(self, host, port, database, user, password, *, thread_count):
-        args = dict(server=host, port=port, database=database, user=user, password=password)
+    def __init__(self, host, port, user, password, *, database, thread_count, **kw):
+        args = dict(server=host, port=port, database=database, user=user, password=password, **kw)
         self._args = {k: v for k, v in args.items() if v is not None}
 
         super().__init__(thread_count=thread_count)
@@ -570,10 +568,10 @@ class BigQuery(Database):
     }
     ROUNDS_ON_PREC_LOSS = False  # Technically BigQuery doesn't allow implicit rounding or truncation
 
-    def __init__(self, project, dataset):
+    def __init__(self, project, *, dataset, **kw):
         from google.cloud import bigquery
 
-        self._client = bigquery.Client(project)
+        self._client = bigquery.Client(project, **kw)
         self.project = project
         self.dataset = dataset
 
@@ -649,13 +647,15 @@ class Snowflake(Database):
     def __init__(
         self,
         account: str,
+        _port: int,
         user: str,
         password: str,
+        *,
         warehouse: str,
         schema: str,
         database: str,
         role: str = None,
-        print_sql: bool = False,
+        **kw,
     ):
         snowflake = import_snowflake()
         logging.getLogger("snowflake.connector").setLevel(logging.WARNING)
@@ -674,6 +674,7 @@ class Snowflake(Database):
             database=database,
             warehouse=warehouse,
             schema=f'"{schema}"',
+            **kw,
         )
 
         self.default_schema = schema
@@ -710,8 +711,70 @@ class Snowflake(Database):
         return self.to_string(f"{value}")
 
 
-HELP_SNOWFLAKE_URI_FORMAT = "snowflake://<user>:<pass>@<account>/<database>/<schema>?warehouse=<warehouse>"
-HELP_PRESTO_URI_FORMAT = "presto://<user>@<host>/<catalog>/<schema>"
+@dataclass
+class MatchUriPath:
+    database_cls: type
+    params: List[str]
+    kwparams: List[str] = []
+    help_str: str
+
+    def match_path(self, dsn):
+        dsn_dict = dict(dsn.query)
+        matches = {}
+        for param, arg in zip_longest(self.params, dsn.paths):
+            if param is None:
+                raise ValueError(f"Too many parts to path. Expected format: {self.help_str}")
+
+            optional = param.endswith("?")
+            param = param.rstrip("?")
+
+            if arg is None:
+                try:
+                    arg = dsn_dict.pop(param)
+                except KeyError:
+                    if not optional:
+                        raise ValueError(f"URI must specify '{param}'. Expected format: {self.help_str}")
+
+                    arg = None
+
+            assert param and param not in matches
+            matches[param] = arg
+
+        for param in self.kwparams:
+            try:
+                arg = dsn_dict.pop(param)
+            except KeyError:
+                raise ValueError(f"URI must specify '{param}'. Expected format: {self.help_str}")
+
+            assert param and arg and param not in matches, (param, arg, matches.keys())
+            matches[param] = arg
+
+        for param, value in dsn_dict.items():
+            if param in matches:
+                raise ValueError(
+                    f"Parameter '{param}' already provided as positional argument. Expected format: {self.help_str}"
+                )
+
+            matches[param] = value
+
+        return matches
+
+
+MATCH_URI_PATH = {
+    "postgres": MatchUriPath(Postgres, ["database?"], help_str="postgres://<user>:<pass>@<host>/<database>"),
+    "mysql": MatchUriPath(MySQL, ["database?"], help_str="mysql://<user>:<pass>@<host>/<database>"),
+    "oracle": MatchUriPath(Oracle, ["database?"], help_str="oracle://<user>:<pass>@<host>/<database>"),
+    "mssql": MatchUriPath(MsSQL, ["database?"], help_str="mssql://<user>:<pass>@<host>/<database>"),
+    "redshift": MatchUriPath(Redshift, ["database?"], help_str="redshift://<user>:<pass>@<host>/<database>"),
+    "snowflake": MatchUriPath(
+        Snowflake,
+        ["database", "schema"],
+        ["warehouse"],
+        help_str="snowflake://<user>:<pass>@<account>/<database>/<SCHEMA>?warehouse=<WAREHOUSE>",
+    ),
+    "presto": MatchUriPath(Presto, ["catalog", "schema"], help_str="presto://<user>@<host>/<catalog>/<schema>"),
+    "bigquery": MatchUriPath(BigQuery, ["dataset"], help_str="bigquery://<project>/<dataset>"),
+}
 
 
 def connect_to_uri(db_uri: str, thread_count: Optional[int] = 1) -> Database:
@@ -726,7 +789,7 @@ def connect_to_uri(db_uri: str, thread_count: Optional[int] = 1) -> Database:
 
     Note: For non-cloud databases, a low thread-pool size may be a performance bottleneck.
 
-    Supported databases:
+    Supported schemes:
     - postgres
     - mysql
     - mssql
@@ -734,6 +797,7 @@ def connect_to_uri(db_uri: str, thread_count: Optional[int] = 1) -> Database:
     - snowflake
     - bigquery
     - redshift
+    - presto
     """
 
     dsn = dsnparse.parse(db_uri)
@@ -741,48 +805,18 @@ def connect_to_uri(db_uri: str, thread_count: Optional[int] = 1) -> Database:
         raise NotImplementedError("No support for multiple schemes")
     (scheme,) = dsn.schemes
 
-    if scheme == "snowflake":
-        if len(dsn.paths) == 1:
-            (database,) = dsn.paths
-            schema = dsn.query["schema"]
-        elif len(dsn.paths) == 2:
-            database, schema = dsn.paths
-        else:
-            raise ValueError(f"Too many parts in path. Expected format: '{HELP_SNOWFLAKE_URI_FORMAT}'")
-        try:
-            warehouse = dsn.query["warehouse"]
-        except KeyError:
-            raise ValueError(f"Must provide warehouse. Expected format: '{HELP_SNOWFLAKE_URI_FORMAT}'")
-        return Snowflake(dsn.host, dsn.user, dsn.password, warehouse=warehouse, database=database, schema=schema)
-    elif scheme == "presto":
-        if len(dsn.paths) == 1:
-            (catalog,) = dsn.paths
-            schema = dsn.query.get("schema")
-        elif len(dsn.paths) == 2:
-            catalog, schema = dsn.paths
-        else:
-            raise ValueError(f"Too many parts in path. Expected format: '{HELP_PRESTO_URI_FORMAT}'")
+    try:
+        matcher = MATCH_URI_PATH[scheme]
+    except KeyError:
+        raise NotImplementedError(f"Scheme {scheme} currently not supported")
 
-        return Presto(dsn.host, dsn.port, dsn.user, dsn.password, catalog=catalog, schema=schema)
+    cls = matcher.database_cls
+    kw = matcher.match_path(dsn)
 
-    if len(dsn.paths) == 0:
-        path = ""
-    elif len(dsn.paths) == 1:
-        (path,) = dsn.paths
-    else:
-        raise ValueError("Bad value for uri, too many paths: %s" % db_uri)
+    if scheme == "bigquery":
+        return cls(dsn.host, **kw)
 
-    if scheme == "postgres":
-        return Postgres(dsn.host, dsn.port, path, dsn.user, dsn.password, thread_count=thread_count)
-    elif scheme == "mysql":
-        return MySQL(dsn.host, dsn.port, path, dsn.user, dsn.password, thread_count=thread_count)
-    elif scheme == "mssql":
-        return MsSQL(dsn.host, dsn.port, path, dsn.user, dsn.password, thread_count=thread_count)
-    elif scheme == "bigquery":
-        return BigQuery(dsn.host, path)
-    elif scheme == "redshift":
-        return Redshift(dsn.host, dsn.port, path, dsn.user, dsn.password, thread_count=thread_count)
-    elif scheme == "oracle":
-        return Oracle(dsn.host, dsn.port, path, dsn.user, dsn.password, thread_count=thread_count)
+    if issubclass(cls, ThreadedDatabase):
+        return cls(dsn.host, dsn.port, dsn.user, dsn.password, thread_count=thread_count, **kw)
 
-    raise NotImplementedError(f"Scheme {dsn.scheme} currently not supported")
+    return cls(dsn.host, dsn.port, dsn.user, dsn.password, **kw)
