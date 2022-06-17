@@ -351,9 +351,6 @@ class Postgres(ThreadedDatabase):
 
         return self.to_string(f"{value}")
 
-    # def _query_in_worker(self, sql_code: str):
-    #     return _query_conn(self.thread_local.conn, sql_code)
-
 
 class Presto(Database):
     default_schema = "public"
@@ -712,10 +709,6 @@ class Snowflake(Database):
         return self.to_string(f"{value}")
 
 
-HELP_SNOWFLAKE_URI_FORMAT = "snowflake://<user>:<pass>@<account>/<database>/<schema>?warehouse=<warehouse>"
-HELP_PRESTO_URI_FORMAT = "presto://<user>@<host>/<catalog>/<schema>"
-
-
 @dataclass
 class MatchUriPath:
     database_cls: type
@@ -730,8 +723,8 @@ class MatchUriPath:
             if param is None:
                 raise ValueError(f"Too many parts to path. Expected format: {self.help_str}")
 
-            optional = param.endswith('?')
-            param = param.rstrip('?')
+            optional = param.endswith("?")
+            param = param.rstrip("?")
 
             if arg is None:
                 try:
@@ -756,7 +749,9 @@ class MatchUriPath:
 
         for param, value in dsn_dict.items():
             if param in matches:
-                raise ValueError(f"Parameter '{param}' already provided as positional argument. Expected format: {self.help_str}")
+                raise ValueError(
+                    f"Parameter '{param}' already provided as positional argument. Expected format: {self.help_str}"
+                )
 
             matches[param] = value
 
@@ -764,14 +759,19 @@ class MatchUriPath:
 
 
 MATCH_URI_PATH = {
-    "postgres": MatchUriPath(Postgres, ['database?'], help_str = "postgres://<user>:<pass>@<host>/<database>"),
-    "mysql": MatchUriPath(MySQL, ['database?'], help_str = "mysql://<user>:<pass>@<host>/<database>"),
-    "oracle": MatchUriPath(Oracle, ['database?'], help_str = "oracle://<user>:<pass>@<host>/<database>"),
-    "mssql": MatchUriPath(MsSQL, ['database?'], help_str = "mssql://<user>:<pass>@<host>/<database>"),
-    "redshift": MatchUriPath(Redshift, ['database?'], help_str = "redshift://<user>:<pass>@<host>/<database>"),
-    "snowflake": MatchUriPath(Snowflake, ['database', 'schema'], ['warehouse'], help_str = HELP_SNOWFLAKE_URI_FORMAT),
-    "presto": MatchUriPath(Presto, ['catalog', 'schema'], help_str = HELP_PRESTO_URI_FORMAT),
-    "bigquery": MatchUriPath(BigQuery, ['dataset'], help_str = 'bigquery://<project>/<dataset>')
+    "postgres": MatchUriPath(Postgres, ["database?"], help_str="postgres://<user>:<pass>@<host>/<database>"),
+    "mysql": MatchUriPath(MySQL, ["database?"], help_str="mysql://<user>:<pass>@<host>/<database>"),
+    "oracle": MatchUriPath(Oracle, ["database?"], help_str="oracle://<user>:<pass>@<host>/<database>"),
+    "mssql": MatchUriPath(MsSQL, ["database?"], help_str="mssql://<user>:<pass>@<host>/<database>"),
+    "redshift": MatchUriPath(Redshift, ["database?"], help_str="redshift://<user>:<pass>@<host>/<database>"),
+    "snowflake": MatchUriPath(
+        Snowflake,
+        ["database", "schema"],
+        ["warehouse"],
+        help_str="snowflake://<user>:<pass>@<account>/<database>/<SCHEMA>?warehouse=<WAREHOUSE>",
+    ),
+    "presto": MatchUriPath(Presto, ["catalog", "schema"], help_str="presto://<user>@<host>/<catalog>/<schema>"),
+    "bigquery": MatchUriPath(BigQuery, ["dataset"], help_str="bigquery://<project>/<dataset>"),
 }
 
 
@@ -818,4 +818,3 @@ def connect_to_uri(db_uri: str, thread_count: Optional[int] = 1) -> Database:
         return cls(dsn.host, dsn.port, dsn.user, dsn.password, thread_count=thread_count, **kw)
 
     return cls(dsn.host, dsn.port, dsn.user, dsn.password, **kw)
-
