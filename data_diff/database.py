@@ -534,6 +534,21 @@ class Redshift(Postgres):
     def md5_to_int(self, s: str) -> str:
         return f"strtol(substring(md5({s}), {1+MD5_HEXDIGITS-CHECKSUM_HEXDIGITS}), 16)::decimal(38)"
 
+    def normalize_value_by_type(self, value: str, coltype: ColType) -> str:
+        if isinstance(coltype, TemporalType):
+            if coltype.rounds:
+                timestamp = f"{value}::timestamp(6)"
+                secs = f"timestamp 'epoch' + round(extract(epoch from {timestamp})::decimal(38)"
+                ms = f"extract(ms from {timestamp})"
+                us = f"extract(us from {timestamp})"
+                epoch = f"{secs}*1000000 + {ms}*1000 + {us}"
+                timestamp6 = f"to_char({epoch}, -6+{coltype.precision}) * interval '0.000001 seconds', 'YYYY-mm-dd HH24:MI:SS.US')"
+            else:
+                timestamp6 = f"to_char({value}::timestamp(6), 'YYYY-mm-dd HH24:MI:SS.US')"
+            return f"RPAD(LEFT({timestamp6}, {TIMESTAMP_PRECISION_POS+coltype.precision}), {TIMESTAMP_PRECISION_POS+6}, '0')"
+
+        return self.to_string(f"{value}")
+
 
 class MsSQL(ThreadedDatabase):
     "AKA sql-server"
