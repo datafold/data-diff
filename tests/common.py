@@ -2,8 +2,21 @@ import hashlib
 
 from data_diff import databases as db
 import logging
+import os
 
-logging.basicConfig(level=logging.INFO)
+DEFAULT_N_SAMPLES = 50
+N_SAMPLES = int(os.environ.get('N_SAMPLES', DEFAULT_N_SAMPLES))
+BENCHMARK = os.environ.get('BENCHMARK', False)
+
+level = logging.WARN
+if os.environ.get('DEBUG', False):
+    level = logging.DEBUG
+
+logging.basicConfig(level=level)
+logging.getLogger("diff_tables").setLevel(level)
+logging.getLogger("database").setLevel(level)
+if BENCHMARK:
+    logging.getLogger("benchmark").setLevel(logging.DEBUG)
 
 TEST_MYSQL_CONN_STRING: str = "mysql://mysql:Password1@localhost/mysql"
 TEST_POSTGRESQL_CONN_STRING: str = None

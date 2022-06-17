@@ -4,13 +4,23 @@ services:
     postgres:
       container_name: postgresql
       image: postgres:14.1-alpine
+      shm_size: 1g
       # work_mem: less tmp files
       # maintenance_work_mem: improve table-level op perf
       # max_wal_size: allow more time before merging to heap
       command: >
-        -c work_mem=1GB
-        -c maintenance_work_mem=1GB
-        -c max_wal_size=8GB
+        -c shared_buffers=16GB
+        -c effective_cache_size=48GB
+        -c maintenance_work_mem=2GB
+        -c checkpoint_completion_target=0.9
+        -c default_statistics_target=100
+        -c random_page_cost=1.1
+        -c effective_io_concurrency=200
+        -c work_mem=20971kB
+        -c max_worker_processes=14
+        -c max_parallel_workers_per_gather=4
+        -c max_parallel_workers=14
+        -c max_parallel_maintenance_workers=4
       restart: always
       volumes:
         - postgresql-data:/var/lib/postgresql/data:delegated
