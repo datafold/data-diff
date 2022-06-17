@@ -1,10 +1,11 @@
 """Provides classes for performing a table diff
 """
 
+from abc import ABC, abstractmethod
 import time
 from operator import attrgetter, methodcaller
 from collections import defaultdict
-from typing import List, Tuple, Iterator, Optional, Mapping
+from typing import List, Tuple, Iterator, Optional
 import logging
 from concurrent.futures import ThreadPoolExecutor
 
@@ -36,24 +37,47 @@ def parse_table_name(t):
     return tuple(t.split("."))
 
 
-class CaseInsensitiveDict(Mapping):
-    def __init__(self, initial=()):
-        self._dict = {k.lower(): v for k, v in dict(initial).items()}
+class Schema(ABC):
+    @abstractmethod
+    def get_key(self, key: str) -> str:
+        ...
 
-    def __setitem__(self, key, value):
-        self._dict[key.lower()] = value
+    @abstractmethod
+    def __getitem__(self, key: str) -> str:
+        ...
 
-    def __getitem__(self, key):
-        try:
-            return self._dict[key.lower()]
-        except KeyError:
-            raise
+    @abstractmethod
+    def __setitem__(self, key: str, value):
+        ...
 
-    def __iter__(self):
-        return iter(self._dict)
+    @abstractmethod
+    def __contains__(self, key: str) -> bool:
+        ...
 
-    def __len__(self):
-        return len(self._dict)
+
+class Schema_CaseSensitive(dict, Schema):
+    def get_key(self, key):
+        return key
+
+
+class Schema_CaseInsensitive(Schema):
+    def __init__(self, initial):
+        self._dict = {k.lower(): (k, v) for k, v in dict(initial).items()}
+
+    def get_key(self, key: str) -> str:
+        return self._dict[key.lower()][0]
+
+    def __getitem__(self, key: str) -> str:
+        return self._dict[key.lower()][1]
+
+    def __setitem__(self, key: str, value):
+        k = key.lower()
+        if k in self._dict:
+            key = self._dict[k][0]
+        self._dict[k] = key, value
+
+    def __contains__(self, key):
+        return key.lower() in self._dict
 
 
 @dataclass(frozen=False)
@@ -88,8 +112,8 @@ class TableSegment:
     min_update: DbTime = None
     max_update: DbTime = None
 
-    quote_columns: bool = True
-    _schema: Mapping[str, ColType] = None
+    case_sensitive: bool = True
+    _schema: Schema = None
 
     def __post_init__(self):
         if not self.update_column and (self.min_update or self.max_update):
@@ -110,17 +134,24 @@ class TableSegment:
         return self._quote_column(self.update_column)
 
     def _quote_column(self, c):
-        if self.quote_columns:
-            return self.database.quote(c)
-        return c
+        if self._schema:
+            c = self._schema.get_key(c)
+        return self.database.quote(c)
 
     def with_schema(self) -> "TableSegment":
         "Queries the table schema from the database, and returns a new instance of TableSegmentWithSchema."
         if self._schema:
             return self
         schema = self.database.query_table_schema(self.table_path)
-        if not self.quote_columns:
-            schema = CaseInsensitiveDict(schema)
+        if self.case_sensitive:
+            schema = Schema_CaseSensitive(schema)
+        else:
+            if len({k.lower() for k in schema}) < len(schema):
+                logger.warn(
+                    f'Ambiguous schema for {self.database}:{".".join(self.table_path)} | Columns = {", ".join(list(schema))}'
+                )
+                logger.warn("We recommend to disable case-insensitivity (remove --any-case).")
+            schema = Schema_CaseInsensitive(schema)
         return self.new(_schema=schema)
 
     def _make_key_range(self):
