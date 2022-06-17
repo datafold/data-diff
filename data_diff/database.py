@@ -233,7 +233,7 @@ class Database(AbstractDatabase):
     def query_table_schema(self, path: DbPath) -> Dict[str, ColType]:
         rows = self.query(self.select_table_schema(path), list)
         if not rows:
-            raise RuntimeError(f"Table {'.'.join(path)} does not exist, or has no columns")
+            raise RuntimeError(f"{self.__class__.__name__}: Table '{'.'.join(path)}' does not exist, or has no columns")
 
         # Return a dict of form {name: type} after canonizaation
         return {row[0]: self._parse_type(*row[1:]) for row in rows}
@@ -248,7 +248,7 @@ class Database(AbstractDatabase):
         elif len(path) == 2:
             return path
 
-        raise ValueError(f"Bad table path for {self}: '{'.'.join(path)}'. Expected form: schema.table")
+        raise ValueError(f"{self.__class__.__name__}: Bad table path for {self}: '{'.'.join(path)}'. Expected form: schema.table")
 
     def parse_table_name(self, name: str) -> DbPath:
         return parse_table_name(name)
