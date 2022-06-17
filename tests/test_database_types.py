@@ -24,7 +24,7 @@ TYPE_SAMPLES = {
         "2022-05-01 15:10:03.003030",
         "2022-06-01 15:10:05.009900",
     ],
-    "float": [0.0, 0.1, 0.10, 10.0, 100.98],
+    "float": [0.0, 0.1, 0.00188, 0.99999, 0.091919, 0.10, 10.0, 100.98],
 }
 
 DATABASE_TYPES = {
@@ -37,15 +37,15 @@ DATABASE_TYPES = {
         ],
         # https://www.postgresql.org/docs/current/datatype-datetime.html
         "datetime_no_timezone": [
-            "timestamp(6) without time zone",
-            "timestamp(3) without time zone",
-            "timestamp(0) without time zone",
+            # "timestamp(6) without time zone",
+            # "timestamp(3) without time zone",
+            # "timestamp(0) without time zone",
         ],
         # https://www.postgresql.org/docs/current/datatype-numeric.html
         "float": [
-            # "real",
-            # "double precision",
-            # "numeric(6,3)",
+            "real",
+            "double precision",
+            "numeric(6,3)",
         ],
     },
     db.MySQL: {
@@ -58,12 +58,19 @@ DATABASE_TYPES = {
             # "bigint", # 8 bytes
         ],
         # https://dev.mysql.com/doc/refman/8.0/en/datetime.html
-        "datetime_no_timezone": ["timestamp(6)", "timestamp(3)", "timestamp(0)", "timestamp", "datetime(6)"],
+        "datetime_no_timezone": [
+            # "timestamp(6)",
+            # "timestamp(3)",
+            # "timestamp(0)",
+            # "timestamp",
+            # "datetime(6)",
+        ],
         # https://dev.mysql.com/doc/refman/8.0/en/numeric-types.html
         "float": [
-            # "float",
-            # "double",
-            # "numeric",
+            "float",
+            "double",
+            "numeric",
+            "numeric(65, 10)",
         ],
     },
     db.BigQuery: {
@@ -71,6 +78,10 @@ DATABASE_TYPES = {
             "timestamp",
             # "datetime",
         ],
+        "float": [
+            "numeric",
+            "float64",
+        ]
     },
     db.Snowflake: {
         # https://docs.snowflake.com/en/sql-reference/data-types-numeric.html#int-integer-bigint-smallint-tinyint-byteint
@@ -85,15 +96,15 @@ DATABASE_TYPES = {
         ],
         # https://docs.snowflake.com/en/sql-reference/data-types-datetime.html
         "datetime_no_timezone": [
-            "timestamp(0)",
-            "timestamp(3)",
-            "timestamp(6)",
-            "timestamp(9)",
+            # "timestamp(0)",
+            # "timestamp(3)",
+            # "timestamp(6)",
+            # "timestamp(9)",
         ],
         # https://docs.snowflake.com/en/sql-reference/data-types-numeric.html#decimal-numeric
         "float": [
-            # "float"
-            # "numeric",
+            "float",
+            "numeric",
         ],
     },
     db.Redshift: {
@@ -132,7 +143,13 @@ DATABASE_TYPES = {
             # "int", # 4 bytes
             # "bigint", # 8 bytes
         ],
-        "datetime_no_timezone": ["timestamp(6)", "timestamp(3)", "timestamp(0)", "timestamp", "datetime(6)"],
+        "datetime_no_timezone": [
+            # "timestamp(6)",
+            # "timestamp(3)",
+            # "timestamp(0)",
+            # "timestamp",
+            # "datetime(6)",
+        ],
         "float": [
             # "float",
             # "double",
@@ -150,7 +167,10 @@ type_pairs = []
 # target_type: (int, bigint) }
 for source_db, source_type_categories in DATABASE_TYPES.items():
     for target_db, target_type_categories in DATABASE_TYPES.items():
-        for type_category, source_types in source_type_categories.items():  # int, datetime, ..
+        for (
+            type_category,
+            source_types,
+        ) in source_type_categories.items():  # int, datetime, ..
             for source_type in source_types:
                 for target_type in target_type_categories[type_category]:
                     if CONNS.get(source_db, False) and CONNS.get(target_db, False):
@@ -229,13 +249,19 @@ class TestDiffCrossDatabaseTables(unittest.TestCase):
         dst_conn.query(f"CREATE TABLE {dst_table}(id int, col {target_type})", None)
         _insert_to_table(dst_conn, dst_table, values_in_source)
 
-        self.table = TableSegment(self.src_conn, src_table_path, "id", None, ("col",), case_sensitive=False)
-        self.table2 = TableSegment(self.dst_conn, dst_table_path, "id", None, ("col",), case_sensitive=False)
+        self.table = TableSegment(
+            self.src_conn, src_table_path, "id", None, ("col",), case_sensitive=False
+        )
+        self.table2 = TableSegment(
+            self.dst_conn, dst_table_path, "id", None, ("col",), case_sensitive=False
+        )
 
         self.assertEqual(len(sample_values), self.table.count())
         self.assertEqual(len(sample_values), self.table2.count())
 
-        differ = TableDiffer(bisection_threshold=3, bisection_factor=2)  # ensure we actually checksum
+        differ = TableDiffer(
+            bisection_threshold=3, bisection_factor=2
+        )  # ensure we actually checksum
         diff = list(differ.diff_tables(self.table, self.table2))
         expected = []
         self.assertEqual(expected, diff)
