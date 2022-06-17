@@ -46,7 +46,7 @@ How to use from Python
     import logging
     logging.basicConfig(level=logging.INFO)
 
-    from datadiff import connect_to_table, diff_tables
+    from data_diff import connect_to_table, diff_tables
 
     table1 = connect_to_table("postgres:///", "table_name", "id")
     table2 = connect_to_table("mysql:///", "table_name", "id")
