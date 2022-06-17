@@ -71,7 +71,10 @@ class Schema_CaseInsensitive(Schema):
         return self._dict[key.lower()][1]
 
     def __setitem__(self, key: str, value):
-        self._dict[key.lower()] = key, value
+        k = key.lower()
+        if k in self._dict:
+            key = self._dict[k][0]
+        self._dict[k] = key, value
 
     def __contains__(self, key):
         return key.lower() in self._dict
