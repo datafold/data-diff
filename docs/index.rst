@@ -5,11 +5,13 @@
 
    python-api
 
+Introduction
+------------
 
-**data-diff** is a command-line tool and Python library to efficiently diff
+**Data-diff** is a command-line tool and Python library to efficiently diff
 rows across two different databases.
 
-⇄  Verifies across many different databases (e.g. Postgres -> Snowflake) !
+⇄  Verifies across many different databases (e.g. *Postgres* -> *Snowflake*) !
 
 🔍 Outputs diff of rows in detail
 
@@ -51,9 +53,13 @@ How to use from Python
     table1 = connect_to_table("postgres:///", "table_name", "id")
     table2 = connect_to_table("mysql:///", "table_name", "id")
 
-    for different_row in diff_tables(table1, table2):
-        plus_or_minus, columns = different_row
-        print(plus_or_minus, columns)
+    for sign, columns in diff_tables(table1, table2):
+        print(sign, columns)
+
+    # Example output:
+    + ('4775622148347', '2022-06-05 16:57:32.000000')
+    - ('4775622312187', '2022-06-05 16:57:32.000000')
+    - ('4777375432955', '2022-06-07 16:57:36.000000')
 
 
 Resources
