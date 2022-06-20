@@ -538,9 +538,13 @@ class Redshift(Postgres):
         if isinstance(coltype, TemporalType):
             if coltype.rounds:
                 timestamp = f"{value}::timestamp(6)"
+                # Get seconds since epoch. Redshift doesn't support milli- or micro-seconds.
                 secs = f"timestamp 'epoch' + round(extract(epoch from {timestamp})::decimal(38)"
+                # Get the milliseconds from timestamp.
                 ms = f"extract(ms from {timestamp})"
+                # Get the microseconds from timestamp, without the milliseconds!
                 us = f"extract(us from {timestamp})"
+                # epoch = Total time since epoch in microseconds.
                 epoch = f"{secs}*1000000 + {ms}*1000 + {us}"
                 timestamp6 = f"to_char({epoch}, -6+{coltype.precision}) * interval '0.000001 seconds', 'YYYY-mm-dd HH24:MI:SS.US')"
             else:
