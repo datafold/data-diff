@@ -81,7 +81,7 @@ DATABASE_TYPES = {
         "float": [
             "numeric",
             "float64",
-        ]
+        ],
     },
     db.Snowflake: {
         # https://docs.snowflake.com/en/sql-reference/data-types-numeric.html#int-integer-bigint-smallint-tinyint-byteint
@@ -249,19 +249,13 @@ class TestDiffCrossDatabaseTables(unittest.TestCase):
         dst_conn.query(f"CREATE TABLE {dst_table}(id int, col {target_type})", None)
         _insert_to_table(dst_conn, dst_table, values_in_source)
 
-        self.table = TableSegment(
-            self.src_conn, src_table_path, "id", None, ("col",), case_sensitive=False
-        )
-        self.table2 = TableSegment(
-            self.dst_conn, dst_table_path, "id", None, ("col",), case_sensitive=False
-        )
+        self.table = TableSegment(self.src_conn, src_table_path, "id", None, ("col",), case_sensitive=False)
+        self.table2 = TableSegment(self.dst_conn, dst_table_path, "id", None, ("col",), case_sensitive=False)
 
         self.assertEqual(len(sample_values), self.table.count())
         self.assertEqual(len(sample_values), self.table2.count())
 
-        differ = TableDiffer(
-            bisection_threshold=3, bisection_factor=2
-        )  # ensure we actually checksum
+        differ = TableDiffer(bisection_threshold=3, bisection_factor=2)  # ensure we actually checksum
         diff = list(differ.diff_tables(self.table, self.table2))
         expected = []
         self.assertEqual(expected, diff)

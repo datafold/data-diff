@@ -12,7 +12,7 @@ from concurrent.futures import ThreadPoolExecutor
 from runtype import dataclass
 
 from .sql import Select, Checksum, Compare, DbPath, DbKey, DbTime, Count, TableName, Time, Min, Max
-from .database import Database, PrecisionType, ColType
+from .database import Database, NumericType, PrecisionType, ColType
 
 logger = logging.getLogger("diff_tables")
 
@@ -368,6 +368,18 @@ class TableDiffer:
 
                 table1._schema[c] = col1.replace(precision=lowest.precision, rounds=lowest.rounds)
                 table2._schema[c] = col2.replace(precision=lowest.precision, rounds=lowest.rounds)
+
+            elif isinstance(col1, NumericType):
+                if not isinstance(col2, NumericType):
+                    raise TypeError(f"Incompatible types for column {c}:  {col1} <-> {col2}")
+
+                lowest = min(col1, col2, key=attrgetter("precision"))
+
+                if col1.precision != col2.precision:
+                    logger.warn(f"Using reduced precision {lowest} for column '{c}'. Types={col1}, {col2}")
+
+                table1._schema[c] = col1.replace(precision=lowest.precision)
+                table2._schema[c] = col2.replace(precision=lowest.precision)
 
     def _bisect_and_diff_tables(self, table1, table2, level=0, max_rows=None):
         assert table1.is_bounded and table2.is_bounded
