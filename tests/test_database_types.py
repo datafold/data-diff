@@ -1,11 +1,16 @@
 import unittest
-import preql
 import time
+import logging
+from decimal import Decimal
+
+from parameterized import parameterized, parameterized_class
+import preql
+
 from data_diff import database as db
 from data_diff.diff_tables import TableDiffer, TableSegment, split_space
-from parameterized import parameterized, parameterized_class
+
 from .common import CONN_STRINGS, str_to_checksum
-import logging
+
 
 logging.getLogger("diff_tables").setLevel(logging.WARN)
 logging.getLogger("database").setLevel(logging.WARN)
@@ -201,7 +206,11 @@ def expand_params(testcase_func, param_num, param):
 def _insert_to_table(conn, table, values):
     insertion_query = f"INSERT INTO {table} (id, col) VALUES "
     for j, sample in values:
-        insertion_query += f"({j}, '{sample}'),"
+        if isinstance(sample, (float, Decimal)):
+            value = str(sample)
+        else:
+            value = f"'{sample}'"
+        insertion_query += f"({j}, {value}),"
 
     conn.query(insertion_query[0:-1], None)
     if not isinstance(conn, db.BigQuery):
