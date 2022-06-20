@@ -88,6 +88,7 @@ DATABASE_TYPES = {
         "float": [
             "numeric",
             "float64",
+            "bignumeric",
         ],
     },
     db.Snowflake: {

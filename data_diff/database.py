@@ -251,9 +251,12 @@ class Database(AbstractDatabase):
 
         cls = self.NUMERIC_TYPES.get(type_repr)
         if cls:
-            if issubclass(cls, Decimal):
-                assert numeric_precision is not None
-                assert numeric_scale is not None, (type_repr, numeric_precision, numeric_scale)
+            if issubclass(cls, Integer):
+                # Some DBs have a constant numeric_scale, so they don't report it.
+                # We fill in the constant, so we need to ignore it for integers.
+                return cls(precision=0)
+
+            elif issubclass(cls, Decimal):
                 return cls(precision=numeric_scale)
 
             assert issubclass(cls, Float)
@@ -723,6 +726,7 @@ class BigQuery(Database):
         "INT64": Integer,
         "INT32": Integer,
         "NUMERIC": Decimal,
+        "BIGNUMERIC": Decimal,
         "FLOAT64": Float,
         "FLOAT32": Float,
     }
