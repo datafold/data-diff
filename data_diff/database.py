@@ -1,3 +1,4 @@
+import math
 from functools import lru_cache
 from itertools import zip_longest
 import re
@@ -232,6 +233,10 @@ class Database(AbstractDatabase):
     def enable_interactive(self):
         self._interactive = True
 
+    def _convert_db_precision_to_digits(self, p: int) -> int:
+        # See: https://en.wikipedia.org/wiki/Single-precision_floating-point_format
+        return math.floor(math.log(2**p, 10))
+
     def _parse_type(
         self, type_repr: str, datetime_precision: int = None, numeric_precision: int = None, numeric_scale: int = None
     ) -> ColType:
@@ -253,7 +258,11 @@ class Database(AbstractDatabase):
 
             assert issubclass(cls, Float)
             # assert numeric_scale is None
-            return cls(precision=(numeric_precision if numeric_precision is not None else 15) // 3)
+            return cls(
+                precision=self._convert_db_precision_to_digits(
+                    numeric_precision if numeric_precision is not None else DEFAULT_NUMERIC_PRECISION
+                )
+            )
 
         return UnknownColType(type_repr)
 
@@ -331,7 +340,7 @@ _CHECKSUM_BITSIZE = CHECKSUM_HEXDIGITS << 2
 CHECKSUM_MASK = (2**_CHECKSUM_BITSIZE) - 1
 
 DEFAULT_DATETIME_PRECISION = 6
-DEFAULT_NUMERIC_PRECISION = 6
+DEFAULT_NUMERIC_PRECISION = 24
 
 TIMESTAMP_PRECISION_POS = 20  # len("2022-06-03 12:24:35.") == 20
 
@@ -395,7 +404,7 @@ class Postgres(ThreadedDatabase):
                 return f"RPAD(LEFT({timestamp6}, {TIMESTAMP_PRECISION_POS+coltype.precision}), {TIMESTAMP_PRECISION_POS+6}, '0')"
 
         elif isinstance(coltype, NumericType):
-            value = f"{value}::decimal(38,{coltype.precision})"
+            value = f"{value}::decimal(38, {coltype.precision})"
 
         return self.to_string(f"{value}")
 
@@ -488,7 +497,11 @@ class Presto(Database):
                 return cls(6)
 
             assert issubclass(cls, Float)
-            return cls(precision=(numeric_precision if numeric_precision is not None else 15) // 3)
+            return cls(
+                precision=self._convert_db_precision_to_digits(
+                    numeric_precision if numeric_precision is not None else DEFAULT_NUMERIC_PRECISION
+                )
+            )
 
         return UnknownColType(type_repr)
 
@@ -629,12 +642,25 @@ class Oracle(ThreadedDatabase):
                 return cls(precision=numeric_scale)
 
             assert issubclass(cls, Float)
-            return cls(precision=(numeric_precision if numeric_precision is not None else 15) // 3)
+            return cls(
+                precision=self._convert_db_precision_to_digits(
+                    numeric_precision if numeric_precision is not None else DEFAULT_NUMERIC_PRECISION
+                )
+            )
 
         return UnknownColType(type_repr)
 
 
 class Redshift(Postgres):
+    NUMERIC_TYPES = {
+        **Postgres.NUMERIC_TYPES,
+        "double": Float,
+        "real": Float,
+    }
+
+    def _convert_db_precision_to_digits(self, p: int) -> int:
+        return super()._convert_db_precision_to_digits(p // 2)
+
     def md5_to_int(self, s: str) -> str:
         return f"strtol(substring(md5({s}), {1+MD5_HEXDIGITS-CHECKSUM_HEXDIGITS}), 16)::decimal(38)"
 
@@ -654,6 +680,9 @@ class Redshift(Postgres):
             else:
                 timestamp6 = f"to_char({value}::timestamp(6), 'YYYY-mm-dd HH24:MI:SS.US')"
             return f"RPAD(LEFT({timestamp6}, {TIMESTAMP_PRECISION_POS+coltype.precision}), {TIMESTAMP_PRECISION_POS+6}, '0')"
+
+        elif isinstance(coltype, NumericType):
+            value = f"{value}::decimal(38,{coltype.precision})"
 
         return self.to_string(f"{value}")
 

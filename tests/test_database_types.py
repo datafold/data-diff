@@ -123,9 +123,9 @@ DATABASE_TYPES = {
         ],
         # https://docs.aws.amazon.com/redshift/latest/dg/r_Numeric_types201.html#r_Numeric_types201-floating-point-types
         "float": [
-            # "float4",
-            # "float8",
-            # "numeric",
+            "float4",
+            "float8",
+            "numeric",
         ],
     },
     db.Oracle: {
