@@ -167,6 +167,10 @@ Options:
 
 ## How to use from Python
 
+API reference: [https://data-diff.readthedocs.io/en/latest/](https://data-diff.readthedocs.io/en/latest/)
+
+Example:
+
 ```python
 # Optional: Set logging to display the progress of the diff
 import logging
@@ -182,7 +186,7 @@ for different_row in diff_tables(table1, table2):
     print(plus_or_minus, columns)
 ```
 
-Run `help(diff_tables)` or read the docs [ADD LINK] to learn about the different options.
+Run `help(diff_tables)` or [read the docs](https://data-diff.readthedocs.io/en/latest/) to learn about the different options.
 
 # Technical Explanation
 
