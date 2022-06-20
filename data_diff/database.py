@@ -63,6 +63,9 @@ def import_presto():
 class ConnectError(Exception):
     pass
 
+class QueryError(Exception):
+    pass
+
 
 def _one(seq):
     (x,) = seq
@@ -156,9 +159,8 @@ class AbstractDatabase(ABC):
 
         - Dates are expected in the format:
             "YYYY-MM-DD HH:mm:SS.FFFFFF"
-            (number of F depends on coltype.precision)
-            Or if precision=0 then
-            "YYYY-MM-DD HH:mm:SS"     (without the dot)
+
+            Rounded up/down according to coltype.rounds
 
         """
         ...
@@ -474,17 +476,25 @@ class MySQL(ThreadedDatabase):
 
 
 class Oracle(ThreadedDatabase):
+    ROUNDS_ON_PREC_LOSS = True
+
     def __init__(self, host, port, user, password, *, database, thread_count, **kw):
         assert not port
         self.kwargs = dict(user=user, password=password, dsn="%s/%s" % (host, database), **kw)
         super().__init__(thread_count=thread_count)
 
     def create_connection(self):
-        oracle = import_oracle()
+        self._oracle = import_oracle()
         try:
-            return oracle.connect(**self.kwargs)
+            return self._oracle.connect(**self.kwargs)
         except Exception as e:
             raise ConnectError(*e.args) from e
+
+    def _query(self, sql_code: str):
+        try:
+            return super()._query(sql_code)
+        except self._oracle.DatabaseError as e:
+            raise QueryError(e)
 
     def md5_to_int(self, s: str) -> str:
         # standard_hash is faster than DBMS_CRYPTO.Hash
@@ -509,9 +519,7 @@ class Oracle(ThreadedDatabase):
 
     def normalize_value_by_type(self, value: str, coltype: ColType) -> str:
         if isinstance(coltype, PrecisionType):
-            if coltype.precision == 0:
-                return f"to_char(cast({value} as timestamp({coltype.precision})), 'YYYY-MM-DD HH24:MI:SS')"
-            return f"to_char(cast({value} as timestamp({coltype.precision})), 'YYYY-MM-DD HH24:MI:SS.FF{coltype.precision or ''}')"
+            return f"to_char(cast({value} as timestamp({coltype.precision})), 'YYYY-MM-DD HH24:MI:SS.FF6')"
         return self.to_string(f"{value}")
 
     def _parse_type(self, type_repr: str, datetime_precision: int = None, numeric_precision: int = None) -> ColType:
@@ -524,7 +532,9 @@ class Oracle(ThreadedDatabase):
             m = re.match(regexp + "$", type_repr)
             if m:
                 datetime_precision = int(m.group(1))
-                return cls(precision=datetime_precision if datetime_precision is not None else DEFAULT_PRECISION)
+                return cls(precision=datetime_precision if datetime_precision is not None else DEFAULT_PRECISION,
+                    rounds=self.ROUNDS_ON_PREC_LOSS
+                )
 
         return UnknownColType(type_repr)
 
@@ -532,6 +542,25 @@ class Oracle(ThreadedDatabase):
 class Redshift(Postgres):
     def md5_to_int(self, s: str) -> str:
         return f"strtol(substring(md5({s}), {1+MD5_HEXDIGITS-CHECKSUM_HEXDIGITS}), 16)::decimal(38)"
+
+    def normalize_value_by_type(self, value: str, coltype: ColType) -> str:
+        if isinstance(coltype, TemporalType):
+            if coltype.rounds:
+                timestamp = f"{value}::timestamp(6)"
+                # Get seconds since epoch. Redshift doesn't support milli- or micro-seconds.
+                secs = f"timestamp 'epoch' + round(extract(epoch from {timestamp})::decimal(38)"
+                # Get the milliseconds from timestamp.
+                ms = f"extract(ms from {timestamp})"
+                # Get the microseconds from timestamp, without the milliseconds!
+                us = f"extract(us from {timestamp})"
+                # epoch = Total time since epoch in microseconds.
+                epoch = f"{secs}*1000000 + {ms}*1000 + {us}"
+                timestamp6 = f"to_char({epoch}, -6+{coltype.precision}) * interval '0.000001 seconds', 'YYYY-mm-dd HH24:MI:SS.US')"
+            else:
+                timestamp6 = f"to_char({value}::timestamp(6), 'YYYY-mm-dd HH24:MI:SS.US')"
+            return f"RPAD(LEFT({timestamp6}, {TIMESTAMP_PRECISION_POS+coltype.precision}), {TIMESTAMP_PRECISION_POS+6}, '0')"
+
+        return self.to_string(f"{value}")
 
 
 class MsSQL(ThreadedDatabase):
