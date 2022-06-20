@@ -5,7 +5,7 @@ import logging
 
 import preql
 
-from data_diff.database import BigQuery, MySQL, Snowflake, connect_to_uri, Oracle, DEFAULT_PRECISION
+from data_diff.database import BigQuery, MySQL, Snowflake, connect_to_uri, Oracle
 from data_diff.sql import Select
 from data_diff import database as db
 
