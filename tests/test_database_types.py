@@ -1,11 +1,18 @@
 from contextlib import suppress
 import unittest
 import time
+import logging
+from decimal import Decimal
+
+from parameterized import parameterized, parameterized_class
+import preql
+
 from data_diff import database as db
 from data_diff.diff_tables import TableDiffer, TableSegment
 from parameterized import parameterized, parameterized_class
 from .common import CONN_STRINGS
 import logging
+
 
 logging.getLogger("diff_tables").setLevel(logging.WARN)
 logging.getLogger("database").setLevel(logging.WARN)
@@ -209,7 +216,12 @@ def _insert_to_table(conn, table, values):
     else:
         insertion_query += ' VALUES '
         for j, sample in values:
-            insertion_query += f"({j}, '{sample}'),"
+            if isinstance(sample, (float, Decimal)):
+                value = str(sample)
+            else:
+                value = f"'{sample}'"
+            insertion_query += f"({j}, {value}),"
+
         insertion_query = insertion_query[0:-1]
 
     conn.query(insertion_query, None)

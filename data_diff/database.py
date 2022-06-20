@@ -239,13 +239,14 @@ class Database(AbstractDatabase):
 
         cls = self.NUMERIC_TYPES.get(type_repr)
         if cls:
-            assert numeric_precision is not None
             if cls is Decimal:
-                assert numeric_scale is not None
+                assert numeric_precision is not None
+                assert numeric_scale is not None, (type_repr, numeric_precision, numeric_scale)
                 return cls(precision=numeric_scale)
 
-            assert numeric_scale is None
-            return cls(precision=numeric_precision // 3)
+            assert cls is Float
+            # assert numeric_scale is None
+            return cls(precision=(numeric_precision if numeric_precision is not None else 15) // 3)
 
         return UnknownColType(type_repr)
 
@@ -642,6 +643,13 @@ class BigQuery(Database):
         "TIMESTAMP": Timestamp,
         "DATETIME": Datetime,
     }
+    NUMERIC_TYPES = {
+        "INT64": Decimal,
+        "INT32": Decimal,
+        "NUMERIC": Decimal,
+        "FLOAT64": Float,
+        "FLOAT32": Float,
+    }
     ROUNDS_ON_PREC_LOSS = False  # Technically BigQuery doesn't allow implicit rounding or truncation
 
     def __init__(self, project, *, dataset, **kw):
@@ -687,7 +695,7 @@ class BigQuery(Database):
         schema, table = self._normalize_table_path(path)
 
         return (
-            f"SELECT column_name, data_type, 6 as datetime_precision, 6 as numeric_precision FROM {schema}.INFORMATION_SCHEMA.COLUMNS "
+            f"SELECT column_name, data_type, 6 as datetime_precision, 38 as numeric_precision, 9 as numeric_scale FROM {schema}.INFORMATION_SCHEMA.COLUMNS "
             f"WHERE table_name = '{table}' AND table_schema = '{schema}'"
         )
 
@@ -705,6 +713,10 @@ class BigQuery(Database):
                 timestamp6 = f"FORMAT_TIMESTAMP('%F %H:%M:%E6S', {value})"
                 return f"RPAD(LEFT({timestamp6}, {TIMESTAMP_PRECISION_POS+coltype.precision}), {TIMESTAMP_PRECISION_POS+6}, '0')"
 
+        elif isinstance(coltype, NumericType):
+            # value = f"cast({value} as decimal)"
+            return f"format('%.{coltype.precision}f', cast({value} as decimal))"
+
         return self.to_string(f"{value}")
 
     def parse_table_name(self, name: str) -> DbPath:
@@ -717,6 +729,10 @@ class Snowflake(Database):
         "TIMESTAMP_NTZ": Timestamp,
         "TIMESTAMP_LTZ": Timestamp,
         "TIMESTAMP_TZ": TimestampTZ,
+    }
+    NUMERIC_TYPES = {
+        "NUMBER": Decimal,
+        "FLOAT": Float,
     }
     ROUNDS_ON_PREC_LOSS = False
 
@@ -783,6 +799,9 @@ class Snowflake(Database):
                 timestamp = f"cast({value} as timestamp({coltype.precision}))"
 
             return f"to_char({timestamp}, 'YYYY-MM-DD HH24:MI:SS.FF6')"
+
+        elif isinstance(coltype, NumericType):
+            value = f"cast({value} as decimal(38, {coltype.precision}))"
 
         return self.to_string(f"{value}")
 
