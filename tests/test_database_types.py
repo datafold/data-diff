@@ -14,7 +14,7 @@ from .common import CONN_STRINGS
 import logging
 
 
-logging.getLogger("diff_tables").setLevel(logging.WARN)
+logging.getLogger("diff_tables").setLevel(logging.ERROR)
 logging.getLogger("database").setLevel(logging.WARN)
 
 CONNS = {k: db.connect_to_uri(v) for k, v in CONN_STRINGS.items()}
@@ -138,8 +138,8 @@ DATABASE_TYPES = {
             "timestamp(9) with local time zone",
         ],
         "float": [
-            # "float",
-            # "numeric",
+            "float",
+            "numeric",
         ],
     },
     db.Presto: {
@@ -211,7 +211,11 @@ def _insert_to_table(conn, table, values):
     if isinstance(conn, db.Oracle):
         selects = []
         for j, sample in values:
-            selects.append(f"SELECT {j}, timestamp '{sample}' FROM dual")
+            if isinstance(sample, (float, Decimal, int)):
+                value = str(sample)
+            else:
+                value = f"timestamp '{sample}'"
+            selects.append(f"SELECT {j}, {value} FROM dual")
         insertion_query += " UNION ALL ".join(selects)
     else:
         insertion_query += " VALUES "
@@ -232,6 +236,7 @@ def _insert_to_table(conn, table, values):
 def _drop_table_if_exists(conn, table):
     with suppress(db.QueryError):
         if isinstance(conn, db.Oracle):
+            conn.query(f"DROP TABLE {table}", None)
             conn.query(f"DROP TABLE {table}", None)
         else:
             conn.query(f"DROP TABLE IF EXISTS {table}", None)

@@ -587,16 +587,24 @@ class Oracle(ThreadedDatabase):
         (table,) = path
 
         return (
-            f"SELECT column_name, data_type, 6 as datetime_precision, data_precision as numeric_precision"
+            f"SELECT column_name, data_type, 6 as datetime_precision, data_precision as numeric_precision, data_scale as numeric_scale"
             f" FROM USER_TAB_COLUMNS WHERE table_name = '{table.upper()}'"
         )
 
     def normalize_value_by_type(self, value: str, coltype: ColType) -> str:
         if isinstance(coltype, TemporalType):
             return f"to_char(cast({value} as timestamp({coltype.precision})), 'YYYY-MM-DD HH24:MI:SS.FF6')"
+        elif isinstance(coltype, NumericType):
+            # FM999.9990
+            format_str = "FM" + "9" * (38 - coltype.precision)
+            if coltype.precision:
+                format_str += "0." + "9" * (coltype.precision - 1) + "0"
+            return f"to_char({value}, '{format_str}')"
         return self.to_string(f"{value}")
 
-    def _parse_type(self, type_repr: str, datetime_precision: int = None, numeric_precision: int = None) -> ColType:
+    def _parse_type(
+        self, type_repr: str, datetime_precision: int = None, numeric_precision: int = None, numeric_scale: int = None
+    ) -> ColType:
         """ """
         regexps = {
             r"TIMESTAMP\((\d)\) WITH LOCAL TIME ZONE": Timestamp,
@@ -610,6 +618,18 @@ class Oracle(ThreadedDatabase):
                     precision=datetime_precision if datetime_precision is not None else DEFAULT_DATETIME_PRECISION,
                     rounds=self.ROUNDS_ON_PREC_LOSS,
                 )
+
+        cls = {
+            "NUMBER": Decimal,
+            "FLOAT": Float,
+        }.get(type_repr, None)
+        if cls:
+            if issubclass(cls, Decimal):
+                assert numeric_scale is not None, (type_repr, numeric_precision, numeric_scale)
+                return cls(precision=numeric_scale)
+
+            assert issubclass(cls, Float)
+            return cls(precision=(numeric_precision if numeric_precision is not None else 15) // 3)
 
         return UnknownColType(type_repr)
 

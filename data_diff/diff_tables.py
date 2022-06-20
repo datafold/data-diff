@@ -147,10 +147,10 @@ class TableSegment:
             schema = Schema_CaseSensitive(schema)
         else:
             if len({k.lower() for k in schema}) < len(schema):
-                logger.warn(
+                logger.warning(
                     f'Ambiguous schema for {self.database}:{".".join(self.table_path)} | Columns = {", ".join(list(schema))}'
                 )
-                logger.warn("We recommend to disable case-insensitivity (remove --any-case).")
+                logger.warning("We recommend to disable case-insensitivity (remove --any-case).")
             schema = Schema_CaseInsensitive(schema)
         return self.new(_schema=schema)
 
@@ -241,7 +241,7 @@ class TableSegment:
         )
         duration = time.time() - start
         if duration > RECOMMENDED_CHECKSUM_DURATION:
-            logger.warn(
+            logger.warning(
                 f"Checksum is taking longer than expected ({duration:.2f}s). "
                 "We recommend increasing --bisection-factor or decreasing --threads."
             )
@@ -364,7 +364,7 @@ class TableDiffer:
                 lowest = min(col1, col2, key=attrgetter("precision"))
 
                 if col1.precision != col2.precision:
-                    logger.warn(f"Using reduced precision {lowest} for column '{c}'. Types={col1}, {col2}")
+                    logger.warning(f"Using reduced precision {lowest} for column '{c}'. Types={col1}, {col2}")
 
                 table1._schema[c] = col1.replace(precision=lowest.precision, rounds=lowest.rounds)
                 table2._schema[c] = col2.replace(precision=lowest.precision, rounds=lowest.rounds)
@@ -376,7 +376,7 @@ class TableDiffer:
                 lowest = min(col1, col2, key=attrgetter("precision"))
 
                 if col1.precision != col2.precision:
-                    logger.warn(f"Using reduced precision {lowest} for column '{c}'. Types={col1}, {col2}")
+                    logger.warning(f"Using reduced precision {lowest} for column '{c}'. Types={col1}, {col2}")
 
                 table1._schema[c] = col1.replace(precision=lowest.precision)
                 table2._schema[c] = col2.replace(precision=lowest.precision)
@@ -424,7 +424,7 @@ class TableDiffer:
         (count1, checksum1), (count2, checksum2) = self._threaded_call("count_and_checksum", [table1, table2])
 
         if count1 == 0 and count2 == 0:
-            logger.warn(
+            logger.warning(
                 "Uneven distribution of keys detected. (big gaps in the key column). "
                 "For better performance, we recommend to increase the bisection-threshold."
             )
