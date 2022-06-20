@@ -114,6 +114,11 @@ class Float(NumericType):
 class Decimal(NumericType):
     pass
 
+@dataclass
+class Integer(Decimal):
+    def __post_init__(self):
+        assert self.precision == 0
+
 
 @dataclass
 class UnknownColType(ColType):
@@ -237,12 +242,12 @@ class Database(AbstractDatabase):
 
         cls = self.NUMERIC_TYPES.get(type_repr)
         if cls:
-            if cls is Decimal:
+            if issubclass(cls, Decimal):
                 assert numeric_precision is not None
                 assert numeric_scale is not None, (type_repr, numeric_precision, numeric_scale)
                 return cls(precision=numeric_scale)
 
-            assert cls is Float
+            assert issubclass(cls, Float)
             # assert numeric_scale is None
             return cls(precision=(numeric_precision if numeric_precision is not None else 15) // 3)
 
@@ -338,7 +343,7 @@ class Postgres(ThreadedDatabase):
         "double precision": Float,
         "real": Float,
         "decimal": Decimal,
-        "integer": Decimal,
+        "integer": Integer,
         "numeric": Decimal,
     }
     ROUNDS_ON_PREC_LOSS = True
@@ -399,6 +404,10 @@ class Presto(Database):
         "timestamp": Timestamp,
         # "datetime": Datetime,
     }
+    NUMERIC_TYPES = {
+        "integer": Integer,
+        "real": Float,
+    }
     ROUNDS_ON_PREC_LOSS = True
 
     def __init__(self, host, port, user, password, *, catalog, schema=None, **kw):
@@ -438,6 +447,9 @@ class Presto(Database):
                 f"RPAD(RPAD({s}, {TIMESTAMP_PRECISION_POS+coltype.precision}, '.'), {TIMESTAMP_PRECISION_POS+6}, '0')"
             )
 
+        elif isinstance(coltype, NumericType):
+            value = f"cast({value} as decimal(38,{coltype.precision}))"
+
         return self.to_string(value)
 
     def select_table_schema(self, path: DbPath) -> str:
@@ -462,6 +474,17 @@ class Presto(Database):
                     precision=datetime_precision if datetime_precision is not None else DEFAULT_DATETIME_PRECISION,
                     rounds=False,
                 )
+
+        cls = self.NUMERIC_TYPES.get(type_repr)
+        if cls:
+            if issubclass(cls, Integer):
+                assert numeric_precision is not None
+                return cls(0)
+            elif issubclass(cls, Decimal):
+                return cls(6)
+
+            assert issubclass(cls, Float)
+            return cls(precision=(numeric_precision if numeric_precision is not None else 15) // 3)
 
         return UnknownColType(type_repr)
 
@@ -618,8 +641,8 @@ class BigQuery(Database):
         "DATETIME": Datetime,
     }
     NUMERIC_TYPES = {
-        "INT64": Decimal,
-        "INT32": Decimal,
+        "INT64": Integer,
+        "INT32": Integer,
         "NUMERIC": Decimal,
         "FLOAT64": Float,
         "FLOAT32": Float,
