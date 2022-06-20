@@ -63,6 +63,9 @@ def import_presto():
 class ConnectError(Exception):
     pass
 
+class QueryError(Exception):
+    pass
+
 
 def _one(seq):
     (x,) = seq
@@ -481,11 +484,17 @@ class Oracle(ThreadedDatabase):
         super().__init__(thread_count=thread_count)
 
     def create_connection(self):
-        oracle = import_oracle()
+        self._oracle = import_oracle()
         try:
-            return oracle.connect(**self.kwargs)
+            return self._oracle.connect(**self.kwargs)
         except Exception as e:
             raise ConnectError(*e.args) from e
+
+    def _query(self, sql_code: str):
+        try:
+            return super()._query(sql_code)
+        except self._oracle.DatabaseError as e:
+            raise QueryError(e)
 
     def md5_to_int(self, s: str) -> str:
         # standard_hash is faster than DBMS_CRYPTO.Hash

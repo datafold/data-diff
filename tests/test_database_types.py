@@ -1,3 +1,4 @@
+from contextlib import suppress
 import unittest
 import time
 from data_diff import database as db
@@ -195,6 +196,12 @@ def _insert_to_table(conn, table, values):
     if not isinstance(conn, db.BigQuery):
         conn.query("COMMIT", None)
 
+def _drop_table_if_exists(conn, table):
+    with suppress(db.QueryError):
+        if isinstance(conn, db.Oracle):
+            conn.query(f"DROP TABLE {table}", None)
+        else:
+            conn.query(f"DROP TABLE IF EXISTS {table}", None)
 
 class TestDiffCrossDatabaseTables(unittest.TestCase):
     @parameterized.expand(type_pairs, name_func=expand_params)
@@ -212,21 +219,13 @@ class TestDiffCrossDatabaseTables(unittest.TestCase):
         src_table = src_conn.quote(".".join(src_table_path))
         dst_table = dst_conn.quote(".".join(dst_table_path))
 
-        if isinstance(src_conn, db.Oracle):
-            src_conn.query(f"DROP TABLE {src_table}", None)
-        else:
-            src_conn.query(f"DROP TABLE IF EXISTS {src_table}", None)
-
+        _drop_table_if_exists(src_conn, src_table)
         src_conn.query(f"CREATE TABLE {src_table}(id int, col {source_type})", None)
         _insert_to_table(src_conn, src_table, enumerate(sample_values, 1))
 
         values_in_source = src_conn.query(f"SELECT id, col FROM {src_table}", list)
 
-        if isinstance(dst_conn, db.Oracle):
-            dst_conn.query(f"DROP TABLE {dst_table}", None)
-        else:
-            dst_conn.query(f"DROP TABLE IF EXISTS {dst_table}", None)
-
+        _drop_table_if_exists(dst_conn, dst_table)
         dst_conn.query(f"CREATE TABLE {dst_table}(id int, col {target_type})", None)
         _insert_to_table(dst_conn, dst_table, values_in_source)
 
@@ -251,3 +250,4 @@ class TestDiffCrossDatabaseTables(unittest.TestCase):
 
         duration = time.time() - start
         # print(f"source_db={source_db.__name__} target_db={target_db.__name__} source_type={source_type} target_type={target_type} duration={round(duration * 1000, 2)}ms")
+
