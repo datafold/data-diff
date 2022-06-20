@@ -158,9 +158,9 @@ DATABASE_TYPES = {
             # "datetime(6)",
         ],
         "float": [
-            # "float",
-            # "double",
-            # "numeric",
+            "float",
+            "double",
+            "numeric",
         ],
     },
 }
@@ -211,10 +211,10 @@ def _insert_to_table(conn, table, values):
     if isinstance(conn, db.Oracle):
         selects = []
         for j, sample in values:
-            selects.append( f"SELECT {j}, timestamp '{sample}' FROM dual" )
-        insertion_query += ' UNION ALL '.join(selects)
+            selects.append(f"SELECT {j}, timestamp '{sample}' FROM dual")
+        insertion_query += " UNION ALL ".join(selects)
     else:
-        insertion_query += ' VALUES '
+        insertion_query += " VALUES "
         for j, sample in values:
             if isinstance(sample, (float, Decimal)):
                 value = str(sample)
@@ -228,12 +228,14 @@ def _insert_to_table(conn, table, values):
     if not isinstance(conn, db.BigQuery):
         conn.query("COMMIT", None)
 
+
 def _drop_table_if_exists(conn, table):
     with suppress(db.QueryError):
         if isinstance(conn, db.Oracle):
             conn.query(f"DROP TABLE {table}", None)
         else:
             conn.query(f"DROP TABLE IF EXISTS {table}", None)
+
 
 class TestDiffCrossDatabaseTables(unittest.TestCase):
     @parameterized.expand(type_pairs, name_func=expand_params)
@@ -282,4 +284,3 @@ class TestDiffCrossDatabaseTables(unittest.TestCase):
 
         duration = time.time() - start
         # print(f"source_db={source_db.__name__} target_db={target_db.__name__} source_type={source_type} target_type={target_type} duration={round(duration * 1000, 2)}ms")
-
