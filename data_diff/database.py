@@ -386,6 +386,10 @@ class Postgres(ThreadedDatabase):
 
         super().__init__(thread_count=thread_count)
 
+    def _convert_db_precision_to_digits(self, p: int) -> int:
+        # Subtracting 2 due to wierd precision issues in Postgres
+        return super()._convert_db_precision_to_digits(p) - 2
+
     def create_connection(self):
         postgres = import_postgres()
         try:
@@ -506,9 +510,7 @@ class Presto(Database):
                     rounds=False,
                 )
 
-        regexps = {
-            r"decimal\((\d+),(\d+)\)": Decimal
-        }
+        regexps = {r"decimal\((\d+),(\d+)\)": Decimal}
         for regexp, cls in regexps.items():
             m = re.match(regexp + "$", type_repr)
             if m:
@@ -683,8 +685,8 @@ class Redshift(Postgres):
         "real": Float,
     }
 
-    def _convert_db_precision_to_digits(self, p: int) -> int:
-        return super()._convert_db_precision_to_digits(p // 2)
+    # def _convert_db_precision_to_digits(self, p: int) -> int:
+    #     return super()._convert_db_precision_to_digits(p // 2)
 
     def md5_to_int(self, s: str) -> str:
         return f"strtol(substring(md5({s}), {1+MD5_HEXDIGITS-CHECKSUM_HEXDIGITS}), 16)::decimal(38)"

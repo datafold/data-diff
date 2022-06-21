@@ -31,7 +31,24 @@ TYPE_SAMPLES = {
         "2022-05-01 15:10:03.003030",
         "2022-06-01 15:10:05.009900",
     ],
-    "float": [0.0, 0.1, 0.00188, 0.99999, 0.091919, 0.10, 10.0, 100.98],
+    "float": [
+        0.0,
+        0.1,
+        0.00188,
+        0.99999,
+        0.091919,
+        0.10,
+        10.0,
+        100.98,
+        0.001201923076923077,
+        1 / 3,
+        1 / 5,
+        1 / 109,
+        1 / 109489,
+        1 / 1094893892389,
+        1 / 10948938923893289,
+        3.141592653589793,
+    ],
 }
 
 DATABASE_TYPES = {
@@ -44,13 +61,14 @@ DATABASE_TYPES = {
         ],
         # https://www.postgresql.org/docs/current/datatype-datetime.html
         "datetime_no_timezone": [
-            # "timestamp(6) without time zone",
-            # "timestamp(3) without time zone",
-            # "timestamp(0) without time zone",
+            "timestamp(6) without time zone",
+            "timestamp(3) without time zone",
+            "timestamp(0) without time zone",
         ],
         # https://www.postgresql.org/docs/current/datatype-numeric.html
         "float": [
             "real",
+            "float",
             "double precision",
             "numeric(6,3)",
         ],
@@ -66,11 +84,11 @@ DATABASE_TYPES = {
         ],
         # https://dev.mysql.com/doc/refman/8.0/en/datetime.html
         "datetime_no_timezone": [
-            # "timestamp(6)",
-            # "timestamp(3)",
-            # "timestamp(0)",
-            # "timestamp",
-            # "datetime(6)",
+            "timestamp(6)",
+            "timestamp(3)",
+            "timestamp(0)",
+            "timestamp",
+            "datetime(6)",
         ],
         # https://dev.mysql.com/doc/refman/8.0/en/numeric-types.html
         "float": [
@@ -104,10 +122,10 @@ DATABASE_TYPES = {
         ],
         # https://docs.snowflake.com/en/sql-reference/data-types-datetime.html
         "datetime_no_timezone": [
-            # "timestamp(0)",
-            # "timestamp(3)",
-            # "timestamp(6)",
-            # "timestamp(9)",
+            "timestamp(0)",
+            "timestamp(3)",
+            "timestamp(6)",
+            "timestamp(9)",
         ],
         # https://docs.snowflake.com/en/sql-reference/data-types-numeric.html#decimal-numeric
         "float": [
@@ -152,11 +170,11 @@ DATABASE_TYPES = {
             # "bigint", # 8 bytes
         ],
         "datetime_no_timezone": [
-            # "timestamp(6)",
-            # "timestamp(3)",
-            # "timestamp(0)",
-            # "timestamp",
-            # "datetime(6)",
+            "timestamp(6)",
+            "timestamp(3)",
+            "timestamp(0)",
+            "timestamp",
+            "datetime(6)",
         ],
         "float": [
             "real",
@@ -231,6 +249,7 @@ def _insert_to_table(conn, table, values):
         insertion_query = insertion_query[0:-1]
 
     conn.query(insertion_query, None)
+
     if not isinstance(conn, db.BigQuery):
         conn.query("COMMIT", None)
 
