@@ -1,5 +1,6 @@
 import sys
 import time
+import json
 import logging
 from itertools import islice
 
@@ -146,15 +147,24 @@ def main(
         unique_diff_count = len({i[0] for _, i in diff})
         table1_count = differ.stats.get("table1_count")
         percent = 100 * unique_diff_count / (table1_count or 1)
-        print(f"Diff-Total: {len(diff)} changed rows out of {table1_count}")
-        print(f"Diff-Percent: {percent:.4f}%")
         plus = len([1 for op, _ in diff if op == "+"])
         minus = len([1 for op, _ in diff if op == "-"])
-        print(f"Diff-Split: +{plus}  -{minus}")
+
+        count = differ.stats["table_count"]
+        diff = {
+            "different_rows": len(diff),
+            "different_percent": percent,
+            "different_+": plus,
+            "different_-": minus,
+            "total": count,
+        }
+
+        print(json.dumps(diff, indent=2))
     else:
         for op, key in diff_iter:
             color = COLOR_SCHEME[op]
-            rich.print(f"[{color}]{op} {key!r}[/{color}]")
+            jsonl = json.dumps([op, list(key)])
+            rich.print(f"[{color}]{jsonl}[/{color}]")
             sys.stdout.flush()
 
     end = time.time()
