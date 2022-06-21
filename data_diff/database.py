@@ -1,3 +1,4 @@
+import math
 from functools import lru_cache
 from itertools import zip_longest
 import re
@@ -63,6 +64,7 @@ def import_presto():
 class ConnectError(Exception):
     pass
 
+
 class QueryError(Exception):
     pass
 
@@ -103,6 +105,26 @@ class TimestampTZ(TemporalType):
 
 class Datetime(TemporalType):
     pass
+
+
+@dataclass
+class NumericType(ColType):
+    # 'precision' signifies how many fractional digits (after the dot) we want to compare
+    precision: int
+
+
+class Float(NumericType):
+    pass
+
+
+class Decimal(NumericType):
+    pass
+
+
+@dataclass
+class Integer(Decimal):
+    def __post_init__(self):
+        assert self.precision == 0
 
 
 @dataclass
@@ -162,6 +184,19 @@ class AbstractDatabase(ABC):
 
             Rounded up/down according to coltype.rounds
 
+        - Floats/Decimals are expected in the format
+            "I.P"
+
+            Where I is the integer part of the number (as many digits as necessary),
+            and must be at least one digit (0).
+            P is the fractional digits, the amount of which is specified with
+            coltype.precision. Trailing zeroes may be necessary.
+
+            Note: This precision is different than the one used by databases. For decimals,
+            it's the same as "numeric_scale", and for floats, who use binary precision,
+            it can be calculated as log10(2**p)
+
+
         """
         ...
 
@@ -212,14 +247,39 @@ class Database(AbstractDatabase):
     def enable_interactive(self):
         self._interactive = True
 
-    def _parse_type(self, type_repr: str, datetime_precision: int = None, numeric_precision: int = None) -> ColType:
+    def _convert_db_precision_to_digits(self, p: int) -> int:
+        """Convert from binary precision, used by floats, to decimal precision."""
+        # See: https://en.wikipedia.org/wiki/Single-precision_floating-point_format
+        return math.floor(math.log(2**p, 10))
+
+    def _parse_type(
+        self, type_repr: str, datetime_precision: int = None, numeric_precision: int = None, numeric_scale: int = None
+    ) -> ColType:
         """ """
 
         cls = self.DATETIME_TYPES.get(type_repr)
         if cls:
             return cls(
-                precision=datetime_precision if datetime_precision is not None else DEFAULT_PRECISION,
+                precision=datetime_precision if datetime_precision is not None else DEFAULT_DATETIME_PRECISION,
                 rounds=self.ROUNDS_ON_PREC_LOSS,
+            )
+
+        cls = self.NUMERIC_TYPES.get(type_repr)
+        if cls:
+            if issubclass(cls, Integer):
+                # Some DBs have a constant numeric_scale, so they don't report it.
+                # We fill in the constant, so we need to ignore it for integers.
+                return cls(precision=0)
+
+            elif issubclass(cls, Decimal):
+                return cls(precision=numeric_scale)
+
+            assert issubclass(cls, Float)
+            # assert numeric_scale is None
+            return cls(
+                precision=self._convert_db_precision_to_digits(
+                    numeric_precision if numeric_precision is not None else DEFAULT_NUMERIC_PRECISION
+                )
             )
 
         return UnknownColType(type_repr)
@@ -228,7 +288,7 @@ class Database(AbstractDatabase):
         schema, table = self._normalize_table_path(path)
 
         return (
-            "SELECT column_name, data_type, datetime_precision, numeric_precision FROM information_schema.columns "
+            "SELECT column_name, data_type, datetime_precision, numeric_precision, numeric_scale FROM information_schema.columns "
             f"WHERE table_name = '{table}' AND table_schema = '{schema}'"
         )
 
@@ -250,7 +310,9 @@ class Database(AbstractDatabase):
         elif len(path) == 2:
             return path
 
-        raise ValueError(f"{self.__class__.__name__}: Bad table path for {self}: '{'.'.join(path)}'. Expected form: schema.table")
+        raise ValueError(
+            f"{self.__class__.__name__}: Bad table path for {self}: '{'.'.join(path)}'. Expected form: schema.table"
+        )
 
     def parse_table_name(self, name: str) -> DbPath:
         return parse_table_name(name)
@@ -295,7 +357,8 @@ MD5_HEXDIGITS = 32
 _CHECKSUM_BITSIZE = CHECKSUM_HEXDIGITS << 2
 CHECKSUM_MASK = (2**_CHECKSUM_BITSIZE) - 1
 
-DEFAULT_PRECISION = 6
+DEFAULT_DATETIME_PRECISION = 6
+DEFAULT_NUMERIC_PRECISION = 24
 
 TIMESTAMP_PRECISION_POS = 20  # len("2022-06-03 12:24:35.") == 20
 
@@ -307,6 +370,13 @@ class Postgres(ThreadedDatabase):
         "timestamp": Timestamp,
         # "datetime": Datetime,
     }
+    NUMERIC_TYPES = {
+        "double precision": Float,
+        "real": Float,
+        "decimal": Decimal,
+        "integer": Integer,
+        "numeric": Decimal,
+    }
     ROUNDS_ON_PREC_LOSS = True
 
     default_schema = "public"
@@ -315,6 +385,10 @@ class Postgres(ThreadedDatabase):
         self.args = dict(host=host, port=port, database=database, user=user, password=password, **kw)
 
         super().__init__(thread_count=thread_count)
+
+    def _convert_db_precision_to_digits(self, p: int) -> int:
+        # Subtracting 2 due to wierd precision issues in Postgres
+        return super()._convert_db_precision_to_digits(p) - 2
 
     def create_connection(self):
         postgres = import_postgres()
@@ -351,6 +425,9 @@ class Postgres(ThreadedDatabase):
                 timestamp6 = f"to_char({value}::timestamp(6), 'YYYY-mm-dd HH24:MI:SS.US')"
                 return f"RPAD(LEFT({timestamp6}, {TIMESTAMP_PRECISION_POS+coltype.precision}), {TIMESTAMP_PRECISION_POS+6}, '0')"
 
+        elif isinstance(coltype, NumericType):
+            value = f"{value}::decimal(38, {coltype.precision})"
+
         return self.to_string(f"{value}")
 
 
@@ -361,6 +438,11 @@ class Presto(Database):
         "timestamp without time zone": Timestamp,
         "timestamp": Timestamp,
         # "datetime": Datetime,
+    }
+    NUMERIC_TYPES = {
+        "integer": Integer,
+        "real": Float,
+        "double": Float,
     }
     ROUNDS_ON_PREC_LOSS = True
 
@@ -401,6 +483,9 @@ class Presto(Database):
                 f"RPAD(RPAD({s}, {TIMESTAMP_PRECISION_POS+coltype.precision}, '.'), {TIMESTAMP_PRECISION_POS+6}, '0')"
             )
 
+        elif isinstance(coltype, NumericType):
+            value = f"cast({value} as decimal(38,{coltype.precision}))"
+
         return self.to_string(value)
 
     def select_table_schema(self, path: DbPath) -> str:
@@ -412,7 +497,6 @@ class Presto(Database):
         )
 
     def _parse_type(self, type_repr: str, datetime_precision: int = None, numeric_precision: int = None) -> ColType:
-        """ """
         regexps = {
             r"timestamp\((\d)\)": Timestamp,
             r"timestamp\((\d)\) with time zone": TimestampTZ,
@@ -422,8 +506,29 @@ class Presto(Database):
             if m:
                 datetime_precision = int(m.group(1))
                 return cls(
-                    precision=datetime_precision if datetime_precision is not None else DEFAULT_PRECISION, rounds=False
+                    precision=datetime_precision if datetime_precision is not None else DEFAULT_DATETIME_PRECISION,
+                    rounds=False,
                 )
+
+        regexps = {r"decimal\((\d+),(\d+)\)": Decimal}
+        for regexp, cls in regexps.items():
+            m = re.match(regexp + "$", type_repr)
+            if m:
+                prec, scale = map(int, m.groups())
+                return cls(scale)
+
+        cls = self.NUMERIC_TYPES.get(type_repr)
+        if cls:
+            if issubclass(cls, Integer):
+                assert numeric_precision is not None
+                return cls(0)
+
+            assert issubclass(cls, Float)
+            return cls(
+                precision=self._convert_db_precision_to_digits(
+                    numeric_precision if numeric_precision is not None else DEFAULT_NUMERIC_PRECISION
+                )
+            )
 
         return UnknownColType(type_repr)
 
@@ -432,6 +537,12 @@ class MySQL(ThreadedDatabase):
     DATETIME_TYPES = {
         "datetime": Datetime,
         "timestamp": Timestamp,
+    }
+    NUMERIC_TYPES = {
+        "double": Float,
+        "float": Float,
+        "decimal": Decimal,
+        "int": Integer,
     }
     ROUNDS_ON_PREC_LOSS = True
 
@@ -471,6 +582,9 @@ class MySQL(ThreadedDatabase):
             else:
                 s = self.to_string(f"cast({value} as datetime(6))")
                 return f"RPAD(RPAD({s}, {TIMESTAMP_PRECISION_POS+coltype.precision}, '.'), {TIMESTAMP_PRECISION_POS+6}, '0')"
+
+        elif isinstance(coltype, NumericType):
+            value = f"cast({value} as decimal(38,{coltype.precision}))"
 
         return self.to_string(f"{value}")
 
@@ -513,16 +627,24 @@ class Oracle(ThreadedDatabase):
         (table,) = path
 
         return (
-            f"SELECT column_name, data_type, 6 as datetime_precision, data_precision as numeric_precision"
+            f"SELECT column_name, data_type, 6 as datetime_precision, data_precision as numeric_precision, data_scale as numeric_scale"
             f" FROM USER_TAB_COLUMNS WHERE table_name = '{table.upper()}'"
         )
 
     def normalize_value_by_type(self, value: str, coltype: ColType) -> str:
-        if isinstance(coltype, PrecisionType):
+        if isinstance(coltype, TemporalType):
             return f"to_char(cast({value} as timestamp({coltype.precision})), 'YYYY-MM-DD HH24:MI:SS.FF6')"
+        elif isinstance(coltype, NumericType):
+            # FM999.9990
+            format_str = "FM" + "9" * (38 - coltype.precision)
+            if coltype.precision:
+                format_str += "0." + "9" * (coltype.precision - 1) + "0"
+            return f"to_char({value}, '{format_str}')"
         return self.to_string(f"{value}")
 
-    def _parse_type(self, type_repr: str, datetime_precision: int = None, numeric_precision: int = None) -> ColType:
+    def _parse_type(
+        self, type_repr: str, datetime_precision: int = None, numeric_precision: int = None, numeric_scale: int = None
+    ) -> ColType:
         """ """
         regexps = {
             r"TIMESTAMP\((\d)\) WITH LOCAL TIME ZONE": Timestamp,
@@ -532,14 +654,40 @@ class Oracle(ThreadedDatabase):
             m = re.match(regexp + "$", type_repr)
             if m:
                 datetime_precision = int(m.group(1))
-                return cls(precision=datetime_precision if datetime_precision is not None else DEFAULT_PRECISION,
-                    rounds=self.ROUNDS_ON_PREC_LOSS
+                return cls(
+                    precision=datetime_precision if datetime_precision is not None else DEFAULT_DATETIME_PRECISION,
+                    rounds=self.ROUNDS_ON_PREC_LOSS,
                 )
+
+        cls = {
+            "NUMBER": Decimal,
+            "FLOAT": Float,
+        }.get(type_repr, None)
+        if cls:
+            if issubclass(cls, Decimal):
+                assert numeric_scale is not None, (type_repr, numeric_precision, numeric_scale)
+                return cls(precision=numeric_scale)
+
+            assert issubclass(cls, Float)
+            return cls(
+                precision=self._convert_db_precision_to_digits(
+                    numeric_precision if numeric_precision is not None else DEFAULT_NUMERIC_PRECISION
+                )
+            )
 
         return UnknownColType(type_repr)
 
 
 class Redshift(Postgres):
+    NUMERIC_TYPES = {
+        **Postgres.NUMERIC_TYPES,
+        "double": Float,
+        "real": Float,
+    }
+
+    # def _convert_db_precision_to_digits(self, p: int) -> int:
+    #     return super()._convert_db_precision_to_digits(p // 2)
+
     def md5_to_int(self, s: str) -> str:
         return f"strtol(substring(md5({s}), {1+MD5_HEXDIGITS-CHECKSUM_HEXDIGITS}), 16)::decimal(38)"
 
@@ -559,6 +707,9 @@ class Redshift(Postgres):
             else:
                 timestamp6 = f"to_char({value}::timestamp(6), 'YYYY-mm-dd HH24:MI:SS.US')"
             return f"RPAD(LEFT({timestamp6}, {TIMESTAMP_PRECISION_POS+coltype.precision}), {TIMESTAMP_PRECISION_POS+6}, '0')"
+
+        elif isinstance(coltype, NumericType):
+            value = f"{value}::decimal(38,{coltype.precision})"
 
         return self.to_string(f"{value}")
 
@@ -594,6 +745,14 @@ class BigQuery(Database):
     DATETIME_TYPES = {
         "TIMESTAMP": Timestamp,
         "DATETIME": Datetime,
+    }
+    NUMERIC_TYPES = {
+        "INT64": Integer,
+        "INT32": Integer,
+        "NUMERIC": Decimal,
+        "BIGNUMERIC": Decimal,
+        "FLOAT64": Float,
+        "FLOAT32": Float,
     }
     ROUNDS_ON_PREC_LOSS = False  # Technically BigQuery doesn't allow implicit rounding or truncation
 
@@ -640,12 +799,12 @@ class BigQuery(Database):
         schema, table = self._normalize_table_path(path)
 
         return (
-            f"SELECT column_name, data_type, 6 as datetime_precision, 6 as numeric_precision FROM {schema}.INFORMATION_SCHEMA.COLUMNS "
+            f"SELECT column_name, data_type, 6 as datetime_precision, 38 as numeric_precision, 9 as numeric_scale FROM {schema}.INFORMATION_SCHEMA.COLUMNS "
             f"WHERE table_name = '{table}' AND table_schema = '{schema}'"
         )
 
     def normalize_value_by_type(self, value: str, coltype: ColType) -> str:
-        if isinstance(coltype, PrecisionType):
+        if isinstance(coltype, TemporalType):
             if coltype.rounds:
                 timestamp = f"timestamp_micros(cast(round(unix_micros(cast({value} as timestamp))/1000000, {coltype.precision})*1000000 as int))"
                 return f"FORMAT_TIMESTAMP('%F %H:%M:%E6S', {timestamp})"
@@ -657,6 +816,12 @@ class BigQuery(Database):
 
                 timestamp6 = f"FORMAT_TIMESTAMP('%F %H:%M:%E6S', {value})"
                 return f"RPAD(LEFT({timestamp6}, {TIMESTAMP_PRECISION_POS+coltype.precision}), {TIMESTAMP_PRECISION_POS+6}, '0')"
+        elif isinstance(coltype, Integer):
+            pass
+
+        elif isinstance(coltype, NumericType):
+            # value = f"cast({value} as decimal)"
+            return f"format('%.{coltype.precision}f', ({value}))"
 
         return self.to_string(f"{value}")
 
@@ -670,6 +835,10 @@ class Snowflake(Database):
         "TIMESTAMP_NTZ": Timestamp,
         "TIMESTAMP_LTZ": Timestamp,
         "TIMESTAMP_TZ": TimestampTZ,
+    }
+    NUMERIC_TYPES = {
+        "NUMBER": Decimal,
+        "FLOAT": Float,
     }
     ROUNDS_ON_PREC_LOSS = False
 
@@ -729,13 +898,16 @@ class Snowflake(Database):
         return super().select_table_schema((schema, table))
 
     def normalize_value_by_type(self, value: str, coltype: ColType) -> str:
-        if isinstance(coltype, PrecisionType):
+        if isinstance(coltype, TemporalType):
             if coltype.rounds:
                 timestamp = f"to_timestamp(round(date_part(epoch_nanosecond, {value}::timestamp(9))/1000000000, {coltype.precision}))"
             else:
                 timestamp = f"cast({value} as timestamp({coltype.precision}))"
 
             return f"to_char({timestamp}, 'YYYY-MM-DD HH24:MI:SS.FF6')"
+
+        elif isinstance(coltype, NumericType):
+            value = f"cast({value} as decimal(38, {coltype.precision}))"
 
         return self.to_string(f"{value}")
 

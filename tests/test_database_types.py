@@ -1,13 +1,20 @@
 from contextlib import suppress
 import unittest
 import time
+import logging
+from decimal import Decimal
+
+from parameterized import parameterized, parameterized_class
+import preql
+
 from data_diff import database as db
 from data_diff.diff_tables import TableDiffer, TableSegment
 from parameterized import parameterized, parameterized_class
 from .common import CONN_STRINGS
 import logging
 
-logging.getLogger("diff_tables").setLevel(logging.WARN)
+
+logging.getLogger("diff_tables").setLevel(logging.ERROR)
 logging.getLogger("database").setLevel(logging.WARN)
 
 CONNS = {k: db.connect_to_uri(v) for k, v in CONN_STRINGS.items()}
@@ -24,7 +31,24 @@ TYPE_SAMPLES = {
         "2022-05-01 15:10:03.003030",
         "2022-06-01 15:10:05.009900",
     ],
-    "float": [0.0, 0.1, 0.10, 10.0, 100.98],
+    "float": [
+        0.0,
+        0.1,
+        0.00188,
+        0.99999,
+        0.091919,
+        0.10,
+        10.0,
+        100.98,
+        0.001201923076923077,
+        1 / 3,
+        1 / 5,
+        1 / 109,
+        1 / 109489,
+        1 / 1094893892389,
+        1 / 10948938923893289,
+        3.141592653589793,
+    ],
 }
 
 DATABASE_TYPES = {
@@ -43,9 +67,10 @@ DATABASE_TYPES = {
         ],
         # https://www.postgresql.org/docs/current/datatype-numeric.html
         "float": [
-            # "real",
-            # "double precision",
-            # "numeric(6,3)",
+            "real",
+            "float",
+            "double precision",
+            "numeric(6,3)",
         ],
     },
     db.MySQL: {
@@ -58,18 +83,30 @@ DATABASE_TYPES = {
             # "bigint", # 8 bytes
         ],
         # https://dev.mysql.com/doc/refman/8.0/en/datetime.html
-        "datetime_no_timezone": ["timestamp(6)", "timestamp(3)", "timestamp(0)", "timestamp", "datetime(6)"],
+        "datetime_no_timezone": [
+            "timestamp(6)",
+            "timestamp(3)",
+            "timestamp(0)",
+            "timestamp",
+            "datetime(6)",
+        ],
         # https://dev.mysql.com/doc/refman/8.0/en/numeric-types.html
         "float": [
-            # "float",
-            # "double",
-            # "numeric",
+            "float",
+            "double",
+            "numeric",
+            "numeric(65, 10)",
         ],
     },
     db.BigQuery: {
         "datetime_no_timezone": [
             "timestamp",
             # "datetime",
+        ],
+        "float": [
+            "numeric",
+            "float64",
+            "bignumeric",
         ],
     },
     db.Snowflake: {
@@ -92,8 +129,8 @@ DATABASE_TYPES = {
         ],
         # https://docs.snowflake.com/en/sql-reference/data-types-numeric.html#decimal-numeric
         "float": [
-            # "float"
-            # "numeric",
+            "float",
+            "numeric",
         ],
     },
     db.Redshift: {
@@ -105,9 +142,9 @@ DATABASE_TYPES = {
         ],
         # https://docs.aws.amazon.com/redshift/latest/dg/r_Numeric_types201.html#r_Numeric_types201-floating-point-types
         "float": [
-            # "float4",
-            # "float8",
-            # "numeric",
+            "float4",
+            "float8",
+            "numeric",
         ],
     },
     db.Oracle: {
@@ -120,8 +157,8 @@ DATABASE_TYPES = {
             "timestamp(9) with local time zone",
         ],
         "float": [
-            # "float",
-            # "numeric",
+            "float",
+            "numeric",
         ],
     },
     db.Presto: {
@@ -132,11 +169,18 @@ DATABASE_TYPES = {
             # "int", # 4 bytes
             # "bigint", # 8 bytes
         ],
-        "datetime_no_timezone": ["timestamp(6)", "timestamp(3)", "timestamp(0)", "timestamp", "datetime(6)"],
+        "datetime_no_timezone": [
+            "timestamp(6)",
+            "timestamp(3)",
+            "timestamp(0)",
+            "timestamp",
+            "datetime(6)",
+        ],
         "float": [
-            # "float",
-            # "double",
-            # "numeric",
+            "real",
+            "double",
+            "decimal(10,2)",
+            "decimal(30,6)",
         ],
     },
 }
@@ -150,7 +194,10 @@ type_pairs = []
 # target_type: (int, bigint) }
 for source_db, source_type_categories in DATABASE_TYPES.items():
     for target_db, target_type_categories in DATABASE_TYPES.items():
-        for type_category, source_types in source_type_categories.items():  # int, datetime, ..
+        for (
+            type_category,
+            source_types,
+        ) in source_type_categories.items():  # int, datetime, ..
             for source_type in source_types:
                 for target_type in target_type_categories[type_category]:
                     if CONNS.get(source_db, False) and CONNS.get(target_db, False):
@@ -184,24 +231,37 @@ def _insert_to_table(conn, table, values):
     if isinstance(conn, db.Oracle):
         selects = []
         for j, sample in values:
-            selects.append( f"SELECT {j}, timestamp '{sample}' FROM dual" )
-        insertion_query += ' UNION ALL '.join(selects)
+            if isinstance(sample, (float, Decimal, int)):
+                value = str(sample)
+            else:
+                value = f"timestamp '{sample}'"
+            selects.append(f"SELECT {j}, {value} FROM dual")
+        insertion_query += " UNION ALL ".join(selects)
     else:
-        insertion_query += ' VALUES '
+        insertion_query += " VALUES "
         for j, sample in values:
-            insertion_query += f"({j}, '{sample}'),"
+            if isinstance(sample, (float, Decimal)):
+                value = str(sample)
+            else:
+                value = f"'{sample}'"
+            insertion_query += f"({j}, {value}),"
+
         insertion_query = insertion_query[0:-1]
 
     conn.query(insertion_query, None)
+
     if not isinstance(conn, db.BigQuery):
         conn.query("COMMIT", None)
+
 
 def _drop_table_if_exists(conn, table):
     with suppress(db.QueryError):
         if isinstance(conn, db.Oracle):
             conn.query(f"DROP TABLE {table}", None)
+            conn.query(f"DROP TABLE {table}", None)
         else:
             conn.query(f"DROP TABLE IF EXISTS {table}", None)
+
 
 class TestDiffCrossDatabaseTables(unittest.TestCase):
     @parameterized.expand(type_pairs, name_func=expand_params)
@@ -214,8 +274,12 @@ class TestDiffCrossDatabaseTables(unittest.TestCase):
         self.connections = [self.src_conn, self.dst_conn]
         sample_values = TYPE_SAMPLES[type_category]
 
-        src_table_path = src_conn.parse_table_name("src")
-        dst_table_path = dst_conn.parse_table_name("dst")
+        # Limit in MySQL is 64
+        src_table_name = f"src_{self._testMethodName[:60]}"
+        dst_table_name = f"dst_{self._testMethodName[:60]}"
+
+        src_table_path = src_conn.parse_table_name(src_table_name)
+        dst_table_path = dst_conn.parse_table_name(dst_table_name)
         src_table = src_conn.quote(".".join(src_table_path))
         dst_table = dst_conn.quote(".".join(dst_table_path))
 
@@ -250,4 +314,3 @@ class TestDiffCrossDatabaseTables(unittest.TestCase):
 
         duration = time.time() - start
         # print(f"source_db={source_db.__name__} target_db={target_db.__name__} source_type={source_type} target_type={target_type} duration={round(duration * 1000, 2)}ms")
-
