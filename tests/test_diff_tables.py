@@ -33,8 +33,24 @@ class TestWithConnection(unittest.TestCase):
         cls.connection.close()
 
 
+    # Fallback for test runners that doesn't support setUpClass/tearDownClass
+    def setUp(self) -> None:
+        if not hasattr(self, 'connection'):
+            self.setUpClass.__func__(self)
+            self.private_connection = True
+
+        return super().setUp()
+
+    def tearDown(self) -> None:
+        if hasattr(self, 'private_connection'):
+            self.tearDownClass.__func__(self)
+
+        return super().tearDown()
+
+
 class TestDates(TestWithConnection):
     def setUp(self):
+        super().setUp()
         self.connection.query("DROP TABLE IF EXISTS a", None)
         self.connection.query("DROP TABLE IF EXISTS b", None)
         self.preql(
@@ -110,6 +126,7 @@ class TestDates(TestWithConnection):
 
 class TestDiffTables(TestWithConnection):
     def setUp(self):
+        super().setUp()
         self.connection.query("DROP TABLE IF EXISTS ratings_test", None)
         self.connection.query("DROP TABLE IF EXISTS ratings_test2", None)
         self.preql.load("./tests/setup.pql")
@@ -221,9 +238,9 @@ class TestDiffTables(TestWithConnection):
 
 class TestTableSegment(TestWithConnection):
     def setUp(self) -> None:
+        super().setUp()
         self.table = TableSegment(self.connection, ("ratings_test",), "id", "timestamp")
         self.table2 = TableSegment(self.connection, ("ratings_test2",), "id", "timestamp")
-        return super().setUp()
 
     def test_table_segment(self):
         early = datetime.datetime(2021, 1, 1, 0, 0)

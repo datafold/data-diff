@@ -274,8 +274,12 @@ class TestDiffCrossDatabaseTables(unittest.TestCase):
         self.connections = [self.src_conn, self.dst_conn]
         sample_values = TYPE_SAMPLES[type_category]
 
-        src_table_path = src_conn.parse_table_name("src")
-        dst_table_path = dst_conn.parse_table_name("dst")
+        # Limit in MySQL is 64
+        src_table_name = f"src_{self._testMethodName[:60]}"
+        dst_table_name = f"dst_{self._testMethodName[:60]}"
+
+        src_table_path = src_conn.parse_table_name(src_table_name)
+        dst_table_path = dst_conn.parse_table_name(dst_table_name)
         src_table = src_conn.quote(".".join(src_table_path))
         dst_table = dst_conn.quote(".".join(dst_table_path))
 
