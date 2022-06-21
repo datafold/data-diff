@@ -209,8 +209,8 @@ class Database(AbstractDatabase):
     Instanciated using :meth:`~data_diff.connect_to_uri`
     """
 
-    DATETIME_TYPES = NotImplemented
-    default_schema = NotImplemented
+    DATETIME_TYPES = {}
+    default_schema = None
 
     def query(self, sql_ast: SqlOrStr, res_type: type):
         "Query the given SQL code/AST, and attempt to convert the result to type 'res_type'"
@@ -306,13 +306,15 @@ class Database(AbstractDatabase):
 
     def _normalize_table_path(self, path: DbPath) -> DbPath:
         if len(path) == 1:
-            return self.default_schema, path[0]
-        elif len(path) == 2:
-            return path
+            if self.default_schema:
+                return self.default_schema, path[0]
+        elif len(path) != 2:
+            raise ValueError(
+                f"{self.__class__.__name__}: Bad table path for {self}: '{'.'.join(path)}'. Expected form: schema.table"
+            )
 
-        raise ValueError(
-            f"{self.__class__.__name__}: Bad table path for {self}: '{'.'.join(path)}'. Expected form: schema.table"
-        )
+        return path
+
 
     def parse_table_name(self, name: str) -> DbPath:
         return parse_table_name(name)
@@ -712,6 +714,14 @@ class Redshift(Postgres):
             value = f"{value}::decimal(38,{coltype.precision})"
 
         return self.to_string(f"{value}")
+
+    def select_table_schema(self, path: DbPath) -> str:
+        schema, table = self._normalize_table_path(path)
+
+        return (
+            "SELECT column_name, data_type, datetime_precision, numeric_precision, numeric_scale FROM information_schema.columns "
+            f"WHERE table_name = '{table.lower()}' AND table_schema = '{schema.lower()}'"
+        )
 
 
 class MsSQL(ThreadedDatabase):
