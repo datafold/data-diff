@@ -23,14 +23,17 @@ def parse_table_name(t):
     return tuple(t.split("."))
 
 
-def import_helper(s: str):
+def import_helper(package: str = None, text=""):
     def dec(f):
         @wraps(f)
         def _inner():
             try:
                 return f()
             except ModuleNotFoundError as e:
-                raise ModuleNotFoundError(f"{e}\n\nYou can install it using 'pip install data-diff[{s}]'.")
+                s = text
+                if package:
+                    s += f"You can install it using 'pip install data-diff[{package}]'."
+                raise ModuleNotFoundError(f"{e}\n\n{s}\n")
 
         return _inner
 
@@ -77,6 +80,13 @@ def import_presto():
     import prestodb
 
     return prestodb
+
+
+@import_helper(text="Please install BigQuery and configure your google-cloud access.")
+def import_bigquery():
+    from google.cloud import bigquery
+
+    return bigquery
 
 
 class ConnectError(Exception):
@@ -797,7 +807,7 @@ class BigQuery(Database):
     ROUNDS_ON_PREC_LOSS = False  # Technically BigQuery doesn't allow implicit rounding or truncation
 
     def __init__(self, project, *, dataset, **kw):
-        from google.cloud import bigquery
+        bigquery = import_bigquery()
 
         self._client = bigquery.Client(project, **kw)
         self.project = project
