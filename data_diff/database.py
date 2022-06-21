@@ -109,6 +109,7 @@ class Datetime(TemporalType):
 
 @dataclass
 class NumericType(ColType):
+    # 'precision' signifies how many fractional digits (after the dot) we want to compare
     precision: int
 
 
@@ -183,6 +184,19 @@ class AbstractDatabase(ABC):
 
             Rounded up/down according to coltype.rounds
 
+        - Floats/Decimals are expected in the format
+            "I.P"
+
+            Where I is the integer part of the number (as many digits as necessary),
+            and must be at least one digit (0).
+            P is the fractional digits, the amount of which is specified with
+            coltype.precision. Trailing zeroes may be necessary.
+
+            Note: This precision is different than the one used by databases. For decimals,
+            it's the same as "numeric_scale", and for floats, who use binary precision,
+            it can be calculated as log10(2**p)
+
+
         """
         ...
 
@@ -234,6 +248,7 @@ class Database(AbstractDatabase):
         self._interactive = True
 
     def _convert_db_precision_to_digits(self, p: int) -> int:
+        """Convert from binary precision, used by floats, to decimal precision."""
         # See: https://en.wikipedia.org/wiki/Single-precision_floating-point_format
         return math.floor(math.log(2**p, 10))
 
