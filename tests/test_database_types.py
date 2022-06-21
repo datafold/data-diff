@@ -159,9 +159,10 @@ DATABASE_TYPES = {
             # "datetime(6)",
         ],
         "float": [
-            "float",
+            "real",
             "double",
-            "numeric",
+            "decimal(10,2)",
+            "decimal(30,6)",
         ],
     },
 }

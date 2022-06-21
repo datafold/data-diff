@@ -438,6 +438,7 @@ class Presto(Database):
     NUMERIC_TYPES = {
         "integer": Integer,
         "real": Float,
+        "double": Float,
     }
     ROUNDS_ON_PREC_LOSS = True
 
@@ -492,7 +493,6 @@ class Presto(Database):
         )
 
     def _parse_type(self, type_repr: str, datetime_precision: int = None, numeric_precision: int = None) -> ColType:
-        """ """
         regexps = {
             r"timestamp\((\d)\)": Timestamp,
             r"timestamp\((\d)\) with time zone": TimestampTZ,
@@ -506,13 +506,20 @@ class Presto(Database):
                     rounds=False,
                 )
 
+        regexps = {
+            r"decimal\((\d+),(\d+)\)": Decimal
+        }
+        for regexp, cls in regexps.items():
+            m = re.match(regexp + "$", type_repr)
+            if m:
+                prec, scale = map(int, m.groups())
+                return cls(scale)
+
         cls = self.NUMERIC_TYPES.get(type_repr)
         if cls:
             if issubclass(cls, Integer):
                 assert numeric_precision is not None
                 return cls(0)
-            elif issubclass(cls, Decimal):
-                return cls(6)
 
             assert issubclass(cls, Float)
             return cls(
@@ -533,7 +540,7 @@ class MySQL(ThreadedDatabase):
         "double": Float,
         "float": Float,
         "decimal": Decimal,
-        "int": Decimal,
+        "int": Integer,
     }
     ROUNDS_ON_PREC_LOSS = True
 
