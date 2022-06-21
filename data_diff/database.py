@@ -1,5 +1,5 @@
 import math
-from functools import lru_cache
+from functools import lru_cache, wraps
 from itertools import zip_longest
 import re
 from abc import ABC, abstractmethod
@@ -23,6 +23,21 @@ def parse_table_name(t):
     return tuple(t.split("."))
 
 
+def import_helper(s: str):
+    def dec(f):
+        @wraps(f)
+        def _inner():
+            try:
+                return f()
+            except ModuleNotFoundError as e:
+                raise ModuleNotFoundError(f"{e}\n\nYou can install it using 'pip install data-diff[{s}]'.")
+
+        return _inner
+
+    return dec
+
+
+@import_helper("pgsql")
 def import_postgres():
     import psycopg2
     import psycopg2.extras
@@ -31,12 +46,14 @@ def import_postgres():
     return psycopg2
 
 
+@import_helper("mysql")
 def import_mysql():
     import mysql.connector
 
     return mysql.connector
 
 
+@import_helper("snowflake")
 def import_snowflake():
     import snowflake.connector
 
@@ -55,6 +72,7 @@ def import_oracle():
     return cx_Oracle
 
 
+@import_helper("presto")
 def import_presto():
     import prestodb
 
@@ -344,7 +362,6 @@ class Database(AbstractDatabase):
 
         return path
 
-
     def parse_table_name(self, name: str) -> DbPath:
         return parse_table_name(name)
 
@@ -356,12 +373,16 @@ class ThreadedDatabase(Database):
     """
 
     def __init__(self, thread_count=1):
+        self._init_error = None
         self._queue = ThreadPoolExecutor(thread_count, initializer=self.set_conn)
         self.thread_local = threading.local()
 
     def set_conn(self):
         assert not hasattr(self.thread_local, "conn")
-        self.thread_local.conn = self.create_connection()
+        try:
+            self.thread_local.conn = self.create_connection()
+        except ModuleNotFoundError as e:
+            self._init_error = e
 
     def _query(self, sql_code: str):
         r = self._queue.submit(self._query_in_worker, sql_code)
@@ -369,6 +390,8 @@ class ThreadedDatabase(Database):
 
     def _query_in_worker(self, sql_code: str):
         "This method runs in a worker thread"
+        if self._init_error:
+            raise self._init_error
         return _query_conn(self.thread_local.conn, sql_code)
 
     def close(self):

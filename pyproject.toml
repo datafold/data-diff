@@ -50,6 +50,7 @@ mysql = ["mysql-connector-python"]
 pgsql = ["psycopg2"]
 snowflake = ["snowflake-connector-python"]
 presto = ["presto-python-client"]
+oracle = ["cx_Oracle"]
 
 [build-system]
 requires = ["poetry-core>=1.0.0"]
