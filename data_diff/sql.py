@@ -46,7 +46,8 @@ class TableName(Sql):
     name: DbPath
 
     def compile(self, c: Compiler):
-        return ".".join(map(c.quote, self.name))
+        path = c.database._normalize_table_path(self.name)
+        return ".".join(map(c.quote, path))
 
 
 @dataclass
