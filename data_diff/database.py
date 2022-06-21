@@ -478,7 +478,6 @@ class Presto(Database):
             self.args["auth"] = prestodb.auth.BasicAuthentication(user, password)
         if schema: #if schema was specified in URI, override default
             self.default_schema = schema
-        print(kw)
         self._conn = prestodb.dbapi.connect(**self.args)
         if "cert" in kw: #if a certificate was specified in URI, verify session with cert
             self._conn._http_session.verify = kw.get("cert")
