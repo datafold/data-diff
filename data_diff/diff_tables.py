@@ -384,8 +384,9 @@ class TableDiffer:
 
             # This happens when the initial bisection threshold is larger than
             # the table itself.
-            if level == 0 and not self.stats.get("table_count", False):
-                self.stats["table_count"] = self.stats.get("table_count", 0) + max(len(rows1), len(rows2))
+            if level == 0 and not self.stats.get("table1_count", False):
+                self.stats["table1_count"] = self.stats.get("table1_count", 0) + len(rows1)
+                self.stats["table2_count"] = self.stats.get("table2_count", 0) + len(rows2)
 
             logger.info(". " * level + f"Diff found {len(diff)} different rows.")
             self.stats["rows_downloaded"] = self.stats.get("rows_downloaded", 0) + max(len(rows1), len(rows2))
@@ -426,7 +427,8 @@ class TableDiffer:
             return
 
         if level == 1:
-            self.stats["table_count"] = self.stats.get("table_count", 0) + max(count1, count2)
+            self.stats["table1_count"] = self.stats.get("table_count1", 0) + count1
+            self.stats["table2_count"] = self.stats.get("table_count2", 0) + count2
 
         if checksum1 != checksum2:
             yield from self._bisect_and_diff_tables(table1, table2, level=level, max_rows=max(count1, count2))
