@@ -131,6 +131,10 @@ class Integer(Decimal):
 class UnknownColType(ColType):
     text: str
 
+    def __post_init__(self):
+        logger.warn(f"Column of type '{self.text}' has no compatibility handling. "
+                     "If encoding/formatting differs between databases, it may result in false positives.")
+
 
 class AbstractDatabase(ABC):
     @abstractmethod
@@ -173,16 +177,24 @@ class AbstractDatabase(ABC):
         "Close connection(s) to the database instance. Querying will stop functioning."
         ...
 
+
     @abstractmethod
-    def normalize_value_by_type(value: str, coltype: ColType) -> str:
-        """Creates an SQL expression, that converts 'value' to a normalized representation.
+    def normalize_timestamp(self, value: str, coltype: ColType) -> str:
+        """Creates an SQL expression, that converts 'value' to a normalized timestamp.
 
-        The returned expression must accept any SQL value, and return a string.
+        The returned expression must accept any SQL datetime/timestamp, and return a string.
 
-        - Dates are expected in the format:
-            "YYYY-MM-DD HH:mm:SS.FFFFFF"
+        Date format: "YYYY-MM-DD HH:mm:SS.FFFFFF"
 
-            Rounded up/down according to coltype.rounds
+        Precision of dates should be rounded up/down according to coltype.rounds
+        """
+        ...
+
+    @abstractmethod
+    def normalize_number(self, value: str, coltype: ColType) -> str:
+        """Creates an SQL expression, that converts 'value' to a normalized number.
+
+        The returned expression must accept any SQL int/numeric/float, and return a string.
 
         - Floats/Decimals are expected in the format
             "I.P"
@@ -191,14 +203,31 @@ class AbstractDatabase(ABC):
             and must be at least one digit (0).
             P is the fractional digits, the amount of which is specified with
             coltype.precision. Trailing zeroes may be necessary.
+            If P is 0, the dot is omitted.
 
             Note: This precision is different than the one used by databases. For decimals,
-            it's the same as "numeric_scale", and for floats, who use binary precision,
-            it can be calculated as log10(2**p)
-
-
+            it's the same as ``numeric_scale``, and for floats, who use binary precision,
+            it can be calculated as ``log10(2**numeric_precision)``.
         """
         ...
+
+    def normalize_value_by_type(self, value: str, coltype: ColType) -> str:
+        """Creates an SQL expression, that converts 'value' to a normalized representation.
+
+        The returned expression must accept any SQL value, and return a string.
+
+        The default implementation dispatches to a method according to ``coltype``:
+
+            TemporalType -> normalize_timestamp()
+            NumericType  -> normalize_number()
+            -else-       -> to_string()
+
+        """
+        if isinstance(coltype, TemporalType):
+            return self.normalize_timestamp(value, coltype)
+        elif isinstance(coltype, NumericType):
+            return self.normalize_number(value, coltype)
+        return self.to_string(f"{value}")
 
 
 class Database(AbstractDatabase):
@@ -410,27 +439,16 @@ class Postgres(ThreadedDatabase):
     def to_string(self, s: str):
         return f"{s}::varchar"
 
-    def normalize_value_by_type(self, value: str, coltype: ColType) -> str:
-        if isinstance(coltype, TemporalType):
-            # if coltype.precision == 0:
-            #     return f"to_char({value}::timestamp(0), 'YYYY-mm-dd HH24:MI:SS')"
-            # if coltype.precision == 3:
-            #     return f"to_char({value}, 'YYYY-mm-dd HH24:MI:SS.US')"
-            # elif coltype.precision == 6:
-            # return f"to_char({value}::timestamp({coltype.precision}), 'YYYY-mm-dd HH24:MI:SS.US')"
-            # else:
-            #     # Postgres/Redshift doesn't support arbitrary precision
-            #     raise TypeError(f"Bad precision for {type(self).__name__}: {coltype})")
-            if coltype.rounds:
-                return f"to_char({value}::timestamp({coltype.precision}), 'YYYY-mm-dd HH24:MI:SS.US')"
-            else:
-                timestamp6 = f"to_char({value}::timestamp(6), 'YYYY-mm-dd HH24:MI:SS.US')"
-                return f"RPAD(LEFT({timestamp6}, {TIMESTAMP_PRECISION_POS+coltype.precision}), {TIMESTAMP_PRECISION_POS+6}, '0')"
 
-        elif isinstance(coltype, NumericType):
-            value = f"{value}::decimal(38, {coltype.precision})"
+    def normalize_timestamp(self, value: str, coltype: ColType) -> str:
+        if coltype.rounds:
+            return f"to_char({value}::timestamp({coltype.precision}), 'YYYY-mm-dd HH24:MI:SS.US')"
 
-        return self.to_string(f"{value}")
+        timestamp6 = f"to_char({value}::timestamp(6), 'YYYY-mm-dd HH24:MI:SS.US')"
+        return f"RPAD(LEFT({timestamp6}, {TIMESTAMP_PRECISION_POS+coltype.precision}), {TIMESTAMP_PRECISION_POS+6}, '0')"
+
+    def normalize_number(self, value: str, coltype: ColType) -> str:
+        return self.to_string(f"{value}::decimal(38, {coltype.precision})")
 
 
 class Presto(Database):
@@ -470,25 +488,19 @@ class Presto(Database):
     def close(self):
         self._conn.close()
 
-    def normalize_value_by_type(self, value: str, coltype: ColType) -> str:
-        if isinstance(coltype, TemporalType):
-            if coltype.rounds:
-                if coltype.precision > 3:
-                    pass
-                s = f"date_format(cast({value} as timestamp(6)), '%Y-%m-%d %H:%i:%S.%f')"
-            else:
-                s = f"date_format(cast({value} as timestamp(6)), '%Y-%m-%d %H:%i:%S.%f')"
-                # datetime = f"date_format(cast({value} as timestamp(6), '%Y-%m-%d %H:%i:%S.%f'))"
-                # datetime = self.to_string(f"cast({value} as datetime(6))")
+    def normalize_timestamp(self, value: str, coltype: ColType) -> str:
+        # TODO
+        if coltype.rounds:
+            s = f"date_format(cast({value} as timestamp(6)), '%Y-%m-%d %H:%i:%S.%f')"
+        else:
+            s = f"date_format(cast({value} as timestamp(6)), '%Y-%m-%d %H:%i:%S.%f')"
 
-            return (
-                f"RPAD(RPAD({s}, {TIMESTAMP_PRECISION_POS+coltype.precision}, '.'), {TIMESTAMP_PRECISION_POS+6}, '0')"
-            )
+        return (
+            f"RPAD(RPAD({s}, {TIMESTAMP_PRECISION_POS+coltype.precision}, '.'), {TIMESTAMP_PRECISION_POS+6}, '0')"
+        )
 
-        elif isinstance(coltype, NumericType):
-            value = f"cast({value} as decimal(38,{coltype.precision}))"
-
-        return self.to_string(value)
+    def normalize_number(self, value: str, coltype: ColType) -> str:
+        return self.to_string(f"cast({value} as decimal(38,{coltype.precision}))")
 
     def select_table_schema(self, path: DbPath) -> str:
         schema, table = self._normalize_table_path(path)
@@ -577,18 +589,16 @@ class MySQL(ThreadedDatabase):
     def to_string(self, s: str):
         return f"cast({s} as char)"
 
-    def normalize_value_by_type(self, value: str, coltype: ColType) -> str:
-        if isinstance(coltype, TemporalType):
-            if coltype.rounds:
-                return self.to_string(f"cast( cast({value} as datetime({coltype.precision})) as datetime(6))")
-            else:
-                s = self.to_string(f"cast({value} as datetime(6))")
-                return f"RPAD(RPAD({s}, {TIMESTAMP_PRECISION_POS+coltype.precision}, '.'), {TIMESTAMP_PRECISION_POS+6}, '0')"
+    def normalize_timestamp(self, value: str, coltype: ColType) -> str:
+        if coltype.rounds:
+            return self.to_string(f"cast( cast({value} as datetime({coltype.precision})) as datetime(6))")
 
-        elif isinstance(coltype, NumericType):
-            value = f"cast({value} as decimal(38,{coltype.precision}))"
+        s = self.to_string(f"cast({value} as datetime(6))")
+        return f"RPAD(RPAD({s}, {TIMESTAMP_PRECISION_POS+coltype.precision}, '.'), {TIMESTAMP_PRECISION_POS+6}, '0')"
 
-        return self.to_string(f"{value}")
+    def normalize_number(self, value: str, coltype: ColType) -> str:
+        return self.to_string(f"cast({value} as decimal(38, {coltype.precision}))")
+
 
 
 class Oracle(ThreadedDatabase):
@@ -633,16 +643,15 @@ class Oracle(ThreadedDatabase):
             f" FROM USER_TAB_COLUMNS WHERE table_name = '{table.upper()}'"
         )
 
-    def normalize_value_by_type(self, value: str, coltype: ColType) -> str:
-        if isinstance(coltype, TemporalType):
-            return f"to_char(cast({value} as timestamp({coltype.precision})), 'YYYY-MM-DD HH24:MI:SS.FF6')"
-        elif isinstance(coltype, NumericType):
-            # FM999.9990
-            format_str = "FM" + "9" * (38 - coltype.precision)
-            if coltype.precision:
-                format_str += "0." + "9" * (coltype.precision - 1) + "0"
-            return f"to_char({value}, '{format_str}')"
-        return self.to_string(f"{value}")
+    def normalize_timestamp(self, value: str, coltype: ColType) -> str:
+        return f"to_char(cast({value} as timestamp({coltype.precision})), 'YYYY-MM-DD HH24:MI:SS.FF6')"
+
+    def normalize_number(self, value: str, coltype: ColType) -> str:
+        # FM999.9990
+        format_str = "FM" + "9" * (38 - coltype.precision)
+        if coltype.precision:
+            format_str += "0." + "9" * (coltype.precision - 1) + "0"
+        return f"to_char({value}, '{format_str}')"
 
     def _parse_type(
         self, type_repr: str, datetime_precision: int = None, numeric_precision: int = None, numeric_scale: int = None
@@ -693,27 +702,25 @@ class Redshift(Postgres):
     def md5_to_int(self, s: str) -> str:
         return f"strtol(substring(md5({s}), {1+MD5_HEXDIGITS-CHECKSUM_HEXDIGITS}), 16)::decimal(38)"
 
-    def normalize_value_by_type(self, value: str, coltype: ColType) -> str:
-        if isinstance(coltype, TemporalType):
-            if coltype.rounds:
-                timestamp = f"{value}::timestamp(6)"
-                # Get seconds since epoch. Redshift doesn't support milli- or micro-seconds.
-                secs = f"timestamp 'epoch' + round(extract(epoch from {timestamp})::decimal(38)"
-                # Get the milliseconds from timestamp.
-                ms = f"extract(ms from {timestamp})"
-                # Get the microseconds from timestamp, without the milliseconds!
-                us = f"extract(us from {timestamp})"
-                # epoch = Total time since epoch in microseconds.
-                epoch = f"{secs}*1000000 + {ms}*1000 + {us}"
-                timestamp6 = f"to_char({epoch}, -6+{coltype.precision}) * interval '0.000001 seconds', 'YYYY-mm-dd HH24:MI:SS.US')"
-            else:
-                timestamp6 = f"to_char({value}::timestamp(6), 'YYYY-mm-dd HH24:MI:SS.US')"
-            return f"RPAD(LEFT({timestamp6}, {TIMESTAMP_PRECISION_POS+coltype.precision}), {TIMESTAMP_PRECISION_POS+6}, '0')"
+    def normalize_timestamp(self, value: str, coltype: ColType) -> str:
+        if coltype.rounds:
+            timestamp = f"{value}::timestamp(6)"
+            # Get seconds since epoch. Redshift doesn't support milli- or micro-seconds.
+            secs = f"timestamp 'epoch' + round(extract(epoch from {timestamp})::decimal(38)"
+            # Get the milliseconds from timestamp.
+            ms = f"extract(ms from {timestamp})"
+            # Get the microseconds from timestamp, without the milliseconds!
+            us = f"extract(us from {timestamp})"
+            # epoch = Total time since epoch in microseconds.
+            epoch = f"{secs}*1000000 + {ms}*1000 + {us}"
+            timestamp6 = f"to_char({epoch}, -6+{coltype.precision}) * interval '0.000001 seconds', 'YYYY-mm-dd HH24:MI:SS.US')"
+        else:
+            timestamp6 = f"to_char({value}::timestamp(6), 'YYYY-mm-dd HH24:MI:SS.US')"
+        return f"RPAD(LEFT({timestamp6}, {TIMESTAMP_PRECISION_POS+coltype.precision}), {TIMESTAMP_PRECISION_POS+6}, '0')"
 
-        elif isinstance(coltype, NumericType):
-            value = f"{value}::decimal(38,{coltype.precision})"
+    def normalize_number(self, value: str, coltype: ColType) -> str:
+        return self.to_string(f"{value}::decimal(38,{coltype.precision})")
 
-        return self.to_string(f"{value}")
 
     def select_table_schema(self, path: DbPath) -> str:
         schema, table = self._normalize_table_path(path)
@@ -813,27 +820,23 @@ class BigQuery(Database):
             f"WHERE table_name = '{table}' AND table_schema = '{schema}'"
         )
 
-    def normalize_value_by_type(self, value: str, coltype: ColType) -> str:
-        if isinstance(coltype, TemporalType):
-            if coltype.rounds:
-                timestamp = f"timestamp_micros(cast(round(unix_micros(cast({value} as timestamp))/1000000, {coltype.precision})*1000000 as int))"
-                return f"FORMAT_TIMESTAMP('%F %H:%M:%E6S', {timestamp})"
-            else:
-                if coltype.precision == 0:
-                    return f"FORMAT_TIMESTAMP('%F %H:%M:%S.000000, {value})"
-                elif coltype.precision == 6:
-                    return f"FORMAT_TIMESTAMP('%F %H:%M:%E6S', {value})"
+    def normalize_timestamp(self, value: str, coltype: ColType) -> str:
+        if coltype.rounds:
+            timestamp = f"timestamp_micros(cast(round(unix_micros(cast({value} as timestamp))/1000000, {coltype.precision})*1000000 as int))"
+            return f"FORMAT_TIMESTAMP('%F %H:%M:%E6S', {timestamp})"
 
-                timestamp6 = f"FORMAT_TIMESTAMP('%F %H:%M:%E6S', {value})"
-                return f"RPAD(LEFT({timestamp6}, {TIMESTAMP_PRECISION_POS+coltype.precision}), {TIMESTAMP_PRECISION_POS+6}, '0')"
-        elif isinstance(coltype, Integer):
-            pass
+        if coltype.precision == 0:
+            return f"FORMAT_TIMESTAMP('%F %H:%M:%S.000000, {value})"
+        elif coltype.precision == 6:
+            return f"FORMAT_TIMESTAMP('%F %H:%M:%E6S', {value})"
 
-        elif isinstance(coltype, NumericType):
-            # value = f"cast({value} as decimal)"
-            return f"format('%.{coltype.precision}f', ({value}))"
+        timestamp6 = f"FORMAT_TIMESTAMP('%F %H:%M:%E6S', {value})"
+        return f"RPAD(LEFT({timestamp6}, {TIMESTAMP_PRECISION_POS+coltype.precision}), {TIMESTAMP_PRECISION_POS+6}, '0')"
 
-        return self.to_string(f"{value}")
+    def normalize_number(self, value: str, coltype: ColType) -> str:
+        if isinstance(coltype, Integer):
+            return self.to_string(value)
+        return f"format('%.{coltype.precision}f', {value})"
 
     def parse_table_name(self, name: str) -> DbPath:
         path = parse_table_name(name)
@@ -907,19 +910,16 @@ class Snowflake(Database):
         schema, table = self._normalize_table_path(path)
         return super().select_table_schema((schema, table))
 
-    def normalize_value_by_type(self, value: str, coltype: ColType) -> str:
-        if isinstance(coltype, TemporalType):
-            if coltype.rounds:
-                timestamp = f"to_timestamp(round(date_part(epoch_nanosecond, {value}::timestamp(9))/1000000000, {coltype.precision}))"
-            else:
-                timestamp = f"cast({value} as timestamp({coltype.precision}))"
+    def normalize_timestamp(self, value: str, coltype: ColType) -> str:
+        if coltype.rounds:
+            timestamp = f"to_timestamp(round(date_part(epoch_nanosecond, {value}::timestamp(9))/1000000000, {coltype.precision}))"
+        else:
+            timestamp = f"cast({value} as timestamp({coltype.precision}))"
 
-            return f"to_char({timestamp}, 'YYYY-MM-DD HH24:MI:SS.FF6')"
+        return f"to_char({timestamp}, 'YYYY-MM-DD HH24:MI:SS.FF6')"
 
-        elif isinstance(coltype, NumericType):
-            value = f"cast({value} as decimal(38, {coltype.precision}))"
-
-        return self.to_string(f"{value}")
+    def normalize_number(self, value: str, coltype: ColType) -> str:
+        return self.to_string(f"cast({value} as decimal(38, {coltype.precision}))")
 
 
 @dataclass
