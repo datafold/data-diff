@@ -816,10 +816,12 @@ class BigQuery(Database):
 
                 timestamp6 = f"FORMAT_TIMESTAMP('%F %H:%M:%E6S', {value})"
                 return f"RPAD(LEFT({timestamp6}, {TIMESTAMP_PRECISION_POS+coltype.precision}), {TIMESTAMP_PRECISION_POS+6}, '0')"
+        elif isinstance(coltype, Integer):
+            pass
 
         elif isinstance(coltype, NumericType):
             # value = f"cast({value} as decimal)"
-            return f"format('%.{coltype.precision}f', cast({value} as decimal))"
+            return f"format('%.{coltype.precision}f', ({value}))"
 
         return self.to_string(f"{value}")
 
