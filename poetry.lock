@@ -452,7 +452,7 @@ snowflake = ["snowflake-connector-python"]
 [metadata]
 lock-version = "1.1"
 python-versions = "^3.7"
-content-hash = "e1b2b05a166d2d6d81bec8e15e562480998b6e578592a4a0ed04b6fb6a2e046c"
+content-hash = "7300fb766abdc38cf5ce57d26f9ca026cee3a26e0b976d6bf5a2a736c36744e5"
 
 [metadata.files]
 arrow = [
