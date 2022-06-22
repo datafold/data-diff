@@ -44,7 +44,7 @@ COLOR_SCHEME = {
 @click.option(
     "--min-age",
     default=None,
-    help="Considers only rows older than specified. "
+    help="Considers only rows older than specified. Useful for specifying replication lag."
     "Example: --min-age=5min ignores rows from the last 5 minutes. "
     f"\nValid units: {UNITS_STR}",
 )
