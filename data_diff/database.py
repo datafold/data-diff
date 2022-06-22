@@ -40,8 +40,8 @@ def import_helper(package: str = None, text=""):
     return dec
 
 
-@import_helper("pgsql")
-def import_postgres():
+@import_helper("postgresql")
+def import_postgresql():
     import psycopg2
     import psycopg2.extras
 
@@ -427,7 +427,7 @@ DEFAULT_NUMERIC_PRECISION = 24
 TIMESTAMP_PRECISION_POS = 20  # len("2022-06-03 12:24:35.") == 20
 
 
-class Postgres(ThreadedDatabase):
+class PostgreSQL(ThreadedDatabase):
     DATETIME_TYPES = {
         "timestamp with time zone": TimestampTZ,
         "timestamp without time zone": Timestamp,
@@ -451,16 +451,16 @@ class Postgres(ThreadedDatabase):
         super().__init__(thread_count=thread_count)
 
     def _convert_db_precision_to_digits(self, p: int) -> int:
-        # Subtracting 2 due to wierd precision issues in Postgres
+        # Subtracting 2 due to wierd precision issues in PostgreSQL
         return super()._convert_db_precision_to_digits(p) - 2
 
     def create_connection(self):
-        postgres = import_postgres()
+        pg = import_postgresql()
         try:
-            c = postgres.connect(**self.args)
+            c = pg.connect(**self.args)
             # c.cursor().execute("SET TIME ZONE 'UTC'")
             return c
-        except postgres.OperationalError as e:
+        except pg.OperationalError as e:
             raise ConnectError(*e.args) from e
 
     def quote(self, s: str):
@@ -722,9 +722,9 @@ class Oracle(ThreadedDatabase):
         return UnknownColType(type_repr)
 
 
-class Redshift(Postgres):
+class Redshift(PostgreSQL):
     NUMERIC_TYPES = {
-        **Postgres.NUMERIC_TYPES,
+        **PostgreSQL.NUMERIC_TYPES,
         "double": Float,
         "real": Float,
     }
@@ -1005,7 +1005,7 @@ class MatchUriPath:
 
 
 MATCH_URI_PATH = {
-    "postgres": MatchUriPath(Postgres, ["database?"], help_str="postgres://<user>:<pass>@<host>/<database>"),
+    "postgresql": MatchUriPath(PostgreSQL, ["database?"], help_str="postgresql://<user>:<pass>@<host>/<database>"),
     "mysql": MatchUriPath(MySQL, ["database?"], help_str="mysql://<user>:<pass>@<host>/<database>"),
     "oracle": MatchUriPath(Oracle, ["database?"], help_str="oracle://<user>:<pass>@<host>/<database>"),
     "mssql": MatchUriPath(MsSQL, ["database?"], help_str="mssql://<user>:<pass>@<host>/<database>"),
@@ -1034,7 +1034,7 @@ def connect_to_uri(db_uri: str, thread_count: Optional[int] = 1) -> Database:
     Note: For non-cloud databases, a low thread-pool size may be a performance bottleneck.
 
     Supported schemes:
-    - postgres
+    - postgresql
     - mysql
     - mssql
     - oracle

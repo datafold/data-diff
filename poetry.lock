@@ -200,7 +200,7 @@ rich = ">=10.7.0,<11.0.0"
 runtype = ">=0.2.4,<0.3.0"
 
 [package.extras]
-pgsql = ["psycopg2"]
+postgresql = ["psycopg2"]
 mysql = ["mysqlclient"]
 server = ["starlette"]
 
@@ -443,7 +443,7 @@ testing = ["pytest (>=6)", "pytest-checkdocs (>=2.4)", "pytest-flake8", "pytest-
 
 [extras]
 mysql = ["mysql-connector-python"]
-pgsql = ["psycopg2"]
+postgresql = ["psycopg2"]
 preql = ["preql"]
 presto = []
 snowflake = ["snowflake-connector-python"]

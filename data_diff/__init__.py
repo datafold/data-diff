@@ -56,7 +56,7 @@ def diff_tables(
     """Efficiently finds the diff between table1 and table2.
 
     Example:
-        >>> table1 = connect_to_table('postgres:///', 'Rating', 'id')
+        >>> table1 = connect_to_table('postgresql:///', 'Rating', 'id')
         >>> list(diff_tables(table1, table1))
         []
 
