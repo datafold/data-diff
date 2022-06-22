@@ -75,11 +75,11 @@ def diff_tables(
         for t in tables
     ]
 
-    differ = TableDiffer(
+    table_differ = TableDiffer(
         bisection_factor=bisection_factor,
         bisection_threshold=bisection_threshold,
         debug=debug,
         threaded=threaded,
         max_threadpool_size=max_threadpool_size,
     )
-    return differ.diff_tables(*segments)
+    return table_differ.diff_tables(*segments)
