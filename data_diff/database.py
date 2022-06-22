@@ -5,7 +5,7 @@ import re
 from abc import ABC, abstractmethod
 from runtype import dataclass
 import logging
-from typing import Tuple, Optional, List
+from typing import Sequence, Tuple, Optional, List
 from concurrent.futures import ThreadPoolExecutor
 import threading
 from typing import Dict
@@ -159,10 +159,6 @@ class Integer(Decimal):
 class UnknownColType(ColType):
     text: str
 
-    def __post_init__(self):
-        logger.warn(f"Column of type '{self.text}' has no compatibility handling. "
-                     "If encoding/formatting differs between databases, it may result in false positives.")
-
 
 class AbstractDatabase(ABC):
     @abstractmethod
@@ -191,7 +187,7 @@ class AbstractDatabase(ABC):
         ...
 
     @abstractmethod
-    def query_table_schema(self, path: DbPath) -> Dict[str, ColType]:
+    def query_table_schema(self, path: DbPath, filter_columns: Optional[Sequence[str]] = None) -> Dict[str, ColType]:
         "Query the table for its schema for table in 'path', and return {column: type}"
         ...
 
@@ -204,7 +200,6 @@ class AbstractDatabase(ABC):
     def close(self):
         "Close connection(s) to the database instance. Querying will stop functioning."
         ...
-
 
     @abstractmethod
     def normalize_timestamp(self, value: str, coltype: ColType) -> str:
@@ -269,6 +264,10 @@ class Database(AbstractDatabase):
     DATETIME_TYPES = {}
     default_schema = None
 
+    @property
+    def name(self):
+        return type(self).__name__
+
     def query(self, sql_ast: SqlOrStr, res_type: type):
         "Query the given SQL code/AST, and attempt to convert the result to type 'res_type'"
 
@@ -310,7 +309,12 @@ class Database(AbstractDatabase):
         return math.floor(math.log(2**p, 10))
 
     def _parse_type(
-        self, type_repr: str, datetime_precision: int = None, numeric_precision: int = None, numeric_scale: int = None
+        self,
+        col_name: str,
+        type_repr: str,
+        datetime_precision: int = None,
+        numeric_precision: int = None,
+        numeric_scale: int = None,
     ) -> ColType:
         """ """
 
@@ -329,6 +333,8 @@ class Database(AbstractDatabase):
                 return cls(precision=0)
 
             elif issubclass(cls, Decimal):
+                if numeric_scale is None:
+                    raise ValueError(f"{self.name}: Unexpected numeric_scale is NULL, for column {col_name} of type {type_repr}.")
                 return cls(precision=numeric_scale)
 
             assert issubclass(cls, Float)
@@ -349,13 +355,17 @@ class Database(AbstractDatabase):
             f"WHERE table_name = '{table}' AND table_schema = '{schema}'"
         )
 
-    def query_table_schema(self, path: DbPath) -> Dict[str, ColType]:
+    def query_table_schema(self, path: DbPath, filter_columns: Optional[Sequence[str]] = None) -> Dict[str, ColType]:
         rows = self.query(self.select_table_schema(path), list)
         if not rows:
-            raise RuntimeError(f"{self.__class__.__name__}: Table '{'.'.join(path)}' does not exist, or has no columns")
+            raise RuntimeError(f"{self.name}: Table '{'.'.join(path)}' does not exist, or has no columns")
 
-        # Return a dict of form {name: type} after canonizaation
-        return {row[0]: self._parse_type(*row[1:]) for row in rows}
+        if filter_columns is not None:
+            accept = {i.lower() for i in filter_columns}
+            rows = [r for r in rows if r[0].lower() in accept]
+
+        # Return a dict of form {name: type} after normalization
+        return {row[0]: self._parse_type(*row) for row in rows}
 
     # @lru_cache()
     # def get_table_schema(self, path: DbPath) -> Dict[str, ColType]:
@@ -366,9 +376,7 @@ class Database(AbstractDatabase):
             if self.default_schema:
                 return self.default_schema, path[0]
         elif len(path) != 2:
-            raise ValueError(
-                f"{self.__class__.__name__}: Bad table path for {self}: '{'.'.join(path)}'. Expected form: schema.table"
-            )
+            raise ValueError(f"{self.name}: Bad table path for {self}: '{'.'.join(path)}'. Expected form: schema.table")
 
         return path
 
@@ -440,6 +448,7 @@ class PostgreSQL(ThreadedDatabase):
         "decimal": Decimal,
         "integer": Integer,
         "numeric": Decimal,
+        "bigint": Integer,
     }
     ROUNDS_ON_PREC_LOSS = True
 
@@ -472,13 +481,14 @@ class PostgreSQL(ThreadedDatabase):
     def to_string(self, s: str):
         return f"{s}::varchar"
 
-
     def normalize_timestamp(self, value: str, coltype: ColType) -> str:
         if coltype.rounds:
             return f"to_char({value}::timestamp({coltype.precision}), 'YYYY-mm-dd HH24:MI:SS.US')"
 
         timestamp6 = f"to_char({value}::timestamp(6), 'YYYY-mm-dd HH24:MI:SS.US')"
-        return f"RPAD(LEFT({timestamp6}, {TIMESTAMP_PRECISION_POS+coltype.precision}), {TIMESTAMP_PRECISION_POS+6}, '0')"
+        return (
+            f"RPAD(LEFT({timestamp6}, {TIMESTAMP_PRECISION_POS+coltype.precision}), {TIMESTAMP_PRECISION_POS+6}, '0')"
+        )
 
     def normalize_number(self, value: str, coltype: ColType) -> str:
         return self.to_string(f"{value}::decimal(38, {coltype.precision})")
@@ -528,9 +538,7 @@ class Presto(Database):
         else:
             s = f"date_format(cast({value} as timestamp(6)), '%Y-%m-%d %H:%i:%S.%f')"
 
-        return (
-            f"RPAD(RPAD({s}, {TIMESTAMP_PRECISION_POS+coltype.precision}, '.'), {TIMESTAMP_PRECISION_POS+6}, '0')"
-        )
+        return f"RPAD(RPAD({s}, {TIMESTAMP_PRECISION_POS+coltype.precision}, '.'), {TIMESTAMP_PRECISION_POS+6}, '0')"
 
     def normalize_number(self, value: str, coltype: ColType) -> str:
         return self.to_string(f"cast({value} as decimal(38,{coltype.precision}))")
@@ -543,7 +551,9 @@ class Presto(Database):
             f"WHERE table_name = '{table}' AND table_schema = '{schema}'"
         )
 
-    def _parse_type(self, type_repr: str, datetime_precision: int = None, numeric_precision: int = None) -> ColType:
+    def _parse_type(
+        self, col_name: str, type_repr: str, datetime_precision: int = None, numeric_precision: int = None
+    ) -> ColType:
         regexps = {
             r"timestamp\((\d)\)": Timestamp,
             r"timestamp\((\d)\) with time zone": TimestampTZ,
@@ -633,7 +643,6 @@ class MySQL(ThreadedDatabase):
         return self.to_string(f"cast({value} as decimal(38, {coltype.precision}))")
 
 
-
 class Oracle(ThreadedDatabase):
     ROUNDS_ON_PREC_LOSS = True
 
@@ -687,7 +696,12 @@ class Oracle(ThreadedDatabase):
         return f"to_char({value}, '{format_str}')"
 
     def _parse_type(
-        self, type_repr: str, datetime_precision: int = None, numeric_precision: int = None, numeric_scale: int = None
+        self,
+        col_name: str,
+        type_repr: str,
+        datetime_precision: int = None,
+        numeric_precision: int = None,
+        numeric_scale: int = None,
     ) -> ColType:
         """ """
         regexps = {
@@ -746,14 +760,17 @@ class Redshift(PostgreSQL):
             us = f"extract(us from {timestamp})"
             # epoch = Total time since epoch in microseconds.
             epoch = f"{secs}*1000000 + {ms}*1000 + {us}"
-            timestamp6 = f"to_char({epoch}, -6+{coltype.precision}) * interval '0.000001 seconds', 'YYYY-mm-dd HH24:MI:SS.US')"
+            timestamp6 = (
+                f"to_char({epoch}, -6+{coltype.precision}) * interval '0.000001 seconds', 'YYYY-mm-dd HH24:MI:SS.US')"
+            )
         else:
             timestamp6 = f"to_char({value}::timestamp(6), 'YYYY-mm-dd HH24:MI:SS.US')"
-        return f"RPAD(LEFT({timestamp6}, {TIMESTAMP_PRECISION_POS+coltype.precision}), {TIMESTAMP_PRECISION_POS+6}, '0')"
+        return (
+            f"RPAD(LEFT({timestamp6}, {TIMESTAMP_PRECISION_POS+coltype.precision}), {TIMESTAMP_PRECISION_POS+6}, '0')"
+        )
 
     def normalize_number(self, value: str, coltype: ColType) -> str:
         return self.to_string(f"{value}::decimal(38,{coltype.precision})")
-
 
     def select_table_schema(self, path: DbPath) -> str:
         schema, table = self._normalize_table_path(path)
@@ -864,7 +881,9 @@ class BigQuery(Database):
             return f"FORMAT_TIMESTAMP('%F %H:%M:%E6S', {value})"
 
         timestamp6 = f"FORMAT_TIMESTAMP('%F %H:%M:%E6S', {value})"
-        return f"RPAD(LEFT({timestamp6}, {TIMESTAMP_PRECISION_POS+coltype.precision}), {TIMESTAMP_PRECISION_POS+6}, '0')"
+        return (
+            f"RPAD(LEFT({timestamp6}, {TIMESTAMP_PRECISION_POS+coltype.precision}), {TIMESTAMP_PRECISION_POS+6}, '0')"
+        )
 
     def normalize_number(self, value: str, coltype: ColType) -> str:
         if isinstance(coltype, Integer):

@@ -32,17 +32,16 @@ class TestWithConnection(unittest.TestCase):
         cls.preql.close()
         cls.connection.close()
 
-
     # Fallback for test runners that doesn't support setUpClass/tearDownClass
     def setUp(self) -> None:
-        if not hasattr(self, 'connection'):
+        if not hasattr(self, "connection"):
             self.setUpClass.__func__(self)
             self.private_connection = True
 
         return super().setUp()
 
     def tearDown(self) -> None:
-        if hasattr(self, 'private_connection'):
+        if hasattr(self, "private_connection"):
             self.tearDownClass.__func__(self)
 
         return super().tearDown()

@@ -12,7 +12,7 @@ from concurrent.futures import ThreadPoolExecutor
 from runtype import dataclass
 
 from .sql import Select, Checksum, Compare, DbPath, DbKey, DbTime, Count, TableName, Time, Min, Max
-from .database import Database, NumericType, PrecisionType, ColType
+from .database import Database, NumericType, PrecisionType, ColType, UnknownColType
 
 logger = logging.getLogger("diff_tables")
 
@@ -142,7 +142,8 @@ class TableSegment:
         "Queries the table schema from the database, and returns a new instance of TableSegmentWithSchema."
         if self._schema:
             return self
-        schema = self.database.query_table_schema(self.table_path)
+
+        schema = self.database.query_table_schema(self.table_path, self._relevant_columns)
         if self.case_sensitive:
             schema = Schema_CaseSensitive(schema)
         else:
@@ -380,6 +381,15 @@ class TableDiffer:
 
                 table1._schema[c] = col1.replace(precision=lowest.precision)
                 table2._schema[c] = col2.replace(precision=lowest.precision)
+
+        for t in [table1, table2]:
+            for c in t._relevant_columns:
+                ctype = t._schema[c]
+                if isinstance(ctype, UnknownColType):
+                    logger.warn(
+                        f"[{t.database.name}] Column '{c}' of type '{ctype.text}' has no compatibility handling. "
+                        "If encoding/formatting differs between databases, it may result in false positives."
+                    )
 
     def _bisect_and_diff_tables(self, table1, table2, level=0, max_rows=None):
         assert table1.is_bounded and table2.is_bounded
