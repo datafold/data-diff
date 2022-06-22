@@ -301,6 +301,8 @@ class Database(AbstractDatabase):
                 return cls(precision=0)
 
             elif issubclass(cls, Decimal):
+                if numeric_scale is None:
+                    raise ValueError(f"{self.name}: Unexpected numeric_scale is NULL, for column of type {type_repr}.")
                 return cls(precision=numeric_scale)
 
             assert issubclass(cls, Float)
