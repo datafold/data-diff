@@ -5,7 +5,7 @@ import re
 from abc import ABC, abstractmethod
 from runtype import dataclass
 import logging
-from typing import Tuple, Optional, List
+from typing import Sequence, Tuple, Optional, List
 from concurrent.futures import ThreadPoolExecutor
 import threading
 from typing import Dict
@@ -131,10 +131,6 @@ class Integer(Decimal):
 class UnknownColType(ColType):
     text: str
 
-    def __post_init__(self):
-        logger.warn(f"Column of type '{self.text}' has no compatibility handling. "
-                     "If encoding/formatting differs between databases, it may result in false positives.")
-
 
 class AbstractDatabase(ABC):
     @abstractmethod
@@ -163,7 +159,7 @@ class AbstractDatabase(ABC):
         ...
 
     @abstractmethod
-    def query_table_schema(self, path: DbPath) -> Dict[str, ColType]:
+    def query_table_schema(self, path: DbPath, filter_columns: Optional[Sequence[str]] = None) -> Dict[str, ColType]:
         "Query the table for its schema for table in 'path', and return {column: type}"
         ...
 
@@ -240,6 +236,10 @@ class Database(AbstractDatabase):
 
     DATETIME_TYPES = {}
     default_schema = None
+
+    @property
+    def name(self):
+        return type(self).__name__
 
     def query(self, sql_ast: SqlOrStr, res_type: type):
         "Query the given SQL code/AST, and attempt to convert the result to type 'res_type'"
@@ -321,12 +321,16 @@ class Database(AbstractDatabase):
             f"WHERE table_name = '{table}' AND table_schema = '{schema}'"
         )
 
-    def query_table_schema(self, path: DbPath) -> Dict[str, ColType]:
+    def query_table_schema(self, path: DbPath, filter_columns: Optional[Sequence[str]] = None) -> Dict[str, ColType]:
         rows = self.query(self.select_table_schema(path), list)
         if not rows:
-            raise RuntimeError(f"{self.__class__.__name__}: Table '{'.'.join(path)}' does not exist, or has no columns")
+            raise RuntimeError(f"{self.name}: Table '{'.'.join(path)}' does not exist, or has no columns")
 
-        # Return a dict of form {name: type} after canonizaation
+        if filter_columns is not None:
+            accept = {i.lower() for i in filter_columns}
+            rows = [r for r in rows if r[0].lower() in accept]
+
+        # Return a dict of form {name: type} after normalization
         return {row[0]: self._parse_type(*row[1:]) for row in rows}
 
     # @lru_cache()
@@ -339,7 +343,7 @@ class Database(AbstractDatabase):
                 return self.default_schema, path[0]
         elif len(path) != 2:
             raise ValueError(
-                f"{self.__class__.__name__}: Bad table path for {self}: '{'.'.join(path)}'. Expected form: schema.table"
+                f"{self.name}: Bad table path for {self}: '{'.'.join(path)}'. Expected form: schema.table"
             )
 
         return path
@@ -407,6 +411,7 @@ class Postgres(ThreadedDatabase):
         "decimal": Decimal,
         "integer": Integer,
         "numeric": Decimal,
+        "bigint": Integer,
     }
     ROUNDS_ON_PREC_LOSS = True
 
