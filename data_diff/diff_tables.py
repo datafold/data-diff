@@ -386,8 +386,10 @@ class TableDiffer:
             for c in t._relevant_columns:
                 ctype = t._schema[c]
                 if isinstance(ctype, UnknownColType):
-                    logger.warn(f"[{t.database.name}] Column '{c}' of type '{ctype.text}' has no compatibility handling. "
-                                "If encoding/formatting differs between databases, it may result in false positives.")
+                    logger.warn(
+                        f"[{t.database.name}] Column '{c}' of type '{ctype.text}' has no compatibility handling. "
+                        "If encoding/formatting differs between databases, it may result in false positives."
+                    )
 
     def _bisect_and_diff_tables(self, table1, table2, level=0, max_rows=None):
         assert table1.is_bounded and table2.is_bounded
