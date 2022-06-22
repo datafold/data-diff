@@ -9,6 +9,8 @@ from typing import Sequence, Tuple, Optional, List
 from concurrent.futures import ThreadPoolExecutor
 import threading
 from typing import Dict
+from cryptography.hazmat.backends import default_backend
+from cryptography.hazmat.primitives import serialization
 
 import dsnparse
 import sys
@@ -506,14 +508,22 @@ class Presto(Database):
         "integer": Integer,
         "real": Float,
         "double": Float,
+        "bigint": Integer,
     }
     ROUNDS_ON_PREC_LOSS = True
 
     def __init__(self, host, port, user, password, *, catalog, schema=None, **kw):
         prestodb = import_presto()
-        self.args = dict(host=host, user=user, catalog=catalog, schema=schema, **kw)
-
+        self.args = dict(host=host, port=port, user=user, catalog=catalog, schema=schema, **kw) #include port if specified
+        if "cert" in self.args: #cert used after connection to verify session, but keyword is not valid so remove from connection params
+            self.args.pop("cert")
+        if "auth" in kw and kw.get("auth") == "basic": #if auth=basic, add basic authenticator for Presto
+            self.args["auth"] = prestodb.auth.BasicAuthentication(user, password)
+        if schema: #if schema was specified in URI, override default
+            self.default_schema = schema
         self._conn = prestodb.dbapi.connect(**self.args)
+        if "cert" in kw: #if a certificate was specified in URI, verify session with cert
+            self._conn._http_session.verify = kw.get("cert")
 
     def quote(self, s: str):
         return f'"{s}"'
@@ -904,6 +914,7 @@ class Snowflake(Database):
     NUMERIC_TYPES = {
         "NUMBER": Decimal,
         "FLOAT": Float,
+        "BIGINT": Integer,
     }
     ROUNDS_ON_PREC_LOSS = False
 
@@ -929,16 +940,39 @@ class Snowflake(Database):
         logging.getLogger("snowflake.connector.network").disabled = True
 
         assert '"' not in schema, "Schema name should not contain quotes!"
-        self._conn = snowflake.connector.connect(
-            user=user,
-            password=password,
-            account=account,
-            role=role,
-            database=database,
-            warehouse=warehouse,
-            schema=f'"{schema}"',
-            **kw,
-        )
+        if not password and "key" in kw: #if private keys are used instead of password for Snowflake connection, read in key from path specified and pass as "private_key" to connector.
+            with open(kw.get("key"), "rb") as key:
+                p_key = serialization.load_pem_private_key(
+                    key.read(),
+                    password=None,
+                    backend=default_backend()
+                )
+
+            pkb = p_key.private_bytes(
+                encoding=serialization.Encoding.DER,
+                format=serialization.PrivateFormat.PKCS8,
+                encryption_algorithm=serialization.NoEncryption())
+            self._conn = snowflake.connector.connect(
+                user=user,
+                private_key=pkb, #replaces password
+                account=account,
+                role=role,
+                database=database,
+                warehouse=warehouse,
+                schema=f'"{schema}"',
+                **kw,
+            )
+        else: #otherwise use password for connection
+            self._conn = snowflake.connector.connect(
+                user=user,
+                password=password,
+                account=account,
+                role=role,
+                database=database,
+                warehouse=warehouse,
+                schema=f'"{schema}"',
+                **kw,
+            )
 
         self.default_schema = schema
 
