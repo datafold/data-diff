@@ -155,6 +155,8 @@ class TestDiffTables(TestWithConnection):
         diff = list(self.differ.diff_tables(self.table, self.table2))
         expected = [("-", ("2", time + ".000000"))]
         self.assertEqual(expected, diff)
+        self.assertEqual(2, self.differ.stats["table1_count"])
+        self.assertEqual(1, self.differ.stats["table2_count"])
 
     def test_diff_table_above_bisection_threshold(self):
         time = "2022-01-01 00:00:00"
@@ -176,6 +178,8 @@ class TestDiffTables(TestWithConnection):
         diff = list(self.differ.diff_tables(self.table, self.table2))
         expected = [("-", ("5", time + ".000000"))]
         self.assertEqual(expected, diff)
+        self.assertEqual(5, self.differ.stats["table1_count"])
+        self.assertEqual(4, self.differ.stats["table2_count"])
 
     def test_return_empty_array_when_same(self):
         time = "2022-01-01 00:00:00"

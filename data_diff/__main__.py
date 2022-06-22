@@ -51,7 +51,7 @@ COLOR_SCHEME = {
 @click.option("--max-age", default=None, help="Considers only rows younger than specified. See --min-age.")
 @click.option("-s", "--stats", is_flag=True, help="Print stats instead of a detailed diff")
 @click.option("-d", "--debug", is_flag=True, help="Print debug info")
-@click.option("--json", 'json_output', is_flag=True, help="Print JSON output for --stats")
+@click.option("--json", 'json_output', is_flag=True, help="Print JSONL output for machine readability")
 @click.option("-v", "--verbose", is_flag=True, help="Print extra info")
 @click.option("-i", "--interactive", is_flag=True, help="Confirm queries, implies --debug")
 @click.option("--keep-column-case", is_flag=True, help="Don't use the schema to fix the case of given column names.")
@@ -160,16 +160,22 @@ def main(
                 "different_-": minus,
                 "total": max_table_count,
             }
-            print(json.dumps(json_output, indent=2))
+            print(json.dumps(json_output))
         else:
             print(f"Diff-Total: {len(diff)} changed rows out of {max_table_count}")
             print(f"Diff-Percent: {percent:.14f}%")
             print(f"Diff-Split: +{plus}  -{minus}")
     else:
-        for op, key in diff_iter:
+        for op, columns in diff_iter:
             color = COLOR_SCHEME[op]
-            jsonl = json.dumps([op, list(key)])
-            rich.print(f"[{color}]{jsonl}[/{color}]")
+
+            if json_output:
+                jsonl = json.dumps([op, list(columns)])
+                rich.print(f"[{color}]{jsonl}[/{color}]")
+            else:
+                text = f"{op} {', '.join(columns)}"
+                rich.print(f"[{color}]{text}[/{color}]")
+
             sys.stdout.flush()
 
     end = time.time()
