@@ -140,9 +140,28 @@ Requires Python 3.7+ with pip.
 
 ```pip install data-diff```
 
-or when you need extras like mysql and postgresql
+## Install drivers
 
-```pip install "data-diff[mysql,postgresql]"```
+To connect to a database, we need to have its driver installed, in the form of a Python library.
+
+While you may install them manually, we offer an easy way to install them along with data-diff:
+
+- `pip install 'data-diff[mysql]'`
+
+- `pip install 'data-diff[postgresql]'`
+
+- `pip install 'data-diff[snowflake]'`
+
+- `pip install 'data-diff[presto]'`
+
+- `pip install 'data-diff[oracle]'`
+
+- For BigQuery, see: https://pypi.org/project/google-cloud-bigquery/
+
+
+Users can also install several drivers at once:
+
+```pip install 'data-diff[mysql,postgresql,snowflake]'```
 
 # How to use
 
