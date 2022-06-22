@@ -862,7 +862,7 @@ class Snowflake(Database):
     NUMERIC_TYPES = {
         "NUMBER": Decimal,
         "FLOAT": Float,
-        "BIGINT": Decimal,
+        "BIGINT": Integer,
     }
     ROUNDS_ON_PREC_LOSS = False
 
