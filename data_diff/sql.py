@@ -1,14 +1,13 @@
 """Provides classes for a pseudo-SQL AST that compiles to SQL code
 """
 
-from typing import List, Union, Tuple, Optional
+from typing import List, Sequence, Union, Tuple, Optional
 from datetime import datetime
 
 from runtype import dataclass
 
-DbPath = Tuple[str, ...]
-DbKey = Union[int, str, bytes]
-DbTime = datetime
+from .database_types import AbstractDatabase, DbPath, DbKey, DbTime
+
 
 
 class Sql:
@@ -25,7 +24,7 @@ class Compiler:
     For internal use.
     """
 
-    database: object  # Database
+    database: AbstractDatabase
     in_select: bool = False  # Compilation
 
     def quote(self, s: str):
@@ -72,11 +71,11 @@ class Value(Sql):
 
 @dataclass
 class Select(Sql):
-    columns: List[SqlOrStr]
+    columns: Sequence[SqlOrStr]
     table: SqlOrStr = None
-    where: List[SqlOrStr] = None
-    order_by: List[SqlOrStr] = None
-    group_by: List[SqlOrStr] = None
+    where: Sequence[SqlOrStr] = None
+    order_by: Sequence[SqlOrStr] = None
+    group_by: Sequence[SqlOrStr] = None
 
     def compile(self, parent_c: Compiler):
         c = parent_c.replace(in_select=True)
@@ -113,7 +112,7 @@ class Enum(Sql):
 
 @dataclass
 class Checksum(Sql):
-    exprs: List[SqlOrStr]
+    exprs: Sequence[SqlOrStr]
 
     def compile(self, c: Compiler):
         compiled_exprs = ", ".join(map(c.compile, self.exprs))
@@ -135,7 +134,7 @@ class Compare(Sql):
 @dataclass
 class In(Sql):
     expr: SqlOrStr
-    list: List  # List[SqlOrStr]
+    list: Sequence  # List[SqlOrStr]
 
     def compile(self, c: Compiler):
         elems = ", ".join(map(c.compile, self.list))
