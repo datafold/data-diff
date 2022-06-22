@@ -15,7 +15,7 @@ class TestApi(unittest.TestCase):
         cls.preql = preql.Preql(TEST_MYSQL_CONN_STRING)
 
     def setUp(self) -> None:
-        self.preql = preql.Preql(TEST_MYSQL_CONN_STRING)
+        # self.preql = preql.Preql(TEST_MYSQL_CONN_STRING)
         self.preql(
             r"""
             table test_api {
