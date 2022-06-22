@@ -25,7 +25,7 @@ there are few/no changes, but is able to output each differing row! By pushing
 the compute into the databases, it's _much_ faster than querying for and
 comparing every row.
 
-![Performance for 100M rows](https://user-images.githubusercontent.com/97400/174860361-35158d2b-0cad-4089-be66-8bf467058387.png)
+![Performance for 100M rows](https://user-images.githubusercontent.com/97400/175126107-27bb0406-37da-4594-a26a-fa127c9391ca.png)
 
 **†:** The implementation for downloading all rows that `data-diff` and
 `count(*)` is compared to is not optimal. It is a single Python multi-threaded
