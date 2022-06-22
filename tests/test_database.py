@@ -22,7 +22,7 @@ class TestDatabase(unittest.TestCase):
 class TestConnect(unittest.TestCase):
     def test_bad_uris(self):
         self.assertRaises(ValueError, connect_to_uri, "p")
-        self.assertRaises(ValueError, connect_to_uri, "postgres:///bla/foo")
+        self.assertRaises(ValueError, connect_to_uri, "postgresql:///bla/foo")
         self.assertRaises(ValueError, connect_to_uri, "snowflake://erez:erez27Snow@bya42734/xdiffdev/TEST1")
         self.assertRaises(
             ValueError, connect_to_uri, "snowflake://erez:erez27Snow@bya42734/xdiffdev/TEST1?warehouse=ha&schema=dup"

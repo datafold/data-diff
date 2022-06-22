@@ -1,5 +1,5 @@
 import math
-from functools import lru_cache
+from functools import lru_cache, wraps
 from itertools import zip_longest
 import re
 from abc import ABC, abstractmethod
@@ -23,7 +23,25 @@ def parse_table_name(t):
     return tuple(t.split("."))
 
 
-def import_postgres():
+def import_helper(package: str = None, text=""):
+    def dec(f):
+        @wraps(f)
+        def _inner():
+            try:
+                return f()
+            except ModuleNotFoundError as e:
+                s = text
+                if package:
+                    s += f"You can install it using 'pip install data-diff[{package}]'."
+                raise ModuleNotFoundError(f"{e}\n\n{s}\n")
+
+        return _inner
+
+    return dec
+
+
+@import_helper("postgresql")
+def import_postgresql():
     import psycopg2
     import psycopg2.extras
 
@@ -31,12 +49,14 @@ def import_postgres():
     return psycopg2
 
 
+@import_helper("mysql")
 def import_mysql():
     import mysql.connector
 
     return mysql.connector
 
 
+@import_helper("snowflake")
 def import_snowflake():
     import snowflake.connector
 
@@ -55,10 +75,18 @@ def import_oracle():
     return cx_Oracle
 
 
+@import_helper("presto")
 def import_presto():
     import prestodb
 
     return prestodb
+
+
+@import_helper(text="Please install BigQuery and configure your google-cloud access.")
+def import_bigquery():
+    from google.cloud import bigquery
+
+    return bigquery
 
 
 class ConnectError(Exception):
@@ -344,7 +372,6 @@ class Database(AbstractDatabase):
 
         return path
 
-
     def parse_table_name(self, name: str) -> DbPath:
         return parse_table_name(name)
 
@@ -356,12 +383,16 @@ class ThreadedDatabase(Database):
     """
 
     def __init__(self, thread_count=1):
+        self._init_error = None
         self._queue = ThreadPoolExecutor(thread_count, initializer=self.set_conn)
         self.thread_local = threading.local()
 
     def set_conn(self):
         assert not hasattr(self.thread_local, "conn")
-        self.thread_local.conn = self.create_connection()
+        try:
+            self.thread_local.conn = self.create_connection()
+        except ModuleNotFoundError as e:
+            self._init_error = e
 
     def _query(self, sql_code: str):
         r = self._queue.submit(self._query_in_worker, sql_code)
@@ -369,6 +400,8 @@ class ThreadedDatabase(Database):
 
     def _query_in_worker(self, sql_code: str):
         "This method runs in a worker thread"
+        if self._init_error:
+            raise self._init_error
         return _query_conn(self.thread_local.conn, sql_code)
 
     def close(self):
@@ -394,7 +427,7 @@ DEFAULT_NUMERIC_PRECISION = 24
 TIMESTAMP_PRECISION_POS = 20  # len("2022-06-03 12:24:35.") == 20
 
 
-class Postgres(ThreadedDatabase):
+class PostgreSQL(ThreadedDatabase):
     DATETIME_TYPES = {
         "timestamp with time zone": TimestampTZ,
         "timestamp without time zone": Timestamp,
@@ -418,16 +451,16 @@ class Postgres(ThreadedDatabase):
         super().__init__(thread_count=thread_count)
 
     def _convert_db_precision_to_digits(self, p: int) -> int:
-        # Subtracting 2 due to wierd precision issues in Postgres
+        # Subtracting 2 due to wierd precision issues in PostgreSQL
         return super()._convert_db_precision_to_digits(p) - 2
 
     def create_connection(self):
-        postgres = import_postgres()
+        pg = import_postgresql()
         try:
-            c = postgres.connect(**self.args)
+            c = pg.connect(**self.args)
             # c.cursor().execute("SET TIME ZONE 'UTC'")
             return c
-        except postgres.OperationalError as e:
+        except pg.OperationalError as e:
             raise ConnectError(*e.args) from e
 
     def quote(self, s: str):
@@ -689,9 +722,9 @@ class Oracle(ThreadedDatabase):
         return UnknownColType(type_repr)
 
 
-class Redshift(Postgres):
+class Redshift(PostgreSQL):
     NUMERIC_TYPES = {
-        **Postgres.NUMERIC_TYPES,
+        **PostgreSQL.NUMERIC_TYPES,
         "double": Float,
         "real": Float,
     }
@@ -774,7 +807,7 @@ class BigQuery(Database):
     ROUNDS_ON_PREC_LOSS = False  # Technically BigQuery doesn't allow implicit rounding or truncation
 
     def __init__(self, project, *, dataset, **kw):
-        from google.cloud import bigquery
+        bigquery = import_bigquery()
 
         self._client = bigquery.Client(project, **kw)
         self.project = project
@@ -972,7 +1005,7 @@ class MatchUriPath:
 
 
 MATCH_URI_PATH = {
-    "postgres": MatchUriPath(Postgres, ["database?"], help_str="postgres://<user>:<pass>@<host>/<database>"),
+    "postgresql": MatchUriPath(PostgreSQL, ["database?"], help_str="postgresql://<user>:<pass>@<host>/<database>"),
     "mysql": MatchUriPath(MySQL, ["database?"], help_str="mysql://<user>:<pass>@<host>/<database>"),
     "oracle": MatchUriPath(Oracle, ["database?"], help_str="oracle://<user>:<pass>@<host>/<database>"),
     "mssql": MatchUriPath(MsSQL, ["database?"], help_str="mssql://<user>:<pass>@<host>/<database>"),
@@ -1001,7 +1034,7 @@ def connect_to_uri(db_uri: str, thread_count: Optional[int] = 1) -> Database:
     Note: For non-cloud databases, a low thread-pool size may be a performance bottleneck.
 
     Supported schemes:
-    - postgres
+    - postgresql
     - mysql
     - mssql
     - oracle

@@ -11,7 +11,7 @@ Introduction
 **Data-diff** is a command-line tool and Python library to efficiently diff
 rows across two different databases.
 
-⇄  Verifies across many different databases (e.g. *Postgres* -> *Snowflake*) !
+⇄  Verifies across many different databases (e.g. *PostgreSQL* -> *Snowflake*) !
 
 🔍 Outputs diff of rows in detail
 
@@ -32,11 +32,11 @@ Requires Python 3.7+ with pip.
 
     pip install data-diff
 
-or when you need extras like mysql and postgres:
+or when you need extras like mysql and postgresql:
 
 ::
 
-    pip install "data-diff[mysql,pgsql]"
+    pip install "data-diff[mysql,postgresql]"
 
 
 How to use from Python
@@ -50,7 +50,7 @@ How to use from Python
 
     from data_diff import connect_to_table, diff_tables
 
-    table1 = connect_to_table("postgres:///", "table_name", "id")
+    table1 = connect_to_table("postgresql:///", "table_name", "id")
     table2 = connect_to_table("mysql:///", "table_name", "id")
 
     for sign, columns in diff_tables(table1, table2):

@@ -52,7 +52,7 @@ TYPE_SAMPLES = {
 }
 
 DATABASE_TYPES = {
-    db.Postgres: {
+    db.PostgreSQL: {
         # https://www.postgresql.org/docs/current/datatype-numeric.html#DATATYPE-INT
         "int": [
             # "smallint",  # 2 bytes

@@ -7,7 +7,7 @@ also find us in `#tools-data-diff` in the [Locally Optimistic Slack.][slack]**
 **data-diff** is a command-line tool and Python library to efficiently diff
 rows across two different databases.
 
-* ⇄  Verifies across [many different databases][dbs] (e.g. Postgres -> Snowflake)
+* ⇄  Verifies across [many different databases][dbs] (e.g. PostgreSQL -> Snowflake)
 * 🔍 Outputs [diff of rows](#example-command-and-output) in detail
 * 🚨 Simple CLI/API to create monitoring and alerts
 * 🔥 Verify 25M+ rows in <10s, and 1B+ rows in ~5min.
@@ -28,7 +28,7 @@ comparing every row.
 
 **†:** The implementation for downloading all rows that `data-diff` and
 `count(*)` is compared to is not optimal. It is a single Python multi-threaded
-process. The performance is fairly driver-specific, e.g. Postgres' performs 10x
+process. The performance is fairly driver-specific, e.g. PostgreSQL's performs 10x
 better than MySQL.
 
 ## Table of Contents
@@ -45,7 +45,7 @@ better than MySQL.
 ## Common use-cases
 
 * **Verify data migrations.** Verify that all data was copied when doing a
-  critical data migration. For example, migrating from Heroku Postgres to Amazon RDS.
+  critical data migration. For example, migrating from Heroku PostgreSQL to Amazon RDS.
 * **Verifying data pipelines.** Moving data from a relational database to a
   warehouse/data lake with Fivetran, Airbyte, Debezium, or some other pipeline.
 * **Alerting and maintaining data integrity SLOs.** You can create and monitor
@@ -63,13 +63,13 @@ better than MySQL.
 
 ## Example Command and Output
 
-Below we run a comparison with the CLI for 25M rows in Postgres where the
+Below we run a comparison with the CLI for 25M rows in PostgreSQL where the
 right-hand table is missing single row with `id=12500048`:
 
 ```
 $ data-diff \
-    postgres://postgres:password@localhost/postgres rating \
-    postgres://postgres:password@localhost/postgres rating_del1 \
+    postgresql://user:password@localhost/database rating \
+    postgresql://user:password@localhost/database rating_del1 \
     --bisection-threshold 100000 \ # for readability, try default first
     --bisection-factor 6 \ # for readability, try default first
     --update-column timestamp \
@@ -111,7 +111,7 @@ $ data-diff \
 
 | Database      | Connection string                                                                       | Status |
 |---------------|-----------------------------------------------------------------------------------------|--------|
-| Postgres      | `postgres://user:password@hostname:5432/database`                                       |  💚    |
+| PostgreSQL    | `postgresql://user:password@hostname:5432/database`                                     |  💚    |
 | MySQL         | `mysql://user:password@hostname:5432/database`                                          |  💚    |
 | Snowflake     | `snowflake://user:password@account/database/SCHEMA?warehouse=WAREHOUSE&role=role`       |  💚    |
 | Oracle        | `oracle://username:password@hostname/database`                                          |  💛    |
@@ -140,9 +140,28 @@ Requires Python 3.7+ with pip.
 
 ```pip install data-diff```
 
-or when you need extras like mysql and postgres
+## Install drivers
 
-```pip install "data-diff[mysql,pgsql]"```
+To connect to a database, we need to have its driver installed, in the form of a Python library.
+
+While you may install them manually, we offer an easy way to install them along with data-diff:
+
+- `pip install 'data-diff[mysql]'`
+
+- `pip install 'data-diff[postgresql]'`
+
+- `pip install 'data-diff[snowflake]'`
+
+- `pip install 'data-diff[presto]'`
+
+- `pip install 'data-diff[oracle]'`
+
+- For BigQuery, see: https://pypi.org/project/google-cloud-bigquery/
+
+
+Users can also install several drivers at once:
+
+```pip install 'data-diff[mysql,postgresql,snowflake]'```
 
 # How to use
 
@@ -185,7 +204,7 @@ logging.basicConfig(level=logging.INFO)
 
 from data_diff import connect_to_table, diff_tables
 
-table1 = connect_to_table("postgres:///", "table_name", "id")
+table1 = connect_to_table("postgresql:///", "table_name", "id")
 table2 = connect_to_table("mysql:///", "table_name", "id")
 
 for different_row in diff_tables(table1, table2):
@@ -201,11 +220,11 @@ In this section we'll be doing a walk-through of exactly how **data-diff**
 works, and how to tune `--bisection-factor` and `--bisection-threshold`.
 
 Let's consider a scenario with an `orders` table with 1M rows. Fivetran is
-replicating it contionously from Postgres to Snowflake:
+replicating it contionously from PostgreSQL to Snowflake:
 
 ```
 ┌─────────────┐                        ┌─────────────┐
-│  Postgres   │                        │  Snowflake  │
+│ PostgreSQL  │                        │  Snowflake  │
 ├─────────────┤                        ├─────────────┤
 │             │                        │             │
 │             │                        │             │
@@ -233,7 +252,7 @@ of the table. Then it splits the table into `--bisection-factor=10` segments of
 
 ```
 ┌──────────────────────┐              ┌──────────────────────┐
-│       Postgres       │              │      Snowflake       │
+│     PostgreSQL       │              │      Snowflake       │
 ├──────────────────────┤              ├──────────────────────┤
 │      id=1..100k      │              │      id=1..100k      │
 ├──────────────────────┤              ├──────────────────────┤
@@ -281,7 +300,7 @@ are the same except `id=100k..200k`:
 
 ```
 ┌──────────────────────┐              ┌──────────────────────┐
-│       Postgres       │              │      Snowflake       │
+│     PostgreSQL       │              │      Snowflake       │
 ├──────────────────────┤              ├──────────────────────┤
 │    checksum=0102     │              │    checksum=0102     │
 ├──────────────────────┤   mismatch!  ├──────────────────────┤
@@ -306,7 +325,7 @@ and compare them in memory in **data-diff**.
 
 ```
 ┌──────────────────────┐              ┌──────────────────────┐
-│       Postgres       │              │      Snowflake       │
+│     PostgreSQL       │              │      Snowflake       │
 ├──────────────────────┤              ├──────────────────────┤
 │    id=100k..110k     │              │    id=100k..110k     │
 ├──────────────────────┤              ├──────────────────────┤
@@ -337,7 +356,7 @@ If you pass `--stats` you'll see e.g. what % of rows were different.
   queries.
 * Consider increasing the number of simultaneous threads executing
   queries per database with `--threads`. For databases that limit concurrency
-  per query, e.g. Postgres/MySQL, this can improve performance dramatically.
+  per query, e.g. PostgreSQL/MySQL, this can improve performance dramatically.
 * If you are only interested in _whether_ something changed, pass `--limit 1`.
   This can be useful if changes are very rare. This is often faster than doing a
   `count(*)`, for the reason mentioned above.
@@ -419,7 +438,7 @@ Now you can insert it into the testing database(s):
 ```shell-session
 # It's optional to seed more than one to run data-diff(1) against.
 $ poetry run preql -f dev/prepare_db.pql mysql://mysql:Password1@127.0.0.1:3306/mysql
-$ poetry run preql -f dev/prepare_db.pql postgres://postgres:Password1@127.0.0.1:5432/postgres
+$ poetry run preql -f dev/prepare_db.pql postgresql://postgres:Password1@127.0.0.1:5432/postgres
 
 # Cloud databases
 $ poetry run preql -f dev/prepare_db.pql snowflake://<uri>
@@ -430,7 +449,7 @@ $ poetry run preql -f dev/prepare_db.pql bigquery:///<project>
 **5. Run **data-diff** against seeded database**
 
 ```bash
-poetry run python3 -m data_diff postgres://postgres:Password1@localhost/postgres rating postgres://postgres:Password1@localhost/postgres rating_del1 --verbose
+poetry run python3 -m data_diff postgresql://postgres:Password1@localhost/postgres rating postgresql://postgres:Password1@localhost/postgres rating_del1 --verbose
 ```
 
 # License

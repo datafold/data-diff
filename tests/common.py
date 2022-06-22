@@ -6,7 +6,7 @@ import logging
 logging.basicConfig(level=logging.INFO)
 
 TEST_MYSQL_CONN_STRING: str = "mysql://mysql:Password1@localhost/mysql"
-TEST_POSTGRES_CONN_STRING: str = None
+TEST_POSTGRESQL_CONN_STRING: str = None
 TEST_SNOWFLAKE_CONN_STRING: str = None
 TEST_BIGQUERY_CONN_STRING: str = None
 TEST_REDSHIFT_CONN_STRING: str = None
@@ -26,7 +26,7 @@ if TEST_BIGQUERY_CONN_STRING and TEST_SNOWFLAKE_CONN_STRING:
 CONN_STRINGS = {
     db.BigQuery: TEST_BIGQUERY_CONN_STRING,
     db.MySQL: TEST_MYSQL_CONN_STRING,
-    db.Postgres: TEST_POSTGRES_CONN_STRING,
+    db.PostgreSQL: TEST_POSTGRESQL_CONN_STRING,
     db.Snowflake: TEST_SNOWFLAKE_CONN_STRING,
     db.Redshift: TEST_REDSHIFT_CONN_STRING,
     db.Oracle: TEST_ORACLE_CONN_STRING,

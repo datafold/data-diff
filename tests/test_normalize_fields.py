@@ -14,7 +14,7 @@ from .common import CONN_STRINGS
 logger = logging.getLogger()
 
 DATE_TYPES = {
-    db.Postgres: ["timestamp({p}) with time zone", "timestamp({p}) without time zone"],
+    db.PostgreSQL: ["timestamp({p}) with time zone", "timestamp({p}) without time zone"],
     db.MySQL: ["datetime({p})", "timestamp({p})"],
     db.Snowflake: ["timestamp({p})", "timestamp_tz({p})", "timestamp_ntz({p})"],
     db.BigQuery: ["timestamp", "datetime"],
