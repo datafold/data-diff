@@ -403,6 +403,14 @@ class TableDiffer:
         if max_rows < self.bisection_threshold:
             rows1, rows2 = self._threaded_call("get_values", [table1, table2])
             diff = list(diff_sets(rows1, rows2))
+
+            # Initial bisection_threshold larger than count. Normally we always
+            # checksum and count segments, even if we get the values. At the
+            # first level, however, that won't be true.
+            if level == 0:
+                self.stats["table1_count"] = len(rows1)
+                self.stats["table2_count"] = len(rows2)
+
             logger.info(". " * level + f"Diff found {len(diff)} different rows.")
             self.stats["rows_downloaded"] = self.stats.get("rows_downloaded", 0) + max(len(rows1), len(rows2))
             yield from diff
@@ -443,6 +451,7 @@ class TableDiffer:
 
         if level == 1:
             self.stats["table1_count"] = self.stats.get("table1_count", 0) + count1
+            self.stats["table2_count"] = self.stats.get("table2_count", 0) + count2
 
         if checksum1 != checksum2:
             yield from self._bisect_and_diff_tables(table1, table2, level=level, max_rows=max(count1, count2))

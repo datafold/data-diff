@@ -1,5 +1,6 @@
 import sys
 import time
+import json
 import logging
 from itertools import islice
 
@@ -50,6 +51,7 @@ COLOR_SCHEME = {
 @click.option("--max-age", default=None, help="Considers only rows younger than specified. See --min-age.")
 @click.option("-s", "--stats", is_flag=True, help="Print stats instead of a detailed diff")
 @click.option("-d", "--debug", is_flag=True, help="Print debug info")
+@click.option("--json", 'json_output', is_flag=True, help="Print JSONL output for machine readability")
 @click.option("-v", "--verbose", is_flag=True, help="Print extra info")
 @click.option("-i", "--interactive", is_flag=True, help="Confirm queries, implies --debug")
 @click.option("--keep-column-case", is_flag=True, help="Don't use the schema to fix the case of given column names.")
@@ -80,6 +82,7 @@ def main(
     interactive,
     threads,
     keep_column_case,
+    json_output,
 ):
     if limit and stats:
         print("Error: cannot specify a limit when using the -s/--stats switch")
@@ -144,17 +147,35 @@ def main(
     if stats:
         diff = list(diff_iter)
         unique_diff_count = len({i[0] for _, i in diff})
-        table1_count = differ.stats.get("table1_count")
-        percent = 100 * unique_diff_count / (table1_count or 1)
-        print(f"Diff-Total: {len(diff)} changed rows out of {table1_count}")
-        print(f"Diff-Percent: {percent:.4f}%")
+        max_table_count = max(differ.stats["table1_count"], differ.stats["table2_count"])
+        percent = 100 * unique_diff_count / (max_table_count or 1)
         plus = len([1 for op, _ in diff if op == "+"])
         minus = len([1 for op, _ in diff if op == "-"])
-        print(f"Diff-Split: +{plus}  -{minus}")
+
+        if json_output:
+            json_output = {
+                "different_rows": len(diff),
+                "different_percent": percent,
+                "different_+": plus,
+                "different_-": minus,
+                "total": max_table_count,
+            }
+            print(json.dumps(json_output))
+        else:
+            print(f"Diff-Total: {len(diff)} changed rows out of {max_table_count}")
+            print(f"Diff-Percent: {percent:.14f}%")
+            print(f"Diff-Split: +{plus}  -{minus}")
     else:
-        for op, key in diff_iter:
+        for op, columns in diff_iter:
             color = COLOR_SCHEME[op]
-            rich.print(f"[{color}]{op} {key!r}[/{color}]")
+
+            if json_output:
+                jsonl = json.dumps([op, list(columns)])
+                rich.print(f"[{color}]{jsonl}[/{color}]")
+            else:
+                text = f"{op} {', '.join(columns)}"
+                rich.print(f"[{color}]{text}[/{color}]")
+
             sys.stdout.flush()
 
     end = time.time()
