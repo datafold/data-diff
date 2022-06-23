@@ -4,7 +4,7 @@ import unittest
 import preql
 import arrow  # comes with preql
 
-from data_diff.database import connect_to_uri
+from data_diff.databases import connect_to_uri
 from data_diff.diff_tables import TableDiffer, TableSegment, split_space
 
 from .common import TEST_MYSQL_CONN_STRING, str_to_checksum
