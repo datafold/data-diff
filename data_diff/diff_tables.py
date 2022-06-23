@@ -12,7 +12,8 @@ from concurrent.futures import ThreadPoolExecutor
 from runtype import dataclass
 
 from .sql import Select, Checksum, Compare, DbPath, DbKey, DbTime, Count, TableName, Time, Min, Max
-from .database import Database, NumericType, PrecisionType, ColType, UnknownColType
+from .database import Database
+from .database_types import NumericType, PrecisionType, UnknownColType, Schema, Schema_CaseInsensitive, Schema_CaseSensitive
 
 logger = logging.getLogger("diff_tables")
 
@@ -36,48 +37,6 @@ def split_space(start, end, count):
 def parse_table_name(t):
     return tuple(t.split("."))
 
-
-class Schema(ABC):
-    @abstractmethod
-    def get_key(self, key: str) -> str:
-        ...
-
-    @abstractmethod
-    def __getitem__(self, key: str) -> str:
-        ...
-
-    @abstractmethod
-    def __setitem__(self, key: str, value):
-        ...
-
-    @abstractmethod
-    def __contains__(self, key: str) -> bool:
-        ...
-
-
-class Schema_CaseSensitive(dict, Schema):
-    def get_key(self, key):
-        return key
-
-
-class Schema_CaseInsensitive(Schema):
-    def __init__(self, initial):
-        self._dict = {k.lower(): (k, v) for k, v in dict(initial).items()}
-
-    def get_key(self, key: str) -> str:
-        return self._dict[key.lower()][0]
-
-    def __getitem__(self, key: str) -> str:
-        return self._dict[key.lower()][1]
-
-    def __setitem__(self, key: str, value):
-        k = key.lower()
-        if k in self._dict:
-            key = self._dict[k][0]
-        self._dict[k] = key, value
-
-    def __contains__(self, key):
-        return key.lower() in self._dict
 
 
 @dataclass(frozen=False)
@@ -144,16 +103,19 @@ class TableSegment:
             return self
 
         schema = self.database.query_table_schema(self.table_path, self._relevant_columns)
+
+        schema_inst: Schema
         if self.case_sensitive:
-            schema = Schema_CaseSensitive(schema)
+            schema_inst = Schema_CaseSensitive(schema)
         else:
             if len({k.lower() for k in schema}) < len(schema):
                 logger.warning(
                     f'Ambiguous schema for {self.database}:{".".join(self.table_path)} | Columns = {", ".join(list(schema))}'
                 )
                 logger.warning("We recommend to disable case-insensitivity (remove --any-case).")
-            schema = Schema_CaseInsensitive(schema)
-        return self.new(_schema=schema)
+            schema_inst = Schema_CaseInsensitive(schema)
+
+        return self.new(_schema=schema_inst)
 
     def _make_key_range(self):
         if self.min_key is not None:
