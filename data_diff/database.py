@@ -275,7 +275,7 @@ class ThreadedDatabase(Database):
         ...
 
     def close(self):
-        self._queue.shutdown(cancel_futures=True)
+        self._queue.shutdown()
 
 
 CHECKSUM_HEXDIGITS = 15  # Must be 15 or lower
