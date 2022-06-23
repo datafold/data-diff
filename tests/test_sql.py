@@ -1,6 +1,6 @@
 import unittest
 
-from data_diff.database import connect_to_uri
+from data_diff.databases import connect_to_uri
 from data_diff.sql import Checksum, Compare, Compiler, Count, Enum, Explain, In, Select, TableName
 
 from .common import TEST_MYSQL_CONN_STRING

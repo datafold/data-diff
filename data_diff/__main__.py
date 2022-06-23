@@ -9,9 +9,8 @@ from .diff_tables import (
     TableDiffer,
     DEFAULT_BISECTION_THRESHOLD,
     DEFAULT_BISECTION_FACTOR,
-    parse_table_name,
 )
-from .database import connect_to_uri, parse_table_name
+from .databases.connect import connect_to_uri
 from .parse_time import parse_time_before_now, UNITS_STR, ParseError
 
 import rich
@@ -51,7 +50,7 @@ COLOR_SCHEME = {
 @click.option("--max-age", default=None, help="Considers only rows younger than specified. See --min-age.")
 @click.option("-s", "--stats", is_flag=True, help="Print stats instead of a detailed diff")
 @click.option("-d", "--debug", is_flag=True, help="Print debug info")
-@click.option("--json", 'json_output', is_flag=True, help="Print JSONL output for machine readability")
+@click.option("--json", "json_output", is_flag=True, help="Print JSONL output for machine readability")
 @click.option("-v", "--verbose", is_flag=True, help="Print extra info")
 @click.option("-i", "--interactive", is_flag=True, help="Confirm queries, implies --debug")
 @click.option("--keep-column-case", is_flag=True, help="Don't use the schema to fix the case of given column names.")
@@ -104,7 +103,7 @@ def main(
             try:
                 threads = int(threads)
             except ValueError:
-                logger.error("Error: threads must be a number, 'auto', or 'serial'.")
+                logging.error("Error: threads must be a number, 'auto', or 'serial'.")
                 return
             if threads < 1:
                 logging.error("Error: threads must be >= 1")
@@ -129,8 +128,8 @@ def main(
         logging.error("Error while parsing age expression: %s" % e)
         return
 
-    table1 = TableSegment(db1, parse_table_name(table1_name), key_column, update_column, columns, **options)
-    table2 = TableSegment(db2, parse_table_name(table2_name), key_column, update_column, columns, **options)
+    table1 = TableSegment(db1, db1.parse_table_name(table1_name), key_column, update_column, columns, **options)
+    table2 = TableSegment(db2, db2.parse_table_name(table2_name), key_column, update_column, columns, **options)
 
     differ = TableDiffer(
         bisection_factor=bisection_factor,

@@ -4,14 +4,11 @@ import time
 import logging
 from decimal import Decimal
 
-from parameterized import parameterized, parameterized_class
-import preql
+from parameterized import parameterized
 
-from data_diff import database as db
+from data_diff import databases as db
 from data_diff.diff_tables import TableDiffer, TableSegment
-from parameterized import parameterized, parameterized_class
 from .common import CONN_STRINGS
-import logging
 
 
 logging.getLogger("diff_tables").setLevel(logging.ERROR)
@@ -187,11 +184,6 @@ DATABASE_TYPES = {
 
 
 type_pairs = []
-# =>
-# { source: (preql, connection)
-# target: (preql, connection)
-# source_type: (int, tinyint),
-# target_type: (int, bigint) }
 for source_db, source_type_categories in DATABASE_TYPES.items():
     for target_db, target_type_categories in DATABASE_TYPES.items():
         for (

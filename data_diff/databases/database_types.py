@@ -152,7 +152,6 @@ class AbstractDatabase(ABC):
             return self.normalize_number(value, coltype)
         return self.to_string(f"{value}")
 
-
     def _normalize_table_path(self, path: DbPath) -> DbPath:
         ...
 

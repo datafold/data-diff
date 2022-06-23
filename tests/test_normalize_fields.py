@@ -5,9 +5,8 @@ import logging
 
 import preql
 
-from data_diff.database import BigQuery, MySQL, Snowflake, connect_to_uri, Oracle
 from data_diff.sql import Select
-from data_diff import database as db
+from data_diff import databases as db
 
 from .common import CONN_STRINGS
 
@@ -41,7 +40,7 @@ class TestNormalize(unittest.TestCase):
         sample_date3 = datetime(2021, 5, 2, 11, 23, 34, 000000, tzinfo=timezone.utc)
 
         dates = [sample_date1, sample_date2, sample_date3]
-        if db_id in (BigQuery, Oracle):
+        if db_id in (db.BigQuery, db.Oracle):
             # TODO BigQuery doesn't seem to support timezone for datetime
             dates = [d.replace(tzinfo=None) for d in dates]
 
@@ -49,9 +48,9 @@ class TestNormalize(unittest.TestCase):
 
         date_types = [t.format(p=precision) for t in DATE_TYPES[db_id]]
         date_type_tables = {dt: self._new_table(dt) for dt in date_types}
-        if db_id is BigQuery:
+        if db_id is db.BigQuery:
             date_type_tables = {dt: f"data_diff.{name}" for dt, name in date_type_tables.items()}
-        elif db_id is MySQL:
+        elif db_id is db.MySQL:
             pql.run_statement("SET @@session.time_zone='+00:00'")
 
         used_tables = list(date_type_tables.values())
@@ -60,7 +59,7 @@ class TestNormalize(unittest.TestCase):
         try:
 
             for date_type, table in date_type_tables.items():
-                if db_id is not Oracle:
+                if db_id is not db.Oracle:
                     pql.run_statement(f"DROP TABLE IF EXISTS {table}")
                 pql.run_statement(f"CREATE TABLE {table}(id int, v {date_type})")
             pql.commit()
@@ -69,7 +68,7 @@ class TestNormalize(unittest.TestCase):
 
                 for index, date in enumerate(dates, 1):
                     # print(f"insert into {table}(v) values ('{date}')")
-                    if db_id is BigQuery:
+                    if db_id is db.BigQuery:
                         pql.run_statement(
                             f"insert into {table}(id, v) values ({index}, cast(timestamp '{date}' as {date_type}))"
                         )
@@ -77,14 +76,14 @@ class TestNormalize(unittest.TestCase):
                         pql.run_statement(f"insert into {table}(id, v) values ({index}, timestamp '{date}')")
             pql.commit()
 
-            conn = connect_to_uri(conn_string)
+            conn = db.connect_to_uri(conn_string)
             assert type(conn) is db_id  # Might change in the future
 
-            if db_id is MySQL:
+            if db_id is db.MySQL:
                 conn.query("SET @@session.time_zone='+00:00'", None)
 
             for date_type, table in date_type_tables.items():
-                if db_id is Snowflake:
+                if db_id is db.Snowflake:
                     table = table.upper()
                 schema = conn.query_table_schema(table.split("."))
                 schema = {k.lower(): v for k, v in schema.items()}

@@ -1,6 +1,6 @@
 import hashlib
 
-from data_diff import database as db
+from data_diff import databases as db
 import logging
 
 logging.basicConfig(level=logging.INFO)

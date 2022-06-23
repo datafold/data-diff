@@ -6,8 +6,7 @@ from datetime import datetime
 
 from runtype import dataclass
 
-from .database_types import AbstractDatabase, DbPath, DbKey, DbTime
-
+from .databases.database_types import AbstractDatabase, DbPath, DbKey, DbTime
 
 
 class Sql:
