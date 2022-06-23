@@ -29,7 +29,8 @@ class MySQL(ThreadedDatabase):
 
         super().__init__(thread_count=thread_count)
 
-        self.default_schema = user
+        # In MySQL schema and database are synonymous
+        self.default_schema = database
 
     def create_connection(self):
         mysql = import_mysql()
