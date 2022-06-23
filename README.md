@@ -25,7 +25,7 @@ there are few/no changes, but is able to output each differing row! By pushing
 the compute into the databases, it's _much_ faster than querying for and
 comparing every row.
 
-![Performance for 100M rows](https://user-images.githubusercontent.com/97400/174860361-35158d2b-0cad-4089-be66-8bf467058387.png)
+![Performance for 100M rows](https://user-images.githubusercontent.com/97400/175182987-a3900d4e-c097-4732-a4e9-19a40fac8cdc.png)
 
 **†:** The implementation for downloading all rows that `data-diff` and
 `count(*)` is compared to is not optimal. It is a single Python multi-threaded
@@ -185,7 +185,7 @@ Options:
   - `-v` or `--verbose` - Print extra info
   - `-i` or `--interactive` - Confirm queries, implies `--debug`
   - `--json` - Print JSONL output for machine readability
-  - `--min-age` - Considers only rows older than specified.
+  - `--min-age` - Considers only rows older than specified. Useful for specifying replication lag.
                   Example: `--min-age=5min` ignores rows from the last 5 minutes.
                   Valid units: `d, days, h, hours, min, minutes, mon, months, s, seconds, w, weeks, y, years`
   - `--max-age` - Considers only rows younger than specified. See `--min-age`.
