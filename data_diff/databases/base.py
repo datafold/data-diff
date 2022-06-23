@@ -34,9 +34,6 @@ def import_helper(package: str = None, text=""):
     return dec
 
 
-
-
-
 class ConnectError(Exception):
     pass
 
@@ -55,7 +52,6 @@ def _query_conn(conn, sql_code: str) -> list:
     c.execute(sql_code)
     if sql_code.lower().startswith("select"):
         return c.fetchall()
-
 
 
 class Database(AbstractDatabase):
@@ -139,7 +135,9 @@ class Database(AbstractDatabase):
 
             elif issubclass(cls, Decimal):
                 if numeric_scale is None:
-                    raise ValueError(f"{self.name}: Unexpected numeric_scale is NULL, for column {col_name} of type {type_repr}.")
+                    raise ValueError(
+                        f"{self.name}: Unexpected numeric_scale is NULL, for column {col_name} of type {type_repr}."
+                    )
                 return cls(precision=numeric_scale)
 
             assert issubclass(cls, Float)
@@ -235,4 +233,3 @@ DEFAULT_DATETIME_PRECISION = 6
 DEFAULT_NUMERIC_PRECISION = 24
 
 TIMESTAMP_PRECISION_POS = 20  # len("2022-06-03 12:24:35.") == 20
-

@@ -13,7 +13,14 @@ from runtype import dataclass
 
 from .sql import Select, Checksum, Compare, DbPath, DbKey, DbTime, Count, TableName, Time, Min, Max
 from .databases.base import Database
-from .databases.database_types import NumericType, PrecisionType, UnknownColType, Schema, Schema_CaseInsensitive, Schema_CaseSensitive
+from .databases.database_types import (
+    NumericType,
+    PrecisionType,
+    UnknownColType,
+    Schema,
+    Schema_CaseInsensitive,
+    Schema_CaseSensitive,
+)
 
 logger = logging.getLogger("diff_tables")
 
@@ -32,7 +39,6 @@ def safezip(*args):
 def split_space(start, end, count):
     size = end - start
     return list(range(start, end, (size + 1) // (count + 1)))[1 : count + 1]
-
 
 
 @dataclass(frozen=False)

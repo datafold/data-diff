@@ -3,11 +3,13 @@ import logging
 from .database_types import *
 from .base import Database, import_helper, _query_conn, CHECKSUM_MASK
 
+
 @import_helper("snowflake")
 def import_snowflake():
     import snowflake.connector
 
     return snowflake
+
 
 class Snowflake(Database):
     DATETIME_TYPES = {
@@ -86,4 +88,3 @@ class Snowflake(Database):
 
     def normalize_number(self, value: str, coltype: NumericType) -> str:
         return self.to_string(f"cast({value} as decimal(38, {coltype.precision}))")
-

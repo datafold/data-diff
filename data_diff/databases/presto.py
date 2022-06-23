@@ -2,7 +2,14 @@ import re
 
 from .database_types import *
 from .base import Database, import_helper, _query_conn
-from .base import MD5_HEXDIGITS, CHECKSUM_HEXDIGITS, TIMESTAMP_PRECISION_POS, DEFAULT_DATETIME_PRECISION, DEFAULT_NUMERIC_PRECISION
+from .base import (
+    MD5_HEXDIGITS,
+    CHECKSUM_HEXDIGITS,
+    TIMESTAMP_PRECISION_POS,
+    DEFAULT_DATETIME_PRECISION,
+    DEFAULT_NUMERIC_PRECISION,
+)
+
 
 @import_helper("presto")
 def import_presto():

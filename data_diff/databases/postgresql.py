@@ -2,6 +2,7 @@ from .database_types import *
 from .base import ThreadedDatabase, import_helper, ConnectError
 from .base import MD5_HEXDIGITS, CHECKSUM_HEXDIGITS, _CHECKSUM_BITSIZE, TIMESTAMP_PRECISION_POS
 
+
 @import_helper("postgresql")
 def import_postgresql():
     import psycopg2
@@ -9,7 +10,6 @@ def import_postgresql():
 
     psycopg2.extensions.set_wait_callback(psycopg2.extras.wait_select)
     return psycopg2
-
 
 
 class PostgreSQL(ThreadedDatabase):

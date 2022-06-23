@@ -13,6 +13,7 @@ from .bigquery import BigQuery
 from .redshift import Redshift
 from .presto import Presto
 
+
 @dataclass
 class MatchUriPath:
     database_cls: Type[Database]

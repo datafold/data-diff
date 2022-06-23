@@ -23,4 +23,3 @@ class MsSQL(ThreadedDatabase):
 
     def to_string(self, s: str):
         return f"CONVERT(varchar, {s})"
-

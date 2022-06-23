@@ -4,6 +4,7 @@ from .database_types import *
 from .base import ThreadedDatabase, import_helper, ConnectError, QueryError
 from .base import DEFAULT_DATETIME_PRECISION, DEFAULT_NUMERIC_PRECISION
 
+
 @import_helper("oracle")
 def import_oracle():
     import cx_Oracle

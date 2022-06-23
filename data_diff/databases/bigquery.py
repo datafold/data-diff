@@ -2,6 +2,7 @@ from .database_types import *
 from .base import Database, import_helper, parse_table_name, ConnectError
 from .base import TIMESTAMP_PRECISION_POS
 
+
 @import_helper(text="Please install BigQuery and configure your google-cloud access.")
 def import_bigquery():
     from google.cloud import bigquery

@@ -1,6 +1,7 @@
 from .database_types import *
 from .postgresql import PostgreSQL, MD5_HEXDIGITS, CHECKSUM_HEXDIGITS, TIMESTAMP_PRECISION_POS
 
+
 class Redshift(PostgreSQL):
     NUMERIC_TYPES = {
         **PostgreSQL.NUMERIC_TYPES,

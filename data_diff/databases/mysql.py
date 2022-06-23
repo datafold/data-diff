@@ -2,6 +2,7 @@ from .database_types import *
 from .base import ThreadedDatabase, import_helper, ConnectError
 from .base import MD5_HEXDIGITS, CHECKSUM_HEXDIGITS, TIMESTAMP_PRECISION_POS
 
+
 @import_helper("mysql")
 def import_mysql():
     import mysql.connector

@@ -50,7 +50,7 @@ COLOR_SCHEME = {
 @click.option("--max-age", default=None, help="Considers only rows younger than specified. See --min-age.")
 @click.option("-s", "--stats", is_flag=True, help="Print stats instead of a detailed diff")
 @click.option("-d", "--debug", is_flag=True, help="Print debug info")
-@click.option("--json", 'json_output', is_flag=True, help="Print JSONL output for machine readability")
+@click.option("--json", "json_output", is_flag=True, help="Print JSONL output for machine readability")
 @click.option("-v", "--verbose", is_flag=True, help="Print extra info")
 @click.option("-i", "--interactive", is_flag=True, help="Confirm queries, implies --debug")
 @click.option("--keep-column-case", is_flag=True, help="Don't use the schema to fix the case of given column names.")

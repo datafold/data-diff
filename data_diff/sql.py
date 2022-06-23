@@ -9,7 +9,6 @@ from runtype import dataclass
 from .databases.database_types import AbstractDatabase, DbPath, DbKey, DbTime
 
 
-
 class Sql:
     pass
 
