@@ -94,7 +94,7 @@ class Presto(Database):
                 datetime_precision = int(m.group(1))
                 return cls(
                     precision=datetime_precision if datetime_precision is not None else DEFAULT_DATETIME_PRECISION,
-                    rounds=False,
+                    rounds=self.ROUNDS_ON_PREC_LOSS,
                 )
 
         number_regexps = {r"decimal\((\d+),(\d+)\)": Decimal}
