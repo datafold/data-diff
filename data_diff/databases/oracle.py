@@ -13,6 +13,10 @@ def import_oracle():
 
 
 class Oracle(ThreadedDatabase):
+    TYPE_CLASSES: Dict[str, type] = {
+        "NUMBER": Decimal,
+        "FLOAT": Float,
+    }
     ROUNDS_ON_PREC_LOSS = True
 
     def __init__(self, host, port, user, password, *, database, thread_count, **kw):
@@ -72,7 +76,6 @@ class Oracle(ThreadedDatabase):
         numeric_precision: int = None,
         numeric_scale: int = None,
     ) -> ColType:
-        """ """
         regexps = {
             r"TIMESTAMP\((\d)\) WITH LOCAL TIME ZONE": Timestamp,
             r"TIMESTAMP\((\d)\) WITH TIME ZONE": TimestampTZ,
@@ -86,20 +89,4 @@ class Oracle(ThreadedDatabase):
                     rounds=self.ROUNDS_ON_PREC_LOSS,
                 )
 
-        n_cls = {
-            "NUMBER": Decimal,
-            "FLOAT": Float,
-        }.get(type_repr, None)
-        if n_cls:
-            if issubclass(n_cls, Decimal):
-                assert numeric_scale is not None, (type_repr, numeric_precision, numeric_scale)
-                return n_cls(precision=numeric_scale)
-
-            assert issubclass(n_cls, Float)
-            return n_cls(
-                precision=self._convert_db_precision_to_digits(
-                    numeric_precision if numeric_precision is not None else DEFAULT_NUMERIC_PRECISION
-                )
-            )
-
-        return UnknownColType(type_repr)
+        return super()._parse_type(type_repr, col_name, type_repr, datetime_precision, numeric_precision, numeric_scale)

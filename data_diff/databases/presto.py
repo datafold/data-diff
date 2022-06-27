@@ -20,13 +20,12 @@ def import_presto():
 
 class Presto(Database):
     default_schema = "public"
-    DATETIME_TYPES = {
+    TYPE_CLASSES = {
+        # Timestamps
         "timestamp with time zone": TimestampTZ,
         "timestamp without time zone": Timestamp,
         "timestamp": Timestamp,
-        # "datetime": Datetime,
-    }
-    NUMERIC_TYPES = {
+        # Numbers
         "integer": Integer,
         "real": Float,
         "double": Float,
@@ -104,17 +103,4 @@ class Presto(Database):
                 prec, scale = map(int, m.groups())
                 return n_cls(scale)
 
-        n_cls = self.NUMERIC_TYPES.get(type_repr)
-        if n_cls:
-            if issubclass(n_cls, Integer):
-                assert numeric_precision is not None
-                return n_cls(0)
-
-            assert issubclass(n_cls, Float)
-            return n_cls(
-                precision=self._convert_db_precision_to_digits(
-                    numeric_precision if numeric_precision is not None else DEFAULT_NUMERIC_PRECISION
-                )
-            )
-
-        return UnknownColType(type_repr)
+        return super()._parse_type(type_repr)

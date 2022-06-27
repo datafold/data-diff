@@ -11,11 +11,11 @@ def import_mysql():
 
 
 class MySQL(ThreadedDatabase):
-    DATETIME_TYPES = {
+    TYPE_CLASSES = {
+        # Dates
         "datetime": Datetime,
         "timestamp": Timestamp,
-    }
-    NUMERIC_TYPES = {
+        # Numbers
         "double": Float,
         "float": Float,
         "decimal": Decimal,

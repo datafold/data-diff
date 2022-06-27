@@ -1,13 +1,22 @@
 import math
 import sys
 import logging
-from typing import Dict, Tuple, Optional, Sequence
+from typing import Dict, Tuple, Optional, Sequence, Type
 from functools import lru_cache, wraps
 from concurrent.futures import ThreadPoolExecutor
 import threading
 from abc import abstractmethod
 
-from .database_types import AbstractDatabase, ColType, Integer, Decimal, Float, UnknownColType
+from .database_types import (
+    AbstractDatabase,
+    ColType,
+    Integer,
+    Decimal,
+    Float,
+    PrecisionType,
+    TemporalType,
+    UnknownColType,
+)
 from data_diff.sql import DbPath, SqlOrStr, Compiler, Explain, Select
 
 logger = logging.getLogger("database")
@@ -62,7 +71,7 @@ class Database(AbstractDatabase):
     Instanciated using :meth:`~data_diff.connect_to_uri`
     """
 
-    DATETIME_TYPES: Dict[str, type] = {}
+    TYPE_CLASSES: Dict[str, type] = {}
     default_schema: str = None
 
     @property
@@ -109,6 +118,9 @@ class Database(AbstractDatabase):
         # See: https://en.wikipedia.org/wiki/Single-precision_floating-point_format
         return math.floor(math.log(2**p, 10))
 
+    def _parse_type_repr(self, type_repr: str) -> Optional[Type[ColType]]:
+        return self.TYPE_CLASSES.get(type_repr)
+
     def _parse_type(
         self,
         col_name: str,
@@ -119,28 +131,27 @@ class Database(AbstractDatabase):
     ) -> ColType:
         """ """
 
-        cls = self.DATETIME_TYPES.get(type_repr)
-        if cls:
+        cls = self._parse_type_repr(type_repr)
+        if not cls:
+            return UnknownColType(type_repr)
+
+        if issubclass(cls, TemporalType):
             return cls(
                 precision=datetime_precision if datetime_precision is not None else DEFAULT_DATETIME_PRECISION,
                 rounds=self.ROUNDS_ON_PREC_LOSS,
             )
 
-        cls = self.NUMERIC_TYPES.get(type_repr)
-        if cls:
-            if issubclass(cls, Integer):
-                # Some DBs have a constant numeric_scale, so they don't report it.
-                # We fill in the constant, so we need to ignore it for integers.
-                return cls(precision=0)
+        elif issubclass(cls, Integer):
+            return cls()
 
-            elif issubclass(cls, Decimal):
-                if numeric_scale is None:
-                    raise ValueError(
-                        f"{self.name}: Unexpected numeric_scale is NULL, for column {col_name} of type {type_repr}."
-                    )
-                return cls(precision=numeric_scale)
+        elif issubclass(cls, Decimal):
+            if numeric_scale is None:
+                raise ValueError(
+                    f"{self.name}: Unexpected numeric_scale is NULL, for column {col_name} of type {type_repr}."
+                )
+            return cls(precision=numeric_scale)
 
-            assert issubclass(cls, Float)
+        elif issubclass(cls, Float):
             # assert numeric_scale is None
             return cls(
                 precision=self._convert_db_precision_to_digits(
@@ -148,7 +159,7 @@ class Database(AbstractDatabase):
                 )
             )
 
-        return UnknownColType(type_repr)
+        raise TypeError(f"Parsing {type_repr} returned an unknown type '{cls}'.")
 
     def select_table_schema(self, path: DbPath) -> str:
         schema, table = self._normalize_table_path(path)

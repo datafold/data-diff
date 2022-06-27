@@ -53,6 +53,14 @@ class Decimal(FractionalType):
     pass
 
 
+class StringType(ColType):
+    pass
+
+
+class UUID(StringType):
+    pass
+
+
 @dataclass
 class Integer(NumericType):
     def __post_init__(self):

@@ -11,11 +11,11 @@ def import_bigquery():
 
 
 class BigQuery(Database):
-    DATETIME_TYPES = {
+    TYPE_CLASSES = {
+        # Dates
         "TIMESTAMP": Timestamp,
         "DATETIME": Datetime,
-    }
-    NUMERIC_TYPES = {
+        # Numbers
         "INT64": Integer,
         "INT32": Integer,
         "NUMERIC": Decimal,

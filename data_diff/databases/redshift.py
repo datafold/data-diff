@@ -3,8 +3,8 @@ from .postgresql import PostgreSQL, MD5_HEXDIGITS, CHECKSUM_HEXDIGITS, TIMESTAMP
 
 
 class Redshift(PostgreSQL):
-    NUMERIC_TYPES = {
-        **PostgreSQL.NUMERIC_TYPES,
+    TYPE_CLASSES = {
+        **PostgreSQL.TYPE_CLASSES,
         "double": Float,
         "real": Float,
     }
