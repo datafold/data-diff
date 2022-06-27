@@ -50,7 +50,13 @@ class Presto(Database):
 
     def _query(self, sql_code: str) -> list:
         "Uses the standard SQL cursor interface"
-        return _query_conn(self._conn, sql_code)
+        c = self._conn.cursor()
+        c.execute(sql_code)
+        if sql_code.lower().startswith("select"):
+            return c.fetchall()
+        # Required for the query to actually run 🤯
+        if re.match(r"(insert|create|truncate|drop)", sql_code, re.IGNORECASE):
+            return c.fetchone()
 
     def close(self):
         self._conn.close()
@@ -88,7 +94,7 @@ class Presto(Database):
                 datetime_precision = int(m.group(1))
                 return t_cls(
                     precision=datetime_precision if datetime_precision is not None else DEFAULT_DATETIME_PRECISION,
-                    rounds=False,
+                    rounds=self.ROUNDS_ON_PREC_LOSS,
                 )
 
         number_regexps = {r"decimal\((\d+),(\d+)\)": Decimal}

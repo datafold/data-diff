@@ -1,9 +1,8 @@
 import hashlib
+import os
 
 from data_diff import databases as db
 import logging
-
-logging.basicConfig(level=logging.INFO)
 
 TEST_MYSQL_CONN_STRING: str = "mysql://mysql:Password1@localhost/mysql"
 TEST_POSTGRESQL_CONN_STRING: str = None
@@ -13,6 +12,16 @@ TEST_REDSHIFT_CONN_STRING: str = None
 TEST_ORACLE_CONN_STRING: str = None
 TEST_PRESTO_CONN_STRING: str = None
 
+DEFAULT_N_SAMPLES = 50
+N_SAMPLES = int(os.environ.get("N_SAMPLES", DEFAULT_N_SAMPLES))
+
+level = logging.ERROR
+if os.environ.get("LOG_LEVEL", False):
+    level = getattr(logging, os.environ["LOG_LEVEL"].upper())
+
+logging.basicConfig(level=level)
+logging.getLogger("diff_tables").setLevel(level)
+logging.getLogger("database").setLevel(level)
 
 try:
     from .local_settings import *

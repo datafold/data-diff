@@ -1,34 +1,120 @@
 from contextlib import suppress
 import unittest
 import time
-import logging
+import re
+import math
+import datetime
 from decimal import Decimal
-
 from parameterized import parameterized
 
 from data_diff import databases as db
 from data_diff.diff_tables import TableDiffer, TableSegment
-from .common import CONN_STRINGS
+from .common import CONN_STRINGS, N_SAMPLES
 
 
-logging.getLogger("diff_tables").setLevel(logging.ERROR)
-logging.getLogger("database").setLevel(logging.WARN)
-
-CONNS = {k: db.connect_to_uri(v) for k, v in CONN_STRINGS.items()}
+CONNS = {k: db.connect_to_uri(v, 1) for k, v in CONN_STRINGS.items()}
 
 CONNS[db.MySQL].query("SET @@session.time_zone='+00:00'", None)
 
-TYPE_SAMPLES = {
-    "int": [127, -3, -9, 37, 15, 127],
-    "datetime_no_timezone": [
-        "2020-01-01 15:10:10",
-        "2020-02-01 9:9:9",
-        "2022-03-01 15:10:01.139",
-        "2022-04-01 15:10:02.020409",
-        "2022-05-01 15:10:03.003030",
-        "2022-06-01 15:10:05.009900",
-    ],
-    "float": [
+
+class PaginatedTable:
+    # We can't query all the rows at once for large tables. It'll occupy too
+    # much memory.
+    RECORDS_PER_BATCH = 1000000
+
+    def __init__(self, table, conn):
+        self.table = table
+        self.conn = conn
+
+    def __iter__(self):
+        iter = PaginatedTable(self.table, self.conn)
+        iter.last_id = 0
+        iter.values = []
+        iter.value_index = 0
+        return iter
+
+    def __next__(self) -> str:
+        if self.value_index == len(self.values):  #  end of current batch
+            query = f"SELECT id, col FROM {self.table} WHERE id > {self.last_id} ORDER BY id ASC LIMIT {self.RECORDS_PER_BATCH}"
+            if isinstance(self.conn, db.Oracle):
+                query = f"SELECT id, col FROM {self.table} WHERE id > {self.last_id} ORDER BY id ASC OFFSET 0 ROWS FETCH NEXT {self.RECORDS_PER_BATCH} ROWS ONLY"
+
+            self.values = self.conn.query(query, list)
+            if len(self.values) == 0:  #  we must be done!
+                raise StopIteration
+            self.last_id = self.values[-1][0]
+            self.value_index = 0
+
+        this_value = self.values[self.value_index]
+        self.value_index += 1
+        return this_value
+
+
+class DateTimeFaker:
+    MANUAL_FAKES = [
+        datetime.datetime.fromisoformat("2020-01-01 15:10:10"),
+        datetime.datetime.fromisoformat("2020-02-01 09:09:09"),
+        datetime.datetime.fromisoformat("2022-03-01 15:10:01.139"),
+        datetime.datetime.fromisoformat("2022-04-01 15:10:02.020409"),
+        datetime.datetime.fromisoformat("2022-05-01 15:10:03.003030"),
+        datetime.datetime.fromisoformat("2022-06-01 15:10:05.009900"),
+    ]
+
+    def __init__(self, max):
+        self.max = max
+
+    def __iter__(self):
+        iter = DateTimeFaker(self.max)
+        iter.prev = datetime.datetime(2000, 1, 1, 0, 0, 0, 0)
+        iter.i = 0
+        return iter
+
+    def __len__(self):
+        return self.max
+
+    def __next__(self) -> datetime.datetime:
+        if self.i < len(self.MANUAL_FAKES):
+            fake = self.MANUAL_FAKES[self.i]
+            self.i += 1
+            return fake
+        elif self.i < self.max:
+            self.prev = self.prev + datetime.timedelta(seconds=3, microseconds=571)
+            self.i += 1
+            return self.prev
+        else:
+            raise StopIteration
+
+
+class IntFaker:
+    MANUAL_FAKES = [127, -3, -9, 37, 15, 127]
+
+    def __init__(self, max):
+        self.max = max
+
+    def __iter__(self):
+        iter = IntFaker(self.max)
+        iter.prev = -128
+        iter.i = 0
+        return iter
+
+    def __len__(self):
+        return self.max
+
+    def __next__(self) -> int:
+        if self.i < len(self.MANUAL_FAKES):
+            fake = self.MANUAL_FAKES[self.i]
+            self.i += 1
+            return fake
+        elif self.i < self.max:
+            self.prev += 1
+            self.i += 1
+            return self.prev
+        else:
+            raise StopIteration
+
+
+class FloatFaker:
+    MANUAL_FAKES = [
         0.0,
         0.1,
         0.00188,
@@ -45,7 +131,37 @@ TYPE_SAMPLES = {
         1 / 1094893892389,
         1 / 10948938923893289,
         3.141592653589793,
-    ],
+    ]
+
+    def __init__(self, max):
+        self.max = max
+
+    def __iter__(self):
+        iter = FloatFaker(self.max)
+        iter.prev = -10.0001
+        iter.i = 0
+        return iter
+
+    def __len__(self):
+        return self.max
+
+    def __next__(self) -> float:
+        if self.i < len(self.MANUAL_FAKES):
+            fake = self.MANUAL_FAKES[self.i]
+            self.i += 1
+            return fake
+        elif self.i < self.max:
+            self.prev += 0.00571
+            self.i += 1
+            return self.prev
+        else:
+            raise StopIteration
+
+
+TYPE_SAMPLES = {
+    "int": IntFaker(N_SAMPLES),
+    "datetime_no_timezone": DateTimeFaker(N_SAMPLES),
+    "float": FloatFaker(N_SAMPLES),
 }
 
 DATABASE_TYPES = {
@@ -53,7 +169,7 @@ DATABASE_TYPES = {
         # https://www.postgresql.org/docs/current/datatype-numeric.html#DATATYPE-INT
         "int": [
             # "smallint",  # 2 bytes
-            # "int", # 4 bytes
+            "int",  # 4 bytes
             # "bigint", # 8 bytes
         ],
         # https://www.postgresql.org/docs/current/datatype-datetime.html
@@ -76,7 +192,7 @@ DATABASE_TYPES = {
             # "tinyint", # 1 byte
             # "smallint", # 2 bytes
             # "mediumint", # 3 bytes
-            # "int", # 4 bytes
+            "int",  # 4 bytes
             # "bigint", # 8 bytes
         ],
         # https://dev.mysql.com/doc/refman/8.0/en/datetime.html
@@ -96,6 +212,7 @@ DATABASE_TYPES = {
         ],
     },
     db.BigQuery: {
+        "int": ["int"],
         "datetime_no_timezone": [
             "timestamp",
             # "datetime",
@@ -110,7 +227,7 @@ DATABASE_TYPES = {
         # https://docs.snowflake.com/en/sql-reference/data-types-numeric.html#int-integer-bigint-smallint-tinyint-byteint
         "int": [
             # all 38 digits with 0 precision, don't need to test all
-            # "int",
+            "int",
             # "integer",
             # "bigint",
             # "smallint",
@@ -132,7 +249,7 @@ DATABASE_TYPES = {
     },
     db.Redshift: {
         "int": [
-            # "int",
+            "int",
         ],
         "datetime_no_timezone": [
             "TIMESTAMP",
@@ -146,7 +263,7 @@ DATABASE_TYPES = {
     },
     db.Oracle: {
         "int": [
-            # "int",
+            "int",
         ],
         "datetime_no_timezone": [
             "timestamp with local time zone",
@@ -163,15 +280,12 @@ DATABASE_TYPES = {
             # "tinyint", # 1 byte
             # "smallint", # 2 bytes
             # "mediumint", # 3 bytes
-            # "int", # 4 bytes
+            "int",  # 4 bytes
             # "bigint", # 8 bytes
         ],
         "datetime_no_timezone": [
-            "timestamp(6)",
-            "timestamp(3)",
-            "timestamp(0)",
             "timestamp",
-            "datetime(6)",
+            "timestamp with time zone",
         ],
         "float": [
             "real",
@@ -203,18 +317,43 @@ for source_db, source_type_categories in DATABASE_TYPES.items():
                             )
                         )
 
+
+def sanitize(name):
+    name = name.lower()
+    name = re.sub(r"[\(\)]", "", name)  #  timestamp(9) -> timestamp9
+    # Try to shorten long fields, due to length limitations in some DBs
+    name = name.replace(r"without time zone", "n_tz")
+    name = name.replace(r"with time zone", "y_tz")
+    name = name.replace(r"with local time zone", "y_tz")
+    name = name.replace(r"timestamp", "ts")
+    return parameterized.to_safe_name(name)
+
+
+def number_to_human(n):
+    millnames = ["", "k", "m", "b"]
+    n = float(n)
+    millidx = max(
+        0,
+        min(len(millnames) - 1, int(math.floor(0 if n == 0 else math.log10(abs(n)) / 3))),
+    )
+
+    return "{:.0f}{}".format(n / 10 ** (3 * millidx), millnames[millidx])
+
+
 # Pass --verbose to test run to get a nice output.
 def expand_params(testcase_func, param_num, param):
     source_db, target_db, source_type, target_type, type_category = param.args
     source_db_type = source_db.__name__
     target_db_type = target_db.__name__
-    return "%s_%s_%s_to_%s_%s" % (
+    name = "%s_%s_%s_to_%s_%s_%s" % (
         testcase_func.__name__,
-        source_db_type,
-        parameterized.to_safe_name(source_type),
-        target_db_type,
-        parameterized.to_safe_name(target_type),
+        sanitize(source_db_type),
+        sanitize(source_type),
+        sanitize(target_db_type),
+        sanitize(target_type),
+        number_to_human(N_SAMPLES),
     )
+    return name
 
 
 def _insert_to_table(conn, table, values):
@@ -232,8 +371,10 @@ def _insert_to_table(conn, table, values):
     else:
         insertion_query += " VALUES "
         for j, sample in values:
-            if isinstance(sample, (float, Decimal)):
+            if isinstance(sample, (float, Decimal, int)):
                 value = str(sample)
+            elif isinstance(sample, datetime.datetime) and isinstance(conn, db.Presto):
+                value = f"timestamp '{sample}'"
             else:
                 value = f"'{sample}'"
             insertion_query += f"({j}, {value}),"
@@ -253,6 +394,7 @@ def _drop_table_if_exists(conn, table):
             conn.query(f"DROP TABLE {table}", None)
         else:
             conn.query(f"DROP TABLE IF EXISTS {table}", None)
+            conn.query("COMMIT", None)
 
 
 class TestDiffCrossDatabaseTables(unittest.TestCase):
@@ -266,9 +408,9 @@ class TestDiffCrossDatabaseTables(unittest.TestCase):
         self.connections = [self.src_conn, self.dst_conn]
         sample_values = TYPE_SAMPLES[type_category]
 
-        # Limit in MySQL is 64
-        src_table_name = f"src_{self._testMethodName[:60]}"
-        dst_table_name = f"dst_{self._testMethodName[:60]}"
+        # Limit in MySQL is 64, Presto seems to be 63
+        src_table_name = f"src_{self._testMethodName[11:]}"
+        dst_table_name = f"dst_{self._testMethodName[11:]}"
 
         src_table_path = src_conn.parse_table_name(src_table_name)
         dst_table_path = dst_conn.parse_table_name(dst_table_name)
@@ -279,7 +421,7 @@ class TestDiffCrossDatabaseTables(unittest.TestCase):
         src_conn.query(f"CREATE TABLE {src_table}(id int, col {source_type})", None)
         _insert_to_table(src_conn, src_table, enumerate(sample_values, 1))
 
-        values_in_source = src_conn.query(f"SELECT id, col FROM {src_table}", list)
+        values_in_source = PaginatedTable(src_table, src_conn)
 
         _drop_table_if_exists(dst_conn, dst_table)
         dst_conn.query(f"CREATE TABLE {dst_table}(id int, col {target_type})", None)
