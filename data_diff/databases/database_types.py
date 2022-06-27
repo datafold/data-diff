@@ -40,17 +40,19 @@ class NumericType(ColType):
     # 'precision' signifies how many fractional digits (after the dot) we want to compare
     precision: int
 
+class FractionalType(NumericType):
+    pass
 
-class Float(NumericType):
+class Float(FractionalType):
     pass
 
 
-class Decimal(NumericType):
+class Decimal(FractionalType):
     pass
 
 
 @dataclass
-class Integer(Decimal):
+class Integer(NumericType):
     def __post_init__(self):
         assert self.precision == 0
 
@@ -114,7 +116,7 @@ class AbstractDatabase(ABC):
         ...
 
     @abstractmethod
-    def normalize_number(self, value: str, coltype: NumericType) -> str:
+    def normalize_number(self, value: str, coltype: FractionalType) -> str:
         """Creates an SQL expression, that converts 'value' to a normalized number.
 
         The returned expression must accept any SQL int/numeric/float, and return a string.
@@ -139,18 +141,20 @@ class AbstractDatabase(ABC):
 
         The returned expression must accept any SQL value, and return a string.
 
-        The default implementation dispatches to a method according to ``coltype``:
+        The default implementation dispatches to a method according to `coltype`:
 
             TemporalType -> normalize_timestamp()
-            NumericType  -> normalize_number()
-            -else-       -> to_string()
+            FractionalType  -> normalize_number()
+            *else*       -> to_string()
+
+            (`Integer` falls in the *else* category)
 
         """
         if isinstance(coltype, TemporalType):
             return self.normalize_timestamp(value, coltype)
-        elif isinstance(coltype, NumericType):
+        elif isinstance(coltype, FractionalType):
             return self.normalize_number(value, coltype)
-        return self.to_string(f"{value}")
+        return self.to_string(value)
 
     def _normalize_table_path(self, path: DbPath) -> DbPath:
         ...

@@ -86,5 +86,5 @@ class Snowflake(Database):
 
         return f"to_char({timestamp}, 'YYYY-MM-DD HH24:MI:SS.FF6')"
 
-    def normalize_number(self, value: str, coltype: NumericType) -> str:
+    def normalize_number(self, value: str, coltype: FractionalType) -> str:
         return self.to_string(f"cast({value} as decimal(38, {coltype.precision}))")

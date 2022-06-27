@@ -32,7 +32,7 @@ class Redshift(PostgreSQL):
             f"RPAD(LEFT({timestamp6}, {TIMESTAMP_PRECISION_POS+coltype.precision}), {TIMESTAMP_PRECISION_POS+6}, '0')"
         )
 
-    def normalize_number(self, value: str, coltype: NumericType) -> str:
+    def normalize_number(self, value: str, coltype: FractionalType) -> str:
         return self.to_string(f"{value}::decimal(38,{coltype.precision})")
 
     def select_table_schema(self, path: DbPath) -> str:

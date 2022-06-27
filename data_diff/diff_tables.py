@@ -96,7 +96,7 @@ class TableSegment:
 
     def _quote_column(self, c):
         if self._schema:
-            c = self._schema.get_key(c)
+            c = self._schema.get_key(c)     # Get the actual name. Might be case-insensitive.
         return self.database.quote(c)
 
     def with_schema(self) -> "TableSegment":
