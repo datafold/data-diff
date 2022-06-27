@@ -60,5 +60,5 @@ class MySQL(ThreadedDatabase):
         s = self.to_string(f"cast({value} as datetime(6))")
         return f"RPAD(RPAD({s}, {TIMESTAMP_PRECISION_POS+coltype.precision}, '.'), {TIMESTAMP_PRECISION_POS+6}, '0')"
 
-    def normalize_number(self, value: str, coltype: NumericType) -> str:
+    def normalize_number(self, value: str, coltype: FractionalType) -> str:
         return self.to_string(f"cast({value} as decimal(38, {coltype.precision}))")

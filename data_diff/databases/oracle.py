@@ -57,7 +57,7 @@ class Oracle(ThreadedDatabase):
     def normalize_timestamp(self, value: str, coltype: TemporalType) -> str:
         return f"to_char(cast({value} as timestamp({coltype.precision})), 'YYYY-MM-DD HH24:MI:SS.FF6')"
 
-    def normalize_number(self, value: str, coltype: NumericType) -> str:
+    def normalize_number(self, value: str, coltype: FractionalType) -> str:
         # FM999.9990
         format_str = "FM" + "9" * (38 - coltype.precision)
         if coltype.precision:
