@@ -77,26 +77,26 @@ class Oracle(ThreadedDatabase):
             r"TIMESTAMP\((\d)\) WITH LOCAL TIME ZONE": Timestamp,
             r"TIMESTAMP\((\d)\) WITH TIME ZONE": TimestampTZ,
         }
-        for regexp, cls in regexps.items():
+        for regexp, t_cls in regexps.items():
             m = re.match(regexp + "$", type_repr)
             if m:
                 datetime_precision = int(m.group(1))
-                return cls(
+                return t_cls(
                     precision=datetime_precision if datetime_precision is not None else DEFAULT_DATETIME_PRECISION,
                     rounds=self.ROUNDS_ON_PREC_LOSS,
                 )
 
-        cls = {
+        n_cls = {
             "NUMBER": Decimal,
             "FLOAT": Float,
         }.get(type_repr, None)
-        if cls:
-            if issubclass(cls, Decimal):
+        if n_cls:
+            if issubclass(n_cls, Decimal):
                 assert numeric_scale is not None, (type_repr, numeric_precision, numeric_scale)
-                return cls(precision=numeric_scale)
+                return n_cls(precision=numeric_scale)
 
-            assert issubclass(cls, Float)
-            return cls(
+            assert issubclass(n_cls, Float)
+            return n_cls(
                 precision=self._convert_db_precision_to_digits(
                     numeric_precision if numeric_precision is not None else DEFAULT_NUMERIC_PRECISION
                 )
