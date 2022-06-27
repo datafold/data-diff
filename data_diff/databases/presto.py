@@ -82,30 +82,30 @@ class Presto(Database):
             r"timestamp\((\d)\)": Timestamp,
             r"timestamp\((\d)\) with time zone": TimestampTZ,
         }
-        for regexp, cls in timestamp_regexps.items():
+        for regexp, t_cls in timestamp_regexps.items():
             m = re.match(regexp + "$", type_repr)
             if m:
                 datetime_precision = int(m.group(1))
-                return cls(
+                return t_cls(
                     precision=datetime_precision if datetime_precision is not None else DEFAULT_DATETIME_PRECISION,
                     rounds=False,
                 )
 
         number_regexps = {r"decimal\((\d+),(\d+)\)": Decimal}
-        for regexp, cls in number_regexps.items():
+        for regexp, n_cls in number_regexps.items():
             m = re.match(regexp + "$", type_repr)
             if m:
                 prec, scale = map(int, m.groups())
-                return cls(scale)
+                return n_cls(scale)
 
-        cls = self.NUMERIC_TYPES.get(type_repr)
-        if cls:
-            if issubclass(cls, Integer):
+        n_cls = self.NUMERIC_TYPES.get(type_repr)
+        if n_cls:
+            if issubclass(n_cls, Integer):
                 assert numeric_precision is not None
-                return cls(0)
+                return n_cls(0)
 
-            assert issubclass(cls, Float)
-            return cls(
+            assert issubclass(n_cls, Float)
+            return n_cls(
                 precision=self._convert_db_precision_to_digits(
                     numeric_precision if numeric_precision is not None else DEFAULT_NUMERIC_PRECISION
                 )
