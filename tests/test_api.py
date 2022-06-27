@@ -12,10 +12,11 @@ class TestApi(unittest.TestCase):
     def setUpClass(cls):
         # Avoid leaking connections that require waiting for the GC, which can
         # cause deadlocks for table-level modifications.
-        cls.preql = preql.Preql(TEST_MYSQL_CONN_STRING)
+        # cls.preql = preql.Preql(TEST_MYSQL_CONN_STRING)
+        pass
 
     def setUp(self) -> None:
-        # self.preql = preql.Preql(TEST_MYSQL_CONN_STRING)
+        self.preql = preql.Preql(TEST_MYSQL_CONN_STRING)
         self.preql(
             r"""
             table test_api {

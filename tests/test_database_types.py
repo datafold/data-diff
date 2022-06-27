@@ -3,7 +3,7 @@ import unittest
 import time
 import re
 import math
-import datetime
+from datetime import datetime, timedelta
 from decimal import Decimal
 from parameterized import parameterized
 
@@ -52,12 +52,12 @@ class PaginatedTable:
 
 class DateTimeFaker:
     MANUAL_FAKES = [
-        datetime.datetime.fromisoformat("2020-01-01 15:10:10"),
-        datetime.datetime.fromisoformat("2020-02-01 09:09:09"),
-        datetime.datetime.fromisoformat("2022-03-01 15:10:01.139"),
-        datetime.datetime.fromisoformat("2022-04-01 15:10:02.020409"),
-        datetime.datetime.fromisoformat("2022-05-01 15:10:03.003030"),
-        datetime.datetime.fromisoformat("2022-06-01 15:10:05.009900"),
+        datetime.fromisoformat("2020-01-01 15:10:10"),
+        datetime.fromisoformat("2020-02-01 09:09:09"),
+        datetime.fromisoformat("2022-03-01 15:10:01.139"),
+        datetime.fromisoformat("2022-04-01 15:10:02.020409"),
+        datetime.fromisoformat("2022-05-01 15:10:03.003030"),
+        datetime.fromisoformat("2022-06-01 15:10:05.009900"),
     ]
 
     def __init__(self, max):
@@ -65,20 +65,20 @@ class DateTimeFaker:
 
     def __iter__(self):
         iter = DateTimeFaker(self.max)
-        iter.prev = datetime.datetime(2000, 1, 1, 0, 0, 0, 0)
+        iter.prev = datetime(2000, 1, 1, 0, 0, 0, 0)
         iter.i = 0
         return iter
 
     def __len__(self):
         return self.max
 
-    def __next__(self) -> datetime.datetime:
+    def __next__(self) -> datetime:
         if self.i < len(self.MANUAL_FAKES):
             fake = self.MANUAL_FAKES[self.i]
             self.i += 1
             return fake
         elif self.i < self.max:
-            self.prev = self.prev + datetime.timedelta(seconds=3, microseconds=571)
+            self.prev = self.prev + timedelta(seconds=3, microseconds=571)
             self.i += 1
             return self.prev
         else:
@@ -373,7 +373,7 @@ def _insert_to_table(conn, table, values):
         for j, sample in values:
             if isinstance(sample, (float, Decimal, int)):
                 value = str(sample)
-            elif isinstance(sample, datetime.datetime) and isinstance(conn, db.Presto):
+            elif isinstance(sample, datetime) and isinstance(conn, db.Presto):
                 value = f"timestamp '{sample}'"
             else:
                 value = f"'{sample}'"
@@ -422,6 +422,11 @@ class TestDiffCrossDatabaseTables(unittest.TestCase):
         _insert_to_table(src_conn, src_table, enumerate(sample_values, 1))
 
         values_in_source = PaginatedTable(src_table, src_conn)
+        if source_db is db.Presto:
+            if source_type.startswith("decimal"):
+                values_in_source = [(a, Decimal(b)) for a, b in values_in_source]
+            elif source_type.startswith("timestamp"):
+                values_in_source = [(a, datetime.fromisoformat(b.rstrip(" UTC"))) for a, b in values_in_source]
 
         _drop_table_if_exists(dst_conn, dst_table)
         dst_conn.query(f"CREATE TABLE {dst_table}(id int, col {target_type})", None)
