@@ -40,8 +40,10 @@ class NumericType(ColType):
     # 'precision' signifies how many fractional digits (after the dot) we want to compare
     precision: int
 
+
 class FractionalType(NumericType):
     pass
+
 
 class Float(FractionalType):
     pass
