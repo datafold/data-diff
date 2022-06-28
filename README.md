@@ -118,7 +118,7 @@ $ data-diff \
 | Oracle        | `oracle://<username>:<password>@<hostname>/database`                                          |  💛    |
 | BigQuery      | `bigquery://<project>/<dataset>`                                                            |  💛    |
 | Redshift      | `redshift://<username>:<password>@<hostname>:<5439>/<database>`                                   |  💛    |
-| Presto        | `presto://<username>:<password>@<hostname>:8080/<database>`                                     |  💛    |
+| Presto        | `presto://<username>:<password>@<hostname>:<8080>/<database>`                                     |  💛    |
 | ElasticSearch |                                                                                         |  📝    |
 | Databricks    |                                                                                         |  📝    |
 | Planetscale   |                                                                                         |  📝    |
