@@ -273,6 +273,8 @@ DATABASE_TYPES = {
         "float": [
             "float",
             "numeric",
+            "real",
+            "double precision",
         ],
     },
     db.Presto: {

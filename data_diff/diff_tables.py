@@ -106,6 +106,7 @@ class TableSegment:
             return self
 
         schema = self.database.query_table_schema(self.table_path, self._relevant_columns)
+        logger.debug(f"[{self.database.name}] Schema = {schema}")
 
         schema_inst: Schema
         if self.case_sensitive:
