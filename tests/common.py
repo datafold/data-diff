@@ -3,6 +3,7 @@ import os
 
 from data_diff import databases as db
 import logging
+import subprocess
 
 TEST_MYSQL_CONN_STRING: str = "mysql://mysql:Password1@localhost/mysql"
 TEST_POSTGRESQL_CONN_STRING: str = None
@@ -14,6 +15,12 @@ TEST_PRESTO_CONN_STRING: str = None
 
 DEFAULT_N_SAMPLES = 50
 N_SAMPLES = int(os.environ.get("N_SAMPLES", DEFAULT_N_SAMPLES))
+BENCHMARK = os.environ.get("BENCHMARK", False)
+
+def get_git_revision_short_hash() -> str:
+    return subprocess.check_output(['git', 'rev-parse', '--short', 'HEAD']).decode('ascii').strip()
+
+GIT_REVISION=get_git_revision_short_hash()
 
 level = logging.ERROR
 if os.environ.get("LOG_LEVEL", False):

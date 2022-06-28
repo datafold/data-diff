@@ -133,6 +133,7 @@ ml-25m*
 ratings*.csv
 drive
 mysqltuner.pl
+benchmark_*.jsonl
 
 # Mac
 .DS_Store

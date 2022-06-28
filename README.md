@@ -457,6 +457,13 @@ $ poetry run preql -f dev/prepare_db.pql bigquery:///<project>
 poetry run python3 -m data_diff postgresql://postgres:Password1@localhost/postgres rating postgresql://postgres:Password1@localhost/postgres rating_del1 --verbose
 ```
 
+**6. Run benchmarks (optional)**
+
+```shell-session
+$ dev/benchmark.sh
+```
+
+
 # License
 
 [MIT License](https://github.com/datafold/data-diff/blob/master/LICENSE)
