@@ -81,7 +81,12 @@ class Presto(Database):
         )
 
     def _parse_type(
-        self, col_name: str, type_repr: str, datetime_precision: int = None, numeric_precision: int = None
+        self,
+        table_path: DbPath,
+        col_name: str,
+        type_repr: str,
+        datetime_precision: int = None,
+        numeric_precision: int = None,
     ) -> ColType:
         timestamp_regexps = {
             r"timestamp\((\d)\)": Timestamp,
@@ -103,4 +108,4 @@ class Presto(Database):
                 prec, scale = map(int, m.groups())
                 return n_cls(scale)
 
-        return super()._parse_type(type_repr)
+        return super()._parse_type(table_path, col_name, type_repr, datetime_precision, numeric_precision)

@@ -90,3 +90,9 @@ class Oracle(ThreadedDatabase):
                 )
 
         return super()._parse_type(type_repr, col_name, type_repr, datetime_precision, numeric_precision, numeric_scale)
+
+    def offset_limit(self, offset: Optional[int] = None, limit: Optional[int] = None):
+        if offset:
+            raise NotImplementedError("No support for OFFSET in query")
+
+        return f"FETCH NEXT {limit} ROWS ONLY"

@@ -25,6 +25,9 @@ class PostgreSQL(ThreadedDatabase):
         "integer": Integer,
         "numeric": Decimal,
         "bigint": Integer,
+        # Text
+        "varchar": Text,
+        "text": Text,
     }
     ROUNDS_ON_PREC_LOSS = True
 

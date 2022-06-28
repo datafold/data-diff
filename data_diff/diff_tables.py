@@ -11,9 +11,10 @@ from concurrent.futures import ThreadPoolExecutor
 
 from runtype import dataclass
 
-from .sql import Select, Checksum, Compare, DbPath, DbKey, DbTime, Count, TableName, Time, Min, Max
+from .sql import Select, Checksum, Compare, DbPath, DbKey, DbTime, Count, TableName, Time, Min, Max, Value
 from .databases.base import Database
 from .databases.database_types import (
+    ArithUUID,
     NumericType,
     PrecisionType,
     UnknownColType,
@@ -121,9 +122,9 @@ class TableSegment:
 
     def _make_key_range(self):
         if self.min_key is not None:
-            yield Compare("<=", str(self.min_key), self._key_column)
+            yield Compare("<=", Value(self.min_key), self._key_column)
         if self.max_key is not None:
-            yield Compare("<", self._key_column, str(self.max_key))
+            yield Compare("<", self._key_column, Value(self.max_key))
 
     def _make_update_range(self):
         if self.min_update is not None:
@@ -152,6 +153,11 @@ class TableSegment:
     def choose_checkpoints(self, count: int) -> List[DbKey]:
         "Suggests a bunch of evenly-spaced checkpoints to split by (not including start, end)"
         assert self.is_bounded
+        if isinstance(self.min_key, ArithUUID):
+            checkpoints = split_space(self.min_key.int, self.max_key.int, count)
+            assert isinstance(self.max_key, ArithUUID)
+            return [ArithUUID(int=i) for i in checkpoints]
+
         return split_space(self.min_key, self.max_key, count)
 
     def segment_by_checkpoints(self, checkpoints: List[DbKey]) -> List["TableSegment"]:
@@ -297,9 +303,12 @@ class TableDiffer:
         key_ranges = self._threaded_call("query_key_range", [table1, table2])
         mins, maxs = zip(*key_ranges)
 
+        key_type = table1._schema["id"]
+        assert type(key_type) == type(table2._schema["id"])
+
         # We add 1 because our ranges are exclusive of the end (like in Python)
-        min_key = min(map(int, mins))
-        max_key = max(map(int, maxs)) + 1
+        min_key = min(map(key_type.python_type, mins))
+        max_key = max(map(key_type.python_type, maxs)) + 1
 
         table1 = table1.new(min_key=min_key, max_key=max_key)
         table2 = table2.new(min_key=min_key, max_key=max_key)

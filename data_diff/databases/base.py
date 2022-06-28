@@ -1,13 +1,15 @@
+from uuid import UUID
 import math
 import sys
 import logging
-from typing import Dict, Tuple, Optional, Sequence, Type
+from typing import Dict, Tuple, Optional, Sequence, Type, List
 from functools import lru_cache, wraps
 from concurrent.futures import ThreadPoolExecutor
 import threading
 from abc import abstractmethod
 
 from .database_types import (
+    ColType_UUID,
     AbstractDatabase,
     ColType,
     Integer,
@@ -16,14 +18,23 @@ from .database_types import (
     PrecisionType,
     TemporalType,
     UnknownColType,
+    Text,
 )
-from data_diff.sql import DbPath, SqlOrStr, Compiler, Explain, Select
+from data_diff.sql import DbPath, SqlOrStr, Compiler, Explain, Select, TableName
 
 logger = logging.getLogger("database")
 
 
 def parse_table_name(t):
     return tuple(t.split("."))
+
+
+def is_uuid(u):
+    try:
+        UUID(u)
+    except ValueError:
+        return False
+    return True
 
 
 def import_helper(package: str = None, text=""):
@@ -102,7 +113,7 @@ class Database(AbstractDatabase):
             assert len(res) == 1, (sql_code, res)
             return res[0]
         elif getattr(res_type, "__origin__", None) is list and len(res_type.__args__) == 1:
-            if res_type.__args__ == (int,):
+            if res_type.__args__ == (int,) or res_type.__args__ == (str,):
                 return [_one(row) for row in res]
             elif res_type.__args__ == (Tuple,):
                 return [tuple(row) for row in res]
@@ -123,6 +134,7 @@ class Database(AbstractDatabase):
 
     def _parse_type(
         self,
+        table_path: DbPath,
         col_name: str,
         type_repr: str,
         datetime_precision: int = None,
@@ -147,7 +159,7 @@ class Database(AbstractDatabase):
         elif issubclass(cls, Decimal):
             if numeric_scale is None:
                 raise ValueError(
-                    f"{self.name}: Unexpected numeric_scale is NULL, for column {col_name} of type {type_repr}."
+                    f"{self.name}: Unexpected numeric_scale is NULL, for column {'.'.join(table_path)}.{col_name} of type {type_repr}."
                 )
             return cls(precision=numeric_scale)
 
@@ -158,6 +170,20 @@ class Database(AbstractDatabase):
                     numeric_precision if numeric_precision is not None else DEFAULT_NUMERIC_PRECISION
                 )
             )
+
+        elif issubclass(cls, Text):
+            samples = self.query(Select([col_name], TableName(table_path), limit=16), List[str])
+            uuid_samples = list(filter(is_uuid, samples))
+
+            if uuid_samples:
+                if len(uuid_samples) != len(samples):
+                    logger.warning(
+                        f"Mixed UUID/Non-UUID values detected in column {'.'.join(table_path)}.{col_name}, disabling UUID support."
+                    )
+                else:
+                    return ColType_UUID()
+
+            return Text()
 
         raise TypeError(f"Parsing {type_repr} returned an unknown type '{cls}'.")
 
@@ -179,7 +205,7 @@ class Database(AbstractDatabase):
             rows = [r for r in rows if r[0].lower() in accept]
 
         # Return a dict of form {name: type} after normalization
-        return {row[0]: self._parse_type(*row) for row in rows}
+        return {row[0]: self._parse_type(path, *row) for row in rows}
 
     # @lru_cache()
     # def get_table_schema(self, path: DbPath) -> Dict[str, ColType]:
@@ -232,6 +258,12 @@ class ThreadedDatabase(Database):
 
     def close(self):
         self._queue.shutdown()
+
+    def offset_limit(self, offset: Optional[int] = None, limit: Optional[int] = None):
+        if offset:
+            raise NotImplementedError("No support for OFFSET in query")
+
+        return f"LIMIT {limit}"
 
 
 CHECKSUM_HEXDIGITS = 15  # Must be 15 or lower

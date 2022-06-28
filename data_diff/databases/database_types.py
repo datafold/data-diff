@@ -1,11 +1,32 @@
+from uuid import UUID
 from abc import ABC, abstractmethod
-from typing import Sequence, Optional, Tuple, Union, Dict
+from typing import Sequence, Optional, Tuple, Union, Dict, Any
 from datetime import datetime
 
 from runtype import dataclass
 
+
+class ArithUUID(UUID):
+    "A UUID that supports basic arithmetic (add, sub)"
+
+    def __add__(self, other: Union[UUID, int]):
+        if isinstance(other, int):
+            return type(self)(int=self.int + other)
+        return NotImplemented
+
+    def __sub__(self, other: Union[UUID, int]):
+        if isinstance(other, int):
+            return type(self)(int=self.int - other)
+        elif isinstance(other, UUID):
+            return self.int - other.int
+        return NotImplemented
+
+    def __int__(self):
+        return self.int
+
+
 DbPath = Tuple[str, ...]
-DbKey = Union[int, str, bytes]
+DbKey = Union[int, str, bytes, ArithUUID]
 DbTime = datetime
 
 
@@ -57,12 +78,24 @@ class StringType(ColType):
     pass
 
 
-class UUID(StringType):
+class IKey(ABC):
+    "Interface for ColType, for using a column as a key in data-diff"
+    python_type: type
+
+
+class ColType_UUID(StringType, IKey):
+    python_type = ArithUUID
+
+
+class Text(StringType):
     pass
 
 
 @dataclass
-class Integer(NumericType):
+class Integer(NumericType, IKey):
+    precision: int = 0
+    python_type: type = int
+
     def __post_init__(self):
         assert self.precision == 0
 
@@ -86,6 +119,10 @@ class AbstractDatabase(ABC):
     @abstractmethod
     def md5_to_int(self, s: str) -> str:
         "Provide SQL for computing md5 and returning an int"
+        ...
+
+    @abstractmethod
+    def offset_limit(self, offset: Optional[int] = None, limit: Optional[int] = None):
         ...
 
     @abstractmethod

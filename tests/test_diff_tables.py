@@ -259,7 +259,11 @@ class TestStringKeys(TestWithConnection):
             "COMMIT",
         ]
 
-        queries.append(f"INSERT INTO a VALUES ('unexpected', '<-- this bad value should not break us')")
+        self.new_uuid = uuid.uuid1(32132131)
+        queries.append(f"INSERT INTO a VALUES ('{self.new_uuid}', 'This one is different')")
+
+        # TODO test unexpected values?
+        # queries.append(f"INSERT INTO a VALUES ('unexpected', '<-- this bad value should not break us')")
 
         for query in queries:
             self.connection.query(query, None)
@@ -270,7 +274,7 @@ class TestStringKeys(TestWithConnection):
     def test_string_keys(self):
         differ = TableDiffer()
         diff = list(differ.diff_tables(self.a, self.b))
-        breakpoint()
+        self.assertEqual(diff, [("-", (str(self.new_uuid), "This one is different"))])
 
 
 class TestTableSegment(TestWithConnection):
