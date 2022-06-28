@@ -8,13 +8,6 @@ from .common import TEST_MYSQL_CONN_STRING
 
 
 class TestApi(unittest.TestCase):
-    @classmethod
-    def setUpClass(cls):
-        # Avoid leaking connections that require waiting for the GC, which can
-        # cause deadlocks for table-level modifications.
-        # cls.preql = preql.Preql(TEST_MYSQL_CONN_STRING)
-        pass
-
     def setUp(self) -> None:
         self.preql = preql.Preql(TEST_MYSQL_CONN_STRING)
         self.preql(
