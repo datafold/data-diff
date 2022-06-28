@@ -197,8 +197,11 @@ class Database(AbstractDatabase):
         "Refine the types in the column dict, by querying the database for a sample of their values"
 
         text_columns = [k for k, v in col_dict.items() if isinstance(v, Text)]
+        if not text_columns:
+            return
 
-        samples_by_row = self.query(Select(text_columns, TableName(table_path), limit=16), list)
+        fields = [self.normalize_uuid(c, ColType_UUID()) for c in text_columns]
+        samples_by_row = self.query(Select(fields, TableName(table_path), limit=16), list)
         samples_by_col = list(zip(*samples_by_row))
         for col_name, samples in safezip(text_columns, samples_by_col):
             uuid_samples = list(filter(is_uuid, samples))
@@ -269,6 +272,9 @@ class ThreadedDatabase(Database):
             raise NotImplementedError("No support for OFFSET in query")
 
         return f"LIMIT {limit}"
+
+    def normalize_uuid(self, value: str, coltype: ColType_UUID) -> str:
+        return f"TRIM({value})"
 
 
 CHECKSUM_HEXDIGITS = 15  # Must be 15 or lower

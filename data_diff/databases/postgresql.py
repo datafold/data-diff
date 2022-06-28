@@ -26,6 +26,8 @@ class PostgreSQL(ThreadedDatabase):
         "numeric": Decimal,
         "bigint": Integer,
         # Text
+        "character": Text,
+        "character varying": Text,
         "varchar": Text,
         "text": Text,
     }

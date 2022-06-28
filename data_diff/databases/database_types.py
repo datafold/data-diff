@@ -169,6 +169,15 @@ class AbstractDatabase(ABC):
         """
         ...
 
+    @abstractmethod
+    def normalize_uuid(self, value: str, coltype: ColType_UUID) -> str:
+        """Creates an SQL expression, that converts 'value' to a normalized uuid.
+
+        i.e. just makes sure there is no trailing whitespace.
+        """
+        ...
+
+
     def normalize_value_by_type(self, value: str, coltype: ColType) -> str:
         """Creates an SQL expression, that converts 'value' to a normalized representation.
 
@@ -189,6 +198,8 @@ class AbstractDatabase(ABC):
             return self.normalize_timestamp(value, coltype)
         elif isinstance(coltype, FractionalType):
             return self.normalize_number(value, coltype)
+        elif isinstance(coltype, ColType_UUID):
+            return self.normalize_uuid(value, coltype)
         return self.to_string(value)
 
     def _normalize_table_path(self, path: DbPath) -> DbPath:

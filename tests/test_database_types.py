@@ -3,6 +3,7 @@ import unittest
 import time
 import re
 import math
+import uuid
 from datetime import datetime, timedelta
 from decimal import Decimal
 from parameterized import parameterized
@@ -157,11 +158,23 @@ class FloatFaker:
         else:
             raise StopIteration
 
+class UUID_Faker:
+    def __init__(self, max):
+        self.max = max
+
+    def __len__(self):
+        return self.max
+
+    def __iter__(self):
+        return (uuid.uuid1(i) for i in range(self.max))
+
+
 
 TYPE_SAMPLES = {
     "int": IntFaker(N_SAMPLES),
     "datetime_no_timezone": DateTimeFaker(N_SAMPLES),
     "float": FloatFaker(N_SAMPLES),
+    "uuid": UUID_Faker(N_SAMPLES),
 }
 
 DATABASE_TYPES = {
@@ -184,6 +197,11 @@ DATABASE_TYPES = {
             "float",
             "double precision",
             "numeric(6,3)",
+        ],
+        "uuid": [
+            "text",
+            "varchar(100)",
+            "char(100)",
         ],
     },
     db.MySQL: {
@@ -210,6 +228,10 @@ DATABASE_TYPES = {
             "numeric",
             "numeric(65, 10)",
         ],
+        "uuid": [
+            "varchar(100)",
+            "char(100)",
+        ],
     },
     db.BigQuery: {
         "int": ["int"],
@@ -221,6 +243,9 @@ DATABASE_TYPES = {
             "numeric",
             "float64",
             "bignumeric",
+        ],
+        "uuid": [
+            "$uuid"
         ],
     },
     db.Snowflake: {
@@ -246,6 +271,10 @@ DATABASE_TYPES = {
             "float",
             "numeric",
         ],
+        "uuid": [
+            "$uuid"
+        ],
+
     },
     db.Redshift: {
         "int": [
@@ -259,6 +288,9 @@ DATABASE_TYPES = {
             "float4",
             "float8",
             "numeric",
+        ],
+        "uuid": [
+            "$uuid"
         ],
     },
     db.Oracle: {
@@ -275,6 +307,9 @@ DATABASE_TYPES = {
             "numeric",
             "real",
             "double precision",
+        ],
+        "uuid": [
+            "$uuid"
         ],
     },
     db.Presto: {
@@ -295,6 +330,10 @@ DATABASE_TYPES = {
             "decimal(10,2)",
             "decimal(30,6)",
         ],
+        "uuid": [
+            "$uuid"
+        ],
+
     },
 }
 
