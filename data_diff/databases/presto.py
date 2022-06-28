@@ -30,14 +30,23 @@ class Presto(Database):
         "integer": Integer,
         "real": Float,
         "double": Float,
+        "bigint": Integer,
     }
     ROUNDS_ON_PREC_LOSS = True
 
     def __init__(self, host, port, user, password, *, catalog, schema=None, **kw):
         prestodb = import_presto()
-        self.args = dict(host=host, user=user, catalog=catalog, schema=schema, **kw)
-
+        self.args = dict(host=host, port=port, user=user, catalog=catalog, schema=schema,
+                         **kw)  # include port if specified
+        if "cert" in self.args:  # cert used after connection to verify session, but keyword is not valid so remove from connection params
+            self.args.pop("cert")
+        if "auth" in kw and kw.get("auth") == "basic":  # if auth=basic, add basic authenticator for Presto
+            self.args["auth"] = prestodb.auth.BasicAuthentication(user, password)
+        if schema:  # if schema was specified in URI, override default
+            self.default_schema = schema
         self._conn = prestodb.dbapi.connect(**self.args)
+        if "cert" in kw:  # if a certificate was specified in URI, verify session with cert
+            self._conn._http_session.verify = kw.get("cert")
 
     def quote(self, s: str):
         return f'"{s}"'
