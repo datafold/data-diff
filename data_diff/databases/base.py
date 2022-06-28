@@ -8,6 +8,7 @@ from concurrent.futures import ThreadPoolExecutor
 import threading
 from abc import abstractmethod
 
+from data_diff.utils import is_uuid, safezip
 from .database_types import (
     ColType_UUID,
     AbstractDatabase,
@@ -27,14 +28,6 @@ logger = logging.getLogger("database")
 
 def parse_table_name(t):
     return tuple(t.split("."))
-
-
-def is_uuid(u):
-    try:
-        UUID(u)
-    except ValueError:
-        return False
-    return True
 
 
 def import_helper(package: str = None, text=""):
@@ -172,18 +165,7 @@ class Database(AbstractDatabase):
             )
 
         elif issubclass(cls, Text):
-            samples = self.query(Select([col_name], TableName(table_path), limit=16), List[str])
-            uuid_samples = list(filter(is_uuid, samples))
-
-            if uuid_samples:
-                if len(uuid_samples) != len(samples):
-                    logger.warning(
-                        f"Mixed UUID/Non-UUID values detected in column {'.'.join(table_path)}.{col_name}, disabling UUID support."
-                    )
-                else:
-                    return ColType_UUID()
-
-            return Text()
+            return cls()
 
         raise TypeError(f"Parsing {type_repr} returned an unknown type '{cls}'.")
 
@@ -204,8 +186,31 @@ class Database(AbstractDatabase):
             accept = {i.lower() for i in filter_columns}
             rows = [r for r in rows if r[0].lower() in accept]
 
+        col_dict: Dict[str, ColType] = {row[0]: self._parse_type(path, *row) for row in rows}
+
+        self._refine_coltypes(path, col_dict)
+
         # Return a dict of form {name: type} after normalization
-        return {row[0]: self._parse_type(path, *row) for row in rows}
+        return col_dict
+
+    def _refine_coltypes(self, table_path: DbPath, col_dict: Dict[str, ColType]):
+        "Refine the types in the column dict, by querying the database for a sample of their values"
+
+        text_columns = [k for k, v in col_dict.items() if isinstance(v, Text)]
+
+        samples_by_row = self.query(Select(text_columns, TableName(table_path), limit=16), list)
+        samples_by_col = list(zip(*samples_by_row))
+        for col_name, samples in safezip(text_columns, samples_by_col):
+            uuid_samples = list(filter(is_uuid, samples))
+
+            if uuid_samples:
+                if len(uuid_samples) != len(samples):
+                    logger.warning(
+                        f"Mixed UUID/Non-UUID values detected in column {'.'.join(table_path)}.{col_name}, disabling UUID support."
+                    )
+                else:
+                    assert col_name in col_dict
+                    col_dict[col_name] = ColType_UUID()
 
     # @lru_cache()
     # def get_table_schema(self, path: DbPath) -> Dict[str, ColType]:

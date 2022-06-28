@@ -1,28 +1,10 @@
-from uuid import UUID
 from abc import ABC, abstractmethod
 from typing import Sequence, Optional, Tuple, Union, Dict, Any
 from datetime import datetime
 
 from runtype import dataclass
 
-
-class ArithUUID(UUID):
-    "A UUID that supports basic arithmetic (add, sub)"
-
-    def __add__(self, other: Union[UUID, int]):
-        if isinstance(other, int):
-            return type(self)(int=self.int + other)
-        return NotImplemented
-
-    def __sub__(self, other: Union[UUID, int]):
-        if isinstance(other, int):
-            return type(self)(int=self.int - other)
-        elif isinstance(other, UUID):
-            return self.int - other.int
-        return NotImplemented
-
-    def __int__(self):
-        return self.int
+from data_diff.utils import ArithUUID
 
 
 DbPath = Tuple[str, ...]
@@ -31,6 +13,7 @@ DbTime = datetime
 
 
 class ColType:
+    supported = True
     pass
 
 
@@ -87,8 +70,9 @@ class ColType_UUID(StringType, IKey):
     python_type = ArithUUID
 
 
+@dataclass
 class Text(StringType):
-    pass
+    supported = False
 
 
 @dataclass
@@ -103,6 +87,8 @@ class Integer(NumericType, IKey):
 @dataclass
 class UnknownColType(ColType):
     text: str
+
+    supported = False
 
 
 class AbstractDatabase(ABC):

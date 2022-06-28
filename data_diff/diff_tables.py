@@ -12,6 +12,7 @@ from concurrent.futures import ThreadPoolExecutor
 from runtype import dataclass
 
 from .sql import Select, Checksum, Compare, DbPath, DbKey, DbTime, Count, TableName, Time, Min, Max, Value
+from .utils import safezip, split_space
 from .databases.base import Database
 from .databases.database_types import (
     ArithUUID,
@@ -29,17 +30,6 @@ RECOMMENDED_CHECKSUM_DURATION = 10
 
 DEFAULT_BISECTION_THRESHOLD = 1024 * 16
 DEFAULT_BISECTION_FACTOR = 32
-
-
-def safezip(*args):
-    "zip but makes sure all sequences are the same length"
-    assert len(set(map(len, args))) == 1
-    return zip(*args)
-
-
-def split_space(start, end, count):
-    size = end - start
-    return list(range(start, end, (size + 1) // (count + 1)))[1 : count + 1]
 
 
 @dataclass(frozen=False)
@@ -359,9 +349,9 @@ class TableDiffer:
         for t in [table1, table2]:
             for c in t._relevant_columns:
                 ctype = t._schema[c]
-                if isinstance(ctype, UnknownColType):
-                    logger.warn(
-                        f"[{t.database.name}] Column '{c}' of type '{ctype.text}' has no compatibility handling. "
+                if not ctype.supported:
+                    logger.warning(
+                        f"[{t.database.name}] Column '{c}' of type '{ctype}' has no compatibility handling. "
                         "If encoding/formatting differs between databases, it may result in false positives."
                     )
 
