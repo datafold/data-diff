@@ -114,8 +114,12 @@ class Checksum(Sql):
     exprs: Sequence[SqlOrStr]
 
     def compile(self, c: Compiler):
-        compiled_exprs = ", ".join(map(c.compile, self.exprs))
-        expr = f"concat({compiled_exprs})"
+        if len(self.exprs) > 1:
+            compiled_exprs = ", ".join(map(c.compile, self.exprs))
+            expr = f"concat({compiled_exprs})"
+        else:
+            expr ,= self.exprs
+            expr = c.compile(expr)
         md5 = c.database.md5_to_int(expr)
         return f"sum({md5})"
 
