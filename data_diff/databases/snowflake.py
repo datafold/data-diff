@@ -2,7 +2,8 @@ import logging
 
 from .database_types import *
 from .base import Database, import_helper, _query_conn, CHECKSUM_MASK
-
+from cryptography.hazmat.primitives import serialization
+from cryptography.hazmat.backends import default_backend
 
 @import_helper("snowflake")
 def import_snowflake():
@@ -20,6 +21,7 @@ class Snowflake(Database):
     NUMERIC_TYPES = {
         "NUMBER": Decimal,
         "FLOAT": Float,
+        "BIGINT": Integer,
     }
     ROUNDS_ON_PREC_LOSS = False
 
@@ -45,16 +47,39 @@ class Snowflake(Database):
         logging.getLogger("snowflake.connector.network").disabled = True
 
         assert '"' not in schema, "Schema name should not contain quotes!"
-        self._conn = snowflake.connector.connect(
-            user=user,
-            password=password,
-            account=account,
-            role=role,
-            database=database,
-            warehouse=warehouse,
-            schema=f'"{schema}"',
-            **kw,
-        )
+        if not password and "key" in kw:  # if private keys are used instead of password for Snowflake connection, read in key from path specified and pass as "private_key" to connector.
+            with open(kw.get("key"), "rb") as key:
+                p_key = serialization.load_pem_private_key(
+                    key.read(),
+                    password=None,
+                    backend=default_backend()
+                )
+
+            pkb = p_key.private_bytes(
+                encoding=serialization.Encoding.DER,
+                format=serialization.PrivateFormat.PKCS8,
+                encryption_algorithm=serialization.NoEncryption())
+            self._conn = snowflake.connector.connect(
+                user=user,
+                private_key=pkb,  # replaces password
+                account=account,
+                role=role,
+                database=database,
+                warehouse=warehouse,
+                schema=f'"{schema}"',
+                **kw,
+            )
+        else:  # otherwise use password for connection
+            self._conn = snowflake.connector.connect(
+                user=user,
+                password=password,
+                account=account,
+                role=role,
+                database=database,
+                warehouse=warehouse,
+                schema=f'"{schema}"',
+                **kw,
+            )
 
         self.default_schema = schema
 
