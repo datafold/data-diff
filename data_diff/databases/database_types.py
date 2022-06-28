@@ -111,7 +111,7 @@ class AbstractDatabase(ABC):
 
         The returned expression must accept any SQL datetime/timestamp, and return a string.
 
-        Date format: "YYYY-MM-DD HH:mm:SS.FFFFFF"
+        Date format: ``YYYY-MM-DD HH:mm:SS.FFFFFF``
 
         Precision of dates should be rounded up/down according to coltype.rounds
         """
@@ -123,18 +123,18 @@ class AbstractDatabase(ABC):
 
         The returned expression must accept any SQL int/numeric/float, and return a string.
 
-        - Floats/Decimals are expected in the format
-            "I.P"
+        Floats/Decimals are expected in the format
+        "I.P"
 
-            Where I is the integer part of the number (as many digits as necessary),
-            and must be at least one digit (0).
-            P is the fractional digits, the amount of which is specified with
-            coltype.precision. Trailing zeroes may be necessary.
-            If P is 0, the dot is omitted.
+        Where I is the integer part of the number (as many digits as necessary),
+        and must be at least one digit (0).
+        P is the fractional digits, the amount of which is specified with
+        coltype.precision. Trailing zeroes may be necessary.
+        If P is 0, the dot is omitted.
 
-            Note: This precision is different than the one used by databases. For decimals,
-            it's the same as ``numeric_scale``, and for floats, who use binary precision,
-            it can be calculated as ``log10(2**numeric_precision)``.
+        Note: We use 'precision' differently than most databases. For decimals,
+        it's the same as ``numeric_scale``, and for floats, who use binary precision,
+        it can be calculated as ``log10(2**numeric_precision)``.
         """
         ...
 
@@ -145,9 +145,11 @@ class AbstractDatabase(ABC):
 
         The default implementation dispatches to a method according to `coltype`:
 
-            TemporalType -> normalize_timestamp()
+        ::
+
+            TemporalType    -> normalize_timestamp()
             FractionalType  -> normalize_number()
-            *else*       -> to_string()
+            *else*          -> to_string()
 
             (`Integer` falls in the *else* category)
 
