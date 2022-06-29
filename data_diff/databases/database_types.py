@@ -62,7 +62,6 @@ class Decimal(FractionalType):
         return decimal.Decimal
 
 
-
 class StringType(ColType):
     pass
 
@@ -182,7 +181,6 @@ class AbstractDatabase(ABC):
         i.e. just makes sure there is no trailing whitespace.
         """
         ...
-
 
     def normalize_value_by_type(self, value: str, coltype: ColType) -> str:
         """Creates an SQL expression, that converts 'value' to a normalized representation.

@@ -110,10 +110,7 @@ class Presto(Database):
                 prec, scale = map(int, m.groups())
                 return n_cls(scale)
 
-        string_regexps = {
-            r"varchar\((\d+)\)": Text,
-            r"char\((\d+)\)": Text
-        }
+        string_regexps = {r"varchar\((\d+)\)": Text, r"char\((\d+)\)": Text}
         for regexp, n_cls in string_regexps.items():
             m = re.match(regexp + "$", type_repr)
             if m:

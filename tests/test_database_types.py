@@ -158,6 +158,7 @@ class FloatFaker:
         else:
             raise StopIteration
 
+
 class UUID_Faker:
     def __init__(self, max):
         self.max = max
@@ -167,7 +168,6 @@ class UUID_Faker:
 
     def __iter__(self):
         return (uuid.uuid1(i) for i in range(self.max))
-
 
 
 TYPE_SAMPLES = {
@@ -275,7 +275,6 @@ DATABASE_TYPES = {
             "varchar",
             "varchar(100)",
         ],
-
     },
     db.Redshift: {
         "int": [
@@ -340,7 +339,6 @@ DATABASE_TYPES = {
             "varchar",
             "char(100)",
         ],
-
     },
 }
 

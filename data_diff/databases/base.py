@@ -277,7 +277,6 @@ class ThreadedDatabase(Database):
         self._queue.shutdown()
 
 
-
 CHECKSUM_HEXDIGITS = 15  # Must be 15 or lower
 MD5_HEXDIGITS = 32
 
