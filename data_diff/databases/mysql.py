@@ -24,6 +24,8 @@ class MySQL(ThreadedDatabase):
         # Text
         "varchar": Text,
         "char": Text,
+        "varbinary": Text,
+        "binary": Text,
     }
     ROUNDS_ON_PREC_LOSS = True
 
@@ -66,3 +68,6 @@ class MySQL(ThreadedDatabase):
 
     def normalize_number(self, value: str, coltype: FractionalType) -> str:
         return self.to_string(f"cast({value} as decimal(38, {coltype.precision}))")
+
+    def normalize_uuid(self, value: str, coltype: ColType_UUID) -> str:
+        return f"CAST(TRIM({value}) AS char)"

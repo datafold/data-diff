@@ -234,6 +234,7 @@ DATABASE_TYPES = {
         "uuid": [
             "varchar(100)",
             "char(100)",
+            "varbinary(100)",
         ],
     },
     db.BigQuery: {
@@ -430,6 +431,8 @@ def _insert_to_table(conn, table, values, type):
             value = str(sample)
         elif isinstance(sample, datetime) and isinstance(conn, (db.Presto, db.Oracle)):
             value = f"timestamp '{sample}'"
+        elif isinstance(sample, bytearray):
+            value = f"'{sample.decode()}'"
         else:
             value = f"'{sample}'"
 
