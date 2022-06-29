@@ -245,7 +245,7 @@ DATABASE_TYPES = {
             "bignumeric",
         ],
         "uuid": [
-            "$uuid"
+            "STRING",
         ],
     },
     db.Snowflake: {
@@ -272,7 +272,8 @@ DATABASE_TYPES = {
             "numeric",
         ],
         "uuid": [
-            "$uuid"
+            "varchar",
+            "varchar(100)",
         ],
 
     },
@@ -331,7 +332,8 @@ DATABASE_TYPES = {
             "decimal(30,6)",
         ],
         "uuid": [
-            "$uuid"
+            "varchar",
+            "char(100)",
         ],
 
     },
@@ -435,7 +437,8 @@ def _drop_table_if_exists(conn, table):
             conn.query(f"DROP TABLE {table}", None)
         else:
             conn.query(f"DROP TABLE IF EXISTS {table}", None)
-            conn.query("COMMIT", None)
+            if not isinstance(conn, db.BigQuery):
+                conn.query("COMMIT", None)
 
 
 class TestDiffCrossDatabaseTables(unittest.TestCase):

@@ -22,6 +22,7 @@ class MySQL(ThreadedDatabase):
         "int": Integer,
         # Text
         "varchar": Text,
+        "char": Text,
     }
     ROUNDS_ON_PREC_LOSS = True
 

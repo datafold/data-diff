@@ -70,6 +70,7 @@ class Oracle(ThreadedDatabase):
 
     def _parse_type(
         self,
+        table_name: DbPath,
         col_name: str,
         type_repr: str,
         datetime_precision: int = None,

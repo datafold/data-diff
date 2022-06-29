@@ -29,6 +29,8 @@ class Presto(Database):
         "integer": Integer,
         "real": Float,
         "double": Float,
+        # Text
+        "varchar": Text,
     }
     ROUNDS_ON_PREC_LOSS = True
 
@@ -108,4 +110,17 @@ class Presto(Database):
                 prec, scale = map(int, m.groups())
                 return n_cls(scale)
 
+        string_regexps = {
+            r"varchar\((\d+)\)": Text,
+            r"char\((\d+)\)": Text
+        }
+        for regexp, n_cls in string_regexps.items():
+            m = re.match(regexp + "$", type_repr)
+            if m:
+                return n_cls()
+
         return super()._parse_type(table_path, col_name, type_repr, datetime_precision, numeric_precision)
+
+    def normalize_uuid(self, value: str, coltype: ColType_UUID) -> str:
+        # Trim doesn't work on CHAR type
+        return f"TRIM(CAST({value} AS VARCHAR))"

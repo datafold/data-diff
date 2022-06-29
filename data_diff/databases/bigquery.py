@@ -22,6 +22,8 @@ class BigQuery(Database):
         "BIGNUMERIC": Decimal,
         "FLOAT64": Float,
         "FLOAT32": Float,
+        # Text
+        "STRING": Text,
     }
     ROUNDS_ON_PREC_LOSS = False  # Technically BigQuery doesn't allow implicit rounding or truncation
 

@@ -5,7 +5,7 @@ from abc import ABC, abstractmethod
 import time
 from operator import attrgetter, methodcaller
 from collections import defaultdict
-from typing import List, Tuple, Iterator, Optional
+from typing import List, Tuple, Iterator, Optional, Type
 import logging
 from concurrent.futures import ThreadPoolExecutor
 
@@ -18,6 +18,7 @@ from .databases.database_types import (
     ArithUUID,
     NumericType,
     PrecisionType,
+    StringType,
     UnknownColType,
     Schema,
     Schema_CaseInsensitive,
@@ -295,7 +296,8 @@ class TableDiffer:
         mins, maxs = zip(*key_ranges)
 
         key_type = table1._schema["id"]
-        assert type(key_type) == type(table2._schema["id"])
+        key_type2 = table2._schema["id"]
+        assert key_type.python_type is key_type2.python_type
 
         # We add 1 because our ranges are exclusive of the end (like in Python)
         min_key = min(map(key_type.python_type, mins))
@@ -324,7 +326,7 @@ class TableDiffer:
             col2 = table2._schema[c]
             if isinstance(col1, PrecisionType):
                 if not isinstance(col2, PrecisionType):
-                    raise TypeError(f"Incompatible types for column {c}:  {col1} <-> {col2}")
+                    raise TypeError(f"Incompatible types for column '{c}':  {col1} <-> {col2}")
 
                 lowest = min(col1, col2, key=attrgetter("precision"))
 
@@ -336,7 +338,7 @@ class TableDiffer:
 
             elif isinstance(col1, NumericType):
                 if not isinstance(col2, NumericType):
-                    raise TypeError(f"Incompatible types for column {c}:  {col1} <-> {col2}")
+                    raise TypeError(f"Incompatible types for column '{c}':  {col1} <-> {col2}")
 
                 lowest = min(col1, col2, key=attrgetter("precision"))
 
@@ -345,6 +347,10 @@ class TableDiffer:
 
                 table1._schema[c] = col1.replace(precision=lowest.precision)
                 table2._schema[c] = col2.replace(precision=lowest.precision)
+
+            elif isinstance(col1, StringType):
+                if not isinstance(col2, StringType):
+                    raise TypeError(f"Incompatible types for column '{c}':  {col1} <-> {col2}")
 
         for t in [table1, table2]:
             for c in t._relevant_columns:

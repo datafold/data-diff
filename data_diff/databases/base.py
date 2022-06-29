@@ -231,6 +231,15 @@ class Database(AbstractDatabase):
     def parse_table_name(self, name: str) -> DbPath:
         return parse_table_name(name)
 
+    def offset_limit(self, offset: Optional[int] = None, limit: Optional[int] = None):
+        if offset:
+            raise NotImplementedError("No support for OFFSET in query")
+
+        return f"LIMIT {limit}"
+
+    def normalize_uuid(self, value: str, coltype: ColType_UUID) -> str:
+        return f"TRIM({value})"
+
 
 class ThreadedDatabase(Database):
     """Access the database through singleton threads.
@@ -267,14 +276,6 @@ class ThreadedDatabase(Database):
     def close(self):
         self._queue.shutdown()
 
-    def offset_limit(self, offset: Optional[int] = None, limit: Optional[int] = None):
-        if offset:
-            raise NotImplementedError("No support for OFFSET in query")
-
-        return f"LIMIT {limit}"
-
-    def normalize_uuid(self, value: str, coltype: ColType_UUID) -> str:
-        return f"TRIM({value})"
 
 
 CHECKSUM_HEXDIGITS = 15  # Must be 15 or lower

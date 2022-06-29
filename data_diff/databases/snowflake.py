@@ -20,6 +20,8 @@ class Snowflake(Database):
         # Numbers
         "NUMBER": Decimal,
         "FLOAT": Float,
+        # Text
+        "TEXT": Text,
     }
     ROUNDS_ON_PREC_LOSS = False
 

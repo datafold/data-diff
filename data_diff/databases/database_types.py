@@ -1,3 +1,4 @@
+import decimal
 from abc import ABC, abstractmethod
 from typing import Sequence, Optional, Tuple, Union, Dict, Any
 from datetime import datetime
@@ -54,7 +55,12 @@ class Float(FractionalType):
 
 
 class Decimal(FractionalType):
-    pass
+    @property
+    def python_type(self) -> type:
+        if self.precision == 0:
+            return int
+        return decimal.Decimal
+
 
 
 class StringType(ColType):
