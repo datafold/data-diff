@@ -170,7 +170,7 @@ DATABASE_TYPES = {
         "int": [
             # "smallint",  # 2 bytes
             "int",  # 4 bytes
-            # "bigint", # 8 bytes
+            "bigint", # 8 bytes
         ],
         # https://www.postgresql.org/docs/current/datatype-datetime.html
         "datetime_no_timezone": [
@@ -193,7 +193,7 @@ DATABASE_TYPES = {
             # "smallint", # 2 bytes
             # "mediumint", # 3 bytes
             "int",  # 4 bytes
-            # "bigint", # 8 bytes
+            "bigint", # 8 bytes
         ],
         # https://dev.mysql.com/doc/refman/8.0/en/datetime.html
         "datetime_no_timezone": [
@@ -228,8 +228,8 @@ DATABASE_TYPES = {
         "int": [
             # all 38 digits with 0 precision, don't need to test all
             "int",
-            # "integer",
-            # "bigint",
+            "integer",
+            "bigint",
             # "smallint",
             # "tinyint",
             # "byteint"
@@ -281,7 +281,7 @@ DATABASE_TYPES = {
             # "smallint", # 2 bytes
             # "mediumint", # 3 bytes
             "int",  # 4 bytes
-            # "bigint", # 8 bytes
+            "bigint", # 8 bytes
         ],
         "datetime_no_timezone": [
             "timestamp",
