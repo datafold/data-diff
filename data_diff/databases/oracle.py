@@ -27,6 +27,9 @@ class Oracle(ThreadedDatabase):
     def __init__(self, host, port, user, password, *, database, thread_count, **kw):
         assert not port
         self.kwargs = dict(user=user, password=password, dsn="%s/%s" % (host, database), **kw)
+
+        self.default_schema = user
+
         super().__init__(thread_count=thread_count)
 
     def create_connection(self):
@@ -54,13 +57,11 @@ class Oracle(ThreadedDatabase):
         return f"cast({s} as varchar(1024))"
 
     def select_table_schema(self, path: DbPath) -> str:
-        if len(path) > 1:
-            raise ValueError("Unexpected table path for oracle")
-        (table,) = path
+        schema, table = self._normalize_table_path(path)
 
         return (
             f"SELECT column_name, data_type, 6 as datetime_precision, data_precision as numeric_precision, data_scale as numeric_scale"
-            f" FROM USER_TAB_COLUMNS WHERE table_name = '{table.upper()}'"
+            f" FROM ALL_TAB_COLUMNS WHERE table_name = '{table.upper()}' AND owner = '{schema.upper()}'"
         )
 
     def normalize_timestamp(self, value: str, coltype: TemporalType) -> str:

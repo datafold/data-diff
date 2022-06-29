@@ -110,22 +110,22 @@ $ data-diff \
 
 ## Supported Databases
 
-| Database      | Connection string                                                                       | Status |
-|---------------|-----------------------------------------------------------------------------------------|--------|
-| PostgreSQL    | `postgresql://user:password@hostname:5432/database`                                     |  💚    |
-| MySQL         | `mysql://user:password@hostname:5432/database`                                          |  💚    |
-| Snowflake     | `snowflake://user:password@account/database/SCHEMA?warehouse=WAREHOUSE&role=role`       |  💚    |
-| Oracle        | `oracle://username:password@hostname/database`                                          |  💛    |
-| BigQuery      | `bigquery://project/dataset`                                                            |  💛    |
-| Redshift      | `redshift://username:password@hostname:5439/database`                                   |  💛    |
-| Presto        | `presto://username:password@hostname:8080/database`                                     |  💛    |
-| ElasticSearch |                                                                                         |  📝    |
-| Databricks    |                                                                                         |  📝    |
-| Planetscale   |                                                                                         |  📝    |
-| Clickhouse    |                                                                                         |  📝    |
-| Pinot         |                                                                                         |  📝    |
-| Druid         |                                                                                         |  📝    |
-| Kafka         |                                                                                         |  📝    |
+| Database      | Connection string                                                                                | Status |
+|---------------|--------------------------------------------------------------------------------------------------|--------|
+| PostgreSQL    | `postgresql://<user>:<password>@<hostname>:5432/<database>`                                      |  💚    |
+| MySQL         | `mysql://<user>:<password>@<hostname>:5432/<database>`                                           |  💚    |
+| Snowflake     | `"snowflake://<user>:<password>@<account>/<database>/<SCHEMA>?warehouse=<WAREHOUSE>&role=<role>"`|  💚    |
+| Oracle        | `oracle://<username>:<password>@<hostname>/database`                                             |  💛    |
+| BigQuery      | `bigquery://<project>/<dataset>`                                                                 |  💛    |
+| Redshift      | `redshift://<username>:<password>@<hostname>:5439/<database>`                                    |  💛    |
+| Presto        | `presto://<username>:<password>@<hostname>:8080/<database>`                                      |  💛    |
+| ElasticSearch |                                                                                                  |  📝    |
+| Databricks    |                                                                                                  |  📝    |
+| Planetscale   |                                                                                                  |  📝    |
+| Clickhouse    |                                                                                                  |  📝    |
+| Pinot         |                                                                                                  |  📝    |
+| Druid         |                                                                                                  |  📝    |
+| Kafka         |                                                                                                  |  📝    |
 
 * 💚: Implemented and thoroughly tested.
 * 💛: Implemented, but not thoroughly tested yet.
@@ -171,7 +171,10 @@ Users can also install several drivers at once:
 Usage: `data-diff DB1_URI TABLE1_NAME DB2_URI TABLE2_NAME [OPTIONS]`
 
 See the [example command](#example-command-and-output) and the [sample
-connection strings](#supported-databases).
+connection strings](#supported-databases). 
+
+Note that for some databases, the arguments that you enter in the command line 
+may be case-sensitive. This is the case for the Snowflake schema and table names.
 
 Options:
 

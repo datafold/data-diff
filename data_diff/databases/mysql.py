@@ -20,6 +20,7 @@ class MySQL(ThreadedDatabase):
         "float": Float,
         "decimal": Decimal,
         "int": Integer,
+        "bigint": Integer,
         # Text
         "varchar": Text,
         "char": Text,
