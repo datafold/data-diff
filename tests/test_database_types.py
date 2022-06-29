@@ -264,7 +264,6 @@ DATABASE_TYPES = {
     db.Oracle: {
         "int": [
             "int",
-            "bigint",
         ],
         "datetime_no_timezone": [
             "timestamp with local time zone",
