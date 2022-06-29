@@ -3,6 +3,7 @@
 
 from abc import ABC, abstractmethod
 import time
+import os
 from operator import attrgetter, methodcaller
 from collections import defaultdict
 from typing import List, Tuple, Iterator, Optional, Type
@@ -28,7 +29,7 @@ from .databases.database_types import (
 logger = logging.getLogger("diff_tables")
 
 RECOMMENDED_CHECKSUM_DURATION = 10
-
+BENCHMARK = os.environ.get("BENCHMARK", False)
 DEFAULT_BISECTION_THRESHOLD = 1024 * 16
 DEFAULT_BISECTION_FACTOR = 32
 
@@ -408,6 +409,16 @@ class TableDiffer:
             f"key-range: {table1.min_key}..{table2.max_key}, "
             f"size: {table2.max_key-table1.min_key}"
         )
+
+        # When benchmarking, we want the ability to skip checksumming. This
+        # allows us to download all rows for comparison in performance. By
+        # default, data-diff will checksum the section first (when it's below
+        # the threshold) and _then_ download it.
+        if BENCHMARK:
+            max_rows_from_keys = max(table1.max_key - table1.min_key, table2.max_key - table2.min_key)
+            if max_rows_from_keys < self.bisection_threshold:
+                yield from self._bisect_and_diff_tables(table1, table2, level=level, max_rows=max_rows_from_keys)
+                return
 
         (count1, checksum1), (count2, checksum2) = self._threaded_call("count_and_checksum", [table1, table2])
 
