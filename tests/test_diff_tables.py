@@ -1,5 +1,6 @@
 import datetime
 import unittest
+import uuid
 
 import preql
 import arrow  # comes with preql
@@ -237,6 +238,46 @@ class TestDiffTables(TestWithConnection):
             ("+", ("4", time + ".000000")),
         ]
         self.assertEqual(expected, diff)
+
+
+class TestStringKeys(TestWithConnection):
+    def setUp(self):
+        super().setUp()
+
+        queries = [
+            "DROP TABLE IF EXISTS a",
+            "DROP TABLE IF EXISTS b",
+            "CREATE TABLE a(id varchar(100), comment varchar(1000))",
+            "COMMIT",
+        ]
+        for i in range(100):
+            queries.append(f"INSERT INTO a VALUES ('{uuid.uuid1(i)}', '{i}')")
+
+        queries += [
+            "COMMIT",
+            "CREATE TABLE b AS SELECT * FROM a",
+            "COMMIT",
+        ]
+
+        self.new_uuid = uuid.uuid1(32132131)
+        queries.append(f"INSERT INTO a VALUES ('{self.new_uuid}', 'This one is different')")
+
+        # TODO test unexpected values?
+
+        for query in queries:
+            self.connection.query(query, None)
+
+        self.a = TableSegment(self.connection, ("a",), "id", "comment")
+        self.b = TableSegment(self.connection, ("b",), "id", "comment")
+
+    def test_string_keys(self):
+        differ = TableDiffer()
+        diff = list(differ.diff_tables(self.a, self.b))
+        self.assertEqual(diff, [("-", (str(self.new_uuid), "This one is different"))])
+
+        self.connection.query(f"INSERT INTO a VALUES ('unexpected', '<-- this bad value should not break us')", None)
+
+        self.assertRaises(ValueError, differ.diff_tables, self.a, self.b)
 
 
 class TestTableSegment(TestWithConnection):

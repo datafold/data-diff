@@ -1,14 +1,27 @@
+from uuid import UUID
 import math
 import sys
 import logging
-from typing import Dict, Tuple, Optional, Sequence
+from typing import Dict, Tuple, Optional, Sequence, Type, List
 from functools import lru_cache, wraps
 from concurrent.futures import ThreadPoolExecutor
 import threading
 from abc import abstractmethod
 
-from .database_types import AbstractDatabase, ColType, Integer, Decimal, Float, UnknownColType
-from data_diff.sql import DbPath, SqlOrStr, Compiler, Explain, Select
+from data_diff.utils import is_uuid, safezip
+from .database_types import (
+    ColType_UUID,
+    AbstractDatabase,
+    ColType,
+    Integer,
+    Decimal,
+    Float,
+    PrecisionType,
+    TemporalType,
+    UnknownColType,
+    Text,
+)
+from data_diff.sql import DbPath, SqlOrStr, Compiler, Explain, Select, TableName
 
 logger = logging.getLogger("database")
 
@@ -62,7 +75,7 @@ class Database(AbstractDatabase):
     Instanciated using :meth:`~data_diff.connect_to_uri`
     """
 
-    DATETIME_TYPES: Dict[str, type] = {}
+    TYPE_CLASSES: Dict[str, type] = {}
     default_schema: str = None
 
     @property
@@ -93,7 +106,7 @@ class Database(AbstractDatabase):
             assert len(res) == 1, (sql_code, res)
             return res[0]
         elif getattr(res_type, "__origin__", None) is list and len(res_type.__args__) == 1:
-            if res_type.__args__ == (int,):
+            if res_type.__args__ == (int,) or res_type.__args__ == (str,):
                 return [_one(row) for row in res]
             elif res_type.__args__ == (Tuple,):
                 return [tuple(row) for row in res]
@@ -109,8 +122,12 @@ class Database(AbstractDatabase):
         # See: https://en.wikipedia.org/wiki/Single-precision_floating-point_format
         return math.floor(math.log(2**p, 10))
 
+    def _parse_type_repr(self, type_repr: str) -> Optional[Type[ColType]]:
+        return self.TYPE_CLASSES.get(type_repr)
+
     def _parse_type(
         self,
+        table_path: DbPath,
         col_name: str,
         type_repr: str,
         datetime_precision: int = None,
@@ -119,28 +136,27 @@ class Database(AbstractDatabase):
     ) -> ColType:
         """ """
 
-        cls = self.DATETIME_TYPES.get(type_repr)
-        if cls:
+        cls = self._parse_type_repr(type_repr)
+        if not cls:
+            return UnknownColType(type_repr)
+
+        if issubclass(cls, TemporalType):
             return cls(
                 precision=datetime_precision if datetime_precision is not None else DEFAULT_DATETIME_PRECISION,
                 rounds=self.ROUNDS_ON_PREC_LOSS,
             )
 
-        cls = self.NUMERIC_TYPES.get(type_repr)
-        if cls:
-            if issubclass(cls, Integer):
-                # Some DBs have a constant numeric_scale, so they don't report it.
-                # We fill in the constant, so we need to ignore it for integers.
-                return cls(precision=0)
+        elif issubclass(cls, Integer):
+            return cls()
 
-            elif issubclass(cls, Decimal):
-                if numeric_scale is None:
-                    raise ValueError(
-                        f"{self.name}: Unexpected numeric_scale is NULL, for column {col_name} of type {type_repr}."
-                    )
-                return cls(precision=numeric_scale)
+        elif issubclass(cls, Decimal):
+            if numeric_scale is None:
+                raise ValueError(
+                    f"{self.name}: Unexpected numeric_scale is NULL, for column {'.'.join(table_path)}.{col_name} of type {type_repr}."
+                )
+            return cls(precision=numeric_scale)
 
-            assert issubclass(cls, Float)
+        elif issubclass(cls, Float):
             # assert numeric_scale is None
             return cls(
                 precision=self._convert_db_precision_to_digits(
@@ -148,7 +164,10 @@ class Database(AbstractDatabase):
                 )
             )
 
-        return UnknownColType(type_repr)
+        elif issubclass(cls, Text):
+            return cls()
+
+        raise TypeError(f"Parsing {type_repr} returned an unknown type '{cls}'.")
 
     def select_table_schema(self, path: DbPath) -> str:
         schema, table = self._normalize_table_path(path)
@@ -167,8 +186,34 @@ class Database(AbstractDatabase):
             accept = {i.lower() for i in filter_columns}
             rows = [r for r in rows if r[0].lower() in accept]
 
+        col_dict: Dict[str, ColType] = {row[0]: self._parse_type(path, *row) for row in rows}
+
+        self._refine_coltypes(path, col_dict)
+
         # Return a dict of form {name: type} after normalization
-        return {row[0]: self._parse_type(*row) for row in rows}
+        return col_dict
+
+    def _refine_coltypes(self, table_path: DbPath, col_dict: Dict[str, ColType]):
+        "Refine the types in the column dict, by querying the database for a sample of their values"
+
+        text_columns = [k for k, v in col_dict.items() if isinstance(v, Text)]
+        if not text_columns:
+            return
+
+        fields = [self.normalize_uuid(c, ColType_UUID()) for c in text_columns]
+        samples_by_row = self.query(Select(fields, TableName(table_path), limit=16), list)
+        samples_by_col = list(zip(*samples_by_row))
+        for col_name, samples in safezip(text_columns, samples_by_col):
+            uuid_samples = list(filter(is_uuid, samples))
+
+            if uuid_samples:
+                if len(uuid_samples) != len(samples):
+                    logger.warning(
+                        f"Mixed UUID/Non-UUID values detected in column {'.'.join(table_path)}.{col_name}, disabling UUID support."
+                    )
+                else:
+                    assert col_name in col_dict
+                    col_dict[col_name] = ColType_UUID()
 
     # @lru_cache()
     # def get_table_schema(self, path: DbPath) -> Dict[str, ColType]:
@@ -185,6 +230,15 @@ class Database(AbstractDatabase):
 
     def parse_table_name(self, name: str) -> DbPath:
         return parse_table_name(name)
+
+    def offset_limit(self, offset: Optional[int] = None, limit: Optional[int] = None):
+        if offset:
+            raise NotImplementedError("No support for OFFSET in query")
+
+        return f"LIMIT {limit}"
+
+    def normalize_uuid(self, value: str, coltype: ColType_UUID) -> str:
+        return f"TRIM({value})"
 
 
 class ThreadedDatabase(Database):

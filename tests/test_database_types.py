@@ -3,6 +3,7 @@ import unittest
 import time
 import re
 import math
+import uuid
 from datetime import datetime, timedelta
 from decimal import Decimal
 from parameterized import parameterized
@@ -158,10 +159,22 @@ class FloatFaker:
             raise StopIteration
 
 
+class UUID_Faker:
+    def __init__(self, max):
+        self.max = max
+
+    def __len__(self):
+        return self.max
+
+    def __iter__(self):
+        return (uuid.uuid1(i) for i in range(self.max))
+
+
 TYPE_SAMPLES = {
     "int": IntFaker(N_SAMPLES),
     "datetime_no_timezone": DateTimeFaker(N_SAMPLES),
     "float": FloatFaker(N_SAMPLES),
+    "uuid": UUID_Faker(N_SAMPLES),
 }
 
 DATABASE_TYPES = {
@@ -184,6 +197,11 @@ DATABASE_TYPES = {
             "float",
             "double precision",
             "numeric(6,3)",
+        ],
+        "uuid": [
+            "text",
+            "varchar(100)",
+            "char(100)",
         ],
     },
     db.MySQL: {
@@ -210,6 +228,10 @@ DATABASE_TYPES = {
             "numeric",
             "numeric(65, 10)",
         ],
+        "uuid": [
+            "varchar(100)",
+            "char(100)",
+        ],
     },
     db.BigQuery: {
         "int": ["int"],
@@ -221,6 +243,9 @@ DATABASE_TYPES = {
             "numeric",
             "float64",
             "bignumeric",
+        ],
+        "uuid": [
+            "STRING",
         ],
     },
     db.Snowflake: {
@@ -246,6 +271,10 @@ DATABASE_TYPES = {
             "float",
             "numeric",
         ],
+        "uuid": [
+            "varchar",
+            "varchar(100)",
+        ],
     },
     db.Redshift: {
         "int": [
@@ -260,6 +289,11 @@ DATABASE_TYPES = {
             "float8",
             "numeric",
         ],
+        "uuid": [
+            "text",
+            "varchar(100)",
+            "char(100)",
+        ],
     },
     db.Oracle: {
         "int": [
@@ -273,6 +307,14 @@ DATABASE_TYPES = {
         "float": [
             "float",
             "numeric",
+            "real",
+            "double precision",
+        ],
+        "uuid": [
+            "CHAR(100)",
+            "VARCHAR(100)",
+            "NCHAR(100)",
+            "NVARCHAR2(100)",
         ],
     },
     db.Presto: {
@@ -292,6 +334,10 @@ DATABASE_TYPES = {
             "double",
             "decimal(10,2)",
             "decimal(30,6)",
+        ],
+        "uuid": [
+            "varchar",
+            "char(100)",
         ],
     },
 }
@@ -364,8 +410,10 @@ def _insert_to_table(conn, table, values):
         for j, sample in values:
             if isinstance(sample, (float, Decimal, int)):
                 value = str(sample)
-            else:
+            elif isinstance(sample, datetime):
                 value = f"timestamp '{sample}'"
+            else:
+                value = f"'{sample}'"
             selects.append(f"SELECT {j}, {value} FROM dual")
         insertion_query += " UNION ALL ".join(selects)
     else:
@@ -394,7 +442,8 @@ def _drop_table_if_exists(conn, table):
             conn.query(f"DROP TABLE {table}", None)
         else:
             conn.query(f"DROP TABLE IF EXISTS {table}", None)
-            conn.query("COMMIT", None)
+            if not isinstance(conn, db.BigQuery):
+                conn.query("COMMIT", None)
 
 
 class TestDiffCrossDatabaseTables(unittest.TestCase):

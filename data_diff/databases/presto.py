@@ -20,16 +20,17 @@ def import_presto():
 
 class Presto(Database):
     default_schema = "public"
-    DATETIME_TYPES = {
+    TYPE_CLASSES = {
+        # Timestamps
         "timestamp with time zone": TimestampTZ,
         "timestamp without time zone": Timestamp,
         "timestamp": Timestamp,
-        # "datetime": Datetime,
-    }
-    NUMERIC_TYPES = {
+        # Numbers
         "integer": Integer,
         "real": Float,
         "double": Float,
+        # Text
+        "varchar": Text,
     }
     ROUNDS_ON_PREC_LOSS = True
 
@@ -82,7 +83,12 @@ class Presto(Database):
         )
 
     def _parse_type(
-        self, col_name: str, type_repr: str, datetime_precision: int = None, numeric_precision: int = None
+        self,
+        table_path: DbPath,
+        col_name: str,
+        type_repr: str,
+        datetime_precision: int = None,
+        numeric_precision: int = None,
     ) -> ColType:
         timestamp_regexps = {
             r"timestamp\((\d)\)": Timestamp,
@@ -104,17 +110,14 @@ class Presto(Database):
                 prec, scale = map(int, m.groups())
                 return n_cls(scale)
 
-        n_cls = self.NUMERIC_TYPES.get(type_repr)
-        if n_cls:
-            if issubclass(n_cls, Integer):
-                assert numeric_precision is not None
-                return n_cls(0)
+        string_regexps = {r"varchar\((\d+)\)": Text, r"char\((\d+)\)": Text}
+        for regexp, n_cls in string_regexps.items():
+            m = re.match(regexp + "$", type_repr)
+            if m:
+                return n_cls()
 
-            assert issubclass(n_cls, Float)
-            return n_cls(
-                precision=self._convert_db_precision_to_digits(
-                    numeric_precision if numeric_precision is not None else DEFAULT_NUMERIC_PRECISION
-                )
-            )
+        return super()._parse_type(table_path, col_name, type_repr, datetime_precision, numeric_precision)
 
-        return UnknownColType(type_repr)
+    def normalize_uuid(self, value: str, coltype: ColType_UUID) -> str:
+        # Trim doesn't work on CHAR type
+        return f"TRIM(CAST({value} AS VARCHAR))"

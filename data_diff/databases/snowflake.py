@@ -12,14 +12,16 @@ def import_snowflake():
 
 
 class Snowflake(Database):
-    DATETIME_TYPES = {
+    TYPE_CLASSES = {
+        # Timestamps
         "TIMESTAMP_NTZ": Timestamp,
         "TIMESTAMP_LTZ": Timestamp,
         "TIMESTAMP_TZ": TimestampTZ,
-    }
-    NUMERIC_TYPES = {
+        # Numbers
         "NUMBER": Decimal,
         "FLOAT": Float,
+        # Text
+        "TEXT": Text,
     }
     ROUNDS_ON_PREC_LOSS = False
 

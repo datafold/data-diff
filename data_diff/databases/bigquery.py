@@ -11,17 +11,19 @@ def import_bigquery():
 
 
 class BigQuery(Database):
-    DATETIME_TYPES = {
+    TYPE_CLASSES = {
+        # Dates
         "TIMESTAMP": Timestamp,
         "DATETIME": Datetime,
-    }
-    NUMERIC_TYPES = {
+        # Numbers
         "INT64": Integer,
         "INT32": Integer,
         "NUMERIC": Decimal,
         "BIGNUMERIC": Decimal,
         "FLOAT64": Float,
         "FLOAT32": Float,
+        # Text
+        "STRING": Text,
     }
     ROUNDS_ON_PREC_LOSS = False  # Technically BigQuery doesn't allow implicit rounding or truncation
 

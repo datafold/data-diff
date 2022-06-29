@@ -5,17 +5,20 @@ from abc import ABC, abstractmethod
 import time
 from operator import attrgetter, methodcaller
 from collections import defaultdict
-from typing import List, Tuple, Iterator, Optional
+from typing import List, Tuple, Iterator, Optional, Type
 import logging
 from concurrent.futures import ThreadPoolExecutor
 
 from runtype import dataclass
 
-from .sql import Select, Checksum, Compare, DbPath, DbKey, DbTime, Count, TableName, Time, Min, Max
+from .sql import Select, Checksum, Compare, DbPath, DbKey, DbTime, Count, TableName, Time, Min, Max, Value
+from .utils import safezip, split_space
 from .databases.base import Database
 from .databases.database_types import (
+    ArithUUID,
     NumericType,
     PrecisionType,
+    StringType,
     UnknownColType,
     Schema,
     Schema_CaseInsensitive,
@@ -28,17 +31,6 @@ RECOMMENDED_CHECKSUM_DURATION = 10
 
 DEFAULT_BISECTION_THRESHOLD = 1024 * 16
 DEFAULT_BISECTION_FACTOR = 32
-
-
-def safezip(*args):
-    "zip but makes sure all sequences are the same length"
-    assert len(set(map(len, args))) == 1
-    return zip(*args)
-
-
-def split_space(start, end, count):
-    size = end - start
-    return list(range(start, end, (size + 1) // (count + 1)))[1 : count + 1]
 
 
 @dataclass(frozen=False)
@@ -105,6 +97,7 @@ class TableSegment:
             return self
 
         schema = self.database.query_table_schema(self.table_path, self._relevant_columns)
+        logger.debug(f"[{self.database.name}] Schema = {schema}")
 
         schema_inst: Schema
         if self.case_sensitive:
@@ -121,9 +114,9 @@ class TableSegment:
 
     def _make_key_range(self):
         if self.min_key is not None:
-            yield Compare("<=", str(self.min_key), self._key_column)
+            yield Compare("<=", Value(self.min_key), self._key_column)
         if self.max_key is not None:
-            yield Compare("<", self._key_column, str(self.max_key))
+            yield Compare("<", self._key_column, Value(self.max_key))
 
     def _make_update_range(self):
         if self.min_update is not None:
@@ -152,6 +145,11 @@ class TableSegment:
     def choose_checkpoints(self, count: int) -> List[DbKey]:
         "Suggests a bunch of evenly-spaced checkpoints to split by (not including start, end)"
         assert self.is_bounded
+        if isinstance(self.min_key, ArithUUID):
+            checkpoints = split_space(self.min_key.int, self.max_key.int, count)
+            assert isinstance(self.max_key, ArithUUID)
+            return [ArithUUID(int=i) for i in checkpoints]
+
         return split_space(self.min_key, self.max_key, count)
 
     def segment_by_checkpoints(self, checkpoints: List[DbKey]) -> List["TableSegment"]:
@@ -297,9 +295,13 @@ class TableDiffer:
         key_ranges = self._threaded_call("query_key_range", [table1, table2])
         mins, maxs = zip(*key_ranges)
 
+        key_type = table1._schema["id"]
+        key_type2 = table2._schema["id"]
+        assert key_type.python_type is key_type2.python_type
+
         # We add 1 because our ranges are exclusive of the end (like in Python)
-        min_key = min(map(int, mins))
-        max_key = max(map(int, maxs)) + 1
+        min_key = min(map(key_type.python_type, mins))
+        max_key = max(map(key_type.python_type, maxs)) + 1
 
         table1 = table1.new(min_key=min_key, max_key=max_key)
         table2 = table2.new(min_key=min_key, max_key=max_key)
@@ -324,7 +326,7 @@ class TableDiffer:
             col2 = table2._schema[c]
             if isinstance(col1, PrecisionType):
                 if not isinstance(col2, PrecisionType):
-                    raise TypeError(f"Incompatible types for column {c}:  {col1} <-> {col2}")
+                    raise TypeError(f"Incompatible types for column '{c}':  {col1} <-> {col2}")
 
                 lowest = min(col1, col2, key=attrgetter("precision"))
 
@@ -336,7 +338,7 @@ class TableDiffer:
 
             elif isinstance(col1, NumericType):
                 if not isinstance(col2, NumericType):
-                    raise TypeError(f"Incompatible types for column {c}:  {col1} <-> {col2}")
+                    raise TypeError(f"Incompatible types for column '{c}':  {col1} <-> {col2}")
 
                 lowest = min(col1, col2, key=attrgetter("precision"))
 
@@ -346,12 +348,16 @@ class TableDiffer:
                 table1._schema[c] = col1.replace(precision=lowest.precision)
                 table2._schema[c] = col2.replace(precision=lowest.precision)
 
+            elif isinstance(col1, StringType):
+                if not isinstance(col2, StringType):
+                    raise TypeError(f"Incompatible types for column '{c}':  {col1} <-> {col2}")
+
         for t in [table1, table2]:
             for c in t._relevant_columns:
                 ctype = t._schema[c]
-                if isinstance(ctype, UnknownColType):
-                    logger.warn(
-                        f"[{t.database.name}] Column '{c}' of type '{ctype.text}' has no compatibility handling. "
+                if not ctype.supported:
+                    logger.warning(
+                        f"[{t.database.name}] Column '{c}' of type '{ctype}' has no compatibility handling. "
                         "If encoding/formatting differs between databases, it may result in false positives."
                     )
 

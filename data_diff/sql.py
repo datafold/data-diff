@@ -6,7 +6,7 @@ from datetime import datetime
 
 from runtype import dataclass
 
-from .databases.database_types import AbstractDatabase, DbPath, DbKey, DbTime
+from .databases.database_types import AbstractDatabase, DbPath, DbKey, DbTime, ArithUUID
 
 
 class Sql:
@@ -65,6 +65,8 @@ class Value(Sql):
             return "b'%s'" % self.value.decode()
         elif isinstance(self.value, str):
             return "'%s'" % self.value
+        elif isinstance(self.value, ArithUUID):
+            return "'%s'" % self.value
         return str(self.value)
 
 
@@ -75,6 +77,7 @@ class Select(Sql):
     where: Sequence[SqlOrStr] = None
     order_by: Sequence[SqlOrStr] = None
     group_by: Sequence[SqlOrStr] = None
+    limit: int = None
 
     def compile(self, parent_c: Compiler):
         c = parent_c.replace(in_select=True)
@@ -92,6 +95,9 @@ class Select(Sql):
 
         if self.order_by:
             select += " ORDER BY " + ", ".join(map(c.compile, self.order_by))
+
+        if self.limit is not None:
+            select += " " + c.database.offset_limit(0, self.limit)
 
         if parent_c.in_select:
             select = "(%s)" % select

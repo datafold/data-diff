@@ -13,19 +13,23 @@ def import_postgresql():
 
 
 class PostgreSQL(ThreadedDatabase):
-    DATETIME_TYPES = {
+    TYPE_CLASSES = {
+        # Timestamps
         "timestamp with time zone": TimestampTZ,
         "timestamp without time zone": Timestamp,
         "timestamp": Timestamp,
-        # "datetime": Datetime,
-    }
-    NUMERIC_TYPES = {
+        # Numbers
         "double precision": Float,
         "real": Float,
         "decimal": Decimal,
         "integer": Integer,
         "numeric": Decimal,
         "bigint": Integer,
+        # Text
+        "character": Text,
+        "character varying": Text,
+        "varchar": Text,
+        "text": Text,
     }
     ROUNDS_ON_PREC_LOSS = True
 

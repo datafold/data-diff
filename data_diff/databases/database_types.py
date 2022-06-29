@@ -1,15 +1,20 @@
+import decimal
 from abc import ABC, abstractmethod
-from typing import Sequence, Optional, Tuple, Union, Dict
+from typing import Sequence, Optional, Tuple, Union, Dict, Any
 from datetime import datetime
 
 from runtype import dataclass
 
+from data_diff.utils import ArithUUID
+
+
 DbPath = Tuple[str, ...]
-DbKey = Union[int, str, bytes]
+DbKey = Union[int, str, bytes, ArithUUID]
 DbTime = datetime
 
 
 class ColType:
+    supported = True
     pass
 
 
@@ -50,11 +55,36 @@ class Float(FractionalType):
 
 
 class Decimal(FractionalType):
+    @property
+    def python_type(self) -> type:
+        if self.precision == 0:
+            return int
+        return decimal.Decimal
+
+
+class StringType(ColType):
     pass
 
 
+class IKey(ABC):
+    "Interface for ColType, for using a column as a key in data-diff"
+    python_type: type
+
+
+class ColType_UUID(StringType, IKey):
+    python_type = ArithUUID
+
+
 @dataclass
-class Integer(NumericType):
+class Text(StringType):
+    supported = False
+
+
+@dataclass
+class Integer(NumericType, IKey):
+    precision: int = 0
+    python_type: type = int
+
     def __post_init__(self):
         assert self.precision == 0
 
@@ -62,6 +92,8 @@ class Integer(NumericType):
 @dataclass
 class UnknownColType(ColType):
     text: str
+
+    supported = False
 
 
 class AbstractDatabase(ABC):
@@ -78,6 +110,10 @@ class AbstractDatabase(ABC):
     @abstractmethod
     def md5_to_int(self, s: str) -> str:
         "Provide SQL for computing md5 and returning an int"
+        ...
+
+    @abstractmethod
+    def offset_limit(self, offset: Optional[int] = None, limit: Optional[int] = None):
         ...
 
     @abstractmethod
@@ -138,6 +174,14 @@ class AbstractDatabase(ABC):
         """
         ...
 
+    @abstractmethod
+    def normalize_uuid(self, value: str, coltype: ColType_UUID) -> str:
+        """Creates an SQL expression, that converts 'value' to a normalized uuid.
+
+        i.e. just makes sure there is no trailing whitespace.
+        """
+        ...
+
     def normalize_value_by_type(self, value: str, coltype: ColType) -> str:
         """Creates an SQL expression, that converts 'value' to a normalized representation.
 
@@ -158,6 +202,8 @@ class AbstractDatabase(ABC):
             return self.normalize_timestamp(value, coltype)
         elif isinstance(coltype, FractionalType):
             return self.normalize_number(value, coltype)
+        elif isinstance(coltype, ColType_UUID):
+            return self.normalize_uuid(value, coltype)
         return self.to_string(value)
 
     def _normalize_table_path(self, path: DbPath) -> DbPath:
