@@ -6,7 +6,7 @@ import logging
 import subprocess
 
 TEST_MYSQL_CONN_STRING: str = "mysql://mysql:Password1@localhost/mysql"
-TEST_POSTGRESQL_CONN_STRING: str = None
+TEST_POSTGRESQL_CONN_STRING: str = "postgresql://postgres:Password1@localhost/postgres"
 TEST_SNOWFLAKE_CONN_STRING: str = os.environ.get("DATADIFF_SNOWFLAKE_URI", None)
 TEST_BIGQUERY_CONN_STRING: str = None
 TEST_REDSHIFT_CONN_STRING: str = None

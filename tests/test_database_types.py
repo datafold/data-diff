@@ -3,7 +3,11 @@ import unittest
 import time
 import json
 import re
+import random
+import string
 import rich.progress
+import uuid
+import os
 import math
 import uuid
 from datetime import datetime, timedelta
@@ -377,6 +381,7 @@ def sanitize(name):
     name = name.replace(r"with local time zone", "y_tz")
     name = name.replace(r"timestamp", "ts")
     name = name.replace(r"double precision", "double")
+    name = name.replace(r"numeric", "num")
     return parameterized.to_safe_name(name)
 
 
@@ -396,7 +401,8 @@ def expand_params(testcase_func, param_num, param):
     source_db, target_db, source_type, target_type, type_category = param.args
     source_db_type = source_db.__name__
     target_db_type = target_db.__name__
-    name = "%s_%s_%s_to_%s_%s_%s" % (
+
+    name = "%s_%s_%s_%s_%s_%s" % (
         testcase_func.__name__,
         sanitize(source_db_type),
         sanitize(source_type),
@@ -404,6 +410,7 @@ def expand_params(testcase_func, param_num, param):
         sanitize(target_type),
         number_to_human(N_SAMPLES),
     )
+
     return name
 
 
@@ -465,11 +472,11 @@ def _create_indexes(conn, table):
     try:
         if_not_exists = "IF NOT EXISTS" if not isinstance(conn, (db.MySQL, db.Oracle)) else ""
         conn.query(
-            f"CREATE INDEX {if_not_exists} idx_{table[1:-1]}_id_col ON {table} (id, col)",
+            f"CREATE INDEX {if_not_exists} xa_{table[1:-1]} ON {table} (id, col)",
             None,
         )
         conn.query(
-            f"CREATE INDEX {if_not_exists} idx_{table[1:-1]}_id ON {table} (id)",
+            f"CREATE INDEX {if_not_exists} xb_{table[1:-1]} ON {table} (id)",
             None,
         )
     except Exception as err:
@@ -510,6 +517,13 @@ def _drop_table_if_exists(conn, table):
 class TestDiffCrossDatabaseTables(unittest.TestCase):
     maxDiff = 10000
 
+    def tearDown(self) -> None:
+        # TODO: move to ensure/teardown
+        _drop_table_if_exists(self.src_conn, self.src_table)
+        _drop_table_if_exists(self.dst_conn, self.dst_table)
+
+        return super().tearDown()
+
     @parameterized.expand(type_pairs, name_func=expand_params)
     def test_types(self, source_db, target_db, source_type, target_type, type_category):
         start = time.time()
@@ -520,14 +534,22 @@ class TestDiffCrossDatabaseTables(unittest.TestCase):
         self.connections = [self.src_conn, self.dst_conn]
         sample_values = TYPE_SAMPLES[type_category]
 
+        table_suffix = ""
+        # Benchmarks we re-use tables for performance. For tests, we create
+        # unique tables to ensure isolation.
+        if not BENCHMARK:
+            char_set = string.ascii_uppercase + string.digits
+            table_suffix = "_"
+            table_suffix += "".join(random.choice(char_set) for _ in range(5)).lower()
+
         # Limit in MySQL is 64, Presto seems to be 63
-        src_table_name = f"src_{self._testMethodName[11:]}"
-        dst_table_name = f"dst_{self._testMethodName[11:]}"
+        src_table_name = f"src_{self._testMethodName[11:]}{table_suffix}"
+        dst_table_name = f"dst_{self._testMethodName[11:]}{table_suffix}"
 
         src_table_path = src_conn.parse_table_name(src_table_name)
         dst_table_path = dst_conn.parse_table_name(dst_table_name)
-        src_table = src_conn.quote(".".join(src_table_path))
-        dst_table = dst_conn.quote(".".join(dst_table_path))
+        self.src_table = src_table = src_conn.quote(".".join(src_table_path))
+        self.dst_table = dst_table = dst_table = dst_conn.quote(".".join(dst_table_path))
 
         start = time.time()
         _drop_table_if_exists(src_conn, src_table)
