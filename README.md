@@ -135,6 +135,18 @@ $ data-diff \
 If a database is not on the list, we'd still love to support it. Open an issue
 to discuss it.
 
+##### Hashing Algorithms supported by databases
+
+| Database      | Supported algorithms                        | Resources                                        |
+|---------------|---------------------------------------------|--------------------------------------------------|
+| PostgreSQL    | MD5, SHA224, SHA256, SHA384, SHA512         |  [Doc][PSQL_Doc]                                 |
+| MSSQL         | MD2, MD4, MD5, SHA, SHA1                    |  [Perf][MSSQL_Perf]                              |
+| Snowflake     | Hash/Hash_Agg, MD5, SHA1, SHA2              |  [Doc][Snowflake_Doc]                            |
+| Oracle        | MD5, SHA1, SHA256, SHA384, SHA512           |  [Reference][Oracle_Doc], [Perf][Oracle_Perf]    |
+| BigQuery      | MD5, SHA1, SHA256, SHA512, FARM_FINGERPRINT |  [Doc][BigQuery_Doc]                             |
+| Redshift      | MD5, SHA, SHA1, SHA2, FARM_FINGERPRINT      |  [Doc][Redshift_Doc]                             |
+| Presto        | MD5, SHA1, SHA256, SHA512                   |  [Doc][Presto_Doc]                               |
+
 # How to install
 
 Requires Python 3.7+ with pip.
@@ -465,3 +477,12 @@ poetry run python3 -m data_diff postgresql://postgres:Password1@localhost/postgr
 [tech-explain]: #technical-explanation
 [perf]: #performance-considerations
 [slack]: https://locallyoptimistic.com/community/
+
+[PSQL_Doc]: <https://www.postgresql.org/docs/11/functions-binarystring.html>
+[MSSQL_Perf]: <https://www.postgresql.org/docs/11/functions-binarystring.html>
+[Snowflake_Doc]: <https://docs.snowflake.com/en/sql-reference/functions-string.html>
+[Oracle_Doc]: <https://dbalifeeasy.com/2019/05/06/cryptographic-hash-functions-in-oracle/>
+[Oracle_Perf]: <https://danischnider.wordpress.com/2017/01/24/how-to-build-hash-keys-in-oracle/>
+[BigQuery_Doc]: <https://cloud.google.com/bigquery/docs/reference/standard-sql/hash_functions>
+[Redshift_Doc]: <https://docs.aws.amazon.com/redshift/latest/dg/hash-functions.html>
+[Presto_Doc]: <https://teradata.github.io/presto/docs/141t/functions/binary.html>
