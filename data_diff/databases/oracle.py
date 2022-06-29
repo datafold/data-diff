@@ -16,6 +16,11 @@ class Oracle(ThreadedDatabase):
     TYPE_CLASSES: Dict[str, type] = {
         "NUMBER": Decimal,
         "FLOAT": Float,
+        # Text
+        "CHAR": Text,
+        "NCHAR": Text,
+        "NVARCHAR2": Text,
+        "VARCHAR2": Text,
     }
     ROUNDS_ON_PREC_LOSS = True
 
@@ -97,3 +102,7 @@ class Oracle(ThreadedDatabase):
             raise NotImplementedError("No support for OFFSET in query")
 
         return f"FETCH NEXT {limit} ROWS ONLY"
+
+    def normalize_uuid(self, value: str, coltype: ColType_UUID) -> str:
+        # Cast is necessary for correct MD5 (trimming not enough)
+        return f"CAST(TRIM({value}) AS VARCHAR(36))"

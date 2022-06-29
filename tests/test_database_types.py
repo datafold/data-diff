@@ -291,7 +291,9 @@ DATABASE_TYPES = {
             "numeric",
         ],
         "uuid": [
-            "$uuid"
+            "text",
+            "varchar(100)",
+            "char(100)",
         ],
     },
     db.Oracle: {
@@ -310,7 +312,10 @@ DATABASE_TYPES = {
             "double precision",
         ],
         "uuid": [
-            "$uuid"
+            "CHAR(100)",
+            "VARCHAR(100)",
+            "NCHAR(100)",
+            "NVARCHAR2(100)",
         ],
     },
     db.Presto: {
@@ -407,8 +412,10 @@ def _insert_to_table(conn, table, values):
         for j, sample in values:
             if isinstance(sample, (float, Decimal, int)):
                 value = str(sample)
-            else:
+            elif isinstance(sample, datetime):
                 value = f"timestamp '{sample}'"
+            else:
+                value = f"'{sample}'"
             selects.append(f"SELECT {j}, {value} FROM dual")
         insertion_query += " UNION ALL ".join(selects)
     else:
