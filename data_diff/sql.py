@@ -124,7 +124,7 @@ class Checksum(Sql):
             compiled_exprs = ", ".join(map(c.compile, self.exprs))
             expr = f"concat({compiled_exprs})"
         else:
-            expr ,= self.exprs
+            (expr,) = self.exprs
             expr = c.compile(expr)
         md5 = c.database.md5_to_int(expr)
         return f"sum({md5})"

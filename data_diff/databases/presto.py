@@ -27,6 +27,7 @@ class Presto(Database):
         "timestamp": Timestamp,
         # Numbers
         "integer": Integer,
+        "bigint": Integer,
         "real": Float,
         "double": Float,
         # Text

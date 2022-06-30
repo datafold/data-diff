@@ -1,4 +1,3 @@
-from uuid import UUID
 import math
 import sys
 import logging
@@ -16,7 +15,6 @@ from .database_types import (
     Integer,
     Decimal,
     Float,
-    PrecisionType,
     TemporalType,
     UnknownColType,
     Text,

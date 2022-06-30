@@ -186,7 +186,7 @@ DATABASE_TYPES = {
         "int": [
             # "smallint",  # 2 bytes
             "int",  # 4 bytes
-            "bigint", # 8 bytes
+            "bigint",  # 8 bytes
         ],
         # https://www.postgresql.org/docs/current/datatype-datetime.html
         "datetime": [
@@ -214,7 +214,7 @@ DATABASE_TYPES = {
             # "smallint", # 2 bytes
             # "mediumint", # 3 bytes
             "int",  # 4 bytes
-            "bigint", # 8 bytes
+            "bigint",  # 8 bytes
         ],
         # https://dev.mysql.com/doc/refman/8.0/en/datetime.html
         "datetime": [
@@ -327,7 +327,7 @@ DATABASE_TYPES = {
             # "smallint", # 2 bytes
             # "mediumint", # 3 bytes
             "int",  # 4 bytes
-            "bigint", # 8 bytes
+            "bigint",  # 8 bytes
         ],
         "datetime": [
             "timestamp",
@@ -548,8 +548,12 @@ class TestDiffCrossDatabaseTables(unittest.TestCase):
         _insert_to_table(dst_conn, dst_table, values_in_source, target_type)
         insertion_target_duration = time.time() - start
 
-        self.table = TableSegment(self.src_conn, src_table_path, "id", None, ("col",), case_sensitive=False)
-        self.table2 = TableSegment(self.dst_conn, dst_table_path, "id", None, ("col",), case_sensitive=False)
+        if type_category == "uuid":
+            self.table = TableSegment(self.src_conn, src_table_path, "col", None, ("id",), case_sensitive=False)
+            self.table2 = TableSegment(self.dst_conn, dst_table_path, "col", None, ("id",), case_sensitive=False)
+        else:
+            self.table = TableSegment(self.src_conn, src_table_path, "id", None, ("col",), case_sensitive=False)
+            self.table2 = TableSegment(self.dst_conn, dst_table_path, "id", None, ("col",), case_sensitive=False)
 
         start = time.time()
         self.assertEqual(N_SAMPLES, self.table.count())
@@ -595,7 +599,10 @@ class TestDiffCrossDatabaseTables(unittest.TestCase):
         download_duration = time.time() - start
         expected = []
         self.assertEqual(expected, diff)
-        self.assertEqual(len(sample_values), differ.stats.get("rows_downloaded", 0))
+        if type_category == "uuid":
+            pass  # UUIDs aren't serial, so they mess with the first max_rows estimation.
+        else:
+            self.assertEqual(len(sample_values), differ.stats.get("rows_downloaded", 0))
 
         result = {
             "test": self._testMethodName,

@@ -80,17 +80,25 @@ class TableSegment:
             raise ValueError("Error: min_update expected to be smaller than max_update!")
 
     @property
-    def _key_column(self):
-        return self._quote_column(self.key_column)
-
-    @property
     def _update_column(self):
         return self._quote_column(self.update_column)
 
-    def _quote_column(self, c):
+    def _quote_column(self, c: str) -> str:
         if self._schema:
             c = self._schema.get_key(c)  # Get the actual name. Might be case-insensitive.
         return self.database.quote(c)
+
+    def _normalize_column(self, name: str, template: str = None) -> str:
+        if not self._schema:
+            raise RuntimeError(
+                "Cannot compile query when the schema is unknown. Please use TableSegment.with_schema()."
+            )
+
+        col = self._quote_column(name)
+        if template is not None:
+            col = template % col  # Apply template using Python's string formatting
+
+        return self.database.normalize_value_by_type(col, self._schema[name])
 
     def with_schema(self) -> "TableSegment":
         "Queries the table schema from the database, and returns a new instance of TableSegmentWithSchema."
@@ -115,9 +123,9 @@ class TableSegment:
 
     def _make_key_range(self):
         if self.min_key is not None:
-            yield Compare("<=", Value(self.min_key), self._key_column)
+            yield Compare("<=", Value(self.min_key), self._quote_column(self.key_column))
         if self.max_key is not None:
-            yield Compare("<", self._key_column, Value(self.max_key))
+            yield Compare("<", self._quote_column(self.key_column), Value(self.max_key))
 
     def _make_update_range(self):
         if self.min_update is not None:
@@ -127,7 +135,7 @@ class TableSegment:
 
     def _make_select(self, *, table=None, columns=None, where=None, group_by=None, order_by=None):
         if columns is None:
-            columns = [self._key_column]
+            columns = [self._normalize_column(self.key_column)]
         where = list(self._make_key_range()) + list(self._make_update_range()) + ([] if where is None else [where])
         order_by = None if order_by is None else [order_by]
         return Select(
@@ -184,14 +192,7 @@ class TableSegment:
 
     @property
     def _relevant_columns_repr(self) -> List[str]:
-        if not self._schema:
-            raise RuntimeError(
-                "Cannot compile query when the schema is unknown. Please use TableSegment.with_schema()."
-            )
-        return [
-            self.database.normalize_value_by_type(self._quote_column(c), self._schema[c])
-            for c in self._relevant_columns
-        ]
+        return [self._normalize_column(c) for c in self._relevant_columns]
 
     def count(self) -> Tuple[int, int]:
         """Count how many rows are in the segment, in one pass."""
@@ -214,7 +215,13 @@ class TableSegment:
 
     def query_key_range(self) -> Tuple[int, int]:
         """Query database for minimum and maximum key. This is used for setting the initial bounds."""
-        select = self._make_select(columns=[Min(self._key_column), Max(self._key_column)])
+        # Normalizes the result (needed for UUIDs) after the min/max computation
+        select = self._make_select(
+            columns=[
+                self._normalize_column(self.key_column, "min(%s)"),
+                self._normalize_column(self.key_column, "max(%s)"),
+            ]
+        )
         min_key, max_key = self.database.query(select, tuple)
 
         if min_key is None or max_key is None:
@@ -296,13 +303,16 @@ class TableDiffer:
         key_ranges = self._threaded_call("query_key_range", [table1, table2])
         mins, maxs = zip(*key_ranges)
 
-        key_type = table1._schema["id"]
-        key_type2 = table2._schema["id"]
+        key_type = table1._schema[table1.key_column]
+        key_type2 = table2._schema[table2.key_column]
         assert key_type.python_type is key_type2.python_type
 
         # We add 1 because our ranges are exclusive of the end (like in Python)
-        min_key = min(map(key_type.python_type, mins))
-        max_key = max(map(key_type.python_type, maxs)) + 1
+        try:
+            min_key = min(map(key_type.python_type, mins))
+            max_key = max(map(key_type.python_type, maxs)) + 1
+        except (TypeError, ValueError) as e:
+            raise type(e)(f"Cannot apply {key_type} to {mins}, {maxs}.") from e
 
         table1 = table1.new(min_key=min_key, max_key=max_key)
         table2 = table2.new(min_key=min_key, max_key=max_key)
