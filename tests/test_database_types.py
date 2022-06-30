@@ -3,8 +3,6 @@ import unittest
 import time
 import json
 import re
-import random
-import string
 import rich.progress
 import math
 import uuid
@@ -15,7 +13,7 @@ from parameterized import parameterized
 
 from data_diff import databases as db
 from data_diff.diff_tables import TableDiffer, TableSegment, DEFAULT_BISECTION_THRESHOLD
-from .common import CONN_STRINGS, N_SAMPLES, BENCHMARK, GIT_REVISION
+from .common import CONN_STRINGS, N_SAMPLES, BENCHMARK, GIT_REVISION, random_table_suffix
 
 
 CONNS = {k: db.connect_to_uri(v, 1) for k, v in CONN_STRINGS.items()}
@@ -195,7 +193,7 @@ DATABASE_TYPES = {
             "timestamp(6) without time zone",
             "timestamp(3) without time zone",
             "timestamp(0) without time zone",
-            "timestamp with time zone"
+            "timestamp with time zone",
         ],
         # https://www.postgresql.org/docs/current/datatype-numeric.html
         "float": [
@@ -437,7 +435,7 @@ def _insert_to_table(conn, table, values, type):
     selects = []
     for j, sample in values:
         if re.search(r"(time zone|tz)", type):
-            sample = sample.replace(tzinfo = timezone.utc)
+            sample = sample.replace(tzinfo=timezone.utc)
 
         if isinstance(sample, (float, Decimal, int)):
             value = str(sample)
@@ -543,9 +541,7 @@ class TestDiffCrossDatabaseTables(unittest.TestCase):
         # Benchmarks we re-use tables for performance. For tests, we create
         # unique tables to ensure isolation.
         if not BENCHMARK:
-            char_set = string.ascii_lowercase + string.digits
-            table_suffix = "_"
-            table_suffix += "".join(random.choice(char_set) for _ in range(5))
+            table_suffix = random_table_suffix()
 
         # Limit in MySQL is 64, Presto seems to be 63
         src_table_name = f"src_{self._testMethodName[11:]}{table_suffix}"

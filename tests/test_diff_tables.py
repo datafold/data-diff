@@ -10,7 +10,7 @@ import arrow  # comes with preql
 from data_diff.databases import connect_to_uri
 from data_diff.diff_tables import TableDiffer, TableSegment, split_space
 
-from .common import TEST_MYSQL_CONN_STRING, str_to_checksum
+from .common import TEST_MYSQL_CONN_STRING, str_to_checksum, random_table_suffix
 
 
 class TestUtils(unittest.TestCase):
@@ -41,11 +41,10 @@ class TestWithConnection(unittest.TestCase):
             self.setUpClass.__func__(self)
             self.private_connection = True
 
-        char_set = string.ascii_lowercase + string.digits
-        table_suffix = "".join(random.choice(char_set) for _ in range(5))
+        table_suffix = random_table_suffix()
 
-        self.table_src = f"src_{table_suffix}"
-        self.table_dst = f"dst_{table_suffix}"
+        self.table_src = f"src{table_suffix}"
+        self.table_dst = f"dst{table_suffix}"
 
         return super().setUp()
 

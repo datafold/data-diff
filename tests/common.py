@@ -1,5 +1,7 @@
 import hashlib
 import os
+import string
+import random
 
 from data_diff import databases as db
 import logging
@@ -58,6 +60,13 @@ for k, v in CONN_STRINGS.items():
         logging.info(f"Testing database: {k}")
 
 CONN_STRINGS = {k: v for k, v in CONN_STRINGS.items() if v is not None}
+
+
+def random_table_suffix() -> str:
+    char_set = string.ascii_lowercase + string.digits
+    suffix = "_"
+    suffix += "".join(random.choice(char_set) for _ in range(5))
+    return suffix
 
 
 def str_to_checksum(str: str):
