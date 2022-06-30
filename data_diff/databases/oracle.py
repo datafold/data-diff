@@ -24,11 +24,10 @@ class Oracle(ThreadedDatabase):
     }
     ROUNDS_ON_PREC_LOSS = True
 
-    def __init__(self, host, port, user, password, *, database, thread_count, **kw):
-        assert not port
-        self.kwargs = dict(user=user, password=password, dsn="%s/%s" % (host, database), **kw)
+    def __init__(self, *, host, database, thread_count, **kw):
+        self.kwargs = dict(dsn="%s/%s" % (host, database), **kw)
 
-        self.default_schema = user
+        self.default_schema = kw.get('user')
 
         super().__init__(thread_count=thread_count)
 

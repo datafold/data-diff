@@ -18,6 +18,11 @@ class ColType:
     pass
 
 
+class IKey(ABC):
+    "Interface for ColType, for using a column as a key in data-diff"
+    python_type: type
+
+
 @dataclass
 class PrecisionType(ColType):
     precision: int
@@ -54,7 +59,7 @@ class Float(FractionalType):
     pass
 
 
-class Decimal(FractionalType):
+class Decimal(FractionalType, IKey):
     @property
     def python_type(self) -> type:
         if self.precision == 0:
@@ -64,11 +69,6 @@ class Decimal(FractionalType):
 
 class StringType(ColType):
     pass
-
-
-class IKey(ABC):
-    "Interface for ColType, for using a column as a key in data-diff"
-    python_type: type
 
 
 class ColType_UUID(StringType, IKey):

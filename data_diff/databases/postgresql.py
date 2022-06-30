@@ -35,8 +35,8 @@ class PostgreSQL(ThreadedDatabase):
 
     default_schema = "public"
 
-    def __init__(self, host, port, user, password, *, database, thread_count, **kw):
-        self.args = dict(host=host, port=port, database=database, user=user, password=password, **kw)
+    def __init__(self, *, thread_count, **kw):
+        self._args = kw
 
         super().__init__(thread_count=thread_count)
 
@@ -47,11 +47,11 @@ class PostgreSQL(ThreadedDatabase):
     def create_connection(self):
         pg = import_postgresql()
         try:
-            c = pg.connect(**self.args)
+            c = pg.connect(**self._args)
             # c.cursor().execute("SET TIME ZONE 'UTC'")
             return c
         except pg.OperationalError as e:
-            raise ConnectError(*e.args) from e
+            raise ConnectError(*e._args) from e
 
     def quote(self, s: str):
         return f'"{s}"'
