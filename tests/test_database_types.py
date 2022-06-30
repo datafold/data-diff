@@ -197,6 +197,7 @@ DATABASE_TYPES = {
             "timestamp(6) without time zone",
             "timestamp(3) without time zone",
             "timestamp(0) without time zone",
+            "timestamp with time zone"
         ],
         # https://www.postgresql.org/docs/current/datatype-numeric.html
         "float": [
@@ -245,7 +246,7 @@ DATABASE_TYPES = {
         "int": ["int"],
         "datetime": [
             "timestamp",
-            # "datetime",
+            "datetime",
         ],
         "float": [
             "numeric",
@@ -273,6 +274,8 @@ DATABASE_TYPES = {
             "timestamp(3)",
             "timestamp(6)",
             "timestamp(9)",
+            "timestamp_tz(9)",
+            "timestamp_ntz(9)",
         ],
         # https://docs.snowflake.com/en/sql-reference/data-types-numeric.html#decimal-numeric
         "float": [
@@ -290,6 +293,7 @@ DATABASE_TYPES = {
         ],
         "datetime": [
             "TIMESTAMP",
+            "timestamp with time zone",
         ],
         # https://docs.aws.amazon.com/redshift/latest/dg/r_Numeric_types201.html#r_Numeric_types201-floating-point-types
         "float": [
@@ -518,7 +522,6 @@ class TestDiffCrossDatabaseTables(unittest.TestCase):
     maxDiff = 10000
 
     def tearDown(self) -> None:
-        # TODO: move to ensure/teardown
         _drop_table_if_exists(self.src_conn, self.src_table)
         _drop_table_if_exists(self.dst_conn, self.dst_table)
 
@@ -538,9 +541,9 @@ class TestDiffCrossDatabaseTables(unittest.TestCase):
         # Benchmarks we re-use tables for performance. For tests, we create
         # unique tables to ensure isolation.
         if not BENCHMARK:
-            char_set = string.ascii_uppercase + string.digits
+            char_set = string.ascii_lowercase + string.digits
             table_suffix = "_"
-            table_suffix += "".join(random.choice(char_set) for _ in range(5)).lower()
+            table_suffix += "".join(random.choice(char_set) for _ in range(5))
 
         # Limit in MySQL is 64, Presto seems to be 63
         src_table_name = f"src_{self._testMethodName[11:]}{table_suffix}"
