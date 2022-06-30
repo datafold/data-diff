@@ -35,15 +35,15 @@ jobs:
           python-version: ${{ matrix.python-version }}
 
       - name: Build the stack
-        run: docker-compose up -d mysql postgres
+        run: docker-compose up -d mysql postgres presto
 
       - name: Install Poetry
         run: pip install poetry
 
       - name: Install package
-        run: poetry install
+        run: "poetry install && poetry run pip install unittest-parallel"
 
       - name: Run unit tests
         env:
             DATADIFF_SNOWFLAKE_URI: '${{ secrets.DATADIFF_SNOWFLAKE_URI }}'
-        run: poetry run python3 -m unittest
+        run: poetry run unittest-parallel -j 64

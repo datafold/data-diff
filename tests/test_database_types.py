@@ -523,8 +523,9 @@ class TestDiffCrossDatabaseTables(unittest.TestCase):
     maxDiff = 10000
 
     def tearDown(self) -> None:
-        _drop_table_if_exists(self.src_conn, self.src_table)
-        _drop_table_if_exists(self.dst_conn, self.dst_table)
+        if not BENCHMARK:
+            _drop_table_if_exists(self.src_conn, self.src_table)
+            _drop_table_if_exists(self.dst_conn, self.dst_table)
 
         return super().tearDown()
 
@@ -556,7 +557,8 @@ class TestDiffCrossDatabaseTables(unittest.TestCase):
         self.dst_table = dst_table = dst_table = dst_conn.quote(".".join(dst_table_path))
 
         start = time.time()
-        _drop_table_if_exists(src_conn, src_table)
+        if not BENCHMARK:
+            _drop_table_if_exists(src_conn, src_table)
         _create_table_with_indexes(src_conn, src_table, source_type)
         _insert_to_table(src_conn, src_table, enumerate(sample_values, 1), source_type)
         insertion_source_duration = time.time() - start
@@ -569,7 +571,8 @@ class TestDiffCrossDatabaseTables(unittest.TestCase):
                 values_in_source = ((a, datetime.fromisoformat(b.rstrip(" UTC"))) for a, b in values_in_source)
 
         start = time.time()
-        _drop_table_if_exists(dst_conn, dst_table)
+        if not BENCHMARK:
+            _drop_table_if_exists(dst_conn, dst_table)
         _create_table_with_indexes(dst_conn, dst_table, target_type)
         _insert_to_table(dst_conn, dst_table, values_in_source, target_type)
         insertion_target_duration = time.time() - start
