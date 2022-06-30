@@ -70,4 +70,4 @@ class MySQL(ThreadedDatabase):
         return self.to_string(f"cast({value} as decimal(38, {coltype.precision}))")
 
     def normalize_uuid(self, value: str, coltype: ColType_UUID) -> str:
-        return f"CAST(TRIM({value}) AS char)"
+        return f"TRIM(CAST({value} AS char))"
