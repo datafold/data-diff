@@ -424,7 +424,8 @@ $ docker-compose up -d mysql postgres # run mysql and postgres dbs in background
 **3. Run Unit Tests**
 
 There are more than 1000 tests for all the different type and database
-combinations, so we recommend using a parallel runner.
+combinations, so we recommend using `unittest-parallel` that's installed as a
+development dependency.
 
 ```shell-session
 $ poetry run unittest-parallel -j 16 #  run all tests
