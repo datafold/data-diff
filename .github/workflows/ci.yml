@@ -47,4 +47,4 @@ jobs:
         env:
             DATADIFF_SNOWFLAKE_URI: '${{ secrets.DATADIFF_SNOWFLAKE_URI }}'
             DATADIFF_PRESTO_URI: '${{ secrets.DATADIFF_PRESTO_URI }}'
-        run: poetry run unittest-parallel -j 32
+        run: poetry run unittest-parallel -j 16
