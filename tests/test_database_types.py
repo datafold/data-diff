@@ -6,11 +6,9 @@ import re
 import random
 import string
 import rich.progress
-import uuid
-import os
 import math
 import uuid
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 import logging
 from decimal import Decimal
 from parameterized import parameterized
@@ -438,6 +436,9 @@ def _insert_to_table(conn, table, values, type):
     insertion_query = default_insertion_query
     selects = []
     for j, sample in values:
+        if re.search(r"(time zone|tz)", type):
+            sample = sample.replace(tzinfo = timezone.utc)
+
         if isinstance(sample, (float, Decimal, int)):
             value = str(sample)
         elif isinstance(sample, datetime) and isinstance(conn, (db.Presto, db.Oracle)):
