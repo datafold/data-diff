@@ -589,7 +589,7 @@ class TestDiffCrossDatabaseTables(unittest.TestCase):
         # reasonable amount of rows each. These will then be downloaded in
         # parallel, using the existing implementation.
         dl_factor = max(int(N_SAMPLES / 100_000), 2) if BENCHMARK else 2
-        dl_threshold = int(N_SAMPLES / dl_factor) + 1 if BENCHMARK else N_SAMPLES + 1
+        dl_threshold = int(N_SAMPLES / dl_factor) + 1 if BENCHMARK else math.inf
         dl_threads = 1
         differ = TableDiffer(
             bisection_threshold=dl_threshold, bisection_factor=dl_factor, max_threadpool_size=dl_threads
@@ -599,10 +599,7 @@ class TestDiffCrossDatabaseTables(unittest.TestCase):
         download_duration = time.time() - start
         expected = []
         self.assertEqual(expected, diff)
-        if type_category == "uuid":
-            pass  # UUIDs aren't serial, so they mess with the first max_rows estimation.
-        else:
-            self.assertEqual(len(sample_values), differ.stats.get("rows_downloaded", 0))
+        self.assertEqual(len(sample_values), differ.stats.get("rows_downloaded", 0))
 
         result = {
             "test": self._testMethodName,

@@ -4,9 +4,10 @@
 from abc import ABC, abstractmethod
 import time
 import os
+from numbers import Number
 from operator import attrgetter, methodcaller
 from collections import defaultdict
-from typing import List, Tuple, Iterator, Optional, Type
+from typing import List, Tuple, Iterator, Optional
 import logging
 from concurrent.futures import ThreadPoolExecutor
 
@@ -263,14 +264,14 @@ class TableDiffer:
 
     Parameters:
         bisection_factor (int): Into how many segments to bisect per iteration.
-        bisection_threshold (int): When should we stop bisecting and compare locally (in row count).
+        bisection_threshold (Number): When should we stop bisecting and compare locally (in row count).
         threaded (bool): Enable/disable threaded diffing. Needed to take advantage of database threads.
         max_threadpool_size (int): Maximum size of each threadpool. ``None`` means auto. Only relevant when `threaded` is ``True``.
                                    There may be many pools, so number of actual threads can be a lot higher.
     """
 
     bisection_factor: int = DEFAULT_BISECTION_FACTOR
-    bisection_threshold: int = DEFAULT_BISECTION_THRESHOLD
+    bisection_threshold: Number = DEFAULT_BISECTION_THRESHOLD       # Accepts inf for tests
     threaded: bool = True
     max_threadpool_size: Optional[int] = 1
 
