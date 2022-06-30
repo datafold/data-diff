@@ -42,6 +42,10 @@ snowflake-connector-python = "*"
 psycopg2 = "*"
 presto-python-client = "*"
 parameterized = "*"
+unittest-parallel = "*"
+pandas = "*" #  for generating benchmark graphs
+plotly = "*"
+kaleido = "*"
 
 [tool.poetry.extras]
 # When adding, update also: README + dev deps just above

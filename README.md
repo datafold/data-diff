@@ -171,9 +171,9 @@ Users can also install several drivers at once:
 Usage: `data-diff DB1_URI TABLE1_NAME DB2_URI TABLE2_NAME [OPTIONS]`
 
 See the [example command](#example-command-and-output) and the [sample
-connection strings](#supported-databases). 
+connection strings](#supported-databases).
 
-Note that for some databases, the arguments that you enter in the command line 
+Note that for some databases, the arguments that you enter in the command line
 may be case-sensitive. This is the case for the Snowflake schema and table names.
 
 Options:
@@ -423,11 +423,15 @@ $ docker-compose up -d mysql postgres # run mysql and postgres dbs in background
 
 **3. Run Unit Tests**
 
+There are more than 1000 tests for all the different type and database
+combinations, so we recommend using a parallel runner.
+
 ```shell-session
-$ poetry run python3 -m unittest
+$ poetry run unittest-parallel -j 16 #  run all tests
+$ poetry run python -m unittest -k <test> #  run individual test
 ```
 
-**4. Seed the Database(s)**
+**4. Seed the Database(s) (optional)**
 
 First, download the CSVs of seeding data:
 
@@ -451,7 +455,7 @@ $ poetry run preql -f dev/prepare_db.pql mssql://<uri>
 $ poetry run preql -f dev/prepare_db.pql bigquery:///<project>
 ```
 
-**5. Run **data-diff** against seeded database**
+**5. Run **data-diff** against seeded database (optional)**
 
 ```bash
 poetry run python3 -m data_diff postgresql://postgres:Password1@localhost/postgres rating postgresql://postgres:Password1@localhost/postgres rating_del1 --verbose
@@ -460,7 +464,14 @@ poetry run python3 -m data_diff postgresql://postgres:Password1@localhost/postgr
 **6. Run benchmarks (optional)**
 
 ```shell-session
-$ dev/benchmark.sh
+$ dev/benchmark.sh #  runs benchmarks and puts results in benchmark_<sha>.csv
+$ poetry run python3 dev/graph.py #  create graphs from benchmark_*.csv files
+```
+
+You can adjust how many rows we benchmark with by passing `N_SAMPLES` to `dev/benchmark.sh`:
+
+```shell-session
+$ N_SAMPLES=100000000 dev/benchmark.sh #  100m which is our canonical target
 ```
 
 

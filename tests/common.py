@@ -18,6 +18,7 @@ TEST_ORACLE_CONN_STRING: str = None
 DEFAULT_N_SAMPLES = 50
 N_SAMPLES = int(os.environ.get("N_SAMPLES", DEFAULT_N_SAMPLES))
 BENCHMARK = os.environ.get("BENCHMARK", False)
+N_THREADS = int(os.environ.get("N_THREADS", 1))
 
 
 def get_git_revision_short_hash() -> str:

@@ -12,11 +12,12 @@ from decimal import Decimal
 from parameterized import parameterized
 
 from data_diff import databases as db
+from data_diff.utils import number_to_human
 from data_diff.diff_tables import TableDiffer, TableSegment, DEFAULT_BISECTION_THRESHOLD
-from .common import CONN_STRINGS, N_SAMPLES, BENCHMARK, GIT_REVISION, random_table_suffix
+from .common import CONN_STRINGS, N_SAMPLES, N_THREADS, BENCHMARK, GIT_REVISION, random_table_suffix
 
 
-CONNS = {k: db.connect_to_uri(v, 1) for k, v in CONN_STRINGS.items()}
+CONNS = {k: db.connect_to_uri(v, N_THREADS) for k, v in CONN_STRINGS.items()}
 
 CONNS[db.MySQL].query("SET @@session.time_zone='+00:00'", None)
 
@@ -258,7 +259,6 @@ DATABASE_TYPES = {
         "int": [
             # all 38 digits with 0 precision, don't need to test all
             "int",
-            "integer",
             "bigint",
             # "smallint",
             # "tinyint",
@@ -385,17 +385,6 @@ def sanitize(name):
     return parameterized.to_safe_name(name)
 
 
-def number_to_human(n):
-    millnames = ["", "k", "m", "b"]
-    n = float(n)
-    millidx = max(
-        0,
-        min(len(millnames) - 1, int(math.floor(0 if n == 0 else math.log10(abs(n)) / 3))),
-    )
-
-    return "{:.0f}{}".format(n / 10 ** (3 * millidx), millnames[millidx])
-
-
 # Pass --verbose to test run to get a nice output.
 def expand_params(testcase_func, param_num, param):
     source_db, target_db, source_type, target_type, type_category = param.args
@@ -431,6 +420,10 @@ def _insert_to_table(conn, table, values, type):
     if isinstance(conn, db.Oracle):
         default_insertion_query = f"INSERT INTO {table} (id, col)"
 
+    batch_size = 8000
+    if isinstance(conn, db.BigQuery):
+        batch_size = 1000
+
     insertion_query = default_insertion_query
     selects = []
     for j, sample in values:
@@ -453,7 +446,7 @@ def _insert_to_table(conn, table, values, type):
 
         # Some databases want small batch sizes...
         # Need to also insert on the last row, might not divide cleanly!
-        if j % 8000 == 0 or j == N_SAMPLES:
+        if j % batch_size == 0 or j == N_SAMPLES:
             if isinstance(conn, db.Oracle):
                 insertion_query += " UNION ALL ".join(selects)
                 conn.query(insertion_query, None)
@@ -594,7 +587,7 @@ class TestDiffCrossDatabaseTables(unittest.TestCase):
         # configuration with each segment being ~250k rows.
         ch_factor = min(max(int(N_SAMPLES / 250_000), 2), 128) if BENCHMARK else 2
         ch_threshold = min(DEFAULT_BISECTION_THRESHOLD, int(N_SAMPLES / ch_factor)) if BENCHMARK else 3
-        ch_threads = 1
+        ch_threads = N_THREADS
         differ = TableDiffer(
             bisection_threshold=ch_threshold,
             bisection_factor=ch_factor,
@@ -615,7 +608,7 @@ class TestDiffCrossDatabaseTables(unittest.TestCase):
         # parallel, using the existing implementation.
         dl_factor = max(int(N_SAMPLES / 100_000), 2) if BENCHMARK else 2
         dl_threshold = int(N_SAMPLES / dl_factor) + 1 if BENCHMARK else math.inf
-        dl_threads = 1
+        dl_threads = N_THREADS
         differ = TableDiffer(
             bisection_threshold=dl_threshold, bisection_factor=dl_factor, max_threadpool_size=dl_threads
         )
@@ -634,6 +627,7 @@ class TestDiffCrossDatabaseTables(unittest.TestCase):
             "git_revision": GIT_REVISION,
             "rows": N_SAMPLES,
             "rows_human": number_to_human(N_SAMPLES),
+            "name_human": f"{source_db.__name__}/{sanitize(source_type)} <-> {target_db.__name__}/{sanitize(target_type)}",
             "src_table": src_table[1:-1],  #  remove quotes
             "target_table": dst_table[1:-1],
             "source_type": source_type,
@@ -642,6 +636,7 @@ class TestDiffCrossDatabaseTables(unittest.TestCase):
             "insertion_target_sec": round(insertion_target_duration, 3),
             "count_source_sec": round(count_source_duration, 3),
             "count_target_sec": round(count_target_duration, 3),
+            "count_max_sec": max(round(count_target_duration, 3), round(count_source_duration, 3)),
             "checksum_sec": round(checksum_duration, 3),
             "download_sec": round(download_duration, 3),
             "download_bisection_factor": dl_factor,
@@ -655,7 +650,7 @@ class TestDiffCrossDatabaseTables(unittest.TestCase):
         if BENCHMARK:
             print(json.dumps(result, indent=2))
             file_name = f"benchmark_{GIT_REVISION}.jsonl"
-            with open(file_name, "a") as file:
+            with open(file_name, "a", encoding="utf-8") as file:
                 file.write(json.dumps(result) + "\n")
                 file.flush()
             print(f"Written to {file_name}")

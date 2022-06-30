@@ -40,7 +40,7 @@ jobs:
         run: pip install poetry
 
       - name: Install package
-        run: "poetry install && poetry run pip install unittest-parallel"
+        run: "poetry install"
 
       - name: Run unit tests
         env:
