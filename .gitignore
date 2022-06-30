@@ -134,6 +134,7 @@ ratings*.csv
 drive
 mysqltuner.pl
 benchmark_*.jsonl
+benchmark_*.png
 
 # Mac
 .DS_Store
