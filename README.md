@@ -34,14 +34,20 @@ better than MySQL.
 
 ## Table of Contents
 
-- [Common use-cases](#common-use-cases)
-- [Example command and output](#example-command-and-output)
-- [Supported Databases](#supported-databases)
+- [**data-diff**](#data-diff)
+  - [Table of Contents](#table-of-contents)
+  - [Common use-cases](#common-use-cases)
+  - [Example Command and Output](#example-command-and-output)
+  - [Supported Databases](#supported-databases)
 - [How to install](#how-to-install)
+  - [Install drivers](#install-drivers)
 - [How to use](#how-to-use)
+  - [How to use from the command-line](#how-to-use-from-the-command-line)
+  - [How to use from Python](#how-to-use-from-python)
 - [Technical Explanation](#technical-explanation)
-- [Performance Considerations](#performance-considerations)
+  - [Performance Considerations](#performance-considerations)
 - [Development Setup](#development-setup)
+- [License](#license)
 
 ## Common use-cases
 
