@@ -1,3 +1,10 @@
+# Use this to graph the benchmarking results (see benchmark.sh)
+#
+# To run this:
+#   - pip install pandas
+#   - pip install plotly
+#
+
 import pandas as pd
 import plotly.graph_objects as go
 from data_diff.utils import number_to_human

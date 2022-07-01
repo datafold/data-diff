@@ -1,8 +1,6 @@
 import datetime
 import unittest
 import uuid
-import string
-import random
 
 import preql
 import arrow  # comes with preql
