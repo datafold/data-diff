@@ -1,21 +1,24 @@
 import hashlib
 import os
+import string
+import random
 
 from data_diff import databases as db
 import logging
 import subprocess
 
 TEST_MYSQL_CONN_STRING: str = "mysql://mysql:Password1@localhost/mysql"
-TEST_POSTGRESQL_CONN_STRING: str = None
-TEST_SNOWFLAKE_CONN_STRING: str = None
+TEST_POSTGRESQL_CONN_STRING: str = "postgresql://postgres:Password1@localhost/postgres"
+TEST_SNOWFLAKE_CONN_STRING: str = os.environ.get("DATADIFF_SNOWFLAKE_URI", None)
+TEST_PRESTO_CONN_STRING: str = os.environ.get("DATADIFF_PRESTO_URI", None)
 TEST_BIGQUERY_CONN_STRING: str = None
 TEST_REDSHIFT_CONN_STRING: str = None
 TEST_ORACLE_CONN_STRING: str = None
-TEST_PRESTO_CONN_STRING: str = None
 
 DEFAULT_N_SAMPLES = 50
 N_SAMPLES = int(os.environ.get("N_SAMPLES", DEFAULT_N_SAMPLES))
 BENCHMARK = os.environ.get("BENCHMARK", False)
+N_THREADS = int(os.environ.get("N_THREADS", 1))
 
 
 def get_git_revision_short_hash() -> str:
@@ -58,6 +61,13 @@ for k, v in CONN_STRINGS.items():
         logging.info(f"Testing database: {k}")
 
 CONN_STRINGS = {k: v for k, v in CONN_STRINGS.items() if v is not None}
+
+
+def random_table_suffix() -> str:
+    char_set = string.ascii_lowercase + string.digits
+    suffix = "_"
+    suffix += "".join(random.choice(char_set) for _ in range(5))
+    return suffix
 
 
 def str_to_checksum(str: str):

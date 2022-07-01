@@ -6,17 +6,18 @@ import re
 import rich.progress
 import math
 import uuid
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 import logging
 from decimal import Decimal
 from parameterized import parameterized
 
 from data_diff import databases as db
+from data_diff.utils import number_to_human
 from data_diff.diff_tables import TableDiffer, TableSegment, DEFAULT_BISECTION_THRESHOLD
-from .common import CONN_STRINGS, N_SAMPLES, BENCHMARK, GIT_REVISION
+from .common import CONN_STRINGS, N_SAMPLES, N_THREADS, BENCHMARK, GIT_REVISION, random_table_suffix
 
 
-CONNS = {k: db.connect_to_uri(v, 1) for k, v in CONN_STRINGS.items()}
+CONNS = {k: db.connect_to_uri(v, N_THREADS) for k, v in CONN_STRINGS.items()}
 
 CONNS[db.MySQL].query("SET @@session.time_zone='+00:00'", None)
 
@@ -193,6 +194,7 @@ DATABASE_TYPES = {
             "timestamp(6) without time zone",
             "timestamp(3) without time zone",
             "timestamp(0) without time zone",
+            "timestamp with time zone",
         ],
         # https://www.postgresql.org/docs/current/datatype-numeric.html
         "float": [
@@ -241,7 +243,7 @@ DATABASE_TYPES = {
         "int": ["int"],
         "datetime": [
             "timestamp",
-            # "datetime",
+            "datetime",
         ],
         "float": [
             "numeric",
@@ -257,7 +259,6 @@ DATABASE_TYPES = {
         "int": [
             # all 38 digits with 0 precision, don't need to test all
             "int",
-            "integer",
             "bigint",
             # "smallint",
             # "tinyint",
@@ -269,6 +270,8 @@ DATABASE_TYPES = {
             "timestamp(3)",
             "timestamp(6)",
             "timestamp(9)",
+            "timestamp_tz(9)",
+            "timestamp_ntz(9)",
         ],
         # https://docs.snowflake.com/en/sql-reference/data-types-numeric.html#decimal-numeric
         "float": [
@@ -286,6 +289,7 @@ DATABASE_TYPES = {
         ],
         "datetime": [
             "TIMESTAMP",
+            "timestamp with time zone",
         ],
         # https://docs.aws.amazon.com/redshift/latest/dg/r_Numeric_types201.html#r_Numeric_types201-floating-point-types
         "float": [
@@ -377,18 +381,8 @@ def sanitize(name):
     name = name.replace(r"with local time zone", "y_tz")
     name = name.replace(r"timestamp", "ts")
     name = name.replace(r"double precision", "double")
+    name = name.replace(r"numeric", "num")
     return parameterized.to_safe_name(name)
-
-
-def number_to_human(n):
-    millnames = ["", "k", "m", "b"]
-    n = float(n)
-    millidx = max(
-        0,
-        min(len(millnames) - 1, int(math.floor(0 if n == 0 else math.log10(abs(n)) / 3))),
-    )
-
-    return "{:.0f}{}".format(n / 10 ** (3 * millidx), millnames[millidx])
 
 
 # Pass --verbose to test run to get a nice output.
@@ -396,7 +390,8 @@ def expand_params(testcase_func, param_num, param):
     source_db, target_db, source_type, target_type, type_category = param.args
     source_db_type = source_db.__name__
     target_db_type = target_db.__name__
-    name = "%s_%s_%s_to_%s_%s_%s" % (
+
+    name = "%s_%s_%s_%s_%s_%s" % (
         testcase_func.__name__,
         sanitize(source_db_type),
         sanitize(source_type),
@@ -404,6 +399,7 @@ def expand_params(testcase_func, param_num, param):
         sanitize(target_type),
         number_to_human(N_SAMPLES),
     )
+
     return name
 
 
@@ -424,9 +420,16 @@ def _insert_to_table(conn, table, values, type):
     if isinstance(conn, db.Oracle):
         default_insertion_query = f"INSERT INTO {table} (id, col)"
 
+    batch_size = 8000
+    if isinstance(conn, db.BigQuery):
+        batch_size = 1000
+
     insertion_query = default_insertion_query
     selects = []
     for j, sample in values:
+        if re.search(r"(time zone|tz)", type):
+            sample = sample.replace(tzinfo=timezone.utc)
+
         if isinstance(sample, (float, Decimal, int)):
             value = str(sample)
         elif isinstance(sample, datetime) and isinstance(conn, (db.Presto, db.Oracle)):
@@ -443,7 +446,7 @@ def _insert_to_table(conn, table, values, type):
 
         # Some databases want small batch sizes...
         # Need to also insert on the last row, might not divide cleanly!
-        if j % 8000 == 0 or j == N_SAMPLES:
+        if j % batch_size == 0 or j == N_SAMPLES:
             if isinstance(conn, db.Oracle):
                 insertion_query += " UNION ALL ".join(selects)
                 conn.query(insertion_query, None)
@@ -465,11 +468,11 @@ def _create_indexes(conn, table):
     try:
         if_not_exists = "IF NOT EXISTS" if not isinstance(conn, (db.MySQL, db.Oracle)) else ""
         conn.query(
-            f"CREATE INDEX {if_not_exists} idx_{table[1:-1]}_id_col ON {table} (id, col)",
+            f"CREATE INDEX {if_not_exists} xa_{table[1:-1]} ON {table} (id, col)",
             None,
         )
         conn.query(
-            f"CREATE INDEX {if_not_exists} idx_{table[1:-1]}_id ON {table} (id)",
+            f"CREATE INDEX {if_not_exists} xb_{table[1:-1]} ON {table} (id)",
             None,
         )
     except Exception as err:
@@ -510,6 +513,13 @@ def _drop_table_if_exists(conn, table):
 class TestDiffCrossDatabaseTables(unittest.TestCase):
     maxDiff = 10000
 
+    def tearDown(self) -> None:
+        if not BENCHMARK:
+            _drop_table_if_exists(self.src_conn, self.src_table)
+            _drop_table_if_exists(self.dst_conn, self.dst_table)
+
+        return super().tearDown()
+
     @parameterized.expand(type_pairs, name_func=expand_params)
     def test_types(self, source_db, target_db, source_type, target_type, type_category):
         start = time.time()
@@ -520,17 +530,24 @@ class TestDiffCrossDatabaseTables(unittest.TestCase):
         self.connections = [self.src_conn, self.dst_conn]
         sample_values = TYPE_SAMPLES[type_category]
 
+        table_suffix = ""
+        # Benchmarks we re-use tables for performance. For tests, we create
+        # unique tables to ensure isolation.
+        if not BENCHMARK:
+            table_suffix = random_table_suffix()
+
         # Limit in MySQL is 64, Presto seems to be 63
-        src_table_name = f"src_{self._testMethodName[11:]}"
-        dst_table_name = f"dst_{self._testMethodName[11:]}"
+        src_table_name = f"src_{self._testMethodName[11:]}{table_suffix}"
+        dst_table_name = f"dst_{self._testMethodName[11:]}{table_suffix}"
 
         src_table_path = src_conn.parse_table_name(src_table_name)
         dst_table_path = dst_conn.parse_table_name(dst_table_name)
-        src_table = src_conn.quote(".".join(src_table_path))
-        dst_table = dst_conn.quote(".".join(dst_table_path))
+        self.src_table = src_table = src_conn.quote(".".join(src_table_path))
+        self.dst_table = dst_table = dst_table = dst_conn.quote(".".join(dst_table_path))
 
         start = time.time()
-        _drop_table_if_exists(src_conn, src_table)
+        if not BENCHMARK:
+            _drop_table_if_exists(src_conn, src_table)
         _create_table_with_indexes(src_conn, src_table, source_type)
         _insert_to_table(src_conn, src_table, enumerate(sample_values, 1), source_type)
         insertion_source_duration = time.time() - start
@@ -543,7 +560,8 @@ class TestDiffCrossDatabaseTables(unittest.TestCase):
                 values_in_source = ((a, datetime.fromisoformat(b.rstrip(" UTC"))) for a, b in values_in_source)
 
         start = time.time()
-        _drop_table_if_exists(dst_conn, dst_table)
+        if not BENCHMARK:
+            _drop_table_if_exists(dst_conn, dst_table)
         _create_table_with_indexes(dst_conn, dst_table, target_type)
         _insert_to_table(dst_conn, dst_table, values_in_source, target_type)
         insertion_target_duration = time.time() - start
@@ -569,7 +587,7 @@ class TestDiffCrossDatabaseTables(unittest.TestCase):
         # configuration with each segment being ~250k rows.
         ch_factor = min(max(int(N_SAMPLES / 250_000), 2), 128) if BENCHMARK else 2
         ch_threshold = min(DEFAULT_BISECTION_THRESHOLD, int(N_SAMPLES / ch_factor)) if BENCHMARK else 3
-        ch_threads = 1
+        ch_threads = N_THREADS
         differ = TableDiffer(
             bisection_threshold=ch_threshold,
             bisection_factor=ch_factor,
@@ -590,7 +608,7 @@ class TestDiffCrossDatabaseTables(unittest.TestCase):
         # parallel, using the existing implementation.
         dl_factor = max(int(N_SAMPLES / 100_000), 2) if BENCHMARK else 2
         dl_threshold = int(N_SAMPLES / dl_factor) + 1 if BENCHMARK else math.inf
-        dl_threads = 1
+        dl_threads = N_THREADS
         differ = TableDiffer(
             bisection_threshold=dl_threshold, bisection_factor=dl_factor, max_threadpool_size=dl_threads
         )
@@ -609,6 +627,7 @@ class TestDiffCrossDatabaseTables(unittest.TestCase):
             "git_revision": GIT_REVISION,
             "rows": N_SAMPLES,
             "rows_human": number_to_human(N_SAMPLES),
+            "name_human": f"{source_db.__name__}/{sanitize(source_type)} <-> {target_db.__name__}/{sanitize(target_type)}",
             "src_table": src_table[1:-1],  #  remove quotes
             "target_table": dst_table[1:-1],
             "source_type": source_type,
@@ -617,6 +636,7 @@ class TestDiffCrossDatabaseTables(unittest.TestCase):
             "insertion_target_sec": round(insertion_target_duration, 3),
             "count_source_sec": round(count_source_duration, 3),
             "count_target_sec": round(count_target_duration, 3),
+            "count_max_sec": max(round(count_target_duration, 3), round(count_source_duration, 3)),
             "checksum_sec": round(checksum_duration, 3),
             "download_sec": round(download_duration, 3),
             "download_bisection_factor": dl_factor,
@@ -630,7 +650,7 @@ class TestDiffCrossDatabaseTables(unittest.TestCase):
         if BENCHMARK:
             print(json.dumps(result, indent=2))
             file_name = f"benchmark_{GIT_REVISION}.jsonl"
-            with open(file_name, "a") as file:
+            with open(file_name, "a", encoding="utf-8") as file:
                 file.write(json.dumps(result) + "\n")
                 file.flush()
             print(f"Written to {file_name}")

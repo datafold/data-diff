@@ -8,7 +8,7 @@ import arrow  # comes with preql
 from data_diff.databases import connect_to_uri
 from data_diff.diff_tables import TableDiffer, TableSegment, split_space
 
-from .common import TEST_MYSQL_CONN_STRING, str_to_checksum
+from .common import TEST_MYSQL_CONN_STRING, str_to_checksum, random_table_suffix
 
 
 class TestUtils(unittest.TestCase):
@@ -39,6 +39,11 @@ class TestWithConnection(unittest.TestCase):
             self.setUpClass.__func__(self)
             self.private_connection = True
 
+        table_suffix = random_table_suffix()
+
+        self.table_src = f"src{table_suffix}"
+        self.table_dst = f"dst{table_suffix}"
+
         return super().setUp()
 
     def tearDown(self) -> None:
@@ -51,19 +56,19 @@ class TestWithConnection(unittest.TestCase):
 class TestDates(TestWithConnection):
     def setUp(self):
         super().setUp()
-        self.connection.query("DROP TABLE IF EXISTS a", None)
-        self.connection.query("DROP TABLE IF EXISTS b", None)
+        self.connection.query(f"DROP TABLE IF EXISTS {self.table_src}", None)
+        self.connection.query(f"DROP TABLE IF EXISTS {self.table_dst}", None)
         self.preql(
-            r"""
-            table a {
+            f"""
+            table {self.table_src} {{
                 datetime: datetime
                 comment: string
-            }
+            }}
             commit()
 
-            func add(date, comment) {
-                new a(date, comment)
-            }
+            func add(date, comment) {{
+                new {self.table_src}(date, comment)
+            }}
         """
         )
         self.now = now = arrow.get(self.preql.now())
@@ -74,8 +79,8 @@ class TestDates(TestWithConnection):
         self.preql.add(now, "now")
 
         self.preql(
-            r"""
-            const table b = a
+            f"""
+            const table {self.table_dst} = {self.table_src}
             commit()
         """
         )
@@ -84,13 +89,15 @@ class TestDates(TestWithConnection):
         self.preql.commit()
 
     def test_init(self):
-        a = TableSegment(self.connection, ("a",), "id", "datetime", max_update=self.now.datetime)
-        self.assertRaises(ValueError, TableSegment, self.connection, ("a",), "id", max_update=self.now.datetime)
+        a = TableSegment(self.connection, (self.table_src,), "id", "datetime", max_update=self.now.datetime)
+        self.assertRaises(
+            ValueError, TableSegment, self.connection, (self.table_src,), "id", max_update=self.now.datetime
+        )
 
     def test_basic(self):
         differ = TableDiffer(10, 100)
-        a = TableSegment(self.connection, ("a",), "id", "datetime")
-        b = TableSegment(self.connection, ("b",), "id", "datetime")
+        a = TableSegment(self.connection, (self.table_src,), "id", "datetime")
+        b = TableSegment(self.connection, (self.table_dst,), "id", "datetime")
         assert a.count() == 6
         assert b.count() == 5
 
@@ -100,24 +107,24 @@ class TestDates(TestWithConnection):
     def test_offset(self):
         differ = TableDiffer(2, 10)
         sec1 = self.now.shift(seconds=-1).datetime
-        a = TableSegment(self.connection, ("a",), "id", "datetime", max_update=sec1)
-        b = TableSegment(self.connection, ("b",), "id", "datetime", max_update=sec1)
+        a = TableSegment(self.connection, (self.table_src,), "id", "datetime", max_update=sec1)
+        b = TableSegment(self.connection, (self.table_dst,), "id", "datetime", max_update=sec1)
         assert a.count() == 4
         assert b.count() == 3
 
         assert not list(differ.diff_tables(a, a))
         self.assertEqual(len(list(differ.diff_tables(a, b))), 1)
 
-        a = TableSegment(self.connection, ("a",), "id", "datetime", min_update=sec1)
-        b = TableSegment(self.connection, ("b",), "id", "datetime", min_update=sec1)
+        a = TableSegment(self.connection, (self.table_src,), "id", "datetime", min_update=sec1)
+        b = TableSegment(self.connection, (self.table_dst,), "id", "datetime", min_update=sec1)
         assert a.count() == 2
         assert b.count() == 2
         assert not list(differ.diff_tables(a, b))
 
         day1 = self.now.shift(days=-1).datetime
 
-        a = TableSegment(self.connection, ("a",), "id", "datetime", min_update=day1, max_update=sec1)
-        b = TableSegment(self.connection, ("b",), "id", "datetime", min_update=day1, max_update=sec1)
+        a = TableSegment(self.connection, (self.table_src,), "id", "datetime", min_update=day1, max_update=sec1)
+        b = TableSegment(self.connection, (self.table_dst,), "id", "datetime", min_update=day1, max_update=sec1)
         assert a.count() == 3
         assert b.count() == 2
         assert not list(differ.diff_tables(a, a))
@@ -127,14 +134,34 @@ class TestDates(TestWithConnection):
 class TestDiffTables(TestWithConnection):
     def setUp(self):
         super().setUp()
-        self.connection.query("DROP TABLE IF EXISTS ratings_test", None)
-        self.connection.query("DROP TABLE IF EXISTS ratings_test2", None)
-        self.preql.load("./tests/setup.pql")
+        self.connection.query(f"DROP TABLE IF EXISTS {self.table_src}", None)
+        self.connection.query(f"DROP TABLE IF EXISTS {self.table_dst}", None)
+        self.preql(
+            f"""
+            func run_sql(code) {{
+                force_eval( SQL( nulltype, code ))
+            }}
+
+            table {self.table_src} {{
+                userid: int
+                movieid: int
+                rating: float
+                timestamp: timestamp
+            }}
+
+            table {self.table_dst} {{
+                userid: int
+                movieid: int
+                rating: float
+                timestamp: timestamp
+            }}
+            commit()
+        """
+        )
         self.preql.commit()
 
-        self.table = TableSegment(self.connection, ("ratings_test",), "id", "timestamp")
-
-        self.table2 = TableSegment(self.connection, ("ratings_test2",), "id", "timestamp")
+        self.table = TableSegment(self.connection, (self.table_src,), "id", "timestamp")
+        self.table2 = TableSegment(self.connection, (self.table_dst,), "id", "timestamp")
 
         self.differ = TableDiffer(3, 4)
 
@@ -147,7 +174,7 @@ class TestDiffTables(TestWithConnection):
         time = "2022-01-01 00:00:00.000000"
         res = self.preql(
             f"""
-            new ratings_test(1, 1, 9, '{time}')
+            new {self.table_src}(1, 1, 9, '{time}')
         """
         )
         self.preql.commit()
@@ -162,10 +189,10 @@ class TestDiffTables(TestWithConnection):
         time = "2022-01-01 00:00:00"
         self.preql(
             f"""
-            new ratings_test(userid: 1, movieid: 1, rating: 9, timestamp: '{time}')
-            new ratings_test(userid: 2, movieid: 2, rating: 9, timestamp: '{time}')
+            new {self.table_src}(userid: 1, movieid: 1, rating: 9, timestamp: '{time}')
+            new {self.table_src}(userid: 2, movieid: 2, rating: 9, timestamp: '{time}')
 
-            new ratings_test2(userid: 1, movieid: 1, rating: 9, timestamp: '{time}')
+            new {self.table_dst}(userid: 1, movieid: 1, rating: 9, timestamp: '{time}')
         """
         )
         self.preql.commit()
@@ -179,16 +206,16 @@ class TestDiffTables(TestWithConnection):
         time = "2022-01-01 00:00:00"
         self.preql(
             f"""
-            new ratings_test(userid: 1, movieid: 1, rating: 9, timestamp: '{time}')
-            new ratings_test(userid: 2, movieid: 2, rating: 9, timestamp: '{time}')
-            new ratings_test(userid: 3, movieid: 3, rating: 9, timestamp: '{time}')
-            new ratings_test(userid: 4, movieid: 4, rating: 9, timestamp: '{time}')
-            new ratings_test(userid: 5, movieid: 5, rating: 9, timestamp: '{time}')
+            new {self.table_src}(userid: 1, movieid: 1, rating: 9, timestamp: '{time}')
+            new {self.table_src}(userid: 2, movieid: 2, rating: 9, timestamp: '{time}')
+            new {self.table_src}(userid: 3, movieid: 3, rating: 9, timestamp: '{time}')
+            new {self.table_src}(userid: 4, movieid: 4, rating: 9, timestamp: '{time}')
+            new {self.table_src}(userid: 5, movieid: 5, rating: 9, timestamp: '{time}')
 
-            new ratings_test2(userid: 1, movieid: 1, rating: 9, timestamp: '{time}')
-            new ratings_test2(userid: 2, movieid: 2, rating: 9, timestamp: '{time}')
-            new ratings_test2(userid: 3, movieid: 3, rating: 9, timestamp: '{time}')
-            new ratings_test2(userid: 4, movieid: 4, rating: 9, timestamp: '{time}')
+            new {self.table_dst}(userid: 1, movieid: 1, rating: 9, timestamp: '{time}')
+            new {self.table_dst}(userid: 2, movieid: 2, rating: 9, timestamp: '{time}')
+            new {self.table_dst}(userid: 3, movieid: 3, rating: 9, timestamp: '{time}')
+            new {self.table_dst}(userid: 4, movieid: 4, rating: 9, timestamp: '{time}')
         """
         )
         self.preql.commit()
@@ -202,8 +229,8 @@ class TestDiffTables(TestWithConnection):
         time = "2022-01-01 00:00:00"
         self.preql(
             f"""
-            new ratings_test(userid: 1, movieid: 1, rating: 9, timestamp: '{time}')
-            new ratings_test2(userid: 1, movieid: 1, rating: 9, timestamp: '{time}')
+            new {self.table_src}(userid: 1, movieid: 1, rating: 9, timestamp: '{time}')
+            new {self.table_dst}(userid: 1, movieid: 1, rating: 9, timestamp: '{time}')
         """
         )
         self.preql.commit()
@@ -215,17 +242,17 @@ class TestDiffTables(TestWithConnection):
         time2 = "2021-01-01 00:00:00"
         self.preql(
             f"""
-            new ratings_test(userid: 1, movieid: 1, rating: 9, timestamp: '{time}')
-            new ratings_test(userid: 2, movieid: 2, rating: 9, timestamp: '{time2}')
-            new ratings_test(userid: 3, movieid: 3, rating: 9, timestamp: '{time}')
-            new ratings_test(userid: 4, movieid: 4, rating: 9, timestamp: '{time2}')
-            new ratings_test(userid: 5, movieid: 5, rating: 9, timestamp: '{time}')
+            new {self.table_src}(userid: 1, movieid: 1, rating: 9, timestamp: '{time}')
+            new {self.table_src}(userid: 2, movieid: 2, rating: 9, timestamp: '{time2}')
+            new {self.table_src}(userid: 3, movieid: 3, rating: 9, timestamp: '{time}')
+            new {self.table_src}(userid: 4, movieid: 4, rating: 9, timestamp: '{time2}')
+            new {self.table_src}(userid: 5, movieid: 5, rating: 9, timestamp: '{time}')
 
-            new ratings_test2(userid: 1, movieid: 1, rating: 9, timestamp: '{time}')
-            new ratings_test2(userid: 2, movieid: 2, rating: 9, timestamp: '{time}')
-            new ratings_test2(userid: 3, movieid: 3, rating: 9, timestamp: '{time}')
-            new ratings_test2(userid: 4, movieid: 4, rating: 9, timestamp: '{time}')
-            new ratings_test2(userid: 5, movieid: 5, rating: 9, timestamp: '{time}')
+            new {self.table_dst}(userid: 1, movieid: 1, rating: 9, timestamp: '{time}')
+            new {self.table_dst}(userid: 2, movieid: 2, rating: 9, timestamp: '{time}')
+            new {self.table_dst}(userid: 3, movieid: 3, rating: 9, timestamp: '{time}')
+            new {self.table_dst}(userid: 4, movieid: 4, rating: 9, timestamp: '{time}')
+            new {self.table_dst}(userid: 5, movieid: 5, rating: 9, timestamp: '{time}')
         """
         )
         self.preql.commit()
@@ -245,37 +272,39 @@ class TestStringKeys(TestWithConnection):
         super().setUp()
 
         queries = [
-            "DROP TABLE IF EXISTS a",
-            "DROP TABLE IF EXISTS b",
-            "CREATE TABLE a(id varchar(100), comment varchar(1000))",
+            f"DROP TABLE IF EXISTS {self.table_src}",
+            f"DROP TABLE IF EXISTS {self.table_dst}",
+            f"CREATE TABLE {self.table_src}(id varchar(100), comment varchar(1000))",
             "COMMIT",
         ]
         for i in range(100):
-            queries.append(f"INSERT INTO a VALUES ('{uuid.uuid1(i)}', '{i}')")
+            queries.append(f"INSERT INTO {self.table_src} VALUES ('{uuid.uuid1(i)}', '{i}')")
 
         queries += [
             "COMMIT",
-            "CREATE TABLE b AS SELECT * FROM a",
+            f"CREATE TABLE {self.table_dst} AS SELECT * FROM {self.table_src}",
             "COMMIT",
         ]
 
         self.new_uuid = uuid.uuid1(32132131)
-        queries.append(f"INSERT INTO a VALUES ('{self.new_uuid}', 'This one is different')")
+        queries.append(f"INSERT INTO {self.table_src} VALUES ('{self.new_uuid}', 'This one is different')")
 
         # TODO test unexpected values?
 
         for query in queries:
             self.connection.query(query, None)
 
-        self.a = TableSegment(self.connection, ("a",), "id", "comment")
-        self.b = TableSegment(self.connection, ("b",), "id", "comment")
+        self.a = TableSegment(self.connection, (self.table_src,), "id", "comment")
+        self.b = TableSegment(self.connection, (self.table_dst,), "id", "comment")
 
     def test_string_keys(self):
         differ = TableDiffer()
         diff = list(differ.diff_tables(self.a, self.b))
         self.assertEqual(diff, [("-", (str(self.new_uuid), "This one is different"))])
 
-        self.connection.query(f"INSERT INTO a VALUES ('unexpected', '<-- this bad value should not break us')", None)
+        self.connection.query(
+            f"INSERT INTO {self.table_src} VALUES ('unexpected', '<-- this bad value should not break us')", None
+        )
 
         self.assertRaises(ValueError, differ.diff_tables, self.a, self.b)
 
@@ -283,8 +312,8 @@ class TestStringKeys(TestWithConnection):
 class TestTableSegment(TestWithConnection):
     def setUp(self) -> None:
         super().setUp()
-        self.table = TableSegment(self.connection, ("ratings_test",), "id", "timestamp")
-        self.table2 = TableSegment(self.connection, ("ratings_test2",), "id", "timestamp")
+        self.table = TableSegment(self.connection, (self.table_src,), "id", "timestamp")
+        self.table2 = TableSegment(self.connection, (self.table_dst,), "id", "timestamp")
 
     def test_table_segment(self):
         early = datetime.datetime(2021, 1, 1, 0, 0)
