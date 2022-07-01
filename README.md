@@ -34,13 +34,13 @@ better than MySQL.
 
 ## Table of Contents
 
-- [Common use-cases](#common-use-cases)
+  - [Common use-cases](#common-use-cases)
 - [Example command and output](#example-command-and-output)
-- [Supported Databases](#supported-databases)
+  - [Supported Databases](#supported-databases)
 - [How to install](#how-to-install)
 - [How to use](#how-to-use)
 - [Technical Explanation](#technical-explanation)
-- [Performance Considerations](#performance-considerations)
+  - [Performance Considerations](#performance-considerations)
 - [Development Setup](#development-setup)
 
 ## Common use-cases
@@ -110,22 +110,22 @@ $ data-diff \
 
 ## Supported Databases
 
-| Database      | Connection string                                                                                | Status |
-|---------------|--------------------------------------------------------------------------------------------------|--------|
-| PostgreSQL    | `postgresql://<user>:<password>@<hostname>:5432/<database>`                                      |  💚    |
-| MySQL         | `mysql://<user>:<password>@<hostname>:5432/<database>`                                           |  💚    |
-| Snowflake     | `"snowflake://<user>:<password>@<account>/<database>/<SCHEMA>?warehouse=<WAREHOUSE>&role=<role>"`|  💚    |
-| Oracle        | `oracle://<username>:<password>@<hostname>/database`                                             |  💛    |
-| BigQuery      | `bigquery://<project>/<dataset>`                                                                 |  💛    |
-| Redshift      | `redshift://<username>:<password>@<hostname>:5439/<database>`                                    |  💛    |
-| Presto        | `presto://<username>:<password>@<hostname>:8080/<database>`                                      |  💛    |
-| ElasticSearch |                                                                                                  |  📝    |
-| Databricks    |                                                                                                  |  📝    |
-| Planetscale   |                                                                                                  |  📝    |
-| Clickhouse    |                                                                                                  |  📝    |
-| Pinot         |                                                                                                  |  📝    |
-| Druid         |                                                                                                  |  📝    |
-| Kafka         |                                                                                                  |  📝    |
+| Database      | Connection string                                                                                                                  | Status |
+|---------------|------------------------------------------------------------------------------------------------------------------------------------|--------|
+| PostgreSQL    | `postgresql://<user>:<password>@<hostname>:5432/<database>`                                                                        |  💚    |
+| MySQL         | `mysql://<user>:<password>@<hostname>:5432/<database>`                                                                             |  💚    |
+| Snowflake     | `"snowflake://<user>[:<password>]@<account>/<database>/<SCHEMA>?warehouse=<WAREHOUSE>&role=<role>[&authenticator=externalbrowser]"`|  💚    |
+| Oracle        | `oracle://<username>:<password>@<hostname>/database`                                                                               |  💛    |
+| BigQuery      | `bigquery://<project>/<dataset>`                                                                                                   |  💛    |
+| Redshift      | `redshift://<username>:<password>@<hostname>:5439/<database>`                                                                      |  💛    |
+| Presto        | `presto://<username>:<password>@<hostname>:8080/<database>`                                                                        |  💛    |
+| ElasticSearch |                                                                                                                                    |  📝    |
+| Databricks    |                                                                                                                                    |  📝    |
+| Planetscale   |                                                                                                                                    |  📝    |
+| Clickhouse    |                                                                                                                                    |  📝    |
+| Pinot         |                                                                                                                                    |  📝    |
+| Druid         |                                                                                                                                    |  📝    |
+| Kafka         |                                                                                                                                    |  📝    |
 
 * 💚: Implemented and thoroughly tested.
 * 💛: Implemented, but not thoroughly tested yet.
