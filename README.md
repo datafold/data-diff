@@ -116,22 +116,22 @@ $ data-diff \
 
 ## Supported Databases
 
-| Database      | Connection string                                                                                | Status |
-|---------------|--------------------------------------------------------------------------------------------------|--------|
-| PostgreSQL    | `postgresql://<user>:<password>@<hostname>:5432/<database>`                                      |  💚    |
-| MySQL         | `mysql://<user>:<password>@<hostname>:5432/<database>`                                           |  💚    |
-| Snowflake     | `"snowflake://<user>:<password>@<account>/<database>/<SCHEMA>?warehouse=<WAREHOUSE>&role=<role>"`|  💚    |
-| Oracle        | `oracle://<username>:<password>@<hostname>/database`                                             |  💛    |
-| BigQuery      | `bigquery://<project>/<dataset>`                                                                 |  💛    |
-| Redshift      | `redshift://<username>:<password>@<hostname>:5439/<database>`                                    |  💛    |
-| Presto        | `presto://<username>:<password>@<hostname>:8080/<database>`                                      |  💛    |
-| ElasticSearch |                                                                                                  |  📝    |
-| Databricks    |                                                                                                  |  📝    |
-| Planetscale   |                                                                                                  |  📝    |
-| Clickhouse    |                                                                                                  |  📝    |
-| Pinot         |                                                                                                  |  📝    |
-| Druid         |                                                                                                  |  📝    |
-| Kafka         |                                                                                                  |  📝    |
+| Database      | Connection string                                                                                                                  | Status |
+|---------------|------------------------------------------------------------------------------------------------------------------------------------|--------|
+| PostgreSQL    | `postgresql://<user>:<password>@<hostname>:5432/<database>`                                                                        |  💚    |
+| MySQL         | `mysql://<user>:<password>@<hostname>:5432/<database>`                                                                             |  💚    |
+| Snowflake     | `"snowflake://<user>[:<password>]@<account>/<database>/<SCHEMA>?warehouse=<WAREHOUSE>&role=<role>[&authenticator=externalbrowser]"`|  💚    |
+| Oracle        | `oracle://<username>:<password>@<hostname>/database`                                                                               |  💛    |
+| BigQuery      | `bigquery://<project>/<dataset>`                                                                                                   |  💛    |
+| Redshift      | `redshift://<username>:<password>@<hostname>:5439/<database>`                                                                      |  💛    |
+| Presto        | `presto://<username>:<password>@<hostname>:8080/<database>`                                                                        |  💛    |
+| ElasticSearch |                                                                                                                                    |  📝    |
+| Databricks    |                                                                                                                                    |  📝    |
+| Planetscale   |                                                                                                                                    |  📝    |
+| Clickhouse    |                                                                                                                                    |  📝    |
+| Pinot         |                                                                                                                                    |  📝    |
+| Druid         |                                                                                                                                    |  📝    |
+| Kafka         |                                                                                                                                    |  📝    |
 
 * 💚: Implemented and thoroughly tested.
 * 💛: Implemented, but not thoroughly tested yet.
