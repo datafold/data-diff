@@ -249,6 +249,7 @@ class ThreadedDatabase(Database):
         self._init_error = None
         self._queue = ThreadPoolExecutor(thread_count, initializer=self.set_conn)
         self.thread_local = threading.local()
+        logger.info(f"[{self.name}] Starting a threadpool, size={thread_count}.")
 
     def set_conn(self):
         assert not hasattr(self.thread_local, "conn")
