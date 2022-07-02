@@ -321,3 +321,37 @@ class TestTableSegment(TestWithConnection):
         self.assertRaises(ValueError, self.table.replace, min_update=late, max_update=early)
 
         self.assertRaises(ValueError, self.table.replace, min_key=10, max_key=0)
+
+
+class TestTableUUID(TestWithConnection):
+    def setUp(self):
+        super().setUp()
+
+        queries = [
+            f"DROP TABLE IF EXISTS {self.table_src}",
+            f"DROP TABLE IF EXISTS {self.table_dst}",
+            f"CREATE TABLE {self.table_src}(id varchar(100), comment varchar(1000))",
+        ]
+        for i in range(10):
+            uuid_value = uuid.uuid1(i)
+            queries.append(f"INSERT INTO {self.table_src} VALUES ('{uuid_value}', '{uuid_value}')")
+
+        self.null_uuid = uuid.uuid1(32132131)
+        queries += [
+            f"CREATE TABLE {self.table_dst} AS SELECT * FROM {self.table_src}",
+
+            f"INSERT INTO {self.table_src} VALUES ('{self.null_uuid}', NULL)",
+
+            "COMMIT"
+        ]
+
+        for query in queries:
+            self.connection.query(query, None)
+
+        self.a = TableSegment(self.connection, (self.table_src,), "id", "comment")
+        self.b = TableSegment(self.connection, (self.table_dst,), "id", "comment")
+
+    def test_uuid_column_with_nulls(self):
+        differ = TableDiffer()
+        diff = list(differ.diff_tables(self.a, self.b))
+        self.assertEqual(diff, [("-", (str(self.null_uuid), None))])
