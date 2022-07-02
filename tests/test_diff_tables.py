@@ -355,3 +355,55 @@ class TestTableUUID(TestWithConnection):
         differ = TableDiffer()
         diff = list(differ.diff_tables(self.a, self.b))
         self.assertEqual(diff, [("-", (str(self.null_uuid), None))])
+
+
+class TestTableNullRowChecksum(TestWithConnection):
+    def setUp(self):
+        super().setUp()
+
+        self.null_uuid = uuid.uuid1(1)
+        queries = [
+            f"DROP TABLE IF EXISTS {self.table_src}",
+            f"DROP TABLE IF EXISTS {self.table_dst}",
+            f"CREATE TABLE {self.table_src}(id varchar(100), comment varchar(1000))",
+
+            f"INSERT INTO {self.table_src} VALUES ('{uuid.uuid1(1)}', '1')",
+
+            f"CREATE TABLE {self.table_dst} AS SELECT * FROM {self.table_src}",
+
+            # Add a row where a column has NULL value
+            f"INSERT INTO {self.table_src} VALUES ('{self.null_uuid}', NULL)",
+
+            "COMMIT"
+        ]
+
+        for query in queries:
+            self.connection.query(query, None)
+
+        self.a = TableSegment(self.connection, (self.table_src,), "id", "comment")
+        self.b = TableSegment(self.connection, (self.table_dst,), "id", "comment")
+
+    def test_uuid_columns_with_nulls(self):
+        """
+        Here we test a case when in one segment one or more columns has only null values. For example,
+        Table A:
+        | id   |   value   |
+        |------|-----------|
+        | pk_1 | 'value_1' |
+        | pk_2 |    NULL   |
+
+        Table B:
+        | id   |   value   |
+        |------|-----------|
+        | pk_1 | 'value_1' |
+
+        We can choose some bisection factor and bisection threshold (2 and 3 for our example, respectively)
+        that one segment will look like ('pk_2', NULL). Some databases, when we do a cast these values to string and
+        try to concatenate, some databases return NULL when concatenating (for example, MySQL). As the result, all next
+        operations like substring, sum etc return nulls that leads incorrect diff results: ('pk_2', null) should be in
+        diff results, but it's not. This test helps to detect such cases.
+        """
+
+        differ = TableDiffer(bisection_factor=2, bisection_threshold=3)
+        diff = list(differ.diff_tables(self.a, self.b))
+        self.assertEqual(diff, [("-", (str(self.null_uuid), None))])

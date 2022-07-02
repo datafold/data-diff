@@ -122,7 +122,7 @@ class Checksum(Sql):
     def compile(self, c: Compiler):
         if len(self.exprs) > 1:
             compiled_exprs = ", ".join(map(c.compile, self.exprs))
-            expr = f"concat({compiled_exprs})"
+            expr = f"coalesce(concat({compiled_exprs}), 'null')"
         else:
             (expr,) = self.exprs
             expr = c.compile(expr)
