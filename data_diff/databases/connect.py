@@ -12,6 +12,7 @@ from .snowflake import Snowflake
 from .bigquery import BigQuery
 from .redshift import Redshift
 from .presto import Presto
+from .databricks import Databricks
 
 
 @dataclass
@@ -77,6 +78,9 @@ MATCH_URI_PATH = {
     ),
     "presto": MatchUriPath(Presto, ["catalog", "schema"], help_str="presto://<user>@<host>/<catalog>/<schema>"),
     "bigquery": MatchUriPath(BigQuery, ["dataset"], help_str="bigquery://<project>/<dataset>"),
+    "databricks": MatchUriPath(
+        Databricks, ["catalog", "schema?"], help_str="databricks://access_token:http_path@account/catalog/schema"
+    )
 }
 
 
@@ -100,6 +104,7 @@ def connect_to_uri(db_uri: str, thread_count: Optional[int] = 1) -> Database:
     - bigquery
     - redshift
     - presto
+    - databricks
     """
 
     dsn = dsnparse.parse(db_uri)
@@ -131,6 +136,12 @@ def connect_to_uri(db_uri: str, thread_count: Optional[int] = 1) -> Database:
         if dsn.password:
             kw["password"] = dsn.password
     kw = {k: v for k, v in kw.items() if v is not None}
+
+    if scheme == "databricks":
+        # dsn user - access token
+        # sdn password - http path (starting with /)
+
+        return cls(http_path=dsn.password, access_token=dsn.user, server_hostname=dsn.hostname, **kw)
 
     if issubclass(cls, ThreadedDatabase):
         return cls(thread_count=thread_count, **kw)
