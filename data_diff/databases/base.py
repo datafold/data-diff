@@ -201,6 +201,9 @@ class Database(AbstractDatabase):
         fields = [self.normalize_uuid(c, ColType_UUID()) for c in text_columns]
         samples_by_row = self.query(Select(fields, TableName(table_path), limit=16), list)
         samples_by_col = list(zip(*samples_by_row))
+        if not samples_by_col:
+            return
+
         for col_name, samples in safezip(text_columns, samples_by_col):
             non_null_samples = [sample for sample in samples if sample is not None]
             uuid_samples = list(filter(is_uuid, non_null_samples))

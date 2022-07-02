@@ -407,3 +407,44 @@ class TestTableNullRowChecksum(TestWithConnection):
         differ = TableDiffer(bisection_factor=2, bisection_threshold=3)
         diff = list(differ.diff_tables(self.a, self.b))
         self.assertEqual(diff, [("-", (str(self.null_uuid), None))])
+
+
+class TestTableTableEmpty(TestWithConnection):
+    def setUp(self):
+        super().setUp()
+
+        self.null_uuid = uuid.uuid1(1)
+        queries = [
+            f"DROP TABLE IF EXISTS {self.table_src}",
+            f"DROP TABLE IF EXISTS {self.table_dst}",
+            f"CREATE TABLE {self.table_src}(id varchar(100), comment varchar(1000))",
+            f"CREATE TABLE {self.table_dst}(id varchar(100), comment varchar(1000))",
+        ]
+
+        self.diffs = [(uuid.uuid1(i), i) for i in range(100)]
+        for pk, value in self.diffs:
+            queries.append(f"INSERT INTO {self.table_src} VALUES ('{pk}', '{value}')")
+
+        queries.append("COMMIT")
+
+        for query in queries:
+            self.connection.query(query, None)
+
+        self.a = TableSegment(self.connection, (self.table_src,), "id", "comment")
+        self.b = TableSegment(self.connection, (self.table_dst,), "id", "comment")
+
+    def test_right_table_empty(self):
+        differ = TableDiffer()
+        self.assertRaises(ValueError, differ.diff_tables, self.a, self.b)
+
+    def test_left_table_empty(self):
+        queries = [
+            f"INSERT INTO {self.table_dst} SELECT id, comment FROM {self.table_src}",
+            f"TRUNCATE {self.table_src}",
+            "COMMIT"
+        ]
+        for query in queries:
+            self.connection.query(query, None)
+
+        differ = TableDiffer()
+        self.assertRaises(ValueError, differ.diff_tables, self.a, self.b)
