@@ -27,7 +27,7 @@ class Oracle(ThreadedDatabase):
     def __init__(self, *, host, database, thread_count, **kw):
         self.kwargs = dict(dsn="%s/%s" % (host, database), **kw)
 
-        self.default_schema = kw.get('user')
+        self.default_schema = kw.get("user")
 
         super().__init__(thread_count=thread_count)
 

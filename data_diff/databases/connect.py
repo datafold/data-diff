@@ -137,9 +137,10 @@ def connect_to_uri(db_uri: str, thread_count: Optional[int] = 1) -> Database:
 
     return cls(**kw)
 
+
 def connect_with_dict(d, thread_count):
     d = dict(d)
-    driver = d.pop('driver')
+    driver = d.pop("driver")
     try:
         matcher = MATCH_URI_PATH[driver]
     except KeyError:
@@ -150,6 +151,7 @@ def connect_with_dict(d, thread_count):
         return cls(thread_count=thread_count, **d)
 
     return cls(**d)
+
 
 def connect(x, thread_count):
     if isinstance(x, str):

@@ -271,7 +271,7 @@ class TableDiffer:
     """
 
     bisection_factor: int = DEFAULT_BISECTION_FACTOR
-    bisection_threshold: Number = DEFAULT_BISECTION_THRESHOLD       # Accepts inf for tests
+    bisection_threshold: Number = DEFAULT_BISECTION_THRESHOLD  # Accepts inf for tests
     threaded: bool = True
     max_threadpool_size: Optional[int] = 1
 

@@ -12,7 +12,7 @@ from .diff_tables import (
 )
 from .databases.connect import connect
 from .parse_time import parse_time_before_now, UNITS_STR, ParseError
-from .config import apply_config
+from .config import apply_config_from_file
 
 import rich
 import click
@@ -63,12 +63,21 @@ COLOR_SCHEME = {
     "A higher number will increase performance, but take more capacity from your database. "
     "'serial' guarantees a single-threaded execution of the algorithm (useful for debugging).",
 )
-@click.option("--conf", default=None, help="Path to a configuration.toml file, to provide a default configuration, and a list of possible runs.")
-@click.option("--run", default=None, help="Name of run-configuration to run. If used, CLI arguments for database and table must be omitted.")
+@click.option(
+    "--conf",
+    default=None,
+    help="Path to a configuration.toml file, to provide a default configuration, and a list of possible runs.",
+)
+@click.option(
+    "--run",
+    default=None,
+    help="Name of run-configuration to run. If used, CLI arguments for database and table must be omitted.",
+)
 def main(conf, run, **kw):
     if conf:
-        kw = apply_config(conf, run, kw)
+        kw = apply_config_from_file(conf, run, kw)
     return _main(**kw)
+
 
 def _main(
     database1,
@@ -109,7 +118,7 @@ def _main(
         logging.error("Cannot specify a limit when using the -s/--stats switch")
         return
 
-    key_column = key_column or 'id'
+    key_column = key_column or "id"
     if bisection_factor is None:
         bisection_factor = DEFAULT_BISECTION_FACTOR
     if bisection_threshold is None:
