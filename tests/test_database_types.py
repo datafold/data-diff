@@ -656,3 +656,5 @@ class TestDiffCrossDatabaseTables(unittest.TestCase):
             print(f"Written to {file_name}")
         else:
             logging.debug(json.dumps(result, indent=2))
+
+
