@@ -7,10 +7,11 @@ from data_diff import databases as db
 import logging
 import subprocess
 
+# We write 'or None' because Github sometimes creates empty env vars for secrets
 TEST_MYSQL_CONN_STRING: str = "mysql://mysql:Password1@localhost/mysql"
 TEST_POSTGRESQL_CONN_STRING: str = "postgresql://postgres:Password1@localhost/postgres"
-TEST_SNOWFLAKE_CONN_STRING: str = os.environ.get("DATADIFF_SNOWFLAKE_URI", None)
-TEST_PRESTO_CONN_STRING: str = os.environ.get("DATADIFF_PRESTO_URI", None)
+TEST_SNOWFLAKE_CONN_STRING: str = os.environ.get("DATADIFF_SNOWFLAKE_URI") or None
+TEST_PRESTO_CONN_STRING: str = os.environ.get("DATADIFF_PRESTO_URI") or None
 TEST_BIGQUERY_CONN_STRING: str = None
 TEST_REDSHIFT_CONN_STRING: str = None
 TEST_ORACLE_CONN_STRING: str = None
