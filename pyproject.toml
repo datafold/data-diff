@@ -28,6 +28,7 @@ runtype = "^0.2.6"
 dsnparse = "*"
 click = "^8.1"
 rich = "^10.16.2"
+toml = "^0.10.2"
 
 
 preql = { version = "^0.2.15", optional = true }
