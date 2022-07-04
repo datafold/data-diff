@@ -409,6 +409,65 @@ class TestTableNullRowChecksum(TestWithConnection):
         self.assertEqual(diff, [("-", (str(self.null_uuid), None))])
 
 
+class TestConcatMultipleColumnWithNulls(TestWithConnection):
+    def setUp(self):
+        super().setUp()
+
+        queries = [
+            f"DROP TABLE IF EXISTS {self.table_src}",
+            f"DROP TABLE IF EXISTS {self.table_dst}",
+            f"CREATE TABLE {self.table_src}(id varchar(100), c1 varchar(100), c2 varchar(100))",
+            f"CREATE TABLE {self.table_dst}(id varchar(100), c1 varchar(100), c2 varchar(100))",
+        ]
+
+        self.diffs = []
+        for i in range(0, 8):
+            pk = uuid.uuid1(i)
+            table_src_c1_val = str(i)
+            table_dst_c1_val = str(i) + "-different"
+
+            queries.append(f"INSERT INTO {self.table_src} VALUES ('{pk}', '{table_src_c1_val}', NULL)")
+            queries.append(f"INSERT INTO {self.table_dst} VALUES ('{pk}', '{table_dst_c1_val}', NULL)")
+
+            self.diffs.append(("-", (str(pk), table_src_c1_val, None)))
+            self.diffs.append(("+", (str(pk), table_dst_c1_val, None)))
+
+        queries.append("COMMIT")
+
+        for query in queries:
+            self.connection.query(query, None)
+
+        self.a = TableSegment(self.connection, (self.table_src,), "id", extra_columns=("c1", "c2"))
+        self.b = TableSegment(self.connection, (self.table_dst,), "id", extra_columns=("c1", "c2"))
+
+    def test_tables_are_different(self):
+        """
+        Here we test a case when in one segment one or more columns has only null values. For example,
+        Table A:
+        | id   | c1 |  c2  |
+        |------|----|------|
+        | pk_1 | 1  | NULL |
+        | pk_2 | 2  | NULL |
+                ...
+        | pk_n | n | NULL |
+
+        Table B:
+        | id   |   c1   |  c2  |
+        |------|--------|------|
+        | pk_1 | 1-diff | NULL |
+        | pk_2 | 2-diff | NULL |
+                  ...
+        | pk_n | n-diff | NULL |
+
+        To calculate a checksum, we need to concatenate string values by rows. If both tables have columns with NULL
+        value, it may lead that concat(pk_i, i, NULL) == concat(pk_i, i-diff, NULL). This test handle such cases.
+        """
+
+        differ = TableDiffer(bisection_factor=2, bisection_threshold=4)
+        diff = list(differ.diff_tables(self.a, self.b))
+        self.assertEqual(diff, self.diffs)
+
+
 class TestTableTableEmpty(TestWithConnection):
     def setUp(self):
         super().setUp()
