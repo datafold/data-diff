@@ -339,10 +339,8 @@ class TestTableUUID(TestWithConnection):
         self.null_uuid = uuid.uuid1(32132131)
         queries += [
             f"CREATE TABLE {self.table_dst} AS SELECT * FROM {self.table_src}",
-
             f"INSERT INTO {self.table_src} VALUES ('{self.null_uuid}', NULL)",
-
-            "COMMIT"
+            "COMMIT",
         ]
 
         for query in queries:
@@ -366,15 +364,11 @@ class TestTableNullRowChecksum(TestWithConnection):
             f"DROP TABLE IF EXISTS {self.table_src}",
             f"DROP TABLE IF EXISTS {self.table_dst}",
             f"CREATE TABLE {self.table_src}(id varchar(100), comment varchar(1000))",
-
             f"INSERT INTO {self.table_src} VALUES ('{uuid.uuid1(1)}', '1')",
-
             f"CREATE TABLE {self.table_dst} AS SELECT * FROM {self.table_src}",
-
             # Add a row where a column has NULL value
             f"INSERT INTO {self.table_src} VALUES ('{self.null_uuid}', NULL)",
-
-            "COMMIT"
+            "COMMIT",
         ]
 
         for query in queries:
@@ -500,7 +494,7 @@ class TestTableTableEmpty(TestWithConnection):
         queries = [
             f"INSERT INTO {self.table_dst} SELECT id, comment FROM {self.table_src}",
             f"TRUNCATE {self.table_src}",
-            "COMMIT"
+            "COMMIT",
         ]
         for query in queries:
             self.connection.query(query, None)
