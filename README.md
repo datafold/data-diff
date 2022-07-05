@@ -211,7 +211,7 @@ Reasons to use a configuration file:
 
 - Convenience - Set-up the parameters for diffs that need to run often
 
-- Easier and more readible - You can define the database connection settings as config values, instead of in a URI.
+- Easier and more readable - you can define the database connection settings as config values, instead of in a URI.
 
 - Gives you fine-grained control over the settings switches, without requiring any Python code.
 

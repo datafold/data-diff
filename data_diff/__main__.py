@@ -1,3 +1,4 @@
+from copy import deepcopy
 import sys
 import time
 import json
@@ -24,6 +25,13 @@ COLOR_SCHEME = {
     "+": "green",
     "-": "red",
 }
+
+def _remove_passwords_in_dict(d: dict):
+    for k, v in d.items():
+        if k == 'password':
+            d[k] = '*' * len(v)
+        elif isinstance(v, dict):
+            _remove_passwords_in_dict(v)
 
 
 @click.command()
@@ -110,6 +118,8 @@ def _main(
     if debug:
         logging.basicConfig(level=logging.DEBUG, format=LOG_FORMAT, datefmt=DATE_FORMAT)
         if __conf__:
+            __conf__ = deepcopy(__conf__)
+            _remove_passwords_in_dict(__conf__)
             logging.debug(f"Applied run configuration: {__conf__}")
     elif verbose:
         logging.basicConfig(level=logging.INFO, format=LOG_FORMAT, datefmt=DATE_FORMAT)
