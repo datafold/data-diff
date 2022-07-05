@@ -26,7 +26,6 @@ class MySQL(ThreadedDatabase):
         "char": Text,
         "varbinary": Text,
         "binary": Text,
-        "text": Text
     }
     ROUNDS_ON_PREC_LOSS = True
 

@@ -200,16 +200,17 @@ class Database(AbstractDatabase):
 
         fields = [self.normalize_uuid(c, ColType_UUID()) for c in text_columns]
         samples_by_row = self.query(Select(fields, TableName(table_path), limit=16), list)
-        samples_by_col = list(zip(*samples_by_row))
-        if not samples_by_col:
+        if not samples_by_row:
+            logger.warning(f"Table {table_path} is empty.")
             return
 
+        samples_by_col = list(zip(*samples_by_row))
+
         for col_name, samples in safezip(text_columns, samples_by_col):
-            non_null_samples = [sample for sample in samples if sample is not None]
-            uuid_samples = list(filter(is_uuid, non_null_samples))
+            uuid_samples = [s for s in samples if s and is_uuid(s)]
 
             if uuid_samples:
-                if len(uuid_samples) != len(non_null_samples):
+                if len(uuid_samples) != len(samples):
                     logger.warning(
                         f"Mixed UUID/Non-UUID values detected in column {'.'.join(table_path)}.{col_name}, disabling UUID support."
                     )
