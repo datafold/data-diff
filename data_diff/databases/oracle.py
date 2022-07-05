@@ -4,6 +4,7 @@ from .database_types import *
 from .base import ThreadedDatabase, import_helper, ConnectError, QueryError
 from .base import DEFAULT_DATETIME_PRECISION, DEFAULT_NUMERIC_PRECISION
 
+SESSION_TIME_ZONE = None    # Changed by the tests
 
 @import_helper("oracle")
 def import_oracle():
@@ -34,7 +35,10 @@ class Oracle(ThreadedDatabase):
     def create_connection(self):
         self._oracle = import_oracle()
         try:
-            return self._oracle.connect(**self.kwargs)
+            c = self._oracle.connect(**self.kwargs)
+            if SESSION_TIME_ZONE:
+                c.cursor().execute(f"ALTER SESSION SET TIME_ZONE = '{SESSION_TIME_ZONE}'")
+            return c
         except Exception as e:
             raise ConnectError(*e.args) from e
 
