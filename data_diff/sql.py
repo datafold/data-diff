@@ -121,9 +121,10 @@ class Checksum(Sql):
 
     def compile(self, c: Compiler):
         if len(self.exprs) > 1:
-            compiled_exprs = ", ".join(f"coalesce({c.compile(expr)}, 'null')" for expr in self.exprs)
+            compiled_exprs = ", ".join(f"coalesce({c.compile(expr)}, '<null>')" for expr in self.exprs)
             expr = f"concat({compiled_exprs})"
         else:
+            # No need to coalesce - safe to assume that key cannot be null
             (expr,) = self.exprs
             expr = c.compile(expr)
         md5 = c.database.md5_to_int(expr)
