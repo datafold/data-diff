@@ -117,10 +117,11 @@ def _main(
 
     if debug:
         logging.basicConfig(level=logging.DEBUG, format=LOG_FORMAT, datefmt=DATE_FORMAT)
-        if __conf__:
-            __conf__ = deepcopy(__conf__)
-            _remove_passwords_in_dict(__conf__)
-            logging.debug(f"Applied run configuration: {__conf__}")
+        # XXX Temporarily commented out, until we remove the passwords from URIs as well. See issue #150.
+        # if __conf__:
+        #     __conf__ = deepcopy(__conf__)
+        #     _remove_passwords_in_dict(__conf__)
+        #     logging.debug(f"Applied run configuration: {__conf__}")
     elif verbose:
         logging.basicConfig(level=logging.INFO, format=LOG_FORMAT, datefmt=DATE_FORMAT)
 
