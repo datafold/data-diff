@@ -9,12 +9,14 @@ from abc import abstractmethod
 
 from data_diff.utils import is_uuid, safezip
 from .database_types import (
-    ColType_UUID,
     AbstractDatabase,
     ColType,
     Integer,
     Decimal,
     Float,
+    ColType_UUID,
+    Native_UUID,
+    String_UUID,
     TemporalType,
     UnknownColType,
     Text,
@@ -162,7 +164,7 @@ class Database(AbstractDatabase):
                 )
             )
 
-        elif issubclass(cls, Text):
+        elif issubclass(cls, (Text, Native_UUID)):
             return cls()
 
         raise TypeError(f"Parsing {type_repr} returned an unknown type '{cls}'.")
@@ -198,7 +200,7 @@ class Database(AbstractDatabase):
         if not text_columns:
             return
 
-        fields = [self.normalize_uuid(c, ColType_UUID()) for c in text_columns]
+        fields = [self.normalize_uuid(c, String_UUID()) for c in text_columns]
         samples_by_row = self.query(Select(fields, TableName(table_path), limit=16), list)
         if not samples_by_row:
             logger.warning(f"Table {table_path} is empty.")
@@ -216,7 +218,7 @@ class Database(AbstractDatabase):
                     )
                 else:
                     assert col_name in col_dict
-                    col_dict[col_name] = ColType_UUID()
+                    col_dict[col_name] = String_UUID()
 
     # @lru_cache()
     # def get_table_schema(self, path: DbPath) -> Dict[str, ColType]:
@@ -241,7 +243,9 @@ class Database(AbstractDatabase):
         return f"LIMIT {limit}"
 
     def normalize_uuid(self, value: str, coltype: ColType_UUID) -> str:
-        return f"TRIM({value})"
+        if isinstance(coltype, String_UUID):
+            return f"TRIM({value})"
+        return self.to_string(value)
 
 
 class ThreadedDatabase(Database):
