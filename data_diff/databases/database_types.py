@@ -58,8 +58,12 @@ class FractionalType(NumericType):
 class Float(FractionalType):
     pass
 
+class IKey(ABC):
+    "Interface for ColType, for using a column as a key in data-diff"
+    python_type: type
 
-class Decimal(FractionalType, IKey):
+
+class Decimal(FractionalType, IKey):    # Snowflake may use Decimal as a key
     @property
     def python_type(self) -> type:
         if self.precision == 0:

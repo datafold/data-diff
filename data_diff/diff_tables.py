@@ -18,6 +18,7 @@ from .utils import safezip, split_space
 from .databases.base import Database
 from .databases.database_types import (
     ArithUUID,
+    IKey,
     NumericType,
     PrecisionType,
     StringType,
@@ -212,6 +213,8 @@ class TableSegment:
                 "We recommend increasing --bisection-factor or decreasing --threads."
             )
 
+        if count:
+            assert checksum, (count, checksum)
         return count or 0, checksum if checksum is None else int(checksum)
 
     def query_key_range(self) -> Tuple[int, int]:
@@ -306,6 +309,10 @@ class TableDiffer:
 
         key_type = table1._schema[table1.key_column]
         key_type2 = table2._schema[table2.key_column]
+        if not isinstance(key_type, IKey):
+            raise NotImplementedError(f"Cannot use column of type {key_type} as a key")
+        if not isinstance(key_type2, IKey):
+            raise NotImplementedError(f"Cannot use column of type {key_type2} as a key")
         assert key_type.python_type is key_type2.python_type
 
         # We add 1 because our ranges are exclusive of the end (like in Python)
