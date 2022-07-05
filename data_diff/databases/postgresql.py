@@ -30,6 +30,8 @@ class PostgreSQL(ThreadedDatabase):
         "character varying": Text,
         "varchar": Text,
         "text": Text,
+        # UUID
+        "uuid": Native_UUID,
     }
     ROUNDS_ON_PREC_LOSS = True
 

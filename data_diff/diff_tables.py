@@ -19,10 +19,10 @@ from .databases.base import Database
 from .databases.database_types import (
     ArithUUID,
     IKey,
+    Native_UUID,
     NumericType,
     PrecisionType,
     StringType,
-    UnknownColType,
     Schema,
     Schema_CaseInsensitive,
     Schema_CaseSensitive,
@@ -96,11 +96,22 @@ class TableSegment:
                 "Cannot compile query when the schema is unknown. Please use TableSegment.with_schema()."
             )
 
+        col_type = self._schema[name]
         col = self._quote_column(name)
+
+        if isinstance(col_type, Native_UUID):
+            # Normalize first, apply template after (for uuids)
+            # Needed because min/max(uuid) fails in postgresql
+            col = self.database.normalize_value_by_type(col, col_type)
+            if template is not None:
+                col = template % col  # Apply template using Python's string formatting
+            return col
+
+        # Apply template before normalizing (for ints)
         if template is not None:
             col = template % col  # Apply template using Python's string formatting
 
-        return self.database.normalize_value_by_type(col, self._schema[name])
+        return self.database.normalize_value_by_type(col, col_type)
 
     def with_schema(self) -> "TableSegment":
         "Queries the table schema from the database, and returns a new instance of TableSegmentWithSchema."
