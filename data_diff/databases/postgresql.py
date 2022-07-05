@@ -2,6 +2,7 @@ from .database_types import *
 from .base import ThreadedDatabase, import_helper, ConnectError
 from .base import MD5_HEXDIGITS, CHECKSUM_HEXDIGITS, _CHECKSUM_BITSIZE, TIMESTAMP_PRECISION_POS
 
+SESSION_TIME_ZONE = None    # Changed by the tests
 
 @import_helper("postgresql")
 def import_postgresql():
@@ -47,13 +48,17 @@ class PostgreSQL(ThreadedDatabase):
         return super()._convert_db_precision_to_digits(p) - 2
 
     def create_connection(self):
+        if not self._args:
+            self._args['host'] = None   # psycopg2 requires 1+ arguments
+
         pg = import_postgresql()
         try:
             c = pg.connect(**self._args)
-            # c.cursor().execute("SET TIME ZONE 'UTC'")
+            if SESSION_TIME_ZONE:
+                c.cursor().execute(f"SET TIME ZONE '{SESSION_TIME_ZONE}'")
             return c
         except pg.OperationalError as e:
-            raise ConnectError(*e._args) from e
+            raise ConnectError(*e.args) from e
 
     def quote(self, s: str):
         return f'"{s}"'
