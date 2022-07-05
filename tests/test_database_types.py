@@ -434,6 +434,8 @@ def _insert_to_table(conn, table, values, type):
             value = str(sample)
         elif isinstance(sample, datetime) and isinstance(conn, (db.Presto, db.Oracle)):
             value = f"timestamp '{sample}'"
+        elif isinstance(sample, datetime) and isinstance(conn, db.BigQuery) and type == 'datetime':
+            value = f"cast(timestamp '{sample}' as datetime)"
         elif isinstance(sample, bytearray):
             value = f"'{sample.decode()}'"
         else:
