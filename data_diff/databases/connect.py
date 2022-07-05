@@ -116,9 +116,46 @@ def connect_to_uri(db_uri: str, thread_count: Optional[int] = 1) -> Database:
     kw = matcher.match_path(dsn)
 
     if scheme == "bigquery":
-        return cls(dsn.host, **kw)
+        kw["project"] = dsn.host
+        return cls(**kw)
+
+    if scheme == "snowflake":
+        kw["account"] = dsn.host
+        assert not dsn.port
+        kw["user"] = dsn.user
+        kw["password"] = dsn.password
+    else:
+        kw["host"] = dsn.host
+        kw["port"] = dsn.port
+        kw["user"] = dsn.user
+        if dsn.password:
+            kw["password"] = dsn.password
+    kw = {k: v for k, v in kw.items() if v is not None}
 
     if issubclass(cls, ThreadedDatabase):
-        return cls(dsn.host, dsn.port, dsn.user, dsn.password, thread_count=thread_count, **kw)
+        return cls(thread_count=thread_count, **kw)
 
-    return cls(dsn.host, dsn.port, dsn.user, dsn.password, **kw)
+    return cls(**kw)
+
+
+def connect_with_dict(d, thread_count):
+    d = dict(d)
+    driver = d.pop("driver")
+    try:
+        matcher = MATCH_URI_PATH[driver]
+    except KeyError:
+        raise NotImplementedError(f"Driver {driver} currently not supported")
+
+    cls = matcher.database_cls
+    if issubclass(cls, ThreadedDatabase):
+        return cls(thread_count=thread_count, **d)
+
+    return cls(**d)
+
+
+def connect(x, thread_count):
+    if isinstance(x, str):
+        return connect_to_uri(x, thread_count)
+    elif isinstance(x, dict):
+        return connect_with_dict(x, thread_count)
+    raise RuntimeError(x)

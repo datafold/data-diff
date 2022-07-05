@@ -25,19 +25,7 @@ class Snowflake(Database):
     }
     ROUNDS_ON_PREC_LOSS = False
 
-    def __init__(
-        self,
-        account: str,
-        _port: int,
-        user: str,
-        password: str,
-        *,
-        warehouse: str,
-        schema: str,
-        database: str,
-        role: str = None,
-        **kw,
-    ):
+    def __init__(self, *, schema: str, **kw):
         snowflake = import_snowflake()
         logging.getLogger("snowflake.connector").setLevel(logging.WARNING)
 
@@ -48,12 +36,6 @@ class Snowflake(Database):
 
         assert '"' not in schema, "Schema name should not contain quotes!"
         self._conn = snowflake.connector.connect(
-            user=user,
-            password=password,
-            account=account,
-            role=role,
-            database=database,
-            warehouse=warehouse,
             schema=f'"{schema}"',
             **kw,
         )

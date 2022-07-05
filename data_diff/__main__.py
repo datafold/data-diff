@@ -1,3 +1,4 @@
+from copy import deepcopy
 import sys
 import time
 import json
@@ -10,8 +11,9 @@ from .diff_tables import (
     DEFAULT_BISECTION_THRESHOLD,
     DEFAULT_BISECTION_FACTOR,
 )
-from .databases.connect import connect_to_uri
+from .databases.connect import connect
 from .parse_time import parse_time_before_now, UNITS_STR, ParseError
+from .config import apply_config_from_file
 
 import rich
 import click
@@ -24,21 +26,28 @@ COLOR_SCHEME = {
     "-": "red",
 }
 
+def _remove_passwords_in_dict(d: dict):
+    for k, v in d.items():
+        if k == 'password':
+            d[k] = '*' * len(v)
+        elif isinstance(v, dict):
+            _remove_passwords_in_dict(v)
+
 
 @click.command()
-@click.argument("db1_uri")
-@click.argument("table1_name")
-@click.argument("db2_uri")
-@click.argument("table2_name")
-@click.option("-k", "--key-column", default="id", help="Name of primary key column")
+@click.argument("database1", required=False)
+@click.argument("table1", required=False)
+@click.argument("database2", required=False)
+@click.argument("table2", required=False)
+@click.option("-k", "--key-column", default=None, help="Name of primary key column. Default='id'.")
 @click.option("-t", "--update-column", default=None, help="Name of updated_at/last_updated column")
 @click.option("-c", "--columns", default=[], multiple=True, help="Names of extra columns to compare")
 @click.option("-l", "--limit", default=None, help="Maximum number of differences to find")
-@click.option("--bisection-factor", default=DEFAULT_BISECTION_FACTOR, help="Segments per iteration")
+@click.option("--bisection-factor", default=None, help=f"Segments per iteration. Default={DEFAULT_BISECTION_FACTOR}.")
 @click.option(
     "--bisection-threshold",
-    default=DEFAULT_BISECTION_THRESHOLD,
-    help="Minimal bisection threshold. Below it, data-diff will download the data and compare it locally.",
+    default=None,
+    help=f"Minimal bisection threshold. Below it, data-diff will download the data and compare it locally. Default={DEFAULT_BISECTION_THRESHOLD}.",
 )
 @click.option(
     "--min-age",
@@ -57,16 +66,32 @@ COLOR_SCHEME = {
 @click.option(
     "-j",
     "--threads",
-    default="1",
+    default=None,
     help="Number of worker threads to use per database. Default=1. "
     "A higher number will increase performance, but take more capacity from your database. "
     "'serial' guarantees a single-threaded execution of the algorithm (useful for debugging).",
 )
-def main(
-    db1_uri,
-    table1_name,
-    db2_uri,
-    table2_name,
+@click.option(
+    "--conf",
+    default=None,
+    help="Path to a configuration.toml file, to provide a default configuration, and a list of possible runs.",
+)
+@click.option(
+    "--run",
+    default=None,
+    help="Name of run-configuration to run. If used, CLI arguments for database and table must be omitted.",
+)
+def main(conf, run, **kw):
+    if conf:
+        kw = apply_config_from_file(conf, run, kw)
+    return _main(**kw)
+
+
+def _main(
+    database1,
+    table1,
+    database2,
+    table2,
     key_column,
     update_column,
     columns,
@@ -82,35 +107,53 @@ def main(
     threads,
     keep_column_case,
     json_output,
+    threads1=None,
+    threads2=None,
+    __conf__=None,
 ):
-    if limit and stats:
-        print("Error: cannot specify a limit when using the -s/--stats switch")
-        return
+
     if interactive:
         debug = True
 
     if debug:
         logging.basicConfig(level=logging.DEBUG, format=LOG_FORMAT, datefmt=DATE_FORMAT)
+        # XXX Temporarily commented out, until we remove the passwords from URIs as well. See issue #150.
+        # if __conf__:
+        #     __conf__ = deepcopy(__conf__)
+        #     _remove_passwords_in_dict(__conf__)
+        #     logging.debug(f"Applied run configuration: {__conf__}")
     elif verbose:
         logging.basicConfig(level=logging.INFO, format=LOG_FORMAT, datefmt=DATE_FORMAT)
 
-    threaded = True
-    if threads is not None:
-        if threads.lower() == "serial":
-            threaded = False
-            threads = 1
-        else:
-            try:
-                threads = int(threads)
-            except ValueError:
-                logging.error("Error: threads must be a number, 'auto', or 'serial'.")
-                return
-            if threads < 1:
-                logging.error("Error: threads must be >= 1")
-                return
+    if limit and stats:
+        logging.error("Cannot specify a limit when using the -s/--stats switch")
+        return
 
-    db1 = connect_to_uri(db1_uri, threads)
-    db2 = connect_to_uri(db2_uri, threads)
+    key_column = key_column or "id"
+    if bisection_factor is None:
+        bisection_factor = DEFAULT_BISECTION_FACTOR
+    if bisection_threshold is None:
+        bisection_threshold = DEFAULT_BISECTION_THRESHOLD
+
+    threaded = True
+    if threads is None:
+        threads = 1
+    elif isinstance(threads, str) and threads.lower() == "serial":
+        assert not (threads1 or threads2)
+        threaded = False
+        threads = 1
+    else:
+        try:
+            threads = int(threads)
+        except ValueError:
+            logging.error("Error: threads must be a number, or 'serial'.")
+            return
+        if threads < 1:
+            logging.error("Error: threads must be >= 1")
+            return
+
+    db1 = connect(database1, threads1 or threads)
+    db2 = connect(database2, threads2 or threads)
 
     if interactive:
         db1.enable_interactive()
@@ -128,8 +171,8 @@ def main(
         logging.error("Error while parsing age expression: %s" % e)
         return
 
-    table1 = TableSegment(db1, db1.parse_table_name(table1_name), key_column, update_column, columns, **options)
-    table2 = TableSegment(db2, db2.parse_table_name(table2_name), key_column, update_column, columns, **options)
+    table1_seg = TableSegment(db1, db1.parse_table_name(table1), key_column, update_column, columns, **options)
+    table2_seg = TableSegment(db2, db2.parse_table_name(table2), key_column, update_column, columns, **options)
 
     differ = TableDiffer(
         bisection_factor=bisection_factor,
@@ -138,7 +181,7 @@ def main(
         max_threadpool_size=threads and threads * 2,
         debug=debug,
     )
-    diff_iter = differ.diff_tables(table1, table2)
+    diff_iter = differ.diff_tables(table1_seg, table2_seg)
 
     if limit:
         diff_iter = islice(diff_iter, int(limit))

@@ -18,6 +18,11 @@ class ColType:
     pass
 
 
+class IKey(ABC):
+    "Interface for ColType, for using a column as a key in data-diff"
+    python_type: type
+
+
 @dataclass
 class PrecisionType(ColType):
     precision: int

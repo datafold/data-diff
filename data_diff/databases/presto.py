@@ -35,11 +35,10 @@ class Presto(Database):
     }
     ROUNDS_ON_PREC_LOSS = True
 
-    def __init__(self, host, port, user, password, *, catalog, schema=None, **kw):
+    def __init__(self, **kw):
         prestodb = import_presto()
-        self.args = dict(host=host, user=user, catalog=catalog, schema=schema, **kw)
 
-        self._conn = prestodb.dbapi.connect(**self.args)
+        self._conn = prestodb.dbapi.connect(**kw)
 
     def quote(self, s: str):
         return f'"{s}"'
