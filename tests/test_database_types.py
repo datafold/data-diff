@@ -12,6 +12,7 @@ from decimal import Decimal
 from parameterized import parameterized
 
 from data_diff import databases as db
+from data_diff.databases import postgresql, oracle
 from data_diff.utils import number_to_human
 from data_diff.diff_tables import TableDiffer, TableSegment, DEFAULT_BISECTION_THRESHOLD
 from .common import CONN_STRINGS, N_SAMPLES, N_THREADS, BENCHMARK, GIT_REVISION, random_table_suffix
@@ -20,6 +21,7 @@ from .common import CONN_STRINGS, N_SAMPLES, N_THREADS, BENCHMARK, GIT_REVISION,
 CONNS = {k: db.connect_to_uri(v, N_THREADS) for k, v in CONN_STRINGS.items()}
 
 CONNS[db.MySQL].query("SET @@session.time_zone='+00:00'", None)
+oracle.SESSION_TIME_ZONE = postgresql.SESSION_TIME_ZONE = 'UTC'
 
 
 class PaginatedTable:
@@ -434,6 +436,8 @@ def _insert_to_table(conn, table, values, type):
             value = str(sample)
         elif isinstance(sample, datetime) and isinstance(conn, (db.Presto, db.Oracle)):
             value = f"timestamp '{sample}'"
+        elif isinstance(sample, datetime) and isinstance(conn, db.BigQuery) and type == 'datetime':
+            value = f"cast(timestamp '{sample}' as datetime)"
         elif isinstance(sample, bytearray):
             value = f"'{sample.decode()}'"
         else:
