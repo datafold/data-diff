@@ -351,18 +351,27 @@ DATABASE_TYPES = {
         ],
     },
     db.Databricks: {
+        # https://docs.databricks.com/spark/latest/spark-sql/language-manual/data-types/int-type.html
+        # https://docs.databricks.com/spark/latest/spark-sql/language-manual/data-types/bigint-type.html
         "int": [
             "INT",
             "BIGINT",
         ],
+
+        # https://docs.databricks.com/spark/latest/spark-sql/language-manual/data-types/timestamp-type.html
         "datetime": [
             "TIMESTAMP",
         ],
+
+        # https://docs.databricks.com/spark/latest/spark-sql/language-manual/data-types/float-type.html
+        # https://docs.databricks.com/spark/latest/spark-sql/language-manual/data-types/double-type.html
+        # https://docs.databricks.com/spark/latest/spark-sql/language-manual/data-types/decimal-type.html
         "float": [
             "FLOAT",
             "DOUBLE",
             "DECIMAL(6, 2)",
         ],
+
         "uuid": [
             "STRING",
         ]
@@ -379,7 +388,7 @@ for source_db, source_type_categories in DATABASE_TYPES.items():
         ) in source_type_categories.items():  # int, datetime, ..
             for source_type in source_types:
                 for target_type in target_type_categories[type_category]:
-                    if CONNS.get(source_db, False) and CONNS.get(target_db, False):
+                    if (CONNS.get(source_db, False) and CONNS.get(target_db, False)):
                         type_pairs.append(
                             (
                                 source_db,
@@ -476,14 +485,14 @@ def _insert_to_table(conn, table, values, type):
                 conn.query(insertion_query[0:-1], None)
                 insertion_query = default_insertion_query
 
-    if not isinstance(conn, db.BigQuery):
+    if not isinstance(conn, (db.BigQuery, db.Databricks)):
         conn.query("COMMIT", None)
 
 
 def _create_indexes(conn, table):
     # It is unfortunate that Presto doesn't support creating indexes...
     # Technically we could create it in the backing Postgres behind the scenes.
-    if isinstance(conn, (db.Snowflake, db.Redshift, db.Presto, db.BigQuery)):
+    if isinstance(conn, (db.Snowflake, db.Redshift, db.Presto, db.BigQuery, db.Databricks)):
         return
 
     try:
@@ -516,7 +525,7 @@ def _create_table_with_indexes(conn, table, type):
         conn.query(f"CREATE TABLE IF NOT EXISTS {table}(id int, col {type})", None)
 
     _create_indexes(conn, table)
-    if not isinstance(conn, db.BigQuery):
+    if not isinstance(conn, (db.BigQuery, db.Databricks)):
         conn.query("COMMIT", None)
 
 
@@ -527,7 +536,7 @@ def _drop_table_if_exists(conn, table):
             conn.query(f"DROP TABLE {table}", None)
         else:
             conn.query(f"DROP TABLE IF EXISTS {table}", None)
-            if not isinstance(conn, db.BigQuery):
+            if not isinstance(conn, (db.BigQuery, db.Databricks)):
                 conn.query("COMMIT", None)
 
 
@@ -563,8 +572,8 @@ class TestDiffCrossDatabaseTables(unittest.TestCase):
 
         src_table_path = src_conn.parse_table_name(src_table_name)
         dst_table_path = dst_conn.parse_table_name(dst_table_name)
-        self.src_table = src_table = src_conn.quote(".".join(src_table_path))
-        self.dst_table = dst_table = dst_table = dst_conn.quote(".".join(dst_table_path))
+        self.src_table = src_table = ".".join(map(src_conn.quote, src_table_path))
+        self.dst_table = dst_table = ".".join(map(dst_conn.quote, dst_table_path))
 
         start = time.time()
         if not BENCHMARK:
