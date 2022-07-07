@@ -61,7 +61,7 @@ class Databricks(Database):
         return f"`{s}`"
 
     def md5_to_int(self, s: str) -> str:
-        return f"conv(substr(md5({s}), {1+MD5_HEXDIGITS-CHECKSUM_HEXDIGITS}), 16, 10)"
+        return f"cast(conv(substr(md5({s}), {1+MD5_HEXDIGITS-CHECKSUM_HEXDIGITS}), 16, 10) as decimal(38, 0))"
 
     def to_string(self, s: str) -> str:
         return f"cast({s} as string)"
