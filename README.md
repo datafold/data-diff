@@ -125,7 +125,7 @@ $ data-diff \
 | BigQuery      | `bigquery://<project>/<dataset>`                                                                                                    |  💛    |
 | Redshift      | `redshift://<username>:<password>@<hostname>:5439/<database>`                                                                       |  💛    |
 | Presto        | `presto://<username>:<password>@<hostname>:8080/<database>`                                                                         |  💛    |
-| Databricks    | `databricks://<access_token>:<http_path>@<server_hostname>/<catalog>/<schema>`                                                      |  💛    |
+| Databricks    | `databricks://<http_path>:<access_token>@<server_hostname>/<catalog>/<schema>`                                                      |  💛    |
 | ElasticSearch |                                                                                                                                     |  📝    |                                                        |  📝    |
 | Planetscale   |                                                                                                                                     |  📝    |
 | Clickhouse    |                                                                                                                                     |  📝    |

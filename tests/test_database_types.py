@@ -350,6 +350,23 @@ DATABASE_TYPES = {
             "char(100)",
         ],
     },
+    db.Databricks: {
+        "int": [
+            "INT",
+            "BIGINT",
+        ],
+        "datetime": [
+            "TIMESTAMP",
+        ],
+        "float": [
+            "FLOAT",
+            "DOUBLE",
+            "DECIMAL(6, 2)",
+        ],
+        "uuid": [
+            "STRING",
+        ]
+    }
 }
 
 

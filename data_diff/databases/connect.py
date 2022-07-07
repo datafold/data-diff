@@ -79,7 +79,7 @@ MATCH_URI_PATH = {
     "presto": MatchUriPath(Presto, ["catalog", "schema"], help_str="presto://<user>@<host>/<catalog>/<schema>"),
     "bigquery": MatchUriPath(BigQuery, ["dataset"], help_str="bigquery://<project>/<dataset>"),
     "databricks": MatchUriPath(
-        Databricks, ["catalog", "schema?"], help_str="databricks://access_token:http_path@account/catalog/schema"
+        Databricks, ["catalog", "schema"], help_str="databricks://http_path:access_token@server_name/catalog/schema",
     )
 }
 
@@ -129,6 +129,12 @@ def connect_to_uri(db_uri: str, thread_count: Optional[int] = 1) -> Database:
         assert not dsn.port
         kw["user"] = dsn.user
         kw["password"] = dsn.password
+    if scheme == "databricks":
+        # dsn user - access token
+        # sdn password - http path (starting with /)
+        kw["http_path"] = dsn.user
+        kw["access_token"] = dsn.password
+        kw["server_hostname"] = dsn.host
     else:
         kw["host"] = dsn.host
         kw["port"] = dsn.port
@@ -136,12 +142,6 @@ def connect_to_uri(db_uri: str, thread_count: Optional[int] = 1) -> Database:
         if dsn.password:
             kw["password"] = dsn.password
     kw = {k: v for k, v in kw.items() if v is not None}
-
-    if scheme == "databricks":
-        # dsn user - access token
-        # sdn password - http path (starting with /)
-
-        return cls(http_path=dsn.password, access_token=dsn.user, server_hostname=dsn.hostname, **kw)
 
     if issubclass(cls, ThreadedDatabase):
         return cls(thread_count=thread_count, **kw)
