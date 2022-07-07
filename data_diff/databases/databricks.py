@@ -2,7 +2,7 @@ import logging
 import math
 
 from .database_types import *
-from .base import Database, import_helper, _query_conn, parse_table_name
+from .base import MD5_HEXDIGITS, CHECKSUM_HEXDIGITS, Database, import_helper, _query_conn, parse_table_name
 
 
 @import_helper("databricks")
@@ -61,7 +61,7 @@ class Databricks(Database):
         return f"`{s}`"
 
     def md5_to_int(self, s: str) -> str:
-        return f"conv(substr(md5({s}), 18), 16, 10)"
+        return f"conv(substr(md5({s}), {1+MD5_HEXDIGITS-CHECKSUM_HEXDIGITS}), 16, 10)"
 
     def to_string(self, s: str) -> str:
         return f"cast({s} as string)"
@@ -69,7 +69,6 @@ class Databricks(Database):
     def _convert_db_precision_to_digits(self, p: int) -> int:
         # Subtracting 2 due to wierd precision issues in Databricks for the FLOAT type
         return super()._convert_db_precision_to_digits(p) - 2
-
 
     def query_table_schema(self, path: DbPath, filter_columns: Optional[Sequence[str]] = None) -> Dict[str, ColType]:
         # Databricks has INFORMATION_SCHEMA only for Databricks Runtime, not for Databricks SQL.
