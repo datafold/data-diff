@@ -2,7 +2,7 @@ import logging
 import math
 
 from .database_types import *
-from .base import TIMESTAMP_PRECISION_POS, Database, import_helper, _query_conn
+from .base import Database, import_helper, _query_conn, parse_table_name
 
 
 @import_helper("databricks")
@@ -84,26 +84,27 @@ class Databricks(Database):
 
             resulted_rows = []
             for row in rows:
-                type_cls = self.TYPE_CLASSES.get(str(row.TYPE_NAME), UnknownColType)
+                row_type = 'DECIMAL' if row.DATA_TYPE == 3 else row.TYPE_NAME
+                type_cls = self.TYPE_CLASSES.get(row_type, UnknownColType)
 
                 if issubclass(type_cls, Integer):
-                    row = (row.COLUMN_NAME, row.TYPE_NAME, None, None, 0)
+                    row = (row.COLUMN_NAME, row_type, None, None, 0)
 
                 elif issubclass(type_cls, Float):
                     numeric_precision = math.ceil(row.DECIMAL_DIGITS / math.log(2, 10))
-                    row = (row.COLUMN_NAME, row.TYPE_NAME, None, numeric_precision, None)
+                    row = (row.COLUMN_NAME, row_type, None, numeric_precision, None)
 
                 elif issubclass(type_cls, Decimal):
                     # TYPE_NAME has a format DECIMAL(x,y)
                     items = row.TYPE_NAME[8:].rstrip(')').split(',')
                     numeric_precision, numeric_scale = int(items[0]), int(items[1])
-                    row = (row.COLUMN_NAME, row.TYPE_NAME, None, numeric_precision, numeric_scale)
+                    row = (row.COLUMN_NAME, row_type, None, numeric_precision, numeric_scale)
 
                 elif issubclass(type_cls, Timestamp):
-                    row = (row.COLUMN_NAME, row.TYPE_NAME, row.DECIMAL_DIGITS, None, None)
+                    row = (row.COLUMN_NAME, row_type, row.DECIMAL_DIGITS, None, None)
 
                 else:
-                    row = (row.COLUMN_NAME, row.TYPE_NAME, None, None, None)
+                    row = (row.COLUMN_NAME, row_type, None, None, None)
 
                 resulted_rows.append(row)
         return {row[0]: self._parse_type(path, *row) for row in resulted_rows}
@@ -120,6 +121,10 @@ class Databricks(Database):
 
     def normalize_number(self, value: str, coltype: NumericType) -> str:
         return self.to_string(f"cast({value} as decimal(38, {coltype.precision}))")
+
+    def parse_table_name(self, name: str) -> DbPath:
+        path = parse_table_name(name)
+        return self._normalize_table_path(path)
 
     def close(self):
         self._conn.close()
