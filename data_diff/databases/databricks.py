@@ -66,6 +66,11 @@ class Databricks(Database):
     def to_string(self, s: str) -> str:
         return f"cast({s} as string)"
 
+    def _convert_db_precision_to_digits(self, p: int) -> int:
+        # Subtracting 2 due to wierd precision issues in Databricks for the FLOAT type
+        return super()._convert_db_precision_to_digits(p) - 2
+
+
     def query_table_schema(self, path: DbPath, filter_columns: Optional[Sequence[str]] = None) -> Dict[str, ColType]:
         # Databricks has INFORMATION_SCHEMA only for Databricks Runtime, not for Databricks SQL.
         # https://docs.databricks.com/spark/latest/spark-sql/language-manual/information-schema/columns.html
@@ -107,7 +112,10 @@ class Databricks(Database):
                     row = (row.COLUMN_NAME, row_type, None, None, None)
 
                 resulted_rows.append(row)
-        return {row[0]: self._parse_type(path, *row) for row in resulted_rows}
+        col_dict: Dict[str, ColType] = {row[0]: self._parse_type(path, *row) for row in resulted_rows}
+
+        self._refine_coltypes(path, col_dict)
+        return col_dict
 
     def normalize_timestamp(self, value: str, coltype: TemporalType) -> str:
         """Databricks timestamp contains no more than 6 digits in precision"""
