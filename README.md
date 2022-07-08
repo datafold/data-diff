@@ -125,8 +125,14 @@ $ data-diff \
 | BigQuery      | `bigquery://<project>/<dataset>`                                                                                                    |  💛    |
 | Redshift      | `redshift://<username>:<password>@<hostname>:5439/<database>`                                                                       |  💛    |
 | Presto        | `presto://<username>:<password>@<hostname>:8080/<database>`                                                                         |  💛    |
+<<<<<<< HEAD
 | Databricks    | `databricks://<http_path>:<access_token>@<server_hostname>/<catalog>/<schema>`                                                      |  💛    |
 | ElasticSearch |                                                                                                                                     |  📝    |                                                        |  📝    |
+=======
+| Trino         | `trino://<username>:<password>@<hostname>:8080/<database>`                                                                          |  💛    |
+| ElasticSearch |                                                                                                                                     |  📝    |
+| Databricks    |                                                                                                                                     |  📝    |
+>>>>>>> 0d3fd47 (Add Trino connector)
 | Planetscale   |                                                                                                                                     |  📝    |
 | Clickhouse    |                                                                                                                                     |  📝    |
 | Pinot         |                                                                                                                                     |  📝    |
@@ -505,7 +511,7 @@ Now you can insert it into the testing database(s):
 ```shell-session
 # It's optional to seed more than one to run data-diff(1) against.
 $ poetry run preql -f dev/prepare_db.pql mysql://mysql:Password1@127.0.0.1:3306/mysql
-$ poetry run preql -f dev/prepare_db.pql postgresql://postgres:Password1@127.0.0.1:5432/postgres
+$ poetry run preql -f dev/prepare_db.pql postgres://postgres:Password1@127.0.0.1:5432/postgres
 
 # Cloud databases
 $ poetry run preql -f dev/prepare_db.pql snowflake://<uri>

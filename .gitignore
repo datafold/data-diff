@@ -138,3 +138,6 @@ benchmark_*.png
 
 # Mac
 .DS_Store
+
+# IntelliJ
+.idea

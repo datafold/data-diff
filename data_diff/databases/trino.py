@@ -1,0 +1,121 @@
+import re
+
+from .database_types import *
+from .base import Database, import_helper
+from .base import (
+    MD5_HEXDIGITS,
+    CHECKSUM_HEXDIGITS,
+    TIMESTAMP_PRECISION_POS,
+    DEFAULT_DATETIME_PRECISION,
+)
+
+
+@import_helper("trino")
+def import_trino():
+    import trino
+
+    return trino
+
+
+class Trino(Database):
+    default_schema = "public"
+    TYPE_CLASSES = {
+        # Timestamps
+        "timestamp with time zone": TimestampTZ,
+        "timestamp without time zone": Timestamp,
+        "timestamp": Timestamp,
+        # Numbers
+        "integer": Integer,
+        "bigint": Integer,
+        "real": Float,
+        "double": Float,
+        # Text
+        "varchar": Text,
+    }
+    ROUNDS_ON_PREC_LOSS = True
+
+    def __init__(self, **kw):
+        trino = import_trino()
+
+        self._conn = trino.dbapi.connect(**kw)
+
+    def quote(self, s: str):
+        return f'"{s}"'
+
+    def md5_to_int(self, s: str) -> str:
+        return f"cast(from_base(substr(to_hex(md5(to_utf8({s}))), {1 + MD5_HEXDIGITS - CHECKSUM_HEXDIGITS}), 16) as decimal(38, 0))"
+
+    def to_string(self, s: str):
+        return f"cast({s} as varchar)"
+
+    def _query(self, sql_code: str) -> list:
+        """Uses the standard SQL cursor interface"""
+        c = self._conn.cursor()
+        c.execute(sql_code)
+        if sql_code.lower().startswith("select"):
+            return c.fetchall()
+
+    def close(self):
+        self._conn.close()
+
+    def normalize_timestamp(self, value: str, coltype: TemporalType) -> str:
+        if coltype.rounds:
+            s = f"date_format(cast({coltype.precision} as timestamp(6)), '%Y-%m-%d %H:%i:%S.%f')"
+        else:
+            s = f"date_format(cast({value} as timestamp(6)), '%Y-%m-%d %H:%i:%S.%f')"
+
+        return f"RPAD(RPAD({s}, {TIMESTAMP_PRECISION_POS + coltype.precision}, '.'), {TIMESTAMP_PRECISION_POS + 6}, '0')"
+
+    def normalize_number(self, value: str, coltype: FractionalType) -> str:
+        return self.to_string(f"cast({value} as decimal(38,{coltype.precision}))")
+
+    def select_table_schema(self, path: DbPath) -> str:
+        schema, table = self._normalize_table_path(path)
+
+        return (
+            f"SELECT column_name, data_type, 3 as datetime_precision, 3 as numeric_precision FROM INFORMATION_SCHEMA.COLUMNS "
+            f"WHERE table_name = '{table}' AND table_schema = '{schema}'"
+        )
+
+    def _parse_type(
+        self,
+        table_path: DbPath,
+        col_name: str,
+        type_repr: str,
+        datetime_precision: int = None,
+        numeric_precision: int = None,
+    ) -> ColType:
+        timestamp_regexps = {
+            r"timestamp\((\d)\)": Timestamp,
+            r"timestamp\((\d)\) with time zone": TimestampTZ,
+        }
+        for regexp, t_cls in timestamp_regexps.items():
+            m = re.match(regexp + "$", type_repr)
+            if m:
+                datetime_precision = int(m.group(1))
+                return t_cls(
+                    precision=datetime_precision
+                    if datetime_precision is not None
+                    else DEFAULT_DATETIME_PRECISION,
+                    rounds=self.ROUNDS_ON_PREC_LOSS,
+                )
+
+        number_regexps = {r"decimal\((\d+),(\d+)\)": Decimal}
+        for regexp, n_cls in number_regexps.items():
+            m = re.match(regexp + "$", type_repr)
+            if m:
+                prec, scale = map(int, m.groups())
+                return n_cls(scale)
+
+        string_regexps = {r"varchar\((\d+)\)": Text, r"char\((\d+)\)": Text}
+        for regexp, n_cls in string_regexps.items():
+            m = re.match(regexp + "$", type_repr)
+            if m:
+                return n_cls()
+
+        return super()._parse_type(
+            table_path, col_name, type_repr, datetime_precision, numeric_precision
+        )
+
+    def normalize_uuid(self, value: str, coltype: ColType_UUID) -> str:
+        return f"TRIM({value})"

@@ -274,7 +274,7 @@ class TableDiffer:
     The algorithm uses hashing to quickly check if the tables are different, and then applies a
     bisection search recursively to find the differences efficiently.
 
-    Works best for comparing tables that are mostly the name, with minor discrepencies.
+    Works best for comparing tables that are mostly the same, with minor discrepencies.
 
     Parameters:
         bisection_factor (int): Into how many segments to bisect per iteration.

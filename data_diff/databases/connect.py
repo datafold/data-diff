@@ -13,6 +13,7 @@ from .bigquery import BigQuery
 from .redshift import Redshift
 from .presto import Presto
 from .databricks import Databricks
+from .trino import Trino
 
 
 @dataclass
@@ -80,7 +81,8 @@ MATCH_URI_PATH = {
     "bigquery": MatchUriPath(BigQuery, ["dataset"], help_str="bigquery://<project>/<dataset>"),
     "databricks": MatchUriPath(
         Databricks, ["catalog", "schema"], help_str="databricks://:access_token@server_name/http_path",
-    )
+    ),
+    "trino": MatchUriPath(Trino, ["catalog", "schema"], help_str="trino://<user>@<host>/<catalog>/<schema>"),
 }
 
 
@@ -105,6 +107,7 @@ def connect_to_uri(db_uri: str, thread_count: Optional[int] = 1) -> Database:
     - redshift
     - presto
     - databricks
+    - trino
     """
 
     dsn = dsnparse.parse(db_uri)
