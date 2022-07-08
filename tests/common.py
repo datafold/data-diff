@@ -15,7 +15,11 @@ TEST_PRESTO_CONN_STRING: str = os.environ.get("DATADIFF_PRESTO_URI") or None
 TEST_BIGQUERY_CONN_STRING: str = None
 TEST_REDSHIFT_CONN_STRING: str = None
 TEST_ORACLE_CONN_STRING: str = None
+<<<<<<< HEAD
 TEST_DATABRICKS_CONN_STRING: str = os.environ.get("DATADIFF_DATABRICKS_URI")
+=======
+TEST_TRINO_CONN_STRING: str = os.environ.get("DATADIFF_TRINO_URI") or None
+>>>>>>> d60e4b8 (Add test scaffolding)
 
 DEFAULT_N_SAMPLES = 50
 N_SAMPLES = int(os.environ.get("N_SAMPLES", DEFAULT_N_SAMPLES))
@@ -54,7 +58,11 @@ CONN_STRINGS = {
     db.Redshift: TEST_REDSHIFT_CONN_STRING,
     db.Oracle: TEST_ORACLE_CONN_STRING,
     db.Presto: TEST_PRESTO_CONN_STRING,
+<<<<<<< HEAD
     db.Databricks: TEST_DATABRICKS_CONN_STRING,
+=======
+    db.Trino: TEST_TRINO_CONN_STRING,
+>>>>>>> d60e4b8 (Add test scaffolding)
 }
 
 for k, v in CONN_STRINGS.items():
