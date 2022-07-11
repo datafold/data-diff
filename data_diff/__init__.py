@@ -15,7 +15,7 @@ from .diff_tables import (
 def connect_to_table(
     db_info: Union[str, dict],
     table_name: Union[DbPath, str],
-    key_columns: Tuple[str, ...] = ("id",),
+    key_columns: Union[str, Tuple[str, ...]] = "id",
     thread_count: Optional[int] = 1,
     **kwargs,
 ):
@@ -32,6 +32,9 @@ def connect_to_table(
 
     if isinstance(table_name, str):
         table_name = db.parse_table_name(table_name)
+
+    if isinstance(key_columns, str):
+        key_columns = (key_columns,)
 
     return TableSegment(db, table_name, key_columns, **kwargs)
 
