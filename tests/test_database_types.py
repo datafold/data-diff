@@ -21,7 +21,7 @@ from .common import CONN_STRINGS, N_SAMPLES, N_THREADS, BENCHMARK, GIT_REVISION,
 CONNS = {k: db.connect_to_uri(v, N_THREADS) for k, v in CONN_STRINGS.items()}
 
 CONNS[db.MySQL].query("SET @@session.time_zone='+00:00'", None)
-oracle.SESSION_TIME_ZONE = postgresql.SESSION_TIME_ZONE = 'UTC'
+oracle.SESSION_TIME_ZONE = postgresql.SESSION_TIME_ZONE = "UTC"
 
 
 class PaginatedTable:
@@ -482,7 +482,7 @@ def _insert_to_table(conn, table, values, type):
             value = str(sample)
         elif isinstance(sample, datetime) and isinstance(conn, (db.Presto, db.Oracle, db.Trino)):
             value = f"timestamp '{sample}'"
-        elif isinstance(sample, datetime) and isinstance(conn, db.BigQuery) and type == 'datetime':
+        elif isinstance(sample, datetime) and isinstance(conn, db.BigQuery) and type == "datetime":
             value = f"cast(timestamp '{sample}' as datetime)"
         elif isinstance(sample, bytearray):
             value = f"'{sample.decode()}'"
@@ -617,11 +617,11 @@ class TestDiffCrossDatabaseTables(unittest.TestCase):
         insertion_target_duration = time.time() - start
 
         if type_category == "uuid":
-            self.table = TableSegment(self.src_conn, src_table_path, "col", None, ("id",), case_sensitive=False)
-            self.table2 = TableSegment(self.dst_conn, dst_table_path, "col", None, ("id",), case_sensitive=False)
+            self.table = TableSegment(self.src_conn, src_table_path, ("col",), None, ("id",), case_sensitive=False)
+            self.table2 = TableSegment(self.dst_conn, dst_table_path, ("col",), None, ("id",), case_sensitive=False)
         else:
-            self.table = TableSegment(self.src_conn, src_table_path, "id", None, ("col",), case_sensitive=False)
-            self.table2 = TableSegment(self.dst_conn, dst_table_path, "id", None, ("col",), case_sensitive=False)
+            self.table = TableSegment(self.src_conn, src_table_path, ("id",), None, ("col",), case_sensitive=False)
+            self.table2 = TableSegment(self.dst_conn, dst_table_path, ("id",), None, ("col",), case_sensitive=False)
 
         start = time.time()
         self.assertEqual(N_SAMPLES, self.table.count())

@@ -89,15 +89,15 @@ class TestDates(TestWithConnection):
         self.preql.commit()
 
     def test_init(self):
-        a = TableSegment(self.connection, (self.table_src,), "id", "datetime", max_update=self.now.datetime)
+        a = TableSegment(self.connection, (self.table_src,), ("id",), "datetime", max_update=self.now.datetime)
         self.assertRaises(
-            ValueError, TableSegment, self.connection, (self.table_src,), "id", max_update=self.now.datetime
+            ValueError, TableSegment, self.connection, (self.table_src,), ("id",), max_update=self.now.datetime
         )
 
     def test_basic(self):
         differ = TableDiffer(10, 100)
-        a = TableSegment(self.connection, (self.table_src,), "id", "datetime")
-        b = TableSegment(self.connection, (self.table_dst,), "id", "datetime")
+        a = TableSegment(self.connection, (self.table_src,), ("id",), "datetime")
+        b = TableSegment(self.connection, (self.table_dst,), ("id",), "datetime")
         assert a.count() == 6
         assert b.count() == 5
 
@@ -107,24 +107,24 @@ class TestDates(TestWithConnection):
     def test_offset(self):
         differ = TableDiffer(2, 10)
         sec1 = self.now.shift(seconds=-1).datetime
-        a = TableSegment(self.connection, (self.table_src,), "id", "datetime", max_update=sec1)
-        b = TableSegment(self.connection, (self.table_dst,), "id", "datetime", max_update=sec1)
+        a = TableSegment(self.connection, (self.table_src,), ("id",), "datetime", max_update=sec1)
+        b = TableSegment(self.connection, (self.table_dst,), ("id",), "datetime", max_update=sec1)
         assert a.count() == 4
         assert b.count() == 3
 
         assert not list(differ.diff_tables(a, a))
         self.assertEqual(len(list(differ.diff_tables(a, b))), 1)
 
-        a = TableSegment(self.connection, (self.table_src,), "id", "datetime", min_update=sec1)
-        b = TableSegment(self.connection, (self.table_dst,), "id", "datetime", min_update=sec1)
+        a = TableSegment(self.connection, (self.table_src,), ("id",), "datetime", min_update=sec1)
+        b = TableSegment(self.connection, (self.table_dst,), ("id",), "datetime", min_update=sec1)
         assert a.count() == 2
         assert b.count() == 2
         assert not list(differ.diff_tables(a, b))
 
         day1 = self.now.shift(days=-1).datetime
 
-        a = TableSegment(self.connection, (self.table_src,), "id", "datetime", min_update=day1, max_update=sec1)
-        b = TableSegment(self.connection, (self.table_dst,), "id", "datetime", min_update=day1, max_update=sec1)
+        a = TableSegment(self.connection, (self.table_src,), ("id",), "datetime", min_update=day1, max_update=sec1)
+        b = TableSegment(self.connection, (self.table_dst,), ("id",), "datetime", min_update=day1, max_update=sec1)
         assert a.count() == 3
         assert b.count() == 2
         assert not list(differ.diff_tables(a, a))
@@ -160,8 +160,8 @@ class TestDiffTables(TestWithConnection):
         )
         self.preql.commit()
 
-        self.table = TableSegment(self.connection, (self.table_src,), "id", "timestamp")
-        self.table2 = TableSegment(self.connection, (self.table_dst,), "id", "timestamp")
+        self.table = TableSegment(self.connection, (self.table_src,), ("id",), "timestamp")
+        self.table2 = TableSegment(self.connection, (self.table_dst,), ("id",), "timestamp")
 
         self.differ = TableDiffer(3, 4)
 
@@ -294,8 +294,8 @@ class TestStringKeys(TestWithConnection):
         for query in queries:
             self.connection.query(query, None)
 
-        self.a = TableSegment(self.connection, (self.table_src,), "id", "comment")
-        self.b = TableSegment(self.connection, (self.table_dst,), "id", "comment")
+        self.a = TableSegment(self.connection, (self.table_src,), ("id",), "comment")
+        self.b = TableSegment(self.connection, (self.table_dst,), ("id",), "comment")
 
     def test_string_keys(self):
         differ = TableDiffer()
@@ -312,15 +312,15 @@ class TestStringKeys(TestWithConnection):
 class TestTableSegment(TestWithConnection):
     def setUp(self) -> None:
         super().setUp()
-        self.table = TableSegment(self.connection, (self.table_src,), "id", "timestamp")
-        self.table2 = TableSegment(self.connection, (self.table_dst,), "id", "timestamp")
+        self.table = TableSegment(self.connection, (self.table_src,), ("id",), "timestamp")
+        self.table2 = TableSegment(self.connection, (self.table_dst,), ("id",), "timestamp")
 
     def test_table_segment(self):
         early = datetime.datetime(2021, 1, 1, 0, 0)
         late = datetime.datetime(2022, 1, 1, 0, 0)
         self.assertRaises(ValueError, self.table.replace, min_update=late, max_update=early)
 
-        self.assertRaises(ValueError, self.table.replace, min_key=10, max_key=0)
+        self.assertRaises(ValueError, self.table.replace, min_key=(10,), max_key=(0,))
 
 
 class TestTableUUID(TestWithConnection):
@@ -346,8 +346,8 @@ class TestTableUUID(TestWithConnection):
         for query in queries:
             self.connection.query(query, None)
 
-        self.a = TableSegment(self.connection, (self.table_src,), "id", "comment")
-        self.b = TableSegment(self.connection, (self.table_dst,), "id", "comment")
+        self.a = TableSegment(self.connection, (self.table_src,), ("id",), "comment")
+        self.b = TableSegment(self.connection, (self.table_dst,), ("id",), "comment")
 
     def test_uuid_column_with_nulls(self):
         differ = TableDiffer()
@@ -374,8 +374,8 @@ class TestTableNullRowChecksum(TestWithConnection):
         for query in queries:
             self.connection.query(query, None)
 
-        self.a = TableSegment(self.connection, (self.table_src,), "id", "comment")
-        self.b = TableSegment(self.connection, (self.table_dst,), "id", "comment")
+        self.a = TableSegment(self.connection, (self.table_src,), ("id",), "comment")
+        self.b = TableSegment(self.connection, (self.table_dst,), ("id",), "comment")
 
     def test_uuid_columns_with_nulls(self):
         """
@@ -431,8 +431,8 @@ class TestConcatMultipleColumnWithNulls(TestWithConnection):
         for query in queries:
             self.connection.query(query, None)
 
-        self.a = TableSegment(self.connection, (self.table_src,), "id", extra_columns=("c1", "c2"))
-        self.b = TableSegment(self.connection, (self.table_dst,), "id", extra_columns=("c1", "c2"))
+        self.a = TableSegment(self.connection, (self.table_src,), ("id",), extra_columns=("c1", "c2"))
+        self.b = TableSegment(self.connection, (self.table_dst,), ("id",), extra_columns=("c1", "c2"))
 
     def test_tables_are_different(self):
         """
@@ -483,8 +483,8 @@ class TestTableTableEmpty(TestWithConnection):
         for query in queries:
             self.connection.query(query, None)
 
-        self.a = TableSegment(self.connection, (self.table_src,), "id", "comment")
-        self.b = TableSegment(self.connection, (self.table_dst,), "id", "comment")
+        self.a = TableSegment(self.connection, (self.table_src,), ("id",), "comment")
+        self.b = TableSegment(self.connection, (self.table_dst,), ("id",), "comment")
 
     def test_right_table_empty(self):
         differ = TableDiffer()

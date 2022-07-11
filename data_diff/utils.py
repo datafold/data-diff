@@ -6,7 +6,8 @@ from uuid import UUID
 
 def safezip(*args):
     "zip but makes sure all sequences are the same length"
-    assert len(set(map(len, args))) == 1
+    if not len(set(map(len, args))) == 1:
+        raise ValueError(f"Uneven zip for {args}")
     return zip(*args)
 
 

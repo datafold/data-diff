@@ -37,8 +37,8 @@ class TestWithConnection(unittest.TestCase):
         for query in queries:
             self.connection.query(query, None)
 
-        a = TableSegment(self.connection, (self.table_src,), "id", "comment")
-        b = TableSegment(self.connection, (self.table_dst,), "id", "comment")
+        a = TableSegment(self.connection, (self.table_src,), ("id",), "comment")
+        b = TableSegment(self.connection, (self.table_dst,), ("id",), "comment")
 
         differ = TableDiffer()
         diff = list(differ.diff_tables(a, b))

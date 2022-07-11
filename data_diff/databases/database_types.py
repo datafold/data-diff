@@ -1,6 +1,6 @@
 import decimal
 from abc import ABC, abstractmethod
-from typing import Sequence, Optional, Tuple, Union, Dict, Any
+from typing import Sequence, Optional, Tuple, Union, Dict, Any, List
 from datetime import datetime
 
 from runtype import dataclass
@@ -9,7 +9,7 @@ from data_diff.utils import ArithUUID
 
 
 DbPath = Tuple[str, ...]
-DbKey = Union[int, str, bytes, ArithUUID]
+DbKey = Tuple[Union[int, str, bytes, ArithUUID], ...]
 DbTime = datetime
 
 

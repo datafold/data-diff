@@ -36,6 +36,20 @@ DEFAULT_BISECTION_THRESHOLD = 1024 * 16
 DEFAULT_BISECTION_FACTOR = 32
 
 
+def split_col_space(min_value, max_value, count):
+    if isinstance(min_value, ArithUUID):
+        assert isinstance(max_value, ArithUUID)
+        checkpoints = split_space(min_value.int, max_value.int, count)
+        return [ArithUUID(int=i) for i in checkpoints]
+
+    return split_space(min_value, max_value, count)
+
+
+def estimate_keyspace_size(min_key: tuple, max_key: tuple):
+    assert max_key > min_key
+    return max(b - a for a, b in safezip(min_key, max_key))
+
+
 @dataclass(frozen=False)
 class TableSegment:
     """Signifies a segment of rows (and selected columns) within a table
@@ -43,7 +57,7 @@ class TableSegment:
     Parameters:
         database (Database): Database instance. See :meth:`connect_to_uri`
         table_path (:data:`DbPath`): Path to table in form of a tuple. e.g. `('my_dataset', 'table_name')`
-        key_column (str): Name of the key column, which uniquely identifies each row (usually id)
+        key_columns (List[str]): Name of the key column, which uniquely identifies each row (usually id)
         update_column (str, optional): Name of updated column, which signals that rows changed (usually updated_at or last_update)
         extra_columns (Tuple[str, ...], optional): Extra columns to compare
         min_key (:data:`DbKey`, optional): Lowest key_column value, used to restrict the segment
@@ -58,7 +72,7 @@ class TableSegment:
     table_path: DbPath
 
     # Columns
-    key_column: str
+    key_columns: Tuple[str, ...]
     update_column: str = None
     extra_columns: Tuple[str, ...] = ()
 
@@ -75,7 +89,7 @@ class TableSegment:
         if not self.update_column and (self.min_update or self.max_update):
             raise ValueError("Error: min_update/max_update feature requires to specify 'update_column'")
 
-        if self.min_key is not None and self.max_key is not None and self.min_key >= self.max_key:
+        if self.min_key and self.max_key is not None and self.min_key >= self.max_key:
             raise ValueError("Error: min_key expected to be smaller than max_key!")
 
         if self.min_update is not None and self.max_update is not None and self.min_update >= self.max_update:
@@ -136,9 +150,11 @@ class TableSegment:
 
     def _make_key_range(self):
         if self.min_key is not None:
-            yield Compare("<=", Value(self.min_key), self._quote_column(self.key_column))
+            for v, c in safezip(self.min_key, self.key_columns):
+                yield Compare("<=", Value(v), self._quote_column(c))
         if self.max_key is not None:
-            yield Compare("<", self._quote_column(self.key_column), Value(self.max_key))
+            for v, c in safezip(self.max_key, self.key_columns):
+                yield Compare("<", self._quote_column(c), Value(v))
 
     def _make_update_range(self):
         if self.min_update is not None:
@@ -148,7 +164,7 @@ class TableSegment:
 
     def _make_select(self, *, table=None, columns=None, where=None, group_by=None, order_by=None):
         if columns is None:
-            columns = [self._normalize_column(self.key_column)]
+            columns = [self._normalize_column(i) for i in self.key_columns]
         where = list(self._make_key_range()) + list(self._make_update_range()) + ([] if where is None else [where])
         order_by = None if order_by is None else [order_by]
         return Select(
@@ -167,12 +183,12 @@ class TableSegment:
     def choose_checkpoints(self, count: int) -> List[DbKey]:
         "Suggests a bunch of evenly-spaced checkpoints to split by (not including start, end)"
         assert self.is_bounded
-        if isinstance(self.min_key, ArithUUID):
-            checkpoints = split_space(self.min_key.int, self.max_key.int, count)
-            assert isinstance(self.max_key, ArithUUID)
-            return [ArithUUID(int=i) for i in checkpoints]
 
-        return split_space(self.min_key, self.max_key, count)
+        # Split the space for each item of the key
+        splits = [split_col_space(min_i, max_i, count) for min_i, max_i in safezip(self.min_key, self.max_key)]
+
+        # Transpose into a list of keys
+        return [tuple(key) for key in safezip(*splits)]
 
     def segment_by_checkpoints(self, checkpoints: List[DbKey]) -> List["TableSegment"]:
         "Split the current TableSegment to a bunch of smaller ones, separated by the given checkpoints"
@@ -201,7 +217,7 @@ class TableSegment:
         if self.update_column and self.update_column not in extras:
             extras = [self.update_column] + extras
 
-        return [self.key_column] + extras
+        return list(self.key_columns) + extras
 
     @property
     def _relevant_columns_repr(self) -> List[str]:
@@ -228,25 +244,29 @@ class TableSegment:
             assert checksum, (count, checksum)
         return count or 0, checksum if checksum is None else int(checksum)
 
-    def query_key_range(self) -> Tuple[int, int]:
+    def query_key_range(self) -> Tuple[tuple, tuple]:
         """Query database for minimum and maximum key. This is used for setting the initial bounds."""
         # Normalizes the result (needed for UUIDs) after the min/max computation
         select = self._make_select(
-            columns=[
-                self._normalize_column(self.key_column, "min(%s)"),
-                self._normalize_column(self.key_column, "max(%s)"),
-            ]
+            columns=[self._normalize_column(ki, f"{func}(%s)") for func in ("min", "max") for ki in self.key_columns]
         )
-        min_key, max_key = self.database.query(select, tuple)
-
-        if min_key is None or max_key is None:
+        result = self.database.query(select, tuple)
+        if any(i is None for i in result):
             raise ValueError("Table appears to be empty")
+
+        min_key, max_key = result[::2], result[1::2]
+        assert len(min_key) == len(max_key)
 
         return min_key, max_key
 
     @property
     def is_bounded(self):
         return self.min_key is not None and self.max_key is not None
+
+    @property
+    def max_size(self):
+        assert self.is_bounded
+        return estimate_keyspace_size(self.min_key, self.max_key)
 
 
 def diff_sets(a: set, b: set) -> Iterator:
@@ -318,28 +338,30 @@ class TableDiffer:
         key_ranges = self._threaded_call("query_key_range", [table1, table2])
         mins, maxs = zip(*key_ranges)
 
-        key_type = table1._schema[table1.key_column]
-        key_type2 = table2._schema[table2.key_column]
-        if not isinstance(key_type, IKey):
-            raise NotImplementedError(f"Cannot use column of type {key_type} as a key")
-        if not isinstance(key_type2, IKey):
-            raise NotImplementedError(f"Cannot use column of type {key_type2} as a key")
-        assert key_type.python_type is key_type2.python_type
+        key_types1 = [table1._schema[i] for i in table1.key_columns]
+        key_types2 = [table2._schema[i] for i in table2.key_columns]
+
+        for kt in key_types1 + key_types2:
+            if not isinstance(kt, IKey):
+                raise NotImplementedError(f"Cannot use a column of type {kt} as a key")
+
+        for kt1, kt2 in safezip(key_types1, key_types2):
+            assert kt1.python_type is kt2.python_type
 
         # We add 1 because our ranges are exclusive of the end (like in Python)
         try:
-            min_key = min(map(key_type.python_type, mins))
-            max_key = max(map(key_type.python_type, maxs)) + 1
+            min_key = min(tuple(kt.python_type(i) for kt, i in safezip(key_types1, k)) for k in mins)
+            max_key = max(tuple(kt.python_type(i) + 1 for kt, i in safezip(key_types1, k)) for k in maxs)
         except (TypeError, ValueError) as e:
-            raise type(e)(f"Cannot apply {key_type} to {mins}, {maxs}.") from e
+            raise type(e)(f"Cannot apply {key_types1} to {mins}, {maxs}.") from e
 
         table1 = table1.new(min_key=min_key, max_key=max_key)
         table2 = table2.new(min_key=min_key, max_key=max_key)
 
         logger.info(
             f"Diffing tables | segments: {self.bisection_factor}, bisection threshold: {self.bisection_threshold}. "
-            f"key-range: {table1.min_key}..{table2.max_key}, "
-            f"size: {table2.max_key-table1.min_key}"
+            f"key-range: {table1.min_key}..{table1.max_key}, "
+            f"size: {max(table1.max_size, table2.max_size)}"
         )
 
         return self._bisect_and_diff_tables(table1, table2)
@@ -396,7 +418,7 @@ class TableDiffer:
 
         if max_rows is None:
             # We can be sure that row_count <= max_rows
-            max_rows = table1.max_key - table1.min_key
+            max_rows = max(table1.max_size, table2.max_size)
 
         # If count is below the threshold, just download and compare the columns locally
         # This saves time, as bisection speed is limited by ping and query performance.
@@ -435,8 +457,8 @@ class TableDiffer:
     def _diff_tables(self, table1, table2, level=0, segment_index=None, segment_count=None):
         logger.info(
             ". " * level + f"Diffing segment {segment_index}/{segment_count}, "
-            f"key-range: {table1.min_key}..{table2.max_key}, "
-            f"size: {table2.max_key-table1.min_key}"
+            f"key-range: {table1.min_key}..{table1.max_key}, "
+            f"size: {max(table1.max_size, table2.max_size)}"
         )
 
         # When benchmarking, we want the ability to skip checksumming. This
@@ -444,7 +466,7 @@ class TableDiffer:
         # default, data-diff will checksum the section first (when it's below
         # the threshold) and _then_ download it.
         if BENCHMARK:
-            max_rows_from_keys = max(table1.max_key - table1.min_key, table2.max_key - table2.min_key)
+            max_rows_from_keys = max(table1.max_size, table2.max_size)
             if max_rows_from_keys < self.bisection_threshold:
                 yield from self._bisect_and_diff_tables(table1, table2, level=level, max_rows=max_rows_from_keys)
                 return

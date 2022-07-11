@@ -26,10 +26,11 @@ COLOR_SCHEME = {
     "-": "red",
 }
 
+
 def _remove_passwords_in_dict(d: dict):
     for k, v in d.items():
-        if k == 'password':
-            d[k] = '*' * len(v)
+        if k == "password":
+            d[k] = "*" * len(v)
         elif isinstance(v, dict):
             _remove_passwords_in_dict(v)
 
@@ -129,7 +130,7 @@ def _main(
         logging.error("Cannot specify a limit when using the -s/--stats switch")
         return
 
-    key_column = key_column or "id"
+    key_column = key_column or ("id",)
     if bisection_factor is None:
         bisection_factor = DEFAULT_BISECTION_FACTOR
     if bisection_threshold is None:
@@ -171,8 +172,8 @@ def _main(
         logging.error("Error while parsing age expression: %s" % e)
         return
 
-    table1_seg = TableSegment(db1, db1.parse_table_name(table1), key_column, update_column, columns, **options)
-    table2_seg = TableSegment(db2, db2.parse_table_name(table2), key_column, update_column, columns, **options)
+    table1_seg = TableSegment(db1, db1.parse_table_name(table1), (key_column,), update_column, columns, **options)
+    table2_seg = TableSegment(db2, db2.parse_table_name(table2), (key_column,), update_column, columns, **options)
 
     differ = TableDiffer(
         bisection_factor=bisection_factor,
