@@ -79,7 +79,7 @@ MATCH_URI_PATH = {
     "presto": MatchUriPath(Presto, ["catalog", "schema"], help_str="presto://<user>@<host>/<catalog>/<schema>"),
     "bigquery": MatchUriPath(BigQuery, ["dataset"], help_str="bigquery://<project>/<dataset>"),
     "databricks": MatchUriPath(
-        Databricks, ["catalog", "schema"], help_str="databricks://http_path:access_token@server_name/catalog/schema",
+        Databricks, ["catalog", "schema"], help_str="databricks://:access_token@server_name/http_path",
     )
 }
 
@@ -118,29 +118,33 @@ def connect_to_uri(db_uri: str, thread_count: Optional[int] = 1) -> Database:
         raise NotImplementedError(f"Scheme {scheme} currently not supported")
 
     cls = matcher.database_cls
-    kw = matcher.match_path(dsn)
 
-    if scheme == "bigquery":
-        kw["project"] = dsn.host
-        return cls(**kw)
-
-    if scheme == "snowflake":
-        kw["account"] = dsn.host
-        assert not dsn.port
-        kw["user"] = dsn.user
-        kw["password"] = dsn.password
     if scheme == "databricks":
-        # dsn user - access token
-        # sdn password - http path (starting with /)
-        kw["http_path"] = dsn.user
-        kw["access_token"] = dsn.password
-        kw["server_hostname"] = dsn.host
+        assert not dsn.user
+        kw = {}
+        kw['access_token'] = dsn.password
+        kw['http_path'] = dsn.path
+        kw['server_hostname'] = dsn.host
+        kw.update(dsn.query)
     else:
-        kw["host"] = dsn.host
-        kw["port"] = dsn.port
-        kw["user"] = dsn.user
-        if dsn.password:
+        kw = matcher.match_path(dsn)
+
+        if scheme == "bigquery":
+            kw["project"] = dsn.host
+            return cls(**kw)
+
+        if scheme == "snowflake":
+            kw["account"] = dsn.host
+            assert not dsn.port
+            kw["user"] = dsn.user
             kw["password"] = dsn.password
+        else:
+            kw["host"] = dsn.host
+            kw["port"] = dsn.port
+            kw["user"] = dsn.user
+            if dsn.password:
+                kw["password"] = dsn.password
+
     kw = {k: v for k, v in kw.items() if v is not None}
 
     if issubclass(cls, ThreadedDatabase):
