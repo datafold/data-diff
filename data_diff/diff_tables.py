@@ -248,12 +248,13 @@ class TableSegment:
         """Query database for minimum and maximum key. This is used for setting the initial bounds."""
         # Normalizes the result (needed for UUIDs) after the min/max computation
         select = self._make_select(
-            columns=[self._normalize_column(ki, f"{func}(%s)") for func in ("min", "max") for ki in self.key_columns]
+            columns=[self._normalize_column(ki, f"{func}(%s)") for ki in self.key_columns for func in ("min", "max")]
         )
         result = self.database.query(select, tuple)
         if any(i is None for i in result):
             raise ValueError("Table appears to be empty")
 
+        # Min/max keys are interleaved
         min_key, max_key = result[::2], result[1::2]
         assert len(min_key) == len(max_key)
 

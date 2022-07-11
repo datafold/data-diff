@@ -355,6 +355,45 @@ class TestTableUUID(TestWithConnection):
         self.assertEqual(diff, [("-", (str(self.null_uuid), None))])
 
 
+class TestCompoundKey(TestWithConnection):
+    def setUp(self):
+        super().setUp()
+
+        queries = [
+            f"DROP TABLE IF EXISTS {self.table_src}",
+            f"DROP TABLE IF EXISTS {self.table_dst}",
+            f"CREATE TABLE {self.table_src}(id varchar(100), id2 int, comment varchar(1000))",
+        ]
+        for i in range(10):
+            uuid_value = uuid.uuid1(i)
+            queries.append(f"INSERT INTO {self.table_src} VALUES ('{uuid_value}', {i}, '{uuid_value}')")
+
+        queries += [
+            f"CREATE TABLE {self.table_dst} AS SELECT * FROM {self.table_src}",
+            f"UPDATE {self.table_src} SET id2 = 90 WHERE id2 = 9 ",
+            "COMMIT",
+        ]
+
+        for query in queries:
+            self.connection.query(query, None)
+
+    def test_compound_key(self):
+        a = TableSegment(self.connection, (self.table_src,), ("id",), "comment")
+        b = TableSegment(self.connection, (self.table_dst,), ("id",), "comment")
+
+        differ = TableDiffer()
+        diff = list(differ.diff_tables(a, b))
+        self.assertEqual(diff, [])
+
+        aa = TableSegment(self.connection, (self.table_src,), ("id", "id2"), "comment")
+        bb = TableSegment(self.connection, (self.table_dst,), ("id", "id2"), "comment")
+        diff = list(differ.diff_tables(aa, bb))
+        uuid = diff[0][1][0]
+        self.assertEqual(diff, [("-", (uuid, "90", uuid))])
+
+        self.assertRaises(ValueError, differ.diff_tables, aa, a)
+
+
 class TestTableNullRowChecksum(TestWithConnection):
     def setUp(self):
         super().setUp()
