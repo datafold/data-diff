@@ -1,6 +1,6 @@
 from typing import Tuple, Iterator, Optional, Union
 
-from .databases.connect import connect_to_uri
+from .databases.connect import connect
 from .diff_tables import (
     TableSegment,
     TableDiffer,
@@ -13,11 +13,18 @@ from .diff_tables import (
 
 
 def connect_to_table(
-    db_uri: str, table_name: Union[DbPath, str], key_column: str = "id", thread_count: Optional[int] = 1, **kwargs
+    db_info: Union[str, dict], table_name: Union[DbPath, str], key_column: str = "id", thread_count: Optional[int] = 1, **kwargs
 ):
-    """Connects to a URI and creates a TableSegment instance"""
+    """Connects to the given database, and creates a TableSegment instance
 
-    db = connect_to_uri(db_uri, thread_count=thread_count)
+    Parameters:
+        db_info: Either a URI string, or a dict of connection options.
+        table_name: Name of the table as a string, or a tuple that signifies the path.
+        key_column: Name of the key column
+        thread_count: Number of threads for this connection (only if using a threadpooled implementation)
+    """
+
+    db = connect(db_info, thread_count=thread_count)
 
     if isinstance(table_name, str):
         table_name = db.parse_table_name(table_name)
