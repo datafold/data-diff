@@ -36,6 +36,7 @@ psycopg2 = { version = "*", optional = true }
 mysql-connector-python = { version = "*", optional = true}
 snowflake-connector-python = { version = "*", optional = true }
 databricks-sql-connector = { version = "*", optional = true}
+trino = "^0.314.0"
 
 [tool.poetry.dev-dependencies]
 databricks-sql-connector = "*"
@@ -46,7 +47,6 @@ psycopg2 = "*"
 presto-python-client = "*"
 parameterized = "*"
 unittest-parallel = "*"
-trino = "*"
 
 [tool.poetry.extras]
 # When adding, update also: README + dev deps just above
@@ -56,11 +56,8 @@ postgresql = ["psycopg2"]
 snowflake = ["snowflake-connector-python"]
 presto = ["presto-python-client"]
 oracle = ["cx_Oracle"]
-<<<<<<< HEAD
 databricks = ["databricks-sql-connector"]
-=======
 trino = ["trino"]
->>>>>>> 0d3fd47 (Add Trino connector)
 
 [build-system]
 requires = ["poetry-core>=1.0.0"]
