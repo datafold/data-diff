@@ -7,5 +7,6 @@ from .snowflake import Snowflake
 from .bigquery import BigQuery
 from .redshift import Redshift
 from .presto import Presto
+from .databricks import Databricks
 
 from .connect import connect_to_uri
