@@ -22,10 +22,8 @@ class Databricks(Database):
         "FLOAT": Float,
         "DOUBLE": Float,
         "DECIMAL": Decimal,
-
         # Timestamps
         "TIMESTAMP": Timestamp,
-
         # Text
         "STRING": Text,
     }
@@ -67,8 +65,8 @@ class Databricks(Database):
         return f"cast({s} as string)"
 
     def _convert_db_precision_to_digits(self, p: int) -> int:
-        # Subtracting 2 due to wierd precision issues in Databricks for the FLOAT type
-        return super()._convert_db_precision_to_digits(p) - 2
+        # Subtracting 1 due to wierd precision issues
+        return max(super()._convert_db_precision_to_digits(p) - 1, 0)
 
     def query_table_schema(self, path: DbPath, filter_columns: Optional[Sequence[str]] = None) -> Dict[str, ColType]:
         # Databricks has INFORMATION_SCHEMA only for Databricks Runtime, not for Databricks SQL.
@@ -88,19 +86,19 @@ class Databricks(Database):
 
             resulted_rows = []
             for row in rows:
-                row_type = 'DECIMAL' if row.DATA_TYPE == 3 else row.TYPE_NAME
+                row_type = "DECIMAL" if row.DATA_TYPE == 3 else row.TYPE_NAME
                 type_cls = self.TYPE_CLASSES.get(row_type, UnknownColType)
 
                 if issubclass(type_cls, Integer):
                     row = (row.COLUMN_NAME, row_type, None, None, 0)
 
                 elif issubclass(type_cls, Float):
-                    numeric_precision = math.ceil(row.DECIMAL_DIGITS / math.log(2, 10))
+                    numeric_precision = self._convert_db_precision_to_digits(row.DECIMAL_DIGITS)
                     row = (row.COLUMN_NAME, row_type, None, numeric_precision, None)
 
                 elif issubclass(type_cls, Decimal):
                     # TYPE_NAME has a format DECIMAL(x,y)
-                    items = row.TYPE_NAME[8:].rstrip(')').split(',')
+                    items = row.TYPE_NAME[8:].rstrip(")").split(",")
                     numeric_precision, numeric_scale = int(items[0]), int(items[1])
                     row = (row.COLUMN_NAME, row_type, None, numeric_precision, numeric_scale)
 
@@ -123,7 +121,7 @@ class Databricks(Database):
             timestamp = f"cast(round(unix_micros({value}) / 1000000, {coltype.precision}) * 1000000 as bigint)"
             return f"date_format(timestamp_micros({timestamp}), 'yyyy-MM-dd HH:mm:ss.SSSSSS')"
         else:
-            precision_format = 'S' * coltype.precision + '0' * (6 - coltype.precision)
+            precision_format = "S" * coltype.precision + "0" * (6 - coltype.precision)
             return f"date_format({value}, 'yyyy-MM-dd HH:mm:ss.{precision_format}')"
 
     def normalize_number(self, value: str, coltype: NumericType) -> str:
