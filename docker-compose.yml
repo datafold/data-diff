@@ -70,7 +70,7 @@ services:
         ports:
             - '8080:8080'
         volumes:
-            - ./dev/trino-conf/etc:/etc/trino
+            - ./dev/trino-conf/etc:/etc/trino:ro
         networks:
             - local
 

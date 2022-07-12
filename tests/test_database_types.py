@@ -375,7 +375,27 @@ DATABASE_TYPES = {
         "uuid": [
             "STRING",
         ]
-    }
+    },
+    db.Trino: {
+        "int": [
+            "int",
+            "bigint",
+        ],
+        "datetime": [
+            "timestamp",
+            "timestamp with time zone",
+        ],
+        "float": [
+            "real",
+            "double",
+            "decimal(10,2)",
+            "decimal(30,6)",
+        ],
+        "uuid": [
+            "varchar",
+            "char(100)",
+        ],
+    },
 }
 
 
@@ -460,7 +480,7 @@ def _insert_to_table(conn, table, values, type):
 
         if isinstance(sample, (float, Decimal, int)):
             value = str(sample)
-        elif isinstance(sample, datetime) and isinstance(conn, (db.Presto, db.Oracle)):
+        elif isinstance(sample, datetime) and isinstance(conn, (db.Presto, db.Oracle, db.Trino)):
             value = f"timestamp '{sample}'"
         elif isinstance(sample, datetime) and isinstance(conn, db.BigQuery) and type == 'datetime':
             value = f"cast(timestamp '{sample}' as datetime)"
@@ -492,7 +512,7 @@ def _insert_to_table(conn, table, values, type):
 def _create_indexes(conn, table):
     # It is unfortunate that Presto doesn't support creating indexes...
     # Technically we could create it in the backing Postgres behind the scenes.
-    if isinstance(conn, (db.Snowflake, db.Redshift, db.Presto, db.BigQuery, db.Databricks)):
+    if isinstance(conn, (db.Snowflake, db.Redshift, db.Presto, db.BigQuery, db.Databricks, db.Trino)):
         return
 
     try:
@@ -583,7 +603,7 @@ class TestDiffCrossDatabaseTables(unittest.TestCase):
         insertion_source_duration = time.time() - start
 
         values_in_source = PaginatedTable(src_table, src_conn)
-        if source_db is db.Presto:
+        if source_db is db.Presto or source_db is db.Trino:
             if source_type.startswith("decimal"):
                 values_in_source = ((a, Decimal(b)) for a, b in values_in_source)
             elif source_type.startswith("timestamp"):

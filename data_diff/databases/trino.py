@@ -54,13 +54,15 @@ class Trino(Database):
         c.execute(sql_code)
         if sql_code.lower().startswith("select"):
             return c.fetchall()
+        if re.match(r"(insert|create|truncate|drop)", sql_code, re.IGNORECASE):
+            return c.fetchone()
 
     def close(self):
         self._conn.close()
 
     def normalize_timestamp(self, value: str, coltype: TemporalType) -> str:
         if coltype.rounds:
-            s = f"date_format(cast({coltype.precision} as timestamp(6)), '%Y-%m-%d %H:%i:%S.%f')"
+            s = f"date_format(cast({value} as timestamp({coltype.precision})), '%Y-%m-%d %H:%i:%S.%f')"
         else:
             s = f"date_format(cast({value} as timestamp(6)), '%Y-%m-%d %H:%i:%S.%f')"
 

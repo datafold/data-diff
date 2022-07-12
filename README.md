@@ -169,6 +169,8 @@ While you may install them manually, we offer an easy way to install them along 
 
 - `pip install 'data-diff[oracle]'`
 
+- `pip install 'data-diff[trino]'`
+
 - For BigQuery, see: https://pypi.org/project/google-cloud-bigquery/
 
 
