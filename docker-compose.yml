@@ -64,6 +64,16 @@ services:
         networks:
             - local
 
+    trino:
+        image: 'trinodb/trino:389'
+        hostname: trino
+        ports:
+            - '8081:8080'
+        volumes:
+            - ./dev/trino-conf/etc:/etc/trino:ro
+        networks:
+            - local
+
 volumes:
   postgresql-data:
   mysql-data:

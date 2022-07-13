@@ -42,6 +42,7 @@ databricks-sql-connector = "*"
 mysql-connector-python = "*"
 preql = "^0.2.15"
 snowflake-connector-python = "*"
+trino = "^0.314.0"
 psycopg2 = "*"
 presto-python-client = "*"
 parameterized = "*"
@@ -56,6 +57,7 @@ snowflake = ["snowflake-connector-python"]
 presto = ["presto-python-client"]
 oracle = ["cx_Oracle"]
 databricks = ["databricks-sql-connector"]
+trino = ["trino"]
 
 [build-system]
 requires = ["poetry-core>=1.0.0"]

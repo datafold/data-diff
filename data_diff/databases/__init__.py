@@ -8,5 +8,6 @@ from .bigquery import BigQuery
 from .redshift import Redshift
 from .presto import Presto
 from .databricks import Databricks
+from .trino import Trino
 
 from .connect import connect_to_uri
