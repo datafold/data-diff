@@ -452,7 +452,8 @@ def expand_params(testcase_func, param_num, param):
 
 
 def _insert_to_table(conn, table, values, type):
-    current_n_rows = conn.query(f"SELECT COUNT(*) FROM {table}", int)
+    # This statement might fail if the DB isn't ready. This happens in github actions with Trino.
+    current_n_rows = retry(conn.query, f"SELECT COUNT(*) FROM {table}", int)
     if current_n_rows == N_SAMPLES:
         assert BENCHMARK, "Table should've been deleted, or we should be in BENCHMARK mode"
         return
@@ -560,13 +561,30 @@ def _drop_table_if_exists(conn, table):
                 conn.query("COMMIT", None)
 
 
+def retry(f, *args, max_retry=30, sleep=1):
+    last_exc = None
+    for i in range(max_retry):
+        try:
+            return f(*args)
+        except Exception as e:
+            last_exc = e
+            time.sleep(1)
+
+    assert last_exc
+    raise last_exc
+
+
 class TestDiffCrossDatabaseTables(unittest.TestCase):
     maxDiff = 10000
+    src_table = None
+    dst_table = None
 
     def tearDown(self) -> None:
         if not BENCHMARK:
-            _drop_table_if_exists(self.src_conn, self.src_table)
-            _drop_table_if_exists(self.dst_conn, self.dst_table)
+            if self.src_table:
+                _drop_table_if_exists(self.src_conn, self.src_table)
+            if self.dst_table:
+                _drop_table_if_exists(self.dst_conn, self.dst_table)
 
         return super().tearDown()
 
@@ -578,6 +596,12 @@ class TestDiffCrossDatabaseTables(unittest.TestCase):
         self.dst_conn = dst_conn = CONNS[target_db]
 
         self.connections = [self.src_conn, self.dst_conn]
+
+        for conn in self.connections:
+            if isinstance(conn, db.Trino):
+                # Wait until it's ready
+                retry(conn.query, "SELECT * FROM system.runtime.nodes", list)
+
         sample_values = TYPE_SAMPLES[type_category]
 
         table_suffix = ""
