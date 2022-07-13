@@ -49,7 +49,7 @@ def diff_tables(
     update_column: str = None,
     # Extra columns to compare
     extra_columns: Tuple[str, ...] = (),
-    # Start/end key_column values, used to restrict the segment
+    # Start/end key values, used to restrict the segment.
     min_key: DbKey = None,
     max_key: DbKey = None,
     # Start/end update_column values, used to restrict the segment

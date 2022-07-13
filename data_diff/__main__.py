@@ -40,7 +40,7 @@ def _remove_passwords_in_dict(d: dict):
 @click.argument("table1", required=False)
 @click.argument("database2", required=False)
 @click.argument("table2", required=False)
-@click.option("-k", "--key-column", multiple=True, help="Names of primary key columns. Default='id'.")
+@click.option("-k", "--key-columns", multiple=True, help="Names of primary key columns. Default='id'.")
 @click.option("-t", "--update-column", default=None, help="Name of updated_at/last_updated column")
 @click.option("-c", "--columns", multiple=True, help="Names of extra columns to compare")
 @click.option("-l", "--limit", default=None, help="Maximum number of differences to find")
@@ -93,7 +93,7 @@ def _main(
     table1,
     database2,
     table2,
-    key_column,
+    key_columns,
     update_column,
     columns,
     limit,
@@ -130,7 +130,7 @@ def _main(
         logging.error("Cannot specify a limit when using the -s/--stats switch")
         return
 
-    key_columns = tuple(key_column) or ("id",)
+    key_columns = tuple(key_columns) or ("id",)
     if bisection_factor is None:
         bisection_factor = DEFAULT_BISECTION_FACTOR
     if bisection_threshold is None:

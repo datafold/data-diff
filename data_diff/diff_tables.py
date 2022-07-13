@@ -60,8 +60,8 @@ class TableSegment:
         key_columns (List[str]): Name of the key column, which uniquely identifies each row (usually id)
         update_column (str, optional): Name of updated column, which signals that rows changed (usually updated_at or last_update)
         extra_columns (Tuple[str, ...], optional): Extra columns to compare
-        min_key (:data:`DbKey`, optional): Lowest key_column value, used to restrict the segment
-        max_key (:data:`DbKey`, optional): Highest key_column value, used to restrict the segment
+        min_key (:data:`DbKey`, optional): Lowest key value, used to restrict the segment
+        max_key (:data:`DbKey`, optional): Highest key value, used to restrict the segment
         min_update (:data:`DbTime`, optional): Lowest update_column value, used to restrict the segment
         max_update (:data:`DbTime`, optional): Highest update_column value, used to restrict the segment
 

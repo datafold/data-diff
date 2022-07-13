@@ -189,7 +189,7 @@ may be case-sensitive. This is the case for the Snowflake schema and table names
 Options:
 
   - `--help` - Show help message and exit.
-  - `-k` or `--key-column` - Name of the primary key column
+  - `-k` or `--key-column` - Name of primary key column. Default='id'. Can be given multiple times for a compound key. e.g. `-k id -k id2`.
   - `-t` or `--update-column` - Name of updated_at/last_updated column
   - `-c` or `--columns` - List of names of extra columns to compare
   - `-l` or `--limit` - Maximum number of differences to find (limits maximum bandwidth and runtime)
