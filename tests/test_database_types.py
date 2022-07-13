@@ -357,12 +357,10 @@ DATABASE_TYPES = {
             "INT",
             "BIGINT",
         ],
-
         # https://docs.databricks.com/spark/latest/spark-sql/language-manual/data-types/timestamp-type.html
         "datetime": [
             "TIMESTAMP",
         ],
-
         # https://docs.databricks.com/spark/latest/spark-sql/language-manual/data-types/float-type.html
         # https://docs.databricks.com/spark/latest/spark-sql/language-manual/data-types/double-type.html
         # https://docs.databricks.com/spark/latest/spark-sql/language-manual/data-types/decimal-type.html
@@ -371,10 +369,9 @@ DATABASE_TYPES = {
             "DOUBLE",
             "DECIMAL(6, 2)",
         ],
-
         "uuid": [
             "STRING",
-        ]
+        ],
     },
     db.Trino: {
         "int": [
@@ -408,7 +405,7 @@ for source_db, source_type_categories in DATABASE_TYPES.items():
         ) in source_type_categories.items():  # int, datetime, ..
             for source_type in source_types:
                 for target_type in target_type_categories[type_category]:
-                    if (CONNS.get(source_db, False) and CONNS.get(target_db, False)):
+                    if CONNS.get(source_db, False) and CONNS.get(target_db, False):
                         type_pairs.append(
                             (
                                 source_db,
