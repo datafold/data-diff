@@ -126,7 +126,6 @@ $ data-diff \
 | Redshift      | `redshift://<username>:<password>@<hostname>:5439/<database>`                                                                       |  💛    |
 | Presto        | `presto://<username>:<password>@<hostname>:8080/<database>`                                                                         |  💛    |
 | Databricks    | `databricks://<http_path>:<access_token>@<server_hostname>/<catalog>/<schema>`                                                      |  💛    |
-| ElasticSearch |                                                                                                                                     |  📝    |                                                        |  📝    |
 | Trino         | `trino://<username>:<password>@<hostname>:8080/<database>`                                                                          |  💛    |
 | ElasticSearch |                                                                                                                                     |  📝    |
 | Databricks    |                                                                                                                                     |  📝    |
