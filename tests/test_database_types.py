@@ -568,7 +568,7 @@ def retry(f, *args, max_retry=30, sleep=1):
             return f(*args)
         except Exception as e:
             last_exc = e
-            time.sleep(1)
+            time.sleep(2)
 
     assert last_exc
     raise last_exc
@@ -598,7 +598,7 @@ class TestDiffCrossDatabaseTables(unittest.TestCase):
         self.connections = [self.src_conn, self.dst_conn]
 
         for conn in self.connections:
-            if isinstance(conn, db.Trino):
+            if isinstance(conn, (db.Trino, db.Presto)):
                 # Wait until it's ready
                 retry(conn.query, "SELECT * FROM system.runtime.nodes", list)
 
