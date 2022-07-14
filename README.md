@@ -205,6 +205,7 @@ Options:
   - `--bisection-factor` - Segments per iteration. When set to 2, it performs binary search.
   - `--bisection-threshold` - Minimal bisection threshold. i.e. maximum size of pages to diff locally.
   - `-j` or `--threads` - Number of worker threads to use per database. Default=1.
+  - `-w`, `--where` - An additional 'where' expression to restrict the search space.
   - `--conf`, `--run` - Specify the run and configuration from a TOML file. (see below)
 
 ### How to use with a configuration file
