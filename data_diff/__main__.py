@@ -71,6 +71,7 @@ def _remove_passwords_in_dict(d: dict):
     "A higher number will increase performance, but take more capacity from your database. "
     "'serial' guarantees a single-threaded execution of the algorithm (useful for debugging).",
 )
+@click.option("-w", "--where", default=None, help="An additional 'where' expression to restrict the search space.")
 @click.option(
     "--conf",
     default=None,
@@ -107,6 +108,7 @@ def _main(
     threads,
     keep_column_case,
     json_output,
+    where,
     threads1=None,
     threads2=None,
     __conf__=None,
@@ -166,6 +168,7 @@ def _main(
             min_update=max_age and parse_time_before_now(max_age),
             max_update=min_age and parse_time_before_now(min_age),
             case_sensitive=keep_column_case,
+            where=where,
         )
     except ParseError as e:
         logging.error("Error while parsing age expression: %s" % e)

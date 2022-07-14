@@ -1,7 +1,6 @@
 """Provides classes for performing a table diff
 """
 
-from abc import ABC, abstractmethod
 import time
 import os
 from numbers import Number
@@ -13,7 +12,7 @@ from concurrent.futures import ThreadPoolExecutor
 
 from runtype import dataclass
 
-from .sql import Select, Checksum, Compare, DbPath, DbKey, DbTime, Count, TableName, Time, Min, Max, Value
+from .sql import Select, Checksum, Compare, DbPath, DbKey, DbTime, Count, TableName, Time, Value
 from .utils import safezip, split_space
 from .databases.base import Database
 from .databases.database_types import (
@@ -50,6 +49,9 @@ class TableSegment:
         max_key (:data:`DbKey`, optional): Highest key_column value, used to restrict the segment
         min_update (:data:`DbTime`, optional): Lowest update_column value, used to restrict the segment
         max_update (:data:`DbTime`, optional): Highest update_column value, used to restrict the segment
+        where (str, optional): An additional 'where' expression to restrict the search space.
+
+        case_sensitive (bool): If false, the case of column names will adjust according to the schema. Default is true.
 
     """
 
@@ -68,6 +70,7 @@ class TableSegment:
     min_update: DbTime = None
     max_update: DbTime = None
 
+    where: str = None
     case_sensitive: bool = True
     _schema: Schema = None
 
@@ -114,7 +117,7 @@ class TableSegment:
         return self.database.normalize_value_by_type(col, col_type)
 
     def with_schema(self) -> "TableSegment":
-        "Queries the table schema from the database, and returns a new instance of TableSegmentWithSchema."
+        "Queries the table schema from the database, and returns a new instance of TableSegment, with a schema."
         if self._schema:
             return self
 
@@ -149,7 +152,12 @@ class TableSegment:
     def _make_select(self, *, table=None, columns=None, where=None, group_by=None, order_by=None):
         if columns is None:
             columns = [self._normalize_column(self.key_column)]
-        where = list(self._make_key_range()) + list(self._make_update_range()) + ([] if where is None else [where])
+        where = [
+            *self._make_key_range(),
+            *self._make_update_range(),
+            *([] if where is None else [where]),
+            *([] if self.where is None else [self.where]),
+        ]
         order_by = None if order_by is None else [order_by]
         return Select(
             table=table or TableName(self.table_path),

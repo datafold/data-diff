@@ -25,6 +25,9 @@ class TestApi(unittest.TestCase):
         )
         self.now = now = arrow.get(self.preql.now())
         self.preql.add(now, "now")
+        self.preql.add(now, self.now.shift(seconds=-10))
+        self.preql.add(now, self.now.shift(seconds=-7))
+        self.preql.add(now, self.now.shift(seconds=-6))
 
         self.preql(
             r"""
@@ -33,7 +36,7 @@ class TestApi(unittest.TestCase):
         """
         )
 
-        self.preql.add(self.now.shift(seconds=-3), "2 seconds ago")
+        self.preql.add(self.now.shift(seconds=-3), "3 seconds ago")
         self.preql.commit()
 
     def tearDown(self) -> None:
@@ -47,7 +50,20 @@ class TestApi(unittest.TestCase):
     def test_api(self):
         t1 = connect_to_table(TEST_MYSQL_CONN_STRING, "test_api")
         t2 = connect_to_table(TEST_MYSQL_CONN_STRING, ("test_api_2",))
-        assert len(list(diff_tables(t1, t2))) == 1
+        diff = list(diff_tables(t1, t2))
+        assert len(diff) == 1
+
+        t1.database.close()
+        t2.database.close()
+
+        # test where
+        diff_id = diff[0][1][0]
+        where = f"id != {diff_id}"
+
+        t1 = connect_to_table(TEST_MYSQL_CONN_STRING, "test_api", where=where)
+        t2 = connect_to_table(TEST_MYSQL_CONN_STRING, "test_api_2", where=where)
+        diff = list(diff_tables(t1, t2))
+        assert len(diff) == 0
 
         t1.database.close()
         t2.database.close()
