@@ -31,15 +31,15 @@ rich = "^10.16.2"
 toml = "^0.10.2"
 
 [tool.poetry.dev-dependencies]
-databricks-sql-connector = "*"
+parameterized = "*"
+unittest-parallel = "*"
+preql = "^0.2.16"
 mysql-connector-python = "*"
-preql = "^0.2.15"
+databricks-sql-connector = "*"
 snowflake-connector-python = "*"
 trino = "^0.314.0"
 psycopg2 = "*"
 presto-python-client = "*"
-parameterized = "*"
-unittest-parallel = "*"
 
 [tool.poetry.extras]
 # When adding, update also: README + dev deps just above
