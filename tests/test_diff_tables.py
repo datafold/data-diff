@@ -2,13 +2,28 @@ import datetime
 import unittest
 import uuid
 
+from parameterized import parameterized_class
 import preql
 import arrow  # comes with preql
 
 from data_diff.databases import connect_to_uri
 from data_diff.diff_tables import TableDiffer, TableSegment, split_space
+from data_diff import databases as db
 
-from .common import TEST_MYSQL_CONN_STRING, str_to_checksum, random_table_suffix
+from .common import TEST_MYSQL_CONN_STRING, str_to_checksum, random_table_suffix, _drop_table_if_exists, CONN_STRINGS, N_THREADS
+
+DATABASE_URIS = {k.__name__: v for k, v in CONN_STRINGS.items()}
+DATABASE_INSTANCES = {k.__name__: connect_to_uri(v, N_THREADS) for k, v in CONN_STRINGS.items()}
+
+TEST_DATABASES = {'MySQL', 'PostgreSQL'}
+
+
+_class_per_db_dec = parameterized_class(("name", "db_name"), [
+    (name, name) for name in DATABASE_URIS if name in TEST_DATABASES
+])
+
+def test_per_database(cls):
+    return _class_per_db_dec(cls)
 
 
 class TestUtils(unittest.TestCase):
@@ -20,44 +35,43 @@ class TestUtils(unittest.TestCase):
                     assert len(r) == n, f"split_space({i}, {j+n}, {n}) = {(r)}"
 
 
-class TestWithConnection(unittest.TestCase):
-    @classmethod
-    def setUpClass(cls):
-        # Avoid leaking connections that require waiting for the GC, which can
-        # cause deadlocks for table-level modifications.
-        cls.preql = preql.Preql(TEST_MYSQL_CONN_STRING)
-        cls.connection = connect_to_uri(TEST_MYSQL_CONN_STRING)
+class TestPerDatabase(unittest.TestCase):
+    db_name = None
+    with_preql = False
 
-    @classmethod
-    def tearDownClass(cls):
-        cls.preql.close()
-        cls.connection.close()
+    preql = None
 
-    # Fallback for test runners that doesn't support setUpClass/tearDownClass
-    def setUp(self) -> None:
-        if not hasattr(self, "connection"):
-            self.setUpClass.__func__(self)
-            self.private_connection = True
+    def setUp(self):
+        assert self.db_name
+
+        self.connection = DATABASE_INSTANCES[self.db_name]
+        if self.with_preql:
+            self.preql = preql.Preql(DATABASE_URIS[self.db_name])
 
         table_suffix = random_table_suffix()
-
         self.table_src = f"src{table_suffix}"
         self.table_dst = f"dst{table_suffix}"
 
+        _drop_table_if_exists(self.connection, self.table_src)
+        _drop_table_if_exists(self.connection, self.table_dst)
+
         return super().setUp()
 
-    def tearDown(self) -> None:
-        if hasattr(self, "private_connection"):
-            self.tearDownClass.__func__(self)
+    def tearDown(self):
+        if self.preql:
+            self.preql._interp.state.db.rollback()
+            self.preql.close()
 
-        return super().tearDown()
+        _drop_table_if_exists(self.connection, self.table_src)
+        _drop_table_if_exists(self.connection, self.table_dst)
 
 
-class TestDates(TestWithConnection):
+@test_per_database
+class TestDates(TestPerDatabase):
+    with_preql = True
+
     def setUp(self):
         super().setUp()
-        self.connection.query(f"DROP TABLE IF EXISTS {self.table_src}", None)
-        self.connection.query(f"DROP TABLE IF EXISTS {self.table_dst}", None)
         self.preql(
             f"""
             table {self.table_src} {{
@@ -131,11 +145,12 @@ class TestDates(TestWithConnection):
         self.assertEqual(len(list(differ.diff_tables(a, b))), 1)
 
 
-class TestDiffTables(TestWithConnection):
+@test_per_database
+class TestDiffTables(TestPerDatabase):
+    with_preql = True
+
     def setUp(self):
         super().setUp()
-        self.connection.query(f"DROP TABLE IF EXISTS {self.table_src}", None)
-        self.connection.query(f"DROP TABLE IF EXISTS {self.table_dst}", None)
         self.preql(
             f"""
             func run_sql(code) {{
@@ -267,13 +282,12 @@ class TestDiffTables(TestWithConnection):
         self.assertEqual(expected, diff)
 
 
-class TestStringKeys(TestWithConnection):
+@test_per_database
+class TestStringKeys(TestPerDatabase):
     def setUp(self):
         super().setUp()
 
         queries = [
-            f"DROP TABLE IF EXISTS {self.table_src}",
-            f"DROP TABLE IF EXISTS {self.table_dst}",
             f"CREATE TABLE {self.table_src}(id varchar(100), comment varchar(1000))",
             "COMMIT",
         ]
@@ -309,7 +323,8 @@ class TestStringKeys(TestWithConnection):
         self.assertRaises(ValueError, differ.diff_tables, self.a, self.b)
 
 
-class TestTableSegment(TestWithConnection):
+@test_per_database
+class TestTableSegment(TestPerDatabase):
     def setUp(self) -> None:
         super().setUp()
         self.table = TableSegment(self.connection, (self.table_src,), "id", "timestamp")
@@ -323,13 +338,12 @@ class TestTableSegment(TestWithConnection):
         self.assertRaises(ValueError, self.table.replace, min_key=10, max_key=0)
 
 
-class TestTableUUID(TestWithConnection):
+@test_per_database
+class TestTableUUID(TestPerDatabase):
     def setUp(self):
         super().setUp()
 
         queries = [
-            f"DROP TABLE IF EXISTS {self.table_src}",
-            f"DROP TABLE IF EXISTS {self.table_dst}",
             f"CREATE TABLE {self.table_src}(id varchar(100), comment varchar(1000))",
         ]
         for i in range(10):
@@ -355,14 +369,13 @@ class TestTableUUID(TestWithConnection):
         self.assertEqual(diff, [("-", (str(self.null_uuid), None))])
 
 
-class TestTableNullRowChecksum(TestWithConnection):
+@test_per_database
+class TestTableNullRowChecksum(TestPerDatabase):
     def setUp(self):
         super().setUp()
 
         self.null_uuid = uuid.uuid1(1)
         queries = [
-            f"DROP TABLE IF EXISTS {self.table_src}",
-            f"DROP TABLE IF EXISTS {self.table_dst}",
             f"CREATE TABLE {self.table_src}(id varchar(100), comment varchar(1000))",
             f"INSERT INTO {self.table_src} VALUES ('{uuid.uuid1(1)}', '1')",
             f"CREATE TABLE {self.table_dst} AS SELECT * FROM {self.table_src}",
@@ -403,13 +416,12 @@ class TestTableNullRowChecksum(TestWithConnection):
         self.assertEqual(diff, [("-", (str(self.null_uuid), None))])
 
 
-class TestConcatMultipleColumnWithNulls(TestWithConnection):
+@test_per_database
+class TestConcatMultipleColumnWithNulls(TestPerDatabase):
     def setUp(self):
         super().setUp()
 
         queries = [
-            f"DROP TABLE IF EXISTS {self.table_src}",
-            f"DROP TABLE IF EXISTS {self.table_dst}",
             f"CREATE TABLE {self.table_src}(id varchar(100), c1 varchar(100), c2 varchar(100))",
             f"CREATE TABLE {self.table_dst}(id varchar(100), c1 varchar(100), c2 varchar(100))",
         ]
@@ -462,14 +474,13 @@ class TestConcatMultipleColumnWithNulls(TestWithConnection):
         self.assertEqual(diff, self.diffs)
 
 
-class TestTableTableEmpty(TestWithConnection):
+@test_per_database
+class TestTableTableEmpty(TestPerDatabase):
     def setUp(self):
         super().setUp()
 
         self.null_uuid = uuid.uuid1(1)
         queries = [
-            f"DROP TABLE IF EXISTS {self.table_src}",
-            f"DROP TABLE IF EXISTS {self.table_dst}",
             f"CREATE TABLE {self.table_src}(id varchar(100), comment varchar(1000))",
             f"CREATE TABLE {self.table_dst}(id varchar(100), comment varchar(1000))",
         ]

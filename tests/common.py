@@ -1,3 +1,4 @@
+from contextlib import suppress
 import hashlib
 import os
 import string
@@ -86,3 +87,15 @@ def str_to_checksum(str: str):
     # 0-indexed, unlike DBs which are 1-indexed here, so +1 in dbs
     half_pos = db.MD5_HEXDIGITS - db.CHECKSUM_HEXDIGITS
     return int(md5[half_pos:], 16)
+
+
+def _drop_table_if_exists(conn, table):
+    with suppress(db.QueryError):
+        if isinstance(conn, db.Oracle):
+            conn.query(f"DROP TABLE {table}", None)
+            conn.query(f"DROP TABLE {table}", None)
+        else:
+            conn.query(f"DROP TABLE IF EXISTS {table}", None)
+            if not isinstance(conn, (db.BigQuery, db.Databricks)):
+                conn.query("COMMIT", None)
+
