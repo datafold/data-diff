@@ -151,9 +151,10 @@ class Database(AbstractDatabase):
 
         elif issubclass(cls, Decimal):
             if numeric_scale is None:
-                raise ValueError(
-                    f"{self.name}: Unexpected numeric_scale is NULL, for column {'.'.join(table_path)}.{col_name} of type {type_repr}."
-                )
+                numeric_scale = 0   # Needed for Oracle.
+                # raise ValueError(
+                #     f"{self.name}: Unexpected numeric_scale is NULL, for column {'.'.join(table_path)}.{col_name} of type {type_repr}."
+                # )
             return cls(precision=numeric_scale)
 
         elif issubclass(cls, Float):

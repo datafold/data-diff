@@ -192,26 +192,28 @@ class TestDiffTables(TestPerDatabase):
 
     def test_get_values(self):
         time = "2022-01-01 00:00:00.000000"
-        res = self.preql(
-            f"""
-            new {self.table_src}(1, 1, 9, '{time}')
-        """
-        )
-        self.preql.commit()
+        time_str = f"timestamp '{time}'"
+
+        cols = 'userid movieid rating timestamp'.split()
+        _insert_row(self.connection, self.table_src, cols, [1,1,9,time_str])
+        self.connection.query("COMMIT", None)
+        id_ = self.connection.query(f'select id from {self.table_src}', int)
 
         table = self.table.with_schema()
 
         self.assertEqual(1, table.count())
-        concatted = str(res["id"]) + time
+        concatted = str(id_) + time
         self.assertEqual(str_to_checksum(concatted), table.count_and_checksum()[1])
 
     def test_diff_small_tables(self):
-        time = "timestamp '2022-01-01 00:00:00'"
+        time = '2022-01-01 00:00:00'
+        time_str = f"timestamp '{time}'"
+
 
         cols = 'userid movieid rating timestamp'.split()
-        _insert_row(self.connection, self.table_src, cols, [1,1,9,time])
-        _insert_row(self.connection, self.table_src, cols, [2,2,9,time])
-        _insert_row(self.connection, self.table_dst, cols, [1,1,9,time])
+        _insert_row(self.connection, self.table_src, cols, [1,1,9,time_str])
+        _insert_row(self.connection, self.table_src, cols, [2,2,9,time_str])
+        _insert_row(self.connection, self.table_dst, cols, [1,1,9,time_str])
         self.connection.query("COMMIT", None)
         diff = list(self.differ.diff_tables(self.table, self.table2))
         expected = [("-", ("2", time + ".000000"))]
@@ -221,21 +223,21 @@ class TestDiffTables(TestPerDatabase):
 
     def test_diff_table_above_bisection_threshold(self):
         time = "2022-01-01 00:00:00"
-        self.preql(
-            f"""
-            new {self.table_src}(userid: 1, movieid: 1, rating: 9, timestamp: '{time}')
-            new {self.table_src}(userid: 2, movieid: 2, rating: 9, timestamp: '{time}')
-            new {self.table_src}(userid: 3, movieid: 3, rating: 9, timestamp: '{time}')
-            new {self.table_src}(userid: 4, movieid: 4, rating: 9, timestamp: '{time}')
-            new {self.table_src}(userid: 5, movieid: 5, rating: 9, timestamp: '{time}')
+        time_str = f"timestamp '{time}'"
 
-            new {self.table_dst}(userid: 1, movieid: 1, rating: 9, timestamp: '{time}')
-            new {self.table_dst}(userid: 2, movieid: 2, rating: 9, timestamp: '{time}')
-            new {self.table_dst}(userid: 3, movieid: 3, rating: 9, timestamp: '{time}')
-            new {self.table_dst}(userid: 4, movieid: 4, rating: 9, timestamp: '{time}')
-        """
-        )
-        self.preql.commit()
+        cols = 'userid movieid rating timestamp'.split()
+        _insert_row(self.connection, self.table_src, cols, [1,1,9,time_str])
+        _insert_row(self.connection, self.table_src, cols, [2,2,9,time_str])
+        _insert_row(self.connection, self.table_src, cols, [3,3,9,time_str])
+        _insert_row(self.connection, self.table_src, cols, [4,4,9,time_str])
+        _insert_row(self.connection, self.table_src, cols, [5,5,9,time_str])
+
+        _insert_row(self.connection, self.table_dst, cols, [1,1,9,time_str])
+        _insert_row(self.connection, self.table_dst, cols, [2,2,9,time_str])
+        _insert_row(self.connection, self.table_dst, cols, [3,3,9,time_str])
+        _insert_row(self.connection, self.table_dst, cols, [4,4,9,time_str])
+        self.connection.query("COMMIT", None)
+
         diff = list(self.differ.diff_tables(self.table, self.table2))
         expected = [("-", ("5", time + ".000000"))]
         self.assertEqual(expected, diff)
@@ -244,12 +246,13 @@ class TestDiffTables(TestPerDatabase):
 
     def test_return_empty_array_when_same(self):
         time = "2022-01-01 00:00:00"
-        self.preql(
-            f"""
-            new {self.table_src}(userid: 1, movieid: 1, rating: 9, timestamp: '{time}')
-            new {self.table_dst}(userid: 1, movieid: 1, rating: 9, timestamp: '{time}')
-        """
-        )
+        time_str = f"timestamp '{time}'"
+
+        cols = 'userid movieid rating timestamp'.split()
+
+        _insert_row(self.connection, self.table_src, cols, [1,1,9,time_str])
+        _insert_row(self.connection, self.table_dst, cols, [1,1,9,time_str])
+
         self.preql.commit()
         diff = list(self.differ.diff_tables(self.table, self.table2))
         self.assertEqual([], diff)
@@ -257,22 +260,25 @@ class TestDiffTables(TestPerDatabase):
     def test_diff_sorted_by_key(self):
         time = "2022-01-01 00:00:00"
         time2 = "2021-01-01 00:00:00"
-        self.preql(
-            f"""
-            new {self.table_src}(userid: 1, movieid: 1, rating: 9, timestamp: '{time}')
-            new {self.table_src}(userid: 2, movieid: 2, rating: 9, timestamp: '{time2}')
-            new {self.table_src}(userid: 3, movieid: 3, rating: 9, timestamp: '{time}')
-            new {self.table_src}(userid: 4, movieid: 4, rating: 9, timestamp: '{time2}')
-            new {self.table_src}(userid: 5, movieid: 5, rating: 9, timestamp: '{time}')
 
-            new {self.table_dst}(userid: 1, movieid: 1, rating: 9, timestamp: '{time}')
-            new {self.table_dst}(userid: 2, movieid: 2, rating: 9, timestamp: '{time}')
-            new {self.table_dst}(userid: 3, movieid: 3, rating: 9, timestamp: '{time}')
-            new {self.table_dst}(userid: 4, movieid: 4, rating: 9, timestamp: '{time}')
-            new {self.table_dst}(userid: 5, movieid: 5, rating: 9, timestamp: '{time}')
-        """
-        )
-        self.preql.commit()
+        time_str = f"timestamp '{time}'"
+        time_str2 = f"timestamp '{time2}'"
+
+        cols = 'userid movieid rating timestamp'.split()
+
+        _insert_row(self.connection, self.table_src, cols, [1,1,9,time_str])
+        _insert_row(self.connection, self.table_src, cols, [2,2,9,time_str2])
+        _insert_row(self.connection, self.table_src, cols, [3,3,9,time_str])
+        _insert_row(self.connection, self.table_src, cols, [4,4,9,time_str2])
+        _insert_row(self.connection, self.table_src, cols, [5,5,9,time_str])
+
+        _insert_row(self.connection, self.table_dst, cols, [1,1,9,time_str])
+        _insert_row(self.connection, self.table_dst, cols, [2,2,9,time_str])
+        _insert_row(self.connection, self.table_dst, cols, [3,3,9,time_str])
+        _insert_row(self.connection, self.table_dst, cols, [4,4,9,time_str])
+        _insert_row(self.connection, self.table_dst, cols, [5,5,9,time_str])
+        self.connection.query("COMMIT", None)
+
         differ = TableDiffer()
         diff = list(differ.diff_tables(self.table, self.table2))
         expected = [

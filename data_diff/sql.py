@@ -183,7 +183,7 @@ class Time(Sql):
     column: Optional[SqlOrStr] = None
 
     def compile(self, c: Compiler):
-        return "'%s'" % self.time.isoformat()
+        return "timestamp '%s'" % self.time.isoformat(' ')
 
 
 @dataclass

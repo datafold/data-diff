@@ -90,6 +90,7 @@ class Oracle(ThreadedDatabase):
         regexps = {
             r"TIMESTAMP\((\d)\) WITH LOCAL TIME ZONE": Timestamp,
             r"TIMESTAMP\((\d)\) WITH TIME ZONE": TimestampTZ,
+            r"TIMESTAMP\((\d)\)": Timestamp,
         }
         for regexp, t_cls in regexps.items():
             m = re.match(regexp + "$", type_repr)
