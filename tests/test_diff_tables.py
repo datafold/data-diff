@@ -15,7 +15,7 @@ from .common import TEST_MYSQL_CONN_STRING, str_to_checksum, random_table_suffix
 DATABASE_URIS = {k.__name__: v for k, v in CONN_STRINGS.items()}
 DATABASE_INSTANCES = {k.__name__: connect_to_uri(v, N_THREADS) for k, v in CONN_STRINGS.items()}
 
-TEST_DATABASES = {'MySQL', 'PostgreSQL', 'Oracle', 'Redshift'}
+TEST_DATABASES = {'MySQL', 'PostgreSQL', 'Oracle', 'Redshift', 'Snowflake'}
 
 
 _class_per_db_dec = parameterized_class(("name", "db_name"), [
