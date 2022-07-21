@@ -15,7 +15,7 @@ from .common import TEST_MYSQL_CONN_STRING, str_to_checksum, random_table_suffix
 DATABASE_URIS = {k.__name__: v for k, v in CONN_STRINGS.items()}
 DATABASE_INSTANCES = {k.__name__: connect_to_uri(v, N_THREADS) for k, v in CONN_STRINGS.items()}
 
-TEST_DATABASES = {'MySQL', 'PostgreSQL'}
+TEST_DATABASES = {'MySQL', 'PostgreSQL', 'Oracle'}
 
 
 _class_per_db_dec = parameterized_class(("name", "db_name"), [
@@ -76,12 +76,12 @@ class TestDates(TestPerDatabase):
             f"""
             table {self.table_src} {{
                 datetime: datetime
-                comment: string
+                text_comment: string
             }}
             commit()
 
-            func add(date, comment) {{
-                new {self.table_src}(date, comment)
+            func add(date, text_comment) {{
+                new {self.table_src}(date, text_comment)
             }}
         """
         )
@@ -288,7 +288,7 @@ class TestStringKeys(TestPerDatabase):
         super().setUp()
 
         queries = [
-            f"CREATE TABLE {self.table_src}(id varchar(100), comment varchar(1000))",
+            f"CREATE TABLE {self.table_src}(id varchar(100), text_comment varchar(1000))",
             "COMMIT",
         ]
         for i in range(100):
@@ -308,8 +308,8 @@ class TestStringKeys(TestPerDatabase):
         for query in queries:
             self.connection.query(query, None)
 
-        self.a = TableSegment(self.connection, (self.table_src,), "id", "comment")
-        self.b = TableSegment(self.connection, (self.table_dst,), "id", "comment")
+        self.a = TableSegment(self.connection, (self.table_src,), "id", "text_comment")
+        self.b = TableSegment(self.connection, (self.table_dst,), "id", "text_comment")
 
     def test_string_keys(self):
         differ = TableDiffer()
@@ -344,7 +344,7 @@ class TestTableUUID(TestPerDatabase):
         super().setUp()
 
         queries = [
-            f"CREATE TABLE {self.table_src}(id varchar(100), comment varchar(1000))",
+            f"CREATE TABLE {self.table_src}(id varchar(100), text_comment varchar(1000))",
         ]
         for i in range(10):
             uuid_value = uuid.uuid1(i)
@@ -360,8 +360,8 @@ class TestTableUUID(TestPerDatabase):
         for query in queries:
             self.connection.query(query, None)
 
-        self.a = TableSegment(self.connection, (self.table_src,), "id", "comment")
-        self.b = TableSegment(self.connection, (self.table_dst,), "id", "comment")
+        self.a = TableSegment(self.connection, (self.table_src,), "id", "text_comment")
+        self.b = TableSegment(self.connection, (self.table_dst,), "id", "text_comment")
 
     def test_uuid_column_with_nulls(self):
         differ = TableDiffer()
@@ -376,7 +376,7 @@ class TestTableNullRowChecksum(TestPerDatabase):
 
         self.null_uuid = uuid.uuid1(1)
         queries = [
-            f"CREATE TABLE {self.table_src}(id varchar(100), comment varchar(1000))",
+            f"CREATE TABLE {self.table_src}(id varchar(100), text_comment varchar(1000))",
             f"INSERT INTO {self.table_src} VALUES ('{uuid.uuid1(1)}', '1')",
             f"CREATE TABLE {self.table_dst} AS SELECT * FROM {self.table_src}",
             # Add a row where a column has NULL value
@@ -387,8 +387,8 @@ class TestTableNullRowChecksum(TestPerDatabase):
         for query in queries:
             self.connection.query(query, None)
 
-        self.a = TableSegment(self.connection, (self.table_src,), "id", "comment")
-        self.b = TableSegment(self.connection, (self.table_dst,), "id", "comment")
+        self.a = TableSegment(self.connection, (self.table_src,), "id", "text_comment")
+        self.b = TableSegment(self.connection, (self.table_dst,), "id", "text_comment")
 
     def test_uuid_columns_with_nulls(self):
         """
@@ -481,8 +481,8 @@ class TestTableTableEmpty(TestPerDatabase):
 
         self.null_uuid = uuid.uuid1(1)
         queries = [
-            f"CREATE TABLE {self.table_src}(id varchar(100), comment varchar(1000))",
-            f"CREATE TABLE {self.table_dst}(id varchar(100), comment varchar(1000))",
+            f"CREATE TABLE {self.table_src}(id varchar(100), text_comment varchar(1000))",
+            f"CREATE TABLE {self.table_dst}(id varchar(100), text_comment varchar(1000))",
         ]
 
         self.diffs = [(uuid.uuid1(i), i) for i in range(100)]
@@ -494,8 +494,8 @@ class TestTableTableEmpty(TestPerDatabase):
         for query in queries:
             self.connection.query(query, None)
 
-        self.a = TableSegment(self.connection, (self.table_src,), "id", "comment")
-        self.b = TableSegment(self.connection, (self.table_dst,), "id", "comment")
+        self.a = TableSegment(self.connection, (self.table_src,), "id", "text_comment")
+        self.b = TableSegment(self.connection, (self.table_dst,), "id", "text_comment")
 
     def test_right_table_empty(self):
         differ = TableDiffer()
@@ -503,7 +503,7 @@ class TestTableTableEmpty(TestPerDatabase):
 
     def test_left_table_empty(self):
         queries = [
-            f"INSERT INTO {self.table_dst} SELECT id, comment FROM {self.table_src}",
+            f"INSERT INTO {self.table_dst} SELECT id, text_comment FROM {self.table_src}",
             f"TRUNCATE {self.table_src}",
             "COMMIT",
         ]
