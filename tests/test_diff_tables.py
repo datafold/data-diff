@@ -10,7 +10,14 @@ from data_diff.databases import connect_to_uri
 from data_diff.diff_tables import TableDiffer, TableSegment, split_space
 from data_diff import databases as db
 
-from .common import TEST_MYSQL_CONN_STRING, str_to_checksum, random_table_suffix, _drop_table_if_exists, CONN_STRINGS, N_THREADS
+from .common import (
+    TEST_MYSQL_CONN_STRING,
+    str_to_checksum,
+    random_table_suffix,
+    _drop_table_if_exists,
+    CONN_STRINGS,
+    N_THREADS,
+)
 
 DATABASE_URIS = {k.__name__: v for k, v in CONN_STRINGS.items()}
 DATABASE_INSTANCES = {k.__name__: connect_to_uri(v, N_THREADS) for k, v in CONN_STRINGS.items()}
@@ -18,31 +25,36 @@ DATABASE_INSTANCES = {k.__name__: connect_to_uri(v, N_THREADS) for k, v in CONN_
 TEST_DATABASES = {x.__name__ for x in (db.MySQL, db.PostgreSQL, db.Oracle, db.Redshift, db.Snowflake, db.BigQuery)}
 
 
-_class_per_db_dec = parameterized_class(("name", "db_name"), [
-    (name, name) for name in DATABASE_URIS if name in TEST_DATABASES
-])
+_class_per_db_dec = parameterized_class(
+    ("name", "db_name"), [(name, name) for name in DATABASE_URIS if name in TEST_DATABASES]
+)
+
 
 def test_per_database(cls):
     return _class_per_db_dec(cls)
 
 
 def _insert_row(conn, table, fields, values):
-    fields = ', '.join(map(str,fields))
-    values = ', '.join(map(str,values))
-    conn.query(f'INSERT INTO {table}({fields}) VALUES ({values})', None)
+    fields = ", ".join(map(str, fields))
+    values = ", ".join(map(str, values))
+    conn.query(f"INSERT INTO {table}({fields}) VALUES ({values})", None)
+
 
 def _insert_rows(conn, table, fields, tuple_list):
     for t in tuple_list:
         _insert_row(conn, table, fields, t)
 
+
 def _commit(conn):
     if not isinstance(conn, db.BigQuery):
         conn.query("COMMIT", None)
 
+
 def _get_text_type(conn):
     if isinstance(conn, db.BigQuery):
-        return 'STRING'
-    return 'varchar(100)'
+        return "STRING"
+    return "varchar(100)"
+
 
 class TestUtils(unittest.TestCase):
     def test_split_space(self):
@@ -75,7 +87,6 @@ class TestPerDatabase(unittest.TestCase):
 
         self.table_src = ".".join(map(self.connection.quote, self.table_src_path))
         self.table_dst = ".".join(map(self.connection.quote, self.table_dst_path))
-
 
         _drop_table_if_exists(self.connection, self.table_src)
         _drop_table_if_exists(self.connection, self.table_dst)
@@ -128,7 +139,9 @@ class TestDates(TestPerDatabase):
         self.preql.commit()
 
     def test_init(self):
-        a = TableSegment(self.connection, self.table_src_path, "id", "datetime", max_update=self.now.datetime, case_sensitive=False)
+        a = TableSegment(
+            self.connection, self.table_src_path, "id", "datetime", max_update=self.now.datetime, case_sensitive=False
+        )
         self.assertRaises(
             ValueError, TableSegment, self.connection, self.table_src_path, "id", max_update=self.now.datetime
         )
@@ -162,8 +175,24 @@ class TestDates(TestPerDatabase):
 
         day1 = self.now.shift(days=-1).datetime
 
-        a = TableSegment(self.connection, self.table_src_path, "id", "datetime", min_update=day1, max_update=sec1, case_sensitive=False)
-        b = TableSegment(self.connection, self.table_dst_path, "id", "datetime", min_update=day1, max_update=sec1, case_sensitive=False)
+        a = TableSegment(
+            self.connection,
+            self.table_src_path,
+            "id",
+            "datetime",
+            min_update=day1,
+            max_update=sec1,
+            case_sensitive=False,
+        )
+        b = TableSegment(
+            self.connection,
+            self.table_dst_path,
+            "id",
+            "datetime",
+            min_update=day1,
+            max_update=sec1,
+            case_sensitive=False,
+        )
         assert a.count() == 3
         assert b.count() == 2
         assert not list(differ.diff_tables(a, a))
@@ -177,8 +206,12 @@ class TestDiffTables(TestPerDatabase):
     def setUp(self):
         super().setUp()
 
-        self.connection.query(f'create table {self.table_src}(id int, userid int, movieid int, rating float, timestamp timestamp)', None)
-        self.connection.query(f'create table {self.table_dst}(id int, userid int, movieid int, rating float, timestamp timestamp)', None)
+        self.connection.query(
+            f"create table {self.table_src}(id int, userid int, movieid int, rating float, timestamp timestamp)", None
+        )
+        self.connection.query(
+            f"create table {self.table_dst}(id int, userid int, movieid int, rating float, timestamp timestamp)", None
+        )
         # self.preql(
         #     f"""
         #     table {self.table_src_name} {{
@@ -213,10 +246,10 @@ class TestDiffTables(TestPerDatabase):
         time = "2022-01-01 00:00:00.000000"
         time_str = f"timestamp '{time}'"
 
-        cols = 'id userid movieid rating timestamp'.split()
-        _insert_row(self.connection, self.table_src, cols, [1, 1,1,9,time_str])
+        cols = "id userid movieid rating timestamp".split()
+        _insert_row(self.connection, self.table_src, cols, [1, 1, 1, 9, time_str])
         _commit(self.connection)
-        id_ = self.connection.query(f'select id from {self.table_src}', int)
+        id_ = self.connection.query(f"select id from {self.table_src}", int)
 
         table = self.table.with_schema()
 
@@ -225,12 +258,12 @@ class TestDiffTables(TestPerDatabase):
         self.assertEqual(str_to_checksum(concatted), table.count_and_checksum()[1])
 
     def test_diff_small_tables(self):
-        time = '2022-01-01 00:00:00'
+        time = "2022-01-01 00:00:00"
         time_str = f"timestamp '{time}'"
 
-        cols = 'id userid movieid rating timestamp'.split()
-        _insert_rows(self.connection, self.table_src, cols, [[1, 1,1,9,time_str], [2, 2,2,9,time_str]])
-        _insert_rows(self.connection, self.table_dst, cols, [[1, 1,1,9,time_str]])
+        cols = "id userid movieid rating timestamp".split()
+        _insert_rows(self.connection, self.table_src, cols, [[1, 1, 1, 9, time_str], [2, 2, 2, 9, time_str]])
+        _insert_rows(self.connection, self.table_dst, cols, [[1, 1, 1, 9, time_str]])
         _commit(self.connection)
         diff = list(self.differ.diff_tables(self.table, self.table2))
         expected = [("-", ("2", time + ".000000"))]
@@ -242,21 +275,31 @@ class TestDiffTables(TestPerDatabase):
         time = "2022-01-01 00:00:00"
         time_str = f"timestamp '{time}'"
 
-        cols = 'id userid movieid rating timestamp'.split()
-        _insert_rows(self.connection, self.table_src, cols, [
-            [1,1,1,9,time_str],
-            [2,2,2,9,time_str],
-            [3,3,3,9,time_str],
-            [4,4,4,9,time_str],
-            [5,5,5,9,time_str],
-        ])
+        cols = "id userid movieid rating timestamp".split()
+        _insert_rows(
+            self.connection,
+            self.table_src,
+            cols,
+            [
+                [1, 1, 1, 9, time_str],
+                [2, 2, 2, 9, time_str],
+                [3, 3, 3, 9, time_str],
+                [4, 4, 4, 9, time_str],
+                [5, 5, 5, 9, time_str],
+            ],
+        )
 
-        _insert_rows(self.connection, self.table_dst, cols, [
-            [1,1,1,9,time_str],
-            [2,2,2,9,time_str],
-            [3,3,3,9,time_str],
-            [4,4,4,9,time_str],
-        ])
+        _insert_rows(
+            self.connection,
+            self.table_dst,
+            cols,
+            [
+                [1, 1, 1, 9, time_str],
+                [2, 2, 2, 9, time_str],
+                [3, 3, 3, 9, time_str],
+                [4, 4, 4, 9, time_str],
+            ],
+        )
         _commit(self.connection)
 
         diff = list(self.differ.diff_tables(self.table, self.table2))
@@ -269,10 +312,10 @@ class TestDiffTables(TestPerDatabase):
         time = "2022-01-01 00:00:00"
         time_str = f"timestamp '{time}'"
 
-        cols = 'id userid movieid rating timestamp'.split()
+        cols = "id userid movieid rating timestamp".split()
 
-        _insert_row(self.connection, self.table_src, cols, [1,1,1,9,time_str])
-        _insert_row(self.connection, self.table_dst, cols, [1,1,1,9,time_str])
+        _insert_row(self.connection, self.table_src, cols, [1, 1, 1, 9, time_str])
+        _insert_row(self.connection, self.table_dst, cols, [1, 1, 1, 9, time_str])
 
         self.preql.commit()
         diff = list(self.differ.diff_tables(self.table, self.table2))
@@ -285,23 +328,33 @@ class TestDiffTables(TestPerDatabase):
         time_str = f"timestamp '{time}'"
         time_str2 = f"timestamp '{time2}'"
 
-        cols = 'id userid movieid rating timestamp'.split()
+        cols = "id userid movieid rating timestamp".split()
 
-        _insert_rows(self.connection, self.table_src, cols, [
-            [1,1,1,9,time_str],
-            [2,2,2,9,time_str2],
-            [3,3,3,9,time_str],
-            [4,4,4,9,time_str2],
-            [5,5,5,9,time_str],
-        ])
+        _insert_rows(
+            self.connection,
+            self.table_src,
+            cols,
+            [
+                [1, 1, 1, 9, time_str],
+                [2, 2, 2, 9, time_str2],
+                [3, 3, 3, 9, time_str],
+                [4, 4, 4, 9, time_str2],
+                [5, 5, 5, 9, time_str],
+            ],
+        )
 
-        _insert_rows(self.connection, self.table_dst, cols, [
-            [1,1,1,9,time_str],
-            [2,2,2,9,time_str],
-            [3,3,3,9,time_str],
-            [4,4,4,9,time_str],
-            [5,5,5,9,time_str],
-        ])
+        _insert_rows(
+            self.connection,
+            self.table_dst,
+            cols,
+            [
+                [1, 1, 1, 9, time_str],
+                [2, 2, 2, 9, time_str],
+                [3, 3, 3, 9, time_str],
+                [4, 4, 4, 9, time_str],
+                [5, 5, 5, 9, time_str],
+            ],
+        )
         _commit(self.connection)
 
         differ = TableDiffer()
@@ -479,8 +532,12 @@ class TestConcatMultipleColumnWithNulls(TestPerDatabase):
 
         _commit(self.connection)
 
-        self.a = TableSegment(self.connection, self.table_src_path, "id", extra_columns=("c1", "c2"), case_sensitive=False)
-        self.b = TableSegment(self.connection, self.table_dst_path, "id", extra_columns=("c1", "c2"), case_sensitive=False)
+        self.a = TableSegment(
+            self.connection, self.table_src_path, "id", extra_columns=("c1", "c2"), case_sensitive=False
+        )
+        self.b = TableSegment(
+            self.connection, self.table_dst_path, "id", extra_columns=("c1", "c2"), case_sensitive=False
+        )
 
     def test_tables_are_different(self):
         """

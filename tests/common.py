@@ -98,4 +98,3 @@ def _drop_table_if_exists(conn, table):
             conn.query(f"DROP TABLE IF EXISTS {table}", None)
             if not isinstance(conn, (db.BigQuery, db.Databricks)):
                 conn.query("COMMIT", None)
-

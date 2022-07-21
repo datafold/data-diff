@@ -66,7 +66,9 @@ class Trino(Database):
         else:
             s = f"date_format(cast({value} as timestamp(6)), '%Y-%m-%d %H:%i:%S.%f')"
 
-        return f"RPAD(RPAD({s}, {TIMESTAMP_PRECISION_POS + coltype.precision}, '.'), {TIMESTAMP_PRECISION_POS + 6}, '0')"
+        return (
+            f"RPAD(RPAD({s}, {TIMESTAMP_PRECISION_POS + coltype.precision}, '.'), {TIMESTAMP_PRECISION_POS + 6}, '0')"
+        )
 
     def normalize_number(self, value: str, coltype: FractionalType) -> str:
         return self.to_string(f"cast({value} as decimal(38,{coltype.precision}))")
@@ -96,9 +98,7 @@ class Trino(Database):
             if m:
                 datetime_precision = int(m.group(1))
                 return t_cls(
-                    precision=datetime_precision
-                    if datetime_precision is not None
-                    else DEFAULT_DATETIME_PRECISION,
+                    precision=datetime_precision if datetime_precision is not None else DEFAULT_DATETIME_PRECISION,
                     rounds=self.ROUNDS_ON_PREC_LOSS,
                 )
 
@@ -115,9 +115,7 @@ class Trino(Database):
             if m:
                 return n_cls()
 
-        return super()._parse_type(
-            table_path, col_name, type_repr, datetime_precision, numeric_precision
-        )
+        return super()._parse_type(table_path, col_name, type_repr, datetime_precision, numeric_precision)
 
     def normalize_uuid(self, value: str, coltype: ColType_UUID) -> str:
         return f"TRIM({value})"

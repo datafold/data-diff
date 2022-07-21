@@ -80,7 +80,9 @@ MATCH_URI_PATH = {
     "presto": MatchUriPath(Presto, ["catalog", "schema"], help_str="presto://<user>@<host>/<catalog>/<schema>"),
     "bigquery": MatchUriPath(BigQuery, ["dataset"], help_str="bigquery://<project>/<dataset>"),
     "databricks": MatchUriPath(
-        Databricks, ["catalog", "schema"], help_str="databricks://:access_token@server_name/http_path",
+        Databricks,
+        ["catalog", "schema"],
+        help_str="databricks://:access_token@server_name/http_path",
     ),
     "trino": MatchUriPath(Trino, ["catalog", "schema"], help_str="trino://<user>@<host>/<catalog>/<schema>"),
 }
@@ -125,9 +127,9 @@ def connect_to_uri(db_uri: str, thread_count: Optional[int] = 1) -> Database:
     if scheme == "databricks":
         assert not dsn.user
         kw = {}
-        kw['access_token'] = dsn.password
-        kw['http_path'] = dsn.path
-        kw['server_hostname'] = dsn.host
+        kw["access_token"] = dsn.password
+        kw["http_path"] = dsn.path
+        kw["server_hostname"] = dsn.host
         kw.update(dsn.query)
     else:
         kw = matcher.match_path(dsn)

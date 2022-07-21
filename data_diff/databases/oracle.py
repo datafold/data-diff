@@ -4,7 +4,8 @@ from .database_types import *
 from .base import ThreadedDatabase, import_helper, ConnectError, QueryError
 from .base import DEFAULT_DATETIME_PRECISION, DEFAULT_NUMERIC_PRECISION
 
-SESSION_TIME_ZONE = None    # Changed by the tests
+SESSION_TIME_ZONE = None  # Changed by the tests
+
 
 @import_helper("oracle")
 def import_oracle():
@@ -77,7 +78,6 @@ class Oracle(ThreadedDatabase):
             format_str += "0." + "9" * (coltype.precision - 1) + "0"
         return f"to_char({value}, '{format_str}')"
 
-
     def _parse_type(
         self,
         table_name: DbPath,
@@ -101,7 +101,9 @@ class Oracle(ThreadedDatabase):
                     rounds=self.ROUNDS_ON_PREC_LOSS,
                 )
 
-        return super()._parse_type(table_name, col_name, type_repr, datetime_precision, numeric_precision, numeric_scale)
+        return super()._parse_type(
+            table_name, col_name, type_repr, datetime_precision, numeric_precision, numeric_scale
+        )
 
     def offset_limit(self, offset: Optional[int] = None, limit: Optional[int] = None):
         if offset:
@@ -114,7 +116,7 @@ class Oracle(ThreadedDatabase):
         return f"({joined_exprs})"
 
     def timestamp_value(self, t: DbTime) -> str:
-        return "timestamp '%s'" % t.isoformat(' ')
+        return "timestamp '%s'" % t.isoformat(" ")
 
     def normalize_uuid(self, value: str, coltype: ColType_UUID) -> str:
         # Cast is necessary for correct MD5 (trimming not enough)

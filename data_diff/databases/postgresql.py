@@ -2,7 +2,8 @@ from .database_types import *
 from .base import ThreadedDatabase, import_helper, ConnectError
 from .base import MD5_HEXDIGITS, CHECKSUM_HEXDIGITS, _CHECKSUM_BITSIZE, TIMESTAMP_PRECISION_POS
 
-SESSION_TIME_ZONE = None    # Changed by the tests
+SESSION_TIME_ZONE = None  # Changed by the tests
+
 
 @import_helper("postgresql")
 def import_postgresql():
@@ -49,7 +50,7 @@ class PostgreSQL(ThreadedDatabase):
 
     def create_connection(self):
         if not self._args:
-            self._args['host'] = None   # psycopg2 requires 1+ arguments
+            self._args["host"] = None  # psycopg2 requires 1+ arguments
 
         pg = import_postgresql()
         try:

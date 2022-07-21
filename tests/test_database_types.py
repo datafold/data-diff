@@ -14,13 +14,21 @@ from data_diff import databases as db
 from data_diff.databases import postgresql, oracle
 from data_diff.utils import number_to_human
 from data_diff.diff_tables import TableDiffer, TableSegment, DEFAULT_BISECTION_THRESHOLD
-from .common import CONN_STRINGS, N_SAMPLES, N_THREADS, BENCHMARK, GIT_REVISION, random_table_suffix, _drop_table_if_exists
+from .common import (
+    CONN_STRINGS,
+    N_SAMPLES,
+    N_THREADS,
+    BENCHMARK,
+    GIT_REVISION,
+    random_table_suffix,
+    _drop_table_if_exists,
+)
 
 
 CONNS = {k: db.connect_to_uri(v, N_THREADS) for k, v in CONN_STRINGS.items()}
 
 CONNS[db.MySQL].query("SET @@session.time_zone='+00:00'", None)
-oracle.SESSION_TIME_ZONE = postgresql.SESSION_TIME_ZONE = 'UTC'
+oracle.SESSION_TIME_ZONE = postgresql.SESSION_TIME_ZONE = "UTC"
 
 DATABASE_TYPES = {
     db.PostgreSQL: {
@@ -196,12 +204,10 @@ DATABASE_TYPES = {
             "INT",
             "BIGINT",
         ],
-
         # https://docs.databricks.com/spark/latest/spark-sql/language-manual/data-types/timestamp-type.html
         "datetime": [
             "TIMESTAMP",
         ],
-
         # https://docs.databricks.com/spark/latest/spark-sql/language-manual/data-types/float-type.html
         # https://docs.databricks.com/spark/latest/spark-sql/language-manual/data-types/double-type.html
         # https://docs.databricks.com/spark/latest/spark-sql/language-manual/data-types/decimal-type.html
@@ -210,10 +216,9 @@ DATABASE_TYPES = {
             "DOUBLE",
             "DECIMAL(6, 2)",
         ],
-
         "uuid": [
             "STRING",
-        ]
+        ],
     },
     db.Trino: {
         "int": [
@@ -406,7 +411,7 @@ for source_db, source_type_categories in DATABASE_TYPES.items():
         ) in source_type_categories.items():  # int, datetime, ..
             for source_type in source_types:
                 for target_type in target_type_categories[type_category]:
-                    if (CONNS.get(source_db, False) and CONNS.get(target_db, False)):
+                    if CONNS.get(source_db, False) and CONNS.get(target_db, False):
                         type_pairs.append(
                             (
                                 source_db,
@@ -480,7 +485,7 @@ def _insert_to_table(conn, table, values, type):
             value = str(sample)
         elif isinstance(sample, datetime) and isinstance(conn, (db.Presto, db.Oracle, db.Trino)):
             value = f"timestamp '{sample}'"
-        elif isinstance(sample, datetime) and isinstance(conn, db.BigQuery) and type == 'datetime':
+        elif isinstance(sample, datetime) and isinstance(conn, db.BigQuery) and type == "datetime":
             value = f"cast(timestamp '{sample}' as datetime)"
         elif isinstance(sample, bytearray):
             value = f"'{sample.decode()}'"
