@@ -1,6 +1,6 @@
 import decimal
 from abc import ABC, abstractmethod
-from typing import Sequence, Optional, Tuple, Union, Dict, Any
+from typing import Sequence, Optional, Tuple, Union, Dict, List
 from datetime import datetime
 
 from runtype import dataclass
@@ -118,6 +118,11 @@ class AbstractDatabase(ABC):
     @abstractmethod
     def to_string(self, s: str) -> str:
         "Provide SQL for casting a column to string"
+        ...
+
+    @abstractmethod
+    def concat(self, s: List[str]) -> str:
+        "Provide SQL for concatenating a bunch of column into a string"
         ...
 
     @abstractmethod

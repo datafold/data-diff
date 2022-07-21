@@ -26,6 +26,11 @@ def test_per_database(cls):
     return _class_per_db_dec(cls)
 
 
+def _insert_row(conn, table, fields, values):
+    fields = ', '.join(map(str,fields))
+    values = ', '.join(map(str,values))
+    conn.query(f'INSERT INTO {table}({fields}) VALUES ({values})', None)
+
 class TestUtils(unittest.TestCase):
     def test_split_space(self):
         for i in range(0, 10):
@@ -103,15 +108,15 @@ class TestDates(TestPerDatabase):
         self.preql.commit()
 
     def test_init(self):
-        a = TableSegment(self.connection, (self.table_src,), "id", "datetime", max_update=self.now.datetime)
+        a = TableSegment(self.connection, (self.table_src,), "id", "datetime", max_update=self.now.datetime, case_sensitive=False)
         self.assertRaises(
             ValueError, TableSegment, self.connection, (self.table_src,), "id", max_update=self.now.datetime
         )
 
     def test_basic(self):
         differ = TableDiffer(10, 100)
-        a = TableSegment(self.connection, (self.table_src,), "id", "datetime")
-        b = TableSegment(self.connection, (self.table_dst,), "id", "datetime")
+        a = TableSegment(self.connection, (self.table_src,), "id", "datetime", case_sensitive=False)
+        b = TableSegment(self.connection, (self.table_dst,), "id", "datetime", case_sensitive=False)
         assert a.count() == 6
         assert b.count() == 5
 
@@ -121,24 +126,24 @@ class TestDates(TestPerDatabase):
     def test_offset(self):
         differ = TableDiffer(2, 10)
         sec1 = self.now.shift(seconds=-1).datetime
-        a = TableSegment(self.connection, (self.table_src,), "id", "datetime", max_update=sec1)
-        b = TableSegment(self.connection, (self.table_dst,), "id", "datetime", max_update=sec1)
+        a = TableSegment(self.connection, (self.table_src,), "id", "datetime", max_update=sec1, case_sensitive=False)
+        b = TableSegment(self.connection, (self.table_dst,), "id", "datetime", max_update=sec1, case_sensitive=False)
         assert a.count() == 4
         assert b.count() == 3
 
         assert not list(differ.diff_tables(a, a))
         self.assertEqual(len(list(differ.diff_tables(a, b))), 1)
 
-        a = TableSegment(self.connection, (self.table_src,), "id", "datetime", min_update=sec1)
-        b = TableSegment(self.connection, (self.table_dst,), "id", "datetime", min_update=sec1)
+        a = TableSegment(self.connection, (self.table_src,), "id", "datetime", min_update=sec1, case_sensitive=False)
+        b = TableSegment(self.connection, (self.table_dst,), "id", "datetime", min_update=sec1, case_sensitive=False)
         assert a.count() == 2
         assert b.count() == 2
         assert not list(differ.diff_tables(a, b))
 
         day1 = self.now.shift(days=-1).datetime
 
-        a = TableSegment(self.connection, (self.table_src,), "id", "datetime", min_update=day1, max_update=sec1)
-        b = TableSegment(self.connection, (self.table_dst,), "id", "datetime", min_update=day1, max_update=sec1)
+        a = TableSegment(self.connection, (self.table_src,), "id", "datetime", min_update=day1, max_update=sec1, case_sensitive=False)
+        b = TableSegment(self.connection, (self.table_dst,), "id", "datetime", min_update=day1, max_update=sec1, case_sensitive=False)
         assert a.count() == 3
         assert b.count() == 2
         assert not list(differ.diff_tables(a, a))
@@ -175,8 +180,8 @@ class TestDiffTables(TestPerDatabase):
         )
         self.preql.commit()
 
-        self.table = TableSegment(self.connection, (self.table_src,), "id", "timestamp")
-        self.table2 = TableSegment(self.connection, (self.table_dst,), "id", "timestamp")
+        self.table = TableSegment(self.connection, (self.table_src,), "id", "timestamp", case_sensitive=False)
+        self.table2 = TableSegment(self.connection, (self.table_dst,), "id", "timestamp", case_sensitive=False)
 
         self.differ = TableDiffer(3, 4)
 
@@ -201,16 +206,13 @@ class TestDiffTables(TestPerDatabase):
         self.assertEqual(str_to_checksum(concatted), table.count_and_checksum()[1])
 
     def test_diff_small_tables(self):
-        time = "2022-01-01 00:00:00"
-        self.preql(
-            f"""
-            new {self.table_src}(userid: 1, movieid: 1, rating: 9, timestamp: '{time}')
-            new {self.table_src}(userid: 2, movieid: 2, rating: 9, timestamp: '{time}')
+        time = "timestamp '2022-01-01 00:00:00'"
 
-            new {self.table_dst}(userid: 1, movieid: 1, rating: 9, timestamp: '{time}')
-        """
-        )
-        self.preql.commit()
+        cols = 'userid movieid rating timestamp'.split()
+        _insert_row(self.connection, self.table_src, cols, [1,1,9,time])
+        _insert_row(self.connection, self.table_src, cols, [2,2,9,time])
+        _insert_row(self.connection, self.table_dst, cols, [1,1,9,time])
+        self.connection.query("COMMIT", None)
         diff = list(self.differ.diff_tables(self.table, self.table2))
         expected = [("-", ("2", time + ".000000"))]
         self.assertEqual(expected, diff)
@@ -308,8 +310,8 @@ class TestStringKeys(TestPerDatabase):
         for query in queries:
             self.connection.query(query, None)
 
-        self.a = TableSegment(self.connection, (self.table_src,), "id", "text_comment")
-        self.b = TableSegment(self.connection, (self.table_dst,), "id", "text_comment")
+        self.a = TableSegment(self.connection, (self.table_src,), "id", "text_comment", case_sensitive=False)
+        self.b = TableSegment(self.connection, (self.table_dst,), "id", "text_comment", case_sensitive=False)
 
     def test_string_keys(self):
         differ = TableDiffer()
@@ -327,8 +329,8 @@ class TestStringKeys(TestPerDatabase):
 class TestTableSegment(TestPerDatabase):
     def setUp(self) -> None:
         super().setUp()
-        self.table = TableSegment(self.connection, (self.table_src,), "id", "timestamp")
-        self.table2 = TableSegment(self.connection, (self.table_dst,), "id", "timestamp")
+        self.table = TableSegment(self.connection, (self.table_src,), "id", "timestamp", case_sensitive=False)
+        self.table2 = TableSegment(self.connection, (self.table_dst,), "id", "timestamp", case_sensitive=False)
 
     def test_table_segment(self):
         early = datetime.datetime(2021, 1, 1, 0, 0)
@@ -360,8 +362,8 @@ class TestTableUUID(TestPerDatabase):
         for query in queries:
             self.connection.query(query, None)
 
-        self.a = TableSegment(self.connection, (self.table_src,), "id", "text_comment")
-        self.b = TableSegment(self.connection, (self.table_dst,), "id", "text_comment")
+        self.a = TableSegment(self.connection, (self.table_src,), "id", "text_comment", case_sensitive=False)
+        self.b = TableSegment(self.connection, (self.table_dst,), "id", "text_comment", case_sensitive=False)
 
     def test_uuid_column_with_nulls(self):
         differ = TableDiffer()
@@ -387,8 +389,8 @@ class TestTableNullRowChecksum(TestPerDatabase):
         for query in queries:
             self.connection.query(query, None)
 
-        self.a = TableSegment(self.connection, (self.table_src,), "id", "text_comment")
-        self.b = TableSegment(self.connection, (self.table_dst,), "id", "text_comment")
+        self.a = TableSegment(self.connection, (self.table_src,), "id", "text_comment", case_sensitive=False)
+        self.b = TableSegment(self.connection, (self.table_dst,), "id", "text_comment", case_sensitive=False)
 
     def test_uuid_columns_with_nulls(self):
         """
@@ -443,8 +445,8 @@ class TestConcatMultipleColumnWithNulls(TestPerDatabase):
         for query in queries:
             self.connection.query(query, None)
 
-        self.a = TableSegment(self.connection, (self.table_src,), "id", extra_columns=("c1", "c2"))
-        self.b = TableSegment(self.connection, (self.table_dst,), "id", extra_columns=("c1", "c2"))
+        self.a = TableSegment(self.connection, (self.table_src,), "id", extra_columns=("c1", "c2"), case_sensitive=False)
+        self.b = TableSegment(self.connection, (self.table_dst,), "id", extra_columns=("c1", "c2"), case_sensitive=False)
 
     def test_tables_are_different(self):
         """
@@ -494,8 +496,8 @@ class TestTableTableEmpty(TestPerDatabase):
         for query in queries:
             self.connection.query(query, None)
 
-        self.a = TableSegment(self.connection, (self.table_src,), "id", "text_comment")
-        self.b = TableSegment(self.connection, (self.table_dst,), "id", "text_comment")
+        self.a = TableSegment(self.connection, (self.table_src,), "id", "text_comment", case_sensitive=False)
+        self.b = TableSegment(self.connection, (self.table_dst,), "id", "text_comment", case_sensitive=False)
 
     def test_right_table_empty(self):
         differ = TableDiffer()
@@ -504,7 +506,7 @@ class TestTableTableEmpty(TestPerDatabase):
     def test_left_table_empty(self):
         queries = [
             f"INSERT INTO {self.table_dst} SELECT id, text_comment FROM {self.table_src}",
-            f"TRUNCATE {self.table_src}",
+            f"TRUNCATE TABLE {self.table_src}",
             "COMMIT",
         ]
         for query in queries:

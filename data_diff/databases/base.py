@@ -242,6 +242,10 @@ class Database(AbstractDatabase):
 
         return f"LIMIT {limit}"
 
+    def concat(self, l: List[str]) -> str:
+        joined_exprs = ", ".join(l)
+        return f"concat({joined_exprs})"
+
     def normalize_uuid(self, value: str, coltype: ColType_UUID) -> str:
         if isinstance(coltype, String_UUID):
             return f"TRIM({value})"
