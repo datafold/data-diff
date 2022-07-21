@@ -113,6 +113,9 @@ class Oracle(ThreadedDatabase):
         joined_exprs = " || ".join(l)
         return f"({joined_exprs})"
 
+    def timestamp_value(self, t: DbTime) -> str:
+        return "timestamp '%s'" % t.isoformat(' ')
+
     def normalize_uuid(self, value: str, coltype: ColType_UUID) -> str:
         # Cast is necessary for correct MD5 (trimming not enough)
         return f"CAST(TRIM({value}) AS VARCHAR(36))"

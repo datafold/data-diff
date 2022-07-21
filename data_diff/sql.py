@@ -180,10 +180,9 @@ class Max(Sql):
 @dataclass
 class Time(Sql):
     time: datetime
-    column: Optional[SqlOrStr] = None
 
     def compile(self, c: Compiler):
-        return "timestamp '%s'" % self.time.isoformat(' ')
+        return c.database.timestamp_value(self.time)
 
 
 @dataclass

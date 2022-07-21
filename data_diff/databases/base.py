@@ -20,6 +20,7 @@ from .database_types import (
     TemporalType,
     UnknownColType,
     Text,
+    DbTime,
 )
 from data_diff.sql import DbPath, SqlOrStr, Compiler, Explain, Select, TableName
 
@@ -246,6 +247,9 @@ class Database(AbstractDatabase):
     def concat(self, l: List[str]) -> str:
         joined_exprs = ", ".join(l)
         return f"concat({joined_exprs})"
+
+    def timestamp_value(self, t: DbTime) -> str:
+        return "'%s'" % t.isoformat()
 
     def normalize_uuid(self, value: str, coltype: ColType_UUID) -> str:
         if isinstance(coltype, String_UUID):

@@ -126,12 +126,18 @@ class AbstractDatabase(ABC):
         ...
 
     @abstractmethod
+    def timestamp_value(self, t: DbTime) -> str:
+        "Provide SQL for the given timestamp value"
+        ...
+
+    @abstractmethod
     def md5_to_int(self, s: str) -> str:
         "Provide SQL for computing md5 and returning an int"
         ...
 
     @abstractmethod
     def offset_limit(self, offset: Optional[int] = None, limit: Optional[int] = None):
+        "Provide SQL fragment for limit and offset inside a select"
         ...
 
     @abstractmethod
