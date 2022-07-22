@@ -27,7 +27,7 @@ class Oracle(ThreadedDatabase):
     ROUNDS_ON_PREC_LOSS = True
 
     def __init__(self, *, host, database, thread_count, **kw):
-        self.kwargs = dict(dsn="%s/%s" % (host, database), **kw)
+        self.kwargs = dict(dsn="%s/%s" % (host, database) if database else host, **kw)
 
         self.default_schema = kw.get("user")
 
