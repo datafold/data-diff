@@ -51,3 +51,11 @@ def number_to_human(n):
     )
 
     return "{:.0f}{}".format(n / 10 ** (3 * millidx), millnames[millidx])
+
+
+def join_iter(joiner: Any, iterable: iter) -> iter:
+    it = iter(iterable)
+    yield next(it)
+    for i in it:
+        yield joiner
+        yield i

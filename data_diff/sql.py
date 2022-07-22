@@ -6,6 +6,8 @@ from datetime import datetime
 
 from runtype import dataclass
 
+from .utils import join_iter
+
 from .databases.database_types import AbstractDatabase, DbPath, DbKey, DbTime, ArithUUID
 
 
@@ -14,6 +16,8 @@ class Sql:
 
 
 SqlOrStr = Union[Sql, str]
+
+CONCAT_SEP = "|"
 
 
 @dataclass
@@ -122,7 +126,8 @@ class Checksum(Sql):
     def compile(self, c: Compiler):
         if len(self.exprs) > 1:
             compiled_exprs = [f"coalesce({c.compile(expr)}, '<null>')" for expr in self.exprs]
-            expr = c.database.concat(compiled_exprs)
+            separated = list(join_iter(f"'|'", compiled_exprs))
+            expr = c.database.concat(separated)
         else:
             # No need to coalesce - safe to assume that key cannot be null
             (expr,) = self.exprs
