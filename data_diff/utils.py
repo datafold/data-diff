@@ -1,6 +1,7 @@
 import math
+from urllib.parse import urlparse
 
-from typing import Sequence, Optional, Tuple, Union, Dict, Any
+from typing import Union
 from uuid import UUID
 
 
@@ -51,3 +52,9 @@ def number_to_human(n):
     )
 
     return "{:.0f}{}".format(n / 10 ** (3 * millidx), millnames[millidx])
+
+
+def remove_password_from_url(url, replace_with="***"):
+    parsed = urlparse(url)
+    replaced = parsed._replace(netloc="{}:{}@{}".format(parsed.username, replace_with, parsed.hostname or ""))
+    return replaced.geturl()
