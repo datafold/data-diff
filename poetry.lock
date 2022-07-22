@@ -245,7 +245,7 @@ dev = ["jinja2"]
 
 [[package]]
 name = "preql"
-version = "0.2.16"
+version = "0.2.17"
 description = "An interpreted relational query language that compiles to SQL"
 category = "dev"
 optional = false
@@ -580,7 +580,7 @@ trino = []
 [metadata]
 lock-version = "1.1"
 python-versions = "^3.7.1"
-content-hash = "5f045b46428d431addd12cf209462974b31591b24e323e0953c198e3b4f4c633"
+content-hash = "6939dc537f6d8070683d6078d91ce0f6e210828a72e9892a1aa81de307706844"
 
 [metadata.files]
 arrow = [

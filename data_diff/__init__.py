@@ -13,7 +13,11 @@ from .diff_tables import (
 
 
 def connect_to_table(
-    db_info: Union[str, dict], table_name: Union[DbPath, str], key_column: str = "id", thread_count: Optional[int] = 1, **kwargs
+    db_info: Union[str, dict],
+    table_name: Union[DbPath, str],
+    key_column: str = "id",
+    thread_count: Optional[int] = 1,
+    **kwargs,
 ):
     """Connects to the given database, and creates a TableSegment instance
 

@@ -26,10 +26,11 @@ COLOR_SCHEME = {
     "-": "red",
 }
 
+
 def _remove_passwords_in_dict(d: dict):
     for k, v in d.items():
-        if k == 'password':
-            d[k] = '*' * len(v)
+        if k == "password":
+            d[k] = "*" * len(v)
         elif isinstance(v, dict):
             _remove_passwords_in_dict(v)
 

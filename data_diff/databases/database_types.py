@@ -1,6 +1,6 @@
 import decimal
 from abc import ABC, abstractmethod
-from typing import Sequence, Optional, Tuple, Union, Dict, Any
+from typing import Sequence, Optional, Tuple, Union, Dict, List
 from datetime import datetime
 
 from runtype import dataclass
@@ -121,12 +121,23 @@ class AbstractDatabase(ABC):
         ...
 
     @abstractmethod
+    def concat(self, s: List[str]) -> str:
+        "Provide SQL for concatenating a bunch of column into a string"
+        ...
+
+    @abstractmethod
+    def timestamp_value(self, t: DbTime) -> str:
+        "Provide SQL for the given timestamp value"
+        ...
+
+    @abstractmethod
     def md5_to_int(self, s: str) -> str:
         "Provide SQL for computing md5 and returning an int"
         ...
 
     @abstractmethod
     def offset_limit(self, offset: Optional[int] = None, limit: Optional[int] = None):
+        "Provide SQL fragment for limit and offset inside a select"
         ...
 
     @abstractmethod

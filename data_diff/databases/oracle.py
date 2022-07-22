@@ -4,7 +4,8 @@ from .database_types import *
 from .base import ThreadedDatabase, import_helper, ConnectError, QueryError
 from .base import DEFAULT_DATETIME_PRECISION, DEFAULT_NUMERIC_PRECISION
 
-SESSION_TIME_ZONE = None    # Changed by the tests
+SESSION_TIME_ZONE = None  # Changed by the tests
+
 
 @import_helper("oracle")
 def import_oracle():
@@ -89,6 +90,7 @@ class Oracle(ThreadedDatabase):
         regexps = {
             r"TIMESTAMP\((\d)\) WITH LOCAL TIME ZONE": Timestamp,
             r"TIMESTAMP\((\d)\) WITH TIME ZONE": TimestampTZ,
+            r"TIMESTAMP\((\d)\)": Timestamp,
         }
         for regexp, t_cls in regexps.items():
             m = re.match(regexp + "$", type_repr)
@@ -99,13 +101,22 @@ class Oracle(ThreadedDatabase):
                     rounds=self.ROUNDS_ON_PREC_LOSS,
                 )
 
-        return super()._parse_type(type_repr, col_name, type_repr, datetime_precision, numeric_precision, numeric_scale)
+        return super()._parse_type(
+            table_name, col_name, type_repr, datetime_precision, numeric_precision, numeric_scale
+        )
 
     def offset_limit(self, offset: Optional[int] = None, limit: Optional[int] = None):
         if offset:
             raise NotImplementedError("No support for OFFSET in query")
 
         return f"FETCH NEXT {limit} ROWS ONLY"
+
+    def concat(self, l: List[str]) -> str:
+        joined_exprs = " || ".join(l)
+        return f"({joined_exprs})"
+
+    def timestamp_value(self, t: DbTime) -> str:
+        return "timestamp '%s'" % t.isoformat(" ")
 
     def normalize_uuid(self, value: str, coltype: ColType_UUID) -> str:
         # Cast is necessary for correct MD5 (trimming not enough)

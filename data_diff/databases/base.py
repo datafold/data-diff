@@ -20,6 +20,7 @@ from .database_types import (
     TemporalType,
     UnknownColType,
     Text,
+    DbTime,
 )
 from data_diff.sql import DbPath, SqlOrStr, Compiler, Explain, Select, TableName
 
@@ -151,9 +152,10 @@ class Database(AbstractDatabase):
 
         elif issubclass(cls, Decimal):
             if numeric_scale is None:
-                raise ValueError(
-                    f"{self.name}: Unexpected numeric_scale is NULL, for column {'.'.join(table_path)}.{col_name} of type {type_repr}."
-                )
+                numeric_scale = 0  # Needed for Oracle.
+                # raise ValueError(
+                #     f"{self.name}: Unexpected numeric_scale is NULL, for column {'.'.join(table_path)}.{col_name} of type {type_repr}."
+                # )
             return cls(precision=numeric_scale)
 
         elif issubclass(cls, Float):
@@ -241,6 +243,13 @@ class Database(AbstractDatabase):
             raise NotImplementedError("No support for OFFSET in query")
 
         return f"LIMIT {limit}"
+
+    def concat(self, l: List[str]) -> str:
+        joined_exprs = ", ".join(l)
+        return f"concat({joined_exprs})"
+
+    def timestamp_value(self, t: DbTime) -> str:
+        return "'%s'" % t.isoformat()
 
     def normalize_uuid(self, value: str, coltype: ColType_UUID) -> str:
         if isinstance(coltype, String_UUID):
