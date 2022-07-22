@@ -8,7 +8,7 @@ from operator import attrgetter, methodcaller
 from collections import defaultdict
 from typing import List, Tuple, Iterator, Optional
 import logging
-from concurrent.futures import ThreadPoolExecutor
+from concurrent.futures import ThreadPoolExecutor, as_completed
 
 from runtype import dataclass
 
@@ -315,16 +315,15 @@ class TableDiffer:
             ('-', columns) for items in table2 but not in table1
             Where `columns` is a tuple of values for the involved columns, i.e. (id, ...extra)
         """
+        # Validate options
         if self.bisection_factor >= self.bisection_threshold:
             raise ValueError("Incorrect param values (bisection factor must be lower than threshold)")
         if self.bisection_factor < 2:
             raise ValueError("Must have at least two segments per iteration (i.e. bisection_factor >= 2)")
 
+        # Query and validate schema
         table1, table2 = self._threaded_call("with_schema", [table1, table2])
         self._validate_and_adjust_columns(table1, table2)
-
-        key_ranges = self._threaded_call("query_key_range", [table1, table2])
-        mins, maxs = zip(*key_ranges)
 
         key_type = table1._schema[table1.key_column]
         key_type2 = table2._schema[table2.key_column]
@@ -334,15 +333,13 @@ class TableDiffer:
             raise NotImplementedError(f"Cannot use column of type {key_type2} as a key")
         assert key_type.python_type is key_type2.python_type
 
-        # We add 1 because our ranges are exclusive of the end (like in Python)
-        try:
-            min_key = min(map(key_type.python_type, mins))
-            max_key = max(map(key_type.python_type, maxs)) + 1
-        except (TypeError, ValueError) as e:
-            raise type(e)(f"Cannot apply {key_type} to {mins}, {maxs}.") from e
+        # Query min/max values
+        key_ranges = self._threaded_call_as_completed("query_key_range", [table1, table2])
 
-        table1 = table1.new(min_key=min_key, max_key=max_key)
-        table2 = table2.new(min_key=min_key, max_key=max_key)
+        # Start with the first completed value, so we don't waste time waiting
+        min_key1, max_key1 = self._parse_key_range_result(key_type, next(key_ranges))
+
+        table1, table2 = [t.new(min_key=min_key1, max_key=max_key1) for t in (table1, table2)]
 
         logger.info(
             f"Diffing tables | segments: {self.bisection_factor}, bisection threshold: {self.bisection_threshold}. "
@@ -350,7 +347,28 @@ class TableDiffer:
             f"size: {table2.max_key-table1.min_key}"
         )
 
-        return self._bisect_and_diff_tables(table1, table2)
+        # Bisect (split) the table into segments, and diff them recursively.
+        yield from self._bisect_and_diff_tables(table1, table2)
+
+        # Now we check for the second min-max, to diff the portions we "missed".
+        min_key2, max_key2 = self._parse_key_range_result(key_type, next(key_ranges))
+
+        if min_key2 < min_key1:
+            pre_tables = [t.new(min_key=min_key2, max_key=min_key1) for t in (table1, table2)]
+            yield from self._bisect_and_diff_tables(*pre_tables)
+
+        if max_key2 > max_key1:
+            post_tables = [t.new(min_key=max_key1, max_key=max_key2) for t in (table1, table2)]
+            yield from self._bisect_and_diff_tables(*post_tables)
+
+    def _parse_key_range_result(self, key_type, key_range):
+        mn, mx = key_range
+        cls = key_type.python_type
+        # We add 1 because our ranges are exclusive of the end (like in Python)
+        try:
+            return cls(mn), cls(mx) + 1
+        except (TypeError, ValueError) as e:
+            raise type(e)(f"Cannot apply {key_type} to {mn}, {mx}.") from e
 
     def _validate_and_adjust_columns(self, table1, table2):
         for c in table1._relevant_columns:
@@ -474,12 +492,26 @@ class TableDiffer:
         if checksum1 != checksum2:
             yield from self._bisect_and_diff_tables(table1, table2, level=level, max_rows=max(count1, count2))
 
-    def _thread_map(self, func, iter):
+    def _thread_map(self, func, iterable):
         if not self.threaded:
-            return map(func, iter)
+            return map(func, iterable)
 
-        task_pool = ThreadPoolExecutor(max_workers=self.max_threadpool_size)
-        return task_pool.map(func, iter)
+        with ThreadPoolExecutor(max_workers=self.max_threadpool_size) as task_pool:
+            return task_pool.map(func, iterable)
 
-    def _threaded_call(self, func, iter):
-        return list(self._thread_map(methodcaller(func), iter))
+    def _threaded_call(self, func, iterable):
+        "Calls a method for each object in iterable."
+        return list(self._thread_map(methodcaller(func), iterable))
+
+    def _thread_as_completed(self, func, iterable):
+        if not self.threaded:
+            return map(func, iterable)
+
+        with ThreadPoolExecutor(max_workers=self.max_threadpool_size) as task_pool:
+            futures = [task_pool.submit(func, item) for item in iterable]
+            for future in as_completed(futures):
+                yield future.result()
+
+    def _threaded_call_as_completed(self, func, iterable):
+        "Calls a method for each object in iterable. Returned in order of completion."
+        return self._thread_as_completed(methodcaller(func), iterable)
