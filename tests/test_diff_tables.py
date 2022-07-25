@@ -254,7 +254,7 @@ class TestDiffTables(TestPerDatabase):
         table = self.table.with_schema()
 
         self.assertEqual(1, table.count())
-        concatted = str(id_) + time
+        concatted = str(id_) + "|" + time
         self.assertEqual(str_to_checksum(concatted), table.count_and_checksum()[1])
 
     def test_diff_small_tables(self):
