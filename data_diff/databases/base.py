@@ -205,8 +205,7 @@ class Database(AbstractDatabase):
         fields = [self.normalize_uuid(c, String_UUID()) for c in text_columns]
         samples_by_row = self.query(Select(fields, TableName(table_path), limit=16), list)
         if not samples_by_row:
-            logger.warning(f"Table {table_path} is empty.")
-            return
+            raise ValueError(f"Table {table_path} is empty.")
 
         samples_by_col = list(zip(*samples_by_row))
 
