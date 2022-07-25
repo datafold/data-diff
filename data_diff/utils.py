@@ -54,7 +54,18 @@ def number_to_human(n):
     return "{:.0f}{}".format(n / 10 ** (3 * millidx), millnames[millidx])
 
 
-def remove_password_from_url(url, replace_with="***"):
+def _join_if_any(sym, args):
+    args = list(args)
+    if not args:
+        return ''
+    return sym.join(str(a) for a in args if a)
+
+def remove_password_from_url(url: str, replace_with: str="***") -> str:
     parsed = urlparse(url)
-    replaced = parsed._replace(netloc="{}:{}@{}".format(parsed.username, replace_with, parsed.hostname or ""))
+    account = parsed.username or ''
+    if parsed.password:
+        account += ':' + replace_with
+    host = _join_if_any(":", filter(None, [parsed.hostname, parsed.port]))
+    netloc = _join_if_any("@", filter(None, [account, host]))
+    replaced = parsed._replace(netloc=netloc)
     return replaced.geturl()
