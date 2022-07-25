@@ -1,7 +1,7 @@
 import math
 from urllib.parse import urlparse
 
-from typing import Union
+from typing import Union, Any
 from uuid import UUID
 
 
