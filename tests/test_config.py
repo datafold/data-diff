@@ -1,6 +1,7 @@
 import unittest
 
 from data_diff.config import apply_config_from_string, ConfigParseError
+from data_diff.utils import remove_password_from_url
 
 
 class TestConfig(unittest.TestCase):
@@ -41,3 +42,20 @@ class TestConfig(unittest.TestCase):
         res = apply_config_from_string(config, "pg_pg", {"update_column": "foo", "table2": "bar"})
         assert res["update_column"] == "foo"
         assert res["table2"] == "bar"
+
+    def test_remove_password(self):
+        replace_with = "*****"
+        urls = [
+            'd://host/',
+            'd://host:123/',
+            'd://user@host:123/',
+            'd://user:PASS@host:123/',
+            'd://:PASS@host:123/',
+            'd://:PASS@host:123/path',
+            'd://:PASS@host:123/path?whatever#blabla',
+        ]
+        for url in urls:
+            removed = remove_password_from_url(url, replace_with)
+            expected = url.replace('PASS', replace_with)
+            removed = remove_password_from_url(url, replace_with)
+            self.assertEqual(removed, expected)
