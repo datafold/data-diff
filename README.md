@@ -143,6 +143,10 @@ $ data-diff \
 If a database is not on the list, we'd still love to support it. Open an issue
 to discuss it.
 
+Note: Because URLs allow many special characters, and may collide with the syntax of your command-line,
+it's recommended to surround them with quotes. Alternatively, you may provide them in a TOML file via the `--config` option. 
+
+
 # How to install
 
 Requires Python 3.7+ with pip.

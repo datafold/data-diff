@@ -136,10 +136,8 @@ def _main(
         return
 
     key_column = key_column or "id"
-    if bisection_factor is None:
-        bisection_factor = DEFAULT_BISECTION_FACTOR
-    if bisection_threshold is None:
-        bisection_threshold = DEFAULT_BISECTION_THRESHOLD
+    bisection_factor = DEFAULT_BISECTION_FACTOR if bisection_factor is None else int(bisection_factor)
+    bisection_threshold = DEFAULT_BISECTION_THRESHOLD if bisection_threshold is None else int(bisection_threshold)
 
     threaded = True
     if threads is None:

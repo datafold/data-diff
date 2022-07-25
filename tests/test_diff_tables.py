@@ -254,7 +254,7 @@ class TestDiffTables(TestPerDatabase):
         table = self.table.with_schema()
 
         self.assertEqual(1, table.count())
-        concatted = str(id_) + time
+        concatted = str(id_) + "|" + time
         self.assertEqual(str_to_checksum(concatted), table.count_and_checksum()[1])
 
     def test_diff_small_tables(self):
@@ -405,7 +405,7 @@ class TestStringKeys(TestPerDatabase):
             f"INSERT INTO {self.table_src} VALUES ('unexpected', '<-- this bad value should not break us')", None
         )
 
-        self.assertRaises(ValueError, differ.diff_tables, self.a, self.b)
+        self.assertRaises(ValueError, list, differ.diff_tables(self.a, self.b))
 
 
 @test_per_database
@@ -592,7 +592,7 @@ class TestTableTableEmpty(TestPerDatabase):
 
     def test_right_table_empty(self):
         differ = TableDiffer()
-        self.assertRaises(ValueError, differ.diff_tables, self.a, self.b)
+        self.assertRaises(ValueError, list, differ.diff_tables(self.a, self.b))
 
     def test_left_table_empty(self):
         queries = [
@@ -605,4 +605,4 @@ class TestTableTableEmpty(TestPerDatabase):
         _commit(self.connection)
 
         differ = TableDiffer()
-        self.assertRaises(ValueError, differ.diff_tables, self.a, self.b)
+        self.assertRaises(ValueError, list, differ.diff_tables(self.a, self.b))

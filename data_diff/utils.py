@@ -69,3 +69,11 @@ def remove_password_from_url(url: str, replace_with: str="***") -> str:
     netloc = _join_if_any("@", filter(None, [account, host]))
     replaced = parsed._replace(netloc=netloc)
     return replaced.geturl()
+
+def join_iter(joiner: Any, iterable: iter) -> iter:
+    it = iter(iterable)
+    yield next(it)
+    for i in it:
+        yield joiner
+        yield i
+
