@@ -5,22 +5,17 @@ from datetime import datetime
 
 from runtype import dataclass
 
-from data_diff.utils import ArithUUID
+from data_diff.utils import ArithAlphanumeric, ArithUUID, ArithString
 
 
 DbPath = Tuple[str, ...]
-DbKey = Union[int, str, bytes, ArithUUID]
+DbKey = Union[int, str, bytes, ArithUUID, ArithAlphanumeric]
 DbTime = datetime
 
 
 class ColType:
     supported = True
     pass
-
-
-class IKey(ABC):
-    "Interface for ColType, for using a column as a key in data-diff"
-    python_type: type
 
 
 @dataclass
@@ -63,6 +58,9 @@ class IKey(ABC):
     "Interface for ColType, for using a column as a key in data-diff"
     python_type: type
 
+    def make_value(self, value):
+        return self.python_type(value)
+
 
 class Decimal(FractionalType, IKey):  # Snowflake may use Decimal as a key
     @property
@@ -80,12 +78,34 @@ class ColType_UUID(ColType, IKey):
     python_type = ArithUUID
 
 
+class ColType_Alphanum(ColType, IKey):
+    python_type = ArithAlphanumeric
+
+
 class Native_UUID(ColType_UUID):
     pass
 
 
 class String_UUID(StringType, ColType_UUID):
     pass
+
+
+@dataclass
+class String_Alphanum(StringType, ColType_Alphanum):
+    length: int
+
+    @staticmethod
+    def test_value(value: str) -> bool:
+        try:
+            ArithAlphanumeric(value)
+            return True
+        except ValueError:
+            return False
+
+    def make_value(self, value):
+        if len(value) != self.length:
+            raise ValueError(f"Expected alphanumeric value of length {self.length}, but got '{value}'.")
+        return self.python_type(value, max_len=self.length)
 
 
 @dataclass
