@@ -221,6 +221,7 @@ class Database(AbstractDatabase):
                 else:
                     assert col_name in col_dict
                     col_dict[col_name] = String_UUID()
+                    continue
 
             alphanum_samples = [s for s in samples if s and String_Alphanum.test_value(s)]
             if alphanum_samples:
@@ -238,6 +239,7 @@ class Database(AbstractDatabase):
                     else:
                         (length,) = lens
                         col_dict[col_name] = String_Alphanum(length=length)
+                        continue
 
     # @lru_cache()
     # def get_table_schema(self, path: DbPath) -> Dict[str, ColType]:
