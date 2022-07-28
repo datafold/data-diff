@@ -47,7 +47,7 @@ class MySQL(ThreadedDatabase):
             elif e.errno == mysql.errorcode.ER_BAD_DB_ERROR:
                 raise ConnectError("Database does not exist") from e
             else:
-                raise ConnectError(*e._args) from e
+                raise ConnectError(*e) from e
 
     def quote(self, s: str):
         return f"`{s}`"
