@@ -311,8 +311,8 @@ class TableDiffer:
 
         Returns:
             An iterator that yield pair-tuples, representing the diff. Items can be either
-            ('+', columns) for items in table1 but not in table2
-            ('-', columns) for items in table2 but not in table1
+            ('-', columns) for items in table1 but not in table2
+            ('+', columns) for items in table2 but not in table1
             Where `columns` is a tuple of values for the involved columns, i.e. (id, ...extra)
         """
         # Validate options
