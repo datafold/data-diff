@@ -2,7 +2,7 @@ import re
 
 from .database_types import *
 from .base import ThreadedDatabase, import_helper, ConnectError, QueryError
-from .base import DEFAULT_DATETIME_PRECISION, DEFAULT_NUMERIC_PRECISION
+from .base import DEFAULT_DATETIME_PRECISION, TIMESTAMP_PRECISION_POS
 
 SESSION_TIME_ZONE = None  # Changed by the tests
 
@@ -69,7 +69,14 @@ class Oracle(ThreadedDatabase):
         )
 
     def normalize_timestamp(self, value: str, coltype: TemporalType) -> str:
-        return f"to_char(cast({value} as timestamp({coltype.precision})), 'YYYY-MM-DD HH24:MI:SS.FF6')"
+        if coltype.rounds:
+            return f"to_char(cast({value} as timestamp({coltype.precision})), 'YYYY-MM-DD HH24:MI:SS.FF6')"
+        else:
+            if coltype.precision > 0:
+                truncated = f"to_char({value}, 'YYYY-MM-DD HH24:MI:SS.FF{coltype.precision}')"
+            else:
+                truncated = f"to_char({value}, 'YYYY-MM-DD HH24:MI:SS.')"
+            return f"RPAD({truncated}, {TIMESTAMP_PRECISION_POS+6}, '0')"
 
     def normalize_number(self, value: str, coltype: FractionalType) -> str:
         # FM999.9990
