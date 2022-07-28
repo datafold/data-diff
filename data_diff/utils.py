@@ -1,7 +1,8 @@
 import math
+from typing import Iterable, Tuple, Union, Any
+from typing import TypeVar, Generic
+from abc import ABC, abstractmethod
 from urllib.parse import urlparse
-
-from typing import Union, Any
 from uuid import UUID
 import string
 
@@ -150,9 +151,64 @@ def remove_password_from_url(url: str, replace_with: str = "***") -> str:
     return replaced.geturl()
 
 
-def join_iter(joiner: Any, iterable: iter) -> iter:
+def join_iter(joiner: Any, iterable: Iterable) -> Iterable:
     it = iter(iterable)
     yield next(it)
     for i in it:
         yield joiner
         yield i
+
+
+V = TypeVar("V")
+
+
+class CaseAwareMapping(ABC, Generic[V]):
+    @abstractmethod
+    def get_key(self, key: str) -> str:
+        ...
+
+    @abstractmethod
+    def __getitem__(self, key: str) -> V:
+        ...
+
+    @abstractmethod
+    def __setitem__(self, key: str, value: V):
+        ...
+
+    @abstractmethod
+    def __contains__(self, key: str) -> bool:
+        ...
+
+
+class CaseInsensitiveDict(CaseAwareMapping):
+    def __init__(self, initial):
+        self._dict = {k.lower(): (k, v) for k, v in dict(initial).items()}
+
+    def get_key(self, key: str) -> str:
+        return self._dict[key.lower()][0]
+
+    def __getitem__(self, key: str) -> V:
+        return self._dict[key.lower()][1]
+
+    def __setitem__(self, key: str, value):
+        k = key.lower()
+        if k in self._dict:
+            key = self._dict[k][0]
+        self._dict[k] = key, value
+
+    def __contains__(self, key):
+        return key.lower() in self._dict
+
+    def keys(self) -> Iterable[str]:
+        return self._dict.keys()
+
+    def items(self) -> Iterable[Tuple[str, V]]:
+        return ((k, v[1]) for k, v in self._dict.items())
+
+
+class CaseSensitiveDict(dict, CaseAwareMapping):
+    def get_key(self, key):
+        return key
+
+    def as_insensitive(self):
+        return CaseInsensitiveDict(self)

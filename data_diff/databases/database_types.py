@@ -1,11 +1,11 @@
 import decimal
 from abc import ABC, abstractmethod
-from typing import Sequence, Optional, Tuple, Union, Dict, List
+from typing import Mapping, Sequence, Optional, Tuple, Union, Dict, List
 from datetime import datetime
 
 from runtype import dataclass
 
-from data_diff.utils import ArithAlphanumeric, ArithUUID, ArithString
+from data_diff.utils import ArithAlphanumeric, ArithUUID, CaseAwareMapping
 
 
 DbPath = Tuple[str, ...]
@@ -254,44 +254,4 @@ class AbstractDatabase(ABC):
         ...
 
 
-class Schema(ABC):
-    @abstractmethod
-    def get_key(self, key: str) -> str:
-        ...
-
-    @abstractmethod
-    def __getitem__(self, key: str) -> ColType:
-        ...
-
-    @abstractmethod
-    def __setitem__(self, key: str, value):
-        ...
-
-    @abstractmethod
-    def __contains__(self, key: str) -> bool:
-        ...
-
-
-class Schema_CaseSensitive(dict, Schema):
-    def get_key(self, key):
-        return key
-
-
-class Schema_CaseInsensitive(Schema):
-    def __init__(self, initial):
-        self._dict = {k.lower(): (k, v) for k, v in dict(initial).items()}
-
-    def get_key(self, key: str) -> str:
-        return self._dict[key.lower()][0]
-
-    def __getitem__(self, key: str) -> ColType:
-        return self._dict[key.lower()][1]
-
-    def __setitem__(self, key: str, value):
-        k = key.lower()
-        if k in self._dict:
-            key = self._dict[k][0]
-        self._dict[k] = key, value
-
-    def __contains__(self, key):
-        return key.lower() in self._dict
+Schema = CaseAwareMapping

@@ -13,7 +13,7 @@ from concurrent.futures import ThreadPoolExecutor, as_completed
 from runtype import dataclass
 
 from .sql import Select, Checksum, Compare, DbPath, DbKey, DbTime, Count, TableName, Time, Value
-from .utils import safezip, split_space
+from .utils import CaseInsensitiveDict, safezip, split_space, CaseSensitiveDict
 from .databases.base import Database
 from .databases.database_types import (
     ArithString,
@@ -23,8 +23,6 @@ from .databases.database_types import (
     PrecisionType,
     StringType,
     Schema,
-    Schema_CaseInsensitive,
-    Schema_CaseSensitive,
 )
 
 logger = logging.getLogger("diff_tables")
@@ -33,6 +31,18 @@ RECOMMENDED_CHECKSUM_DURATION = 10
 BENCHMARK = os.environ.get("BENCHMARK", False)
 DEFAULT_BISECTION_THRESHOLD = 1024 * 16
 DEFAULT_BISECTION_FACTOR = 32
+
+
+def create_schema(db: Database, table_path: DbPath, schema: dict, case_sensitive: bool) -> Schema:
+    logger.debug(f"[{db.name}] Schema = {schema}")
+
+    if case_sensitive:
+        return CaseSensitiveDict(schema)
+
+    if len({k.lower() for k in schema}) < len(schema):
+        logger.warning(f'Ambiguous schema for {db}:{".".join(table_path)} | Columns = {", ".join(list(schema))}')
+        logger.warning("We recommend to disable case-insensitivity (remove --any-case).")
+    return CaseInsensitiveDict(schema)
 
 
 @dataclass(frozen=False)
@@ -116,26 +126,16 @@ class TableSegment:
 
         return self.database.normalize_value_by_type(col, col_type)
 
+    def _with_raw_schema(self, raw_schema: dict) -> "TableSegment":
+        schema = self.database._process_table_schema(self.table_path, raw_schema, self._relevant_columns)
+        return self.new(_schema=create_schema(self.database, self.table_path, schema, self.case_sensitive))
+
     def with_schema(self) -> "TableSegment":
         "Queries the table schema from the database, and returns a new instance of TableSegment, with a schema."
         if self._schema:
             return self
 
-        schema = self.database.query_table_schema(self.table_path, self._relevant_columns)
-        logger.debug(f"[{self.database.name}] Schema = {schema}")
-
-        schema_inst: Schema
-        if self.case_sensitive:
-            schema_inst = Schema_CaseSensitive(schema)
-        else:
-            if len({k.lower() for k in schema}) < len(schema):
-                logger.warning(
-                    f'Ambiguous schema for {self.database}:{".".join(self.table_path)} | Columns = {", ".join(list(schema))}'
-                )
-                logger.warning("We recommend to disable case-insensitivity (remove --any-case).")
-            schema_inst = Schema_CaseInsensitive(schema)
-
-        return self.new(_schema=schema_inst)
+        return self._with_raw_schema(self.database.query_table_schema(self.table_path))
 
     def _make_key_range(self):
         if self.min_key is not None:

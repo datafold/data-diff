@@ -7,7 +7,7 @@ from concurrent.futures import ThreadPoolExecutor
 import threading
 from abc import abstractmethod
 
-from data_diff.utils import is_uuid, safezip
+from data_diff.utils import CaseAwareMapping, is_uuid, safezip
 from .database_types import (
     AbstractDatabase,
     ColType,
@@ -180,16 +180,19 @@ class Database(AbstractDatabase):
             f"WHERE table_name = '{table}' AND table_schema = '{schema}'"
         )
 
-    def query_table_schema(self, path: DbPath, filter_columns: Optional[Sequence[str]] = None) -> Dict[str, ColType]:
+    def query_table_schema(self, path: DbPath) -> Dict[str, ColType]:
         rows = self.query(self.select_table_schema(path), list)
         if not rows:
             raise RuntimeError(f"{self.name}: Table '{'.'.join(path)}' does not exist, or has no columns")
 
-        if filter_columns is not None:
-            accept = {i.lower() for i in filter_columns}
-            rows = [r for r in rows if r[0].lower() in accept]
+        d = {r[0]: r for r in rows}
+        assert len(d) == len(rows)
+        return d
 
-        col_dict: Dict[str, ColType] = {row[0]: self._parse_type(path, *row) for row in rows}
+    def _process_table_schema(self, path: DbPath, raw_schema: dict, filter_columns: Sequence[str]):
+        accept = {i.lower() for i in filter_columns}
+
+        col_dict = {name: self._parse_type(path, *row) for name, row in raw_schema.items() if name.lower() in accept}
 
         self._refine_coltypes(path, col_dict)
 
