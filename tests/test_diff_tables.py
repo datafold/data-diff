@@ -9,6 +9,7 @@ import arrow  # comes with preql
 from data_diff.databases import connect_to_uri
 from data_diff.diff_tables import TableDiffer, TableSegment, split_space
 from data_diff import databases as db
+from data_diff.utils import ArithAlphanumeric
 
 from .common import (
     TEST_MYSQL_CONN_STRING,
@@ -369,7 +370,7 @@ class TestDiffTables(TestPerDatabase):
 
 
 @test_per_database
-class TestStringKeys(TestPerDatabase):
+class TestUUIDs(TestPerDatabase):
     def setUp(self):
         super().setUp()
 
@@ -406,6 +407,57 @@ class TestStringKeys(TestPerDatabase):
         )
 
         self.assertRaises(ValueError, list, differ.diff_tables(self.a, self.b))
+
+
+@test_per_database
+class TestAlphanumericKeys(TestPerDatabase):
+    def setUp(self):
+        super().setUp()
+
+        queries = [
+            f"CREATE TABLE {self.table_src}(id varchar(100), text_comment varchar(1000))",
+        ]
+        for i in range(0, 10000, 1000):
+            queries.append(f"INSERT INTO {self.table_src} VALUES ('{ArithAlphanumeric(int=i, max_len=10)}', '{i}')")
+
+        queries += [
+            f"CREATE TABLE {self.table_dst} AS SELECT * FROM {self.table_src}",
+        ]
+
+        self.new_alphanum = "abcdefghij"
+        queries.append(f"INSERT INTO {self.table_src} VALUES ('{self.new_alphanum}', 'This one is different')")
+
+        # TODO test unexpected values?
+
+        for query in queries:
+            self.connection.query(query, None)
+
+        _commit(self.connection)
+
+        self.a = TableSegment(self.connection, self.table_src_path, "id", "text_comment", case_sensitive=False)
+        self.b = TableSegment(self.connection, self.table_dst_path, "id", "text_comment", case_sensitive=False)
+
+    def test_alphanum_keys(self):
+        # Test the class itself
+        assert str(ArithAlphanumeric(int=0, max_len=1)) == "0"
+        assert str(ArithAlphanumeric(int=0, max_len=10)) == "0" * 10
+        assert str(ArithAlphanumeric(int=1, max_len=10)) == "0" * 9 + "1"
+
+        # Test in the differ
+
+        differ = TableDiffer()
+        diff = list(differ.diff_tables(self.a, self.b))
+        self.assertEqual(diff, [("-", (str(self.new_alphanum), "This one is different"))])
+
+        self.connection.query(
+            f"INSERT INTO {self.table_src} VALUES ('@@@', '<-- this bad value should not break us')", None
+        )
+        _commit(self.connection)
+
+        self.a = TableSegment(self.connection, self.table_src_path, "id", "text_comment", case_sensitive=False)
+        self.b = TableSegment(self.connection, self.table_dst_path, "id", "text_comment", case_sensitive=False)
+
+        self.assertRaises(NotImplementedError, list, differ.diff_tables(self.a, self.b))
 
 
 @test_per_database

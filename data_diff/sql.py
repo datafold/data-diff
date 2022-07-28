@@ -8,7 +8,7 @@ from runtype import dataclass
 
 from .utils import join_iter
 
-from .databases.database_types import AbstractDatabase, DbPath, DbKey, DbTime, ArithUUID
+from .databases.database_types import AbstractDatabase, DbPath, DbKey, DbTime, ArithString
 
 
 class Sql:
@@ -69,7 +69,7 @@ class Value(Sql):
             return "b'%s'" % self.value.decode()
         elif isinstance(self.value, str):
             return "'%s'" % self.value
-        elif isinstance(self.value, ArithUUID):
+        elif isinstance(self.value, ArithString):
             return "'%s'" % self.value
         return str(self.value)
 
