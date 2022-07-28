@@ -9,7 +9,7 @@ def import_snowflake():
     import snowflake.connector
     from cryptography.hazmat.primitives import serialization
     from cryptography.hazmat.backends import default_backend
-    
+
     return snowflake, serialization, default_backend
 
 
@@ -27,18 +27,7 @@ class Snowflake(Database):
     }
     ROUNDS_ON_PREC_LOSS = False
 
-    def __init__(self,
-        account: str,
-        user: str,
-        *,
-        warehouse: str,
-        schema: str,
-        database: str,
-        role: str = None,
-        _port: int = None,
-        password: str = None,  # default to None incase ssh key is used
-        **kw,
-    ):
+    def __init__(self, *, schema: str, **kw):
         snowflake, serialization, default_backend = import_snowflake()
         logging.getLogger("snowflake.connector").setLevel(logging.WARNING)
 
@@ -49,7 +38,7 @@ class Snowflake(Database):
 
         assert '"' not in schema, "Schema name should not contain quotes!"
         if (
-            not password and "key" in kw
+            "password" not in kw and "key" in kw
         ):  # if private keys are used instead of password for Snowflake connection, read in key from path specified and pass as "private_key" to connector.
             with open(kw.get("key"), "rb") as key:
                 p_key = serialization.load_pem_private_key(key.read(), password=None, backend=default_backend())
@@ -59,27 +48,10 @@ class Snowflake(Database):
                 format=serialization.PrivateFormat.PKCS8,
                 encryption_algorithm=serialization.NoEncryption(),
             )
-            self._conn = snowflake.connector.connect(
-                user=user,
-                private_key=pkb,  # replaces password
-                account=account,
-                role=role,
-                database=database,
-                warehouse=warehouse,
-                schema=f'"{schema}"',
-                **kw,
-            )
+            self._conn = snowflake.connector.connect(private_key=pkb, schema=f'"{schema}"', **kw)  # replaces password
+
         else:  # otherwise use password for connection
-            self._conn = snowflake.connector.connect(
-                user=user,
-                password=password,
-                account=account,
-                role=role,
-                database=database,
-                warehouse=warehouse,
-                schema=f'"{schema}"',
-                **kw,
-            )
+            self._conn = snowflake.connector.connect(schema=f'"{schema}"', **kw)
 
         self.default_schema = schema
 

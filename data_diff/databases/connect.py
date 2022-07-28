@@ -143,6 +143,15 @@ def connect_to_uri(db_uri: str, thread_count: Optional[int] = 1) -> Database:
             assert not dsn.port
             kw["user"] = dsn.user
             kw["password"] = dsn.password
+
+        # if scheme == "presto":
+        #     kw["user"] = dsn.user
+        #     # kw["password"] = dsn.password
+        #     kw["host"] = dsn.host
+        #     kw["port"] = dsn.port
+        #     # kw["catalog"] = dsn.catalog
+        #     # kw["schema"] = dsn.schema
+
         else:
             kw["host"] = dsn.host
             kw["port"] = dsn.port
