@@ -5,7 +5,7 @@ import json
 import logging
 from itertools import islice
 
-from .utils import remove_password_from_url, safezip
+from .utils import remove_password_from_url, safezip, match_like
 
 from .diff_tables import (
     TableSegment,
@@ -76,9 +76,8 @@ def _get_schema(pair):
 @click.option(
     "--case-sensitive",
     is_flag=True,
-    help="Column names are treated as case-sensitive. Otherwise, correct case according to schema.",
+    help="Column names are treated as case-sensitive. Otherwise, data-diff corrects their case according to schema.",
 )
-@click.option("--mutual-columns", is_flag=True, help="XXX")
 @click.option(
     "-j",
     "--threads",
@@ -123,7 +122,6 @@ def _main(
     interactive,
     threads,
     case_sensitive,
-    mutual_columns,
     json_output,
     where,
     threads1=None,
@@ -206,10 +204,23 @@ def _main(
         for db, table_path, schema in safezip(dbs, table_paths, schemas)
     ]
 
-    if mutual_columns:
-        mutual = schema1.keys() & schema2.keys()  # Case-aware, according to case_sensitive
-        provided_columns = {key_column, update_column} | set(columns)
-        columns += tuple(mutual - provided_columns)
+    mutual = schema1.keys() & schema2.keys()  # Case-aware, according to case_sensitive
+    logging.debug(f"Available mutual columns: {mutual}")
+
+    expanded_columns = set()
+    for c in columns:
+        match = set(match_like(c, mutual))
+        if not match:
+            m1 = None if any(match_like(c, schema1.keys())) else f"{db1}/{table1}"
+            m2 = None if any(match_like(c, schema2.keys())) else f"{db2}/{table2}"
+            not_matched = ", ".join(m for m in [m1, m2] if m)
+            raise ValueError(f"Column {c} not found in: {not_matched}")
+
+        expanded_columns |= match
+
+    columns = tuple(expanded_columns - {key_column, update_column})
+
+    logging.info(f"Diffing columns: key={key_column} update={update_column} extra={columns}")
 
     segments = [
         TableSegment(db, table_path, key_column, update_column, columns, **options)._with_raw_schema(raw_schema)

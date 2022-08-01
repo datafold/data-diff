@@ -1,5 +1,6 @@
+import re
 import math
-from typing import Iterable, Tuple, Union, Any
+from typing import Iterable, Tuple, Union, Any, Sequence
 from typing import TypeVar, Generic
 from abc import ABC, abstractmethod
 from urllib.parse import urlparse
@@ -212,3 +213,10 @@ class CaseSensitiveDict(dict, CaseAwareMapping):
 
     def as_insensitive(self):
         return CaseInsensitiveDict(self)
+
+
+def match_like(pattern: str, strs: Sequence[str]) -> Iterable[str]:
+    reo = re.compile(pattern.replace("%", ".*").replace("?", ".") + "$")
+    for s in strs:
+        if reo.match(s):
+            yield s

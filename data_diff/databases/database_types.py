@@ -1,6 +1,6 @@
 import decimal
 from abc import ABC, abstractmethod
-from typing import Mapping, Sequence, Optional, Tuple, Union, Dict, List
+from typing import Sequence, Optional, Tuple, Union, Dict, List
 from datetime import datetime
 
 from runtype import dataclass

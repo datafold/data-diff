@@ -13,10 +13,9 @@ from concurrent.futures import ThreadPoolExecutor, as_completed
 from runtype import dataclass
 
 from .sql import Select, Checksum, Compare, DbPath, DbKey, DbTime, Count, TableName, Time, Value
-from .utils import CaseInsensitiveDict, safezip, split_space, CaseSensitiveDict
+from .utils import CaseAwareMapping, CaseInsensitiveDict, safezip, split_space, CaseSensitiveDict, ArithString
 from .databases.base import Database
 from .databases.database_types import (
-    ArithString,
     IKey,
     Native_UUID,
     NumericType,
@@ -33,7 +32,7 @@ DEFAULT_BISECTION_THRESHOLD = 1024 * 16
 DEFAULT_BISECTION_FACTOR = 32
 
 
-def create_schema(db: Database, table_path: DbPath, schema: dict, case_sensitive: bool) -> Schema:
+def create_schema(db: Database, table_path: DbPath, schema: dict, case_sensitive: bool) -> CaseAwareMapping:
     logger.debug(f"[{db.name}] Schema = {schema}")
 
     if case_sensitive:
