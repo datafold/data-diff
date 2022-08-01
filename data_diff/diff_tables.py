@@ -16,7 +16,7 @@ from .sql import Select, Checksum, Compare, DbPath, DbKey, DbTime, Count, TableN
 from .utils import safezip, split_space
 from .databases.base import Database
 from .databases.database_types import (
-    ArithUUID,
+    ArithString,
     IKey,
     Native_UUID,
     NumericType,
@@ -175,10 +175,10 @@ class TableSegment:
     def choose_checkpoints(self, count: int) -> List[DbKey]:
         "Suggests a bunch of evenly-spaced checkpoints to split by (not including start, end)"
         assert self.is_bounded
-        if isinstance(self.min_key, ArithUUID):
+        if isinstance(self.min_key, ArithString):
+            assert type(self.min_key) is type(self.max_key)
             checkpoints = split_space(self.min_key.int, self.max_key.int, count)
-            assert isinstance(self.max_key, ArithUUID)
-            return [ArithUUID(int=i) for i in checkpoints]
+            return [self.min_key.new(int=i) for i in checkpoints]
 
         return split_space(self.min_key, self.max_key, count)
 
@@ -363,7 +363,7 @@ class TableDiffer:
 
     def _parse_key_range_result(self, key_type, key_range):
         mn, mx = key_range
-        cls = key_type.python_type
+        cls = key_type.make_value
         # We add 1 because our ranges are exclusive of the end (like in Python)
         try:
             return cls(mn), cls(mx) + 1
