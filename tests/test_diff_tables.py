@@ -424,7 +424,7 @@ class TestAlphanumericKeys(TestPerDatabase):
             f"CREATE TABLE {self.table_dst} AS SELECT * FROM {self.table_src}",
         ]
 
-        self.new_alphanum = "abcdefghij"
+        self.new_alphanum = "aBcDeFgHiJ"
         queries.append(f"INSERT INTO {self.table_src} VALUES ('{self.new_alphanum}', 'This one is different')")
 
         # TODO test unexpected values?
