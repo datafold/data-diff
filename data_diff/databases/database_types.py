@@ -170,10 +170,24 @@ class AbstractDatabase(ABC):
         "Provide SQL for selecting the table schema as (name, type, date_prec, num_prec)"
         ...
 
+
     @abstractmethod
-    def query_table_schema(self, path: DbPath, filter_columns: Optional[Sequence[str]] = None) -> Dict[str, ColType]:
-        "Query the table for its schema for table in 'path', and return {column: type}"
+    def query_table_schema(self, path: DbPath) -> Dict[str, tuple]:
+        """Query the table for its schema for table in 'path', and return {column: tuple}
+          where the tuple is (table_name, col_name, type_repr, datetime_precision?, numeric_precision?, numeric_scale?)
+        """
         ...
+
+    @abstractmethod
+    def _process_table_schema(self, path: DbPath, raw_schema: Dict[str, tuple], filter_columns: Sequence[str]):
+        """Process the result of query_table_schema().
+
+        Done in a separate step, to minimize the amount of processed columns.
+        Needed because processing each column may:
+        * throw errors and warnings
+        * query the database to sample values
+
+        """
 
     @abstractmethod
     def parse_table_name(self, name: str) -> DbPath:

@@ -180,7 +180,7 @@ class Database(AbstractDatabase):
             f"WHERE table_name = '{table}' AND table_schema = '{schema}'"
         )
 
-    def query_table_schema(self, path: DbPath) -> Dict[str, ColType]:
+    def query_table_schema(self, path: DbPath) -> Dict[str, tuple]:
         rows = self.query(self.select_table_schema(path), list)
         if not rows:
             raise RuntimeError(f"{self.name}: Table '{'.'.join(path)}' does not exist, or has no columns")
@@ -189,7 +189,7 @@ class Database(AbstractDatabase):
         assert len(d) == len(rows)
         return d
 
-    def _process_table_schema(self, path: DbPath, raw_schema: dict, filter_columns: Sequence[str]):
+    def _process_table_schema(self, path: DbPath, raw_schema: Dict[str, tuple], filter_columns: Sequence[str]):
         accept = {i.lower() for i in filter_columns}
 
         col_dict = {name: self._parse_type(path, *row) for name, row in raw_schema.items() if name.lower() in accept}

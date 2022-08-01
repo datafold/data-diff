@@ -68,7 +68,7 @@ class Databricks(Database):
         # Subtracting 1 due to wierd precision issues
         return max(super()._convert_db_precision_to_digits(p) - 1, 0)
 
-    def query_table_schema(self, path: DbPath, filter_columns: Optional[Sequence[str]] = None) -> Dict[str, ColType]:
+    def query_table_schema(self, path: DbPath) -> Dict[str, tuple]:
         # Databricks has INFORMATION_SCHEMA only for Databricks Runtime, not for Databricks SQL.
         # https://docs.databricks.com/spark/latest/spark-sql/language-manual/information-schema/columns.html
         # So, to obtain information about schema, we should use another approach.
@@ -80,35 +80,41 @@ class Databricks(Database):
             if not rows:
                 raise RuntimeError(f"{self.name}: Table '{'.'.join(path)}' does not exist, or has no columns")
 
-            if filter_columns is not None:
-                accept = {i.lower() for i in filter_columns}
-                rows = [r for r in rows if r.COLUMN_NAME.lower() in accept]
+            d = {r[0]: r for r in rows}
+            assert len(d) == len(rows)
+            return d
 
-            resulted_rows = []
-            for row in rows:
-                row_type = "DECIMAL" if row.DATA_TYPE == 3 else row.TYPE_NAME
-                type_cls = self.TYPE_CLASSES.get(row_type, UnknownColType)
 
-                if issubclass(type_cls, Integer):
-                    row = (row.COLUMN_NAME, row_type, None, None, 0)
+    def _process_table_schema(self, path: DbPath, raw_schema: Dict[str, tuple], filter_columns: Sequence[str]):
+        accept = {i.lower() for i in filter_columns}
+        rows = [row for name, row in raw_schema.items() if name.lower() in accept]
 
-                elif issubclass(type_cls, Float):
-                    numeric_precision = self._convert_db_precision_to_digits(row.DECIMAL_DIGITS)
-                    row = (row.COLUMN_NAME, row_type, None, numeric_precision, None)
+        resulted_rows = []
+        for row in rows:
+            row_type = "DECIMAL" if row.DATA_TYPE == 3 else row.TYPE_NAME
+            type_cls = self.TYPE_CLASSES.get(row_type, UnknownColType)
 
-                elif issubclass(type_cls, Decimal):
-                    # TYPE_NAME has a format DECIMAL(x,y)
-                    items = row.TYPE_NAME[8:].rstrip(")").split(",")
-                    numeric_precision, numeric_scale = int(items[0]), int(items[1])
-                    row = (row.COLUMN_NAME, row_type, None, numeric_precision, numeric_scale)
+            if issubclass(type_cls, Integer):
+                row = (row.COLUMN_NAME, row_type, None, None, 0)
 
-                elif issubclass(type_cls, Timestamp):
-                    row = (row.COLUMN_NAME, row_type, row.DECIMAL_DIGITS, None, None)
+            elif issubclass(type_cls, Float):
+                numeric_precision = self._convert_db_precision_to_digits(row.DECIMAL_DIGITS)
+                row = (row.COLUMN_NAME, row_type, None, numeric_precision, None)
 
-                else:
-                    row = (row.COLUMN_NAME, row_type, None, None, None)
+            elif issubclass(type_cls, Decimal):
+                # TYPE_NAME has a format DECIMAL(x,y)
+                items = row.TYPE_NAME[8:].rstrip(")").split(",")
+                numeric_precision, numeric_scale = int(items[0]), int(items[1])
+                row = (row.COLUMN_NAME, row_type, None, numeric_precision, numeric_scale)
 
-                resulted_rows.append(row)
+            elif issubclass(type_cls, Timestamp):
+                row = (row.COLUMN_NAME, row_type, row.DECIMAL_DIGITS, None, None)
+
+            else:
+                row = (row.COLUMN_NAME, row_type, None, None, None)
+
+            resulted_rows.append(row)
+
         col_dict: Dict[str, ColType] = {row[0]: self._parse_type(path, *row) for row in resulted_rows}
 
         self._refine_coltypes(path, col_dict)
