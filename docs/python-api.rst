@@ -3,7 +3,7 @@ Python API Reference
 
 .. py:module:: data_diff
 
-.. autofunction:: connect_to_uri
+.. autofunction:: connect
 
 .. autoclass:: TableDiffer
     :members: __init__, diff_tables
