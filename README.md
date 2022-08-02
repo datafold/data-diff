@@ -144,7 +144,7 @@ If a database is not on the list, we'd still love to support it. Open an issue
 to discuss it.
 
 Note: Because URLs allow many special characters, and may collide with the syntax of your command-line,
-it's recommended to surround them with quotes. Alternatively, you may provide them in a TOML file via the `--config` option. 
+it's recommended to surround them with quotes. Alternatively, you may provide them in a TOML file via the `--config` option.
 
 
 # How to install
@@ -195,7 +195,7 @@ Options:
   - `--help` - Show help message and exit.
   - `-k` or `--key-column` - Name of the primary key column
   - `-t` or `--update-column` - Name of updated_at/last_updated column
-  - `-c` or `--columns` - List of names of extra columns to compare
+  - `-c` or `--columns` - Name or pattern of extra columns to compare. Pattern syntax is like SQL, e.g. `%foob.r%`.
   - `-l` or `--limit` - Maximum number of differences to find (limits maximum bandwidth and runtime)
   - `-s` or `--stats` - Print stats instead of a detailed diff
   - `-d` or `--debug` - Print debug info

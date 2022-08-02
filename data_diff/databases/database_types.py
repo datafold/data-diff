@@ -5,7 +5,7 @@ from datetime import datetime
 
 from runtype import dataclass
 
-from data_diff.utils import ArithAlphanumeric, ArithUUID, ArithString
+from data_diff.utils import ArithAlphanumeric, ArithUUID, CaseAwareMapping
 
 
 DbPath = Tuple[str, ...]
@@ -171,9 +171,22 @@ class AbstractDatabase(ABC):
         ...
 
     @abstractmethod
-    def query_table_schema(self, path: DbPath, filter_columns: Optional[Sequence[str]] = None) -> Dict[str, ColType]:
-        "Query the table for its schema for table in 'path', and return {column: type}"
+    def query_table_schema(self, path: DbPath) -> Dict[str, tuple]:
+        """Query the table for its schema for table in 'path', and return {column: tuple}
+        where the tuple is (table_name, col_name, type_repr, datetime_precision?, numeric_precision?, numeric_scale?)
+        """
         ...
+
+    @abstractmethod
+    def _process_table_schema(self, path: DbPath, raw_schema: Dict[str, tuple], filter_columns: Sequence[str]):
+        """Process the result of query_table_schema().
+
+        Done in a separate step, to minimize the amount of processed columns.
+        Needed because processing each column may:
+        * throw errors and warnings
+        * query the database to sample values
+
+        """
 
     @abstractmethod
     def parse_table_name(self, name: str) -> DbPath:
@@ -254,44 +267,4 @@ class AbstractDatabase(ABC):
         ...
 
 
-class Schema(ABC):
-    @abstractmethod
-    def get_key(self, key: str) -> str:
-        ...
-
-    @abstractmethod
-    def __getitem__(self, key: str) -> ColType:
-        ...
-
-    @abstractmethod
-    def __setitem__(self, key: str, value):
-        ...
-
-    @abstractmethod
-    def __contains__(self, key: str) -> bool:
-        ...
-
-
-class Schema_CaseSensitive(dict, Schema):
-    def get_key(self, key):
-        return key
-
-
-class Schema_CaseInsensitive(Schema):
-    def __init__(self, initial):
-        self._dict = {k.lower(): (k, v) for k, v in dict(initial).items()}
-
-    def get_key(self, key: str) -> str:
-        return self._dict[key.lower()][0]
-
-    def __getitem__(self, key: str) -> ColType:
-        return self._dict[key.lower()][1]
-
-    def __setitem__(self, key: str, value):
-        k = key.lower()
-        if k in self._dict:
-            key = self._dict[k][0]
-        self._dict[k] = key, value
-
-    def __contains__(self, key):
-        return key.lower() in self._dict
+Schema = CaseAwareMapping

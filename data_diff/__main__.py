@@ -5,13 +5,14 @@ import json
 import logging
 from itertools import islice
 
-from .utils import remove_password_from_url
+from .utils import remove_password_from_url, safezip, match_like
 
 from .diff_tables import (
     TableSegment,
     TableDiffer,
     DEFAULT_BISECTION_THRESHOLD,
     DEFAULT_BISECTION_FACTOR,
+    create_schema,
 )
 from .databases.connect import connect
 from .parse_time import parse_time_before_now, UNITS_STR, ParseError
@@ -37,6 +38,11 @@ def _remove_passwords_in_dict(d: dict):
             _remove_passwords_in_dict(v)
         elif k.startswith("database"):
             d[k] = remove_password_from_url(v)
+
+
+def _get_schema(pair):
+    db, table_path = pair
+    return db.query_table_schema(table_path)
 
 
 @click.command()
@@ -67,7 +73,11 @@ def _remove_passwords_in_dict(d: dict):
 @click.option("--json", "json_output", is_flag=True, help="Print JSONL output for machine readability")
 @click.option("-v", "--verbose", is_flag=True, help="Print extra info")
 @click.option("-i", "--interactive", is_flag=True, help="Confirm queries, implies --debug")
-@click.option("--keep-column-case", is_flag=True, help="Don't use the schema to fix the case of given column names.")
+@click.option(
+    "--case-sensitive",
+    is_flag=True,
+    help="Column names are treated as case-sensitive. Otherwise, data-diff corrects their case according to schema.",
+)
 @click.option(
     "-j",
     "--threads",
@@ -111,7 +121,7 @@ def _main(
     verbose,
     interactive,
     threads,
-    keep_column_case,
+    case_sensitive,
     json_output,
     where,
     threads1=None,
@@ -158,10 +168,11 @@ def _main(
 
     db1 = connect(database1, threads1 or threads)
     db2 = connect(database2, threads2 or threads)
+    dbs = db1, db2
 
     if interactive:
-        db1.enable_interactive()
-        db2.enable_interactive()
+        for db in dbs:
+            db.enable_interactive()
 
     start = time.time()
 
@@ -169,15 +180,12 @@ def _main(
         options = dict(
             min_update=max_age and parse_time_before_now(max_age),
             max_update=min_age and parse_time_before_now(min_age),
-            case_sensitive=keep_column_case,
+            case_sensitive=case_sensitive,
             where=where,
         )
     except ParseError as e:
         logging.error("Error while parsing age expression: %s" % e)
         return
-
-    table1_seg = TableSegment(db1, db1.parse_table_name(table1), key_column, update_column, columns, **options)
-    table2_seg = TableSegment(db2, db2.parse_table_name(table2), key_column, update_column, columns, **options)
 
     differ = TableDiffer(
         bisection_factor=bisection_factor,
@@ -186,7 +194,40 @@ def _main(
         max_threadpool_size=threads and threads * 2,
         debug=debug,
     )
-    diff_iter = differ.diff_tables(table1_seg, table2_seg)
+
+    table_names = table1, table2
+    table_paths = [db.parse_table_name(t) for db, t in safezip(dbs, table_names)]
+
+    schemas = list(differ._thread_map(_get_schema, safezip(dbs, table_paths)))
+    schema1, schema2 = schemas = [
+        create_schema(db, table_path, schema, case_sensitive)
+        for db, table_path, schema in safezip(dbs, table_paths, schemas)
+    ]
+
+    mutual = schema1.keys() & schema2.keys()  # Case-aware, according to case_sensitive
+    logging.debug(f"Available mutual columns: {mutual}")
+
+    expanded_columns = set()
+    for c in columns:
+        match = set(match_like(c, mutual))
+        if not match:
+            m1 = None if any(match_like(c, schema1.keys())) else f"{db1}/{table1}"
+            m2 = None if any(match_like(c, schema2.keys())) else f"{db2}/{table2}"
+            not_matched = ", ".join(m for m in [m1, m2] if m)
+            raise ValueError(f"Column {c} not found in: {not_matched}")
+
+        expanded_columns |= match
+
+    columns = tuple(expanded_columns - {key_column, update_column})
+
+    logging.info(f"Diffing columns: key={key_column} update={update_column} extra={columns}")
+
+    segments = [
+        TableSegment(db, table_path, key_column, update_column, columns, **options)._with_raw_schema(raw_schema)
+        for db, table_path, raw_schema in safezip(dbs, table_paths, schemas)
+    ]
+
+    diff_iter = differ.diff_tables(*segments)
 
     if limit:
         diff_iter = islice(diff_iter, int(limit))

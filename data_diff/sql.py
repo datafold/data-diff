@@ -6,9 +6,9 @@ from datetime import datetime
 
 from runtype import dataclass
 
-from .utils import join_iter
+from .utils import join_iter, ArithString
 
-from .databases.database_types import AbstractDatabase, DbPath, DbKey, DbTime, ArithString
+from .databases.database_types import AbstractDatabase, DbPath, DbKey, DbTime
 
 
 class Sql:
