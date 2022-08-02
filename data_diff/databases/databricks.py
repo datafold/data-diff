@@ -80,10 +80,9 @@ class Databricks(Database):
             if not rows:
                 raise RuntimeError(f"{self.name}: Table '{'.'.join(path)}' does not exist, or has no columns")
 
-            d = {r[0]: r for r in rows}
+            d = {r.COLUMN_NAME: r for r in rows}
             assert len(d) == len(rows)
             return d
-
 
     def _process_table_schema(self, path: DbPath, raw_schema: Dict[str, tuple], filter_columns: Sequence[str]):
         accept = {i.lower() for i in filter_columns}

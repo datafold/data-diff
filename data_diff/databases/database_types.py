@@ -170,11 +170,10 @@ class AbstractDatabase(ABC):
         "Provide SQL for selecting the table schema as (name, type, date_prec, num_prec)"
         ...
 
-
     @abstractmethod
     def query_table_schema(self, path: DbPath) -> Dict[str, tuple]:
         """Query the table for its schema for table in 'path', and return {column: tuple}
-          where the tuple is (table_name, col_name, type_repr, datetime_precision?, numeric_precision?, numeric_scale?)
+        where the tuple is (table_name, col_name, type_repr, datetime_precision?, numeric_precision?, numeric_scale?)
         """
         ...
 
