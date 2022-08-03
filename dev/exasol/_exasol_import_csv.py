@@ -46,15 +46,12 @@ assert C.execute(f'SELECT COUNT(*) FROM {schema}."rating"').fetchval() == C.exec
 C.execute(f'UPDATE {schema}."rating_update1" SET "timestamp"="timestamp"+1 WHERE "id"={ middle + 1 };')
 assert C.execute(f'SELECT "timestamp" FROM {schema}."rating" WHERE "id" = { middle + 1 }').fetchval() == C.execute(f'SELECT "timestamp" FROM {schema}."rating_update1" WHERE "id" = { middle + 1 }').fetchval() - 1
 
+C.execute(f'UPDATE {schema}."rating_update50p" SET "timestamp"="timestamp"+1 WHERE MOD("id",2)=0;')
+C.execute(f'UPDATE {schema}."rating_update1p" SET "timestamp"="timestamp"+1 WHERE MOD("id",100)=0;')
+C.execute(f'UPDATE {schema}."rating_update001p" SET "timestamp"="timestamp"+1 WHERE MOD("id",10000)=0;')
+C.execute(f'DELETE FROM {schema}."rating_del1p" WHERE MOD("id",100)=0;')
+assert C.execute(f'SELECT COUNT(*) FROM {schema}."rating"').fetchval() * 0.99 == C.execute(f'SELECT COUNT(*) FROM {schema}."rating_del1p"').fetchval()
+
 C.commit()
+C.close()
 print("...finished setup.")
-
-
-"""
-TODO:
-
-rating_update001p[random() < 0.0001] update {timestamp: timestamp + 1}
-rating_update1p[random() < 0.01] update {timestamp: timestamp + 1}
-rating_update50p[random() < 0.5] update {timestamp: timestamp + 1}
-rating_del1p[random() < 0.01] delete [true]
-"""

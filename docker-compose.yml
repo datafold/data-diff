@@ -80,7 +80,6 @@ services:
         hostname: exasol
         ports:
             - '8563:8563'
-            - '4444:4444' # ExaOperations WebUI
         volumes:
             - exasol-data:/exa
         networks:

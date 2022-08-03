@@ -246,15 +246,16 @@ DATABASE_TYPES = {
         ],
         "datetime": [
             "TIMESTAMP",
-            "TIMESTAMP WITH LOCAL TIME ZONE	",
+            "TIMESTAMP WITH LOCAL TIME ZONE",
         ],
         "float": [
-            "DOUBLE PRECISION",
-            "DECIMAL(10,2)",
-            "DECIMAL(36,6)",
+           "DOUBLE PRECISION",
+           "DOUBLE",
+           "DECIMAL(18,3)",
         ],
         "uuid": [
             "VARCHAR(100)",
+            "CHAR(50)",
         ]
     },
 }
@@ -495,7 +496,7 @@ def _insert_to_table(conn, table, values, type):
     insertion_query = default_insertion_query
     selects = []
     for j, sample in values:
-        if re.search(r"(time zone|tz)", type):
+        if re.search(r"(time zone|tz)", type) and isinstance(sample, datetime):
             sample = sample.replace(tzinfo=timezone.utc)
 
         if isinstance(sample, (float, Decimal, int)):
@@ -532,7 +533,7 @@ def _insert_to_table(conn, table, values, type):
 def _create_indexes(conn, table):
     # It is unfortunate that Presto doesn't support creating indexes...
     # Technically we could create it in the backing Postgres behind the scenes.
-    if isinstance(conn, (db.Snowflake, db.Redshift, db.Presto, db.BigQuery, db.Databricks, db.Trino)):
+    if isinstance(conn, (db.Snowflake, db.Redshift, db.Presto, db.BigQuery, db.Databricks, db.Trino, db.Exasol)):
         return
 
     try:
@@ -612,6 +613,8 @@ class TestDiffCrossDatabaseTables(unittest.TestCase):
         insertion_source_duration = time.time() - start
 
         values_in_source = PaginatedTable(src_table, src_conn)
+        if target_db is db.Exasol and source_db is db.PostgreSQL and source_type == "timestamp with time zone":
+            values_in_source = ((a, b.replace(tzinfo=None)) for a, b in values_in_source)  
         if source_db is db.Presto or source_db is db.Trino:
             if source_type.startswith("decimal"):
                 values_in_source = ((a, Decimal(b)) for a, b in values_in_source)

@@ -4,9 +4,7 @@ from .database_types import *
 from .base import ThreadedDatabase, import_helper, ConnectError, QueryError
 from .base import (
     MD5_HEXDIGITS,
-    CHECKSUM_HEXDIGITS,
-    TIMESTAMP_PRECISION_POS,
-    DEFAULT_DATETIME_PRECISION,
+    CHECKSUM_HEXDIGITS
 )
 
 @import_helper("exasol")
@@ -15,7 +13,6 @@ def import_exasol():
 
     return pyexasol
 
-SESSION_TIME_ZONE = None  # Changed by the tests
 
 def _query_conn(conn, sql_code: str) -> list:
     c = conn.execute(sql_code)
@@ -30,7 +27,7 @@ class Exasol(ThreadedDatabase):
         # Text
         "CHAR": Text,
     }
-    ROUNDS_ON_PREC_LOSS = True
+    ROUNDS_ON_PREC_LOSS = False
 
     def __init__(self, *, host, thread_count, **kw):
         self.kwargs = dict(dsn="%s" % host, **kw)
@@ -43,17 +40,22 @@ class Exasol(ThreadedDatabase):
         self._exasol = import_exasol()
         try:
             c = self._exasol.connect(**self.kwargs)
-            if SESSION_TIME_ZONE:
-                c.execute(f"ALTER SESSION SET TIME_ZONE = '{SESSION_TIME_ZONE}'")
             return c
         except Exception as e:
             raise ConnectError(*e.args) from e
 
     def _query(self, sql_code: str):
         try:
-            return super()._query(sql_code)
+            r = self._queue.submit(self._query_in_worker, sql_code)
+            return r.result()
         except Exception as e:
             raise QueryError(e)
+
+    def _query_in_worker(self, sql_code: str):
+        "This method runs in a worker thread"
+        if self._init_error:
+            raise self._init_error
+        return _query_conn(self.thread_local.conn, sql_code)
 
     def md5_to_int(self, s: str) -> str:
         return f"CAST(TO_NUMBER(SUBSTR(HASH_MD5({s}) ,{1+MD5_HEXDIGITS-CHECKSUM_HEXDIGITS}, 16),'xxxxxxxxxxxxxxx') AS DECIMAL(36,0))"
@@ -66,26 +68,20 @@ class Exasol(ThreadedDatabase):
 
     def normalize_timestamp(self, value: str, coltype: TemporalType) -> str:
         if coltype.rounds:
-            return f"to_char(cast({value} as timestamp({coltype.precision})), 'YYYY-MM-DD HH24:MI:SS.FF6')"
-        else:
             if coltype.precision > 0:
-                truncated = f"to_char({value}, 'YYYY-MM-DD HH24:MI:SS.FF{coltype.precision}')"
+                return f"TO_TIMESTAMP(TO_CHAR({value}, 'YYYY-MM-DD HH24:MI:SS.FF{coltype.precision}'), 'YYYY-MM-DD HH24:MI:SS.FF6')"
             else:
-                truncated = f"to_char({value}, 'YYYY-MM-DD HH24:MI:SS.')"
-            return f"RPAD({truncated}, {TIMESTAMP_PRECISION_POS+6}, '0')"
+                return f"TO_CHAR(TO_TIMESTAMP(TO_CHAR({value}, 'YYYY-MM-DD HH24:MI:SS'), 'YYYY-MM-DD HH24:MI:SS.FF6'))"
+        return f"TO_CHAR(TO_TIMESTAMP({value}, 'YYYY-MM-DD HH24:MI:SS.FF6'))"
 
     def normalize_number(self, value: str, coltype: FractionalType) -> str:
-        return self.to_string(f"cast({value} as DECIMAL(18, {coltype.precision}))")
+        if coltype.precision > 0:
+            precision_format = "9" * (coltype.precision - 1)
+            format_str = f"FM999999999999999990.{precision_format}0"
+        else:
+            format_str = "FM" + "9" * 18
+        return self.to_string(f"TO_CHAR({value}, '{format_str}')")
 
-    def _query(self, sql_code: str):
-        r = self._queue.submit(self._query_in_worker, sql_code)
-        return r.result()
-
-    def _query_in_worker(self, sql_code: str):
-        "This method runs in a worker thread"
-        if self._init_error:
-            raise self._init_error
-        return _query_conn(self.thread_local.conn, sql_code)
 
     def select_table_schema(self, path: DbPath) -> str:
         schema, table = self._normalize_table_path(path)
@@ -94,23 +90,10 @@ class Exasol(ThreadedDatabase):
             f'SELECT "COLUMN_NAME", "COLUMN_TYPE", 3 AS \'datetime_precision\', "COLUMN_NUM_PREC", "COLUMN_NUM_SCALE" FROM SYS.EXA_ALL_COLUMNS WHERE "COLUMN_TABLE" = \'{ table }\' AND "COLUMN_SCHEMA" = \'{ schema }\''
         )
 
-    def query_table_schema(self, path: DbPath) -> Dict[str, tuple]:
-        rows = self.query(self.select_table_schema(path), list)
-        if not rows:
-            raise RuntimeError(f"{self.name}: Table '{'.'.join(path)}' does not exist, or has no columns")
-
-        d = {r[0]: r for r in rows}
-        assert len(d) == len(rows)
-        return d
-
     def _process_table_schema(self, path: DbPath, raw_schema: Dict[str, tuple], filter_columns: Sequence[str]):
         accept = {i.lower() for i in filter_columns}
-        print('##DEBUG##')
-        for name, row in raw_schema.items():
-            if name.lower() in accept:
-                print(*row)
-
-        col_dict = {name: self._parse_type( row[1],row[2], row[3],) for name, row in raw_schema.items() if name.lower() in accept}
+        
+        col_dict = {name: self._parse_type(row[1],row[2], row[3]) for name, row in raw_schema.items() if name.lower() in accept}
 
         self._refine_coltypes(path, col_dict)
 
@@ -119,29 +102,25 @@ class Exasol(ThreadedDatabase):
 
     def _parse_type(
         self,
-        #table_path: DbPath,
-        #col_name: str,
         type_repr: str,
         datetime_precision: int = None,
         numeric_precision: int = None,
     ) -> ColType:
         timestamp_regexps = {
-            r"DATE\((\d)\)": Datetime,
-            r"TIMESTAMP\((\d)\)": Timestamp,
-            r"TIMESTAMP WITH LOCAL TIME ZONE\((\d)\)": TimestampTZ,
+            r"DATE": Datetime,
+            r"TIMESTAMP": Timestamp,
+            r"TIMESTAMP WITH LOCAL TIME ZONE": TimestampTZ,
         }
         for regexp, t_cls in timestamp_regexps.items():
             m = re.match(regexp + "$", type_repr)
             if m:
-                datetime_precision = int(m.group(1))
                 return t_cls(
-                    precision=DEFAULT_DATETIME_PRECISION,
+                    precision=3,
                     rounds=self.ROUNDS_ON_PREC_LOSS,
                 )
 
         number_regexps = {
             r"DECIMAL\((\d+),(\d+)\)": Decimal,
-            r"DOUBLE PRECISION": Float,
         }
         for regexp, n_cls in number_regexps.items():
             m = re.match(regexp + "$", type_repr)
@@ -149,8 +128,19 @@ class Exasol(ThreadedDatabase):
                 prec, scale = map(int, m.groups())
                 return n_cls(scale)
 
+        double_regexps = {
+            r"DOUBLE PRECISSION": Float,
+            r"DOUBLE": Float,
+        }
+        for regexp, d_cls in double_regexps.items():
+            m = re.match(regexp + "$", type_repr)
+            if m:
+                return d_cls(12)
+
         string_regexps = {
+            r"VARCHAR\((\d+)\) UTF8": Text,
             r"VARCHAR\((\d+)\)": Text,
+            r"CHAR\((\d+)\) UTF8": Text,
             r"CHAR\((\d+)\)": Text,
         }
         for regexp, n_cls in string_regexps.items():

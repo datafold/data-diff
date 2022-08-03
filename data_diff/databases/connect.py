@@ -86,7 +86,7 @@ MATCH_URI_PATH = {
         help_str="databricks://:access_token@server_name/http_path",
     ),
     "trino": MatchUriPath(Trino, ["catalog", "schema"], help_str="trino://<user>@<host>/<catalog>/<schema>"),
-    "exasol": MatchUriPath(Exasol, ["schema"], help_str="exasol://<user>@<host>/<schema>"),
+    "exasol": MatchUriPath(Exasol, ["schema"], help_str="exasol://<user>:<pass>@<host>/<schema>"),
 }
 
 
@@ -200,6 +200,7 @@ def connect(db_conf: Union[str, dict], thread_count: Optional[int] = 1) -> Datab
     - presto
     - databricks
     - trino
+    - exasol
     """
     if isinstance(db_conf, str):
         return connect_to_uri(db_conf, thread_count)
