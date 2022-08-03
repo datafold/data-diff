@@ -118,7 +118,7 @@ $ data-diff \
 
 | Database      | Connection string                                                                                                                   | Status |
 |---------------|-------------------------------------------------------------------------------------------------------------------------------------|--------|
-| PostgreSQL    | `postgresql://<user>:<password>@<hostname>:5432/<database>`                                                                         |  💚    |
+| PostgreSQL    | `postgresql://<user>:<password>@<host>:5432/<database>`                                                                         |  💚    |
 | MySQL         | `mysql://<user>:<password>@<hostname>:5432/<database>`                                                                              |  💚    |
 | Snowflake     | `"snowflake://<user>[:<password>]@<account>/<database>/<SCHEMA>?warehouse=<WAREHOUSE>&role=<role>[&authenticator=externalbrowser]"` |  💚    |
 | Oracle        | `oracle://<username>:<password>@<hostname>/database`                                                                                |  💛    |
