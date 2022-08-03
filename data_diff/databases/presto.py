@@ -1,3 +1,4 @@
+from logging import raiseExceptions
 import re
 from .database_types import *
 from .base import Database, import_helper, _query_conn
@@ -46,7 +47,7 @@ class Presto(Database):
             # if auth=basic, add basic authenticator for Presto
             kw["auth"] = prestodb.auth.BasicAuthentication(kw.pop("user"), kw.pop("password"))
         except:
-            raise ValueError("User or password cannot be missing if auth==basic")
+            raise KeyError("User or password cannot be missing if auth==basic")
 
         if "cert" in kw:  # if a certificate was specified in URI, verify session with cert
             cert = kw.pop("cert")

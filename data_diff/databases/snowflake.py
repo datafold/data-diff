@@ -43,7 +43,7 @@ class Snowflake(Database):
             with open(kw.get("key"), "rb") as key:
                 p_key = serialization.load_pem_private_key(
                     key.read(),
-                    password=None if not kw.get("password") else kw.pop("password"),
+                    password=kw.pop("password", None),
                     backend=default_backend(),
                 )
 
