@@ -52,7 +52,15 @@ def _get_schema(pair):
 @click.argument("table2", required=False)
 @click.option("-k", "--key-column", default=None, help="Name of primary key column. Default='id'.")
 @click.option("-t", "--update-column", default=None, help="Name of updated_at/last_updated column")
-@click.option("-c", "--columns", default=[], multiple=True, help="Names of extra columns to compare")
+@click.option(
+    "-c",
+    "--columns",
+    default=[],
+    multiple=True,
+    help="Names of extra columns to compare."
+    "Can be used more than once in the same command. "
+    "Accepts a name or a pattern like in SQL. Example: -c col% -c another_col",
+)
 @click.option("-l", "--limit", default=None, help="Maximum number of differences to find")
 @click.option("--bisection-factor", default=None, help=f"Segments per iteration. Default={DEFAULT_BISECTION_FACTOR}.")
 @click.option(

@@ -195,7 +195,9 @@ Options:
   - `--help` - Show help message and exit.
   - `-k` or `--key-column` - Name of the primary key column
   - `-t` or `--update-column` - Name of updated_at/last_updated column
-  - `-c` or `--columns` - Name or pattern of extra columns to compare. Pattern syntax is like SQL, e.g. `%foob.r%`.
+  - `-c` or `--columns` - Names of extra columns to compare.  Can be used more than once in the same command.
+                          Accepts a name or a pattern like in SQL.
+                          Example: `-c col% -c another_col -c %foorb.r%`
   - `-l` or `--limit` - Maximum number of differences to find (limits maximum bandwidth and runtime)
   - `-s` or `--stats` - Print stats instead of a detailed diff
   - `-d` or `--debug` - Print debug info
