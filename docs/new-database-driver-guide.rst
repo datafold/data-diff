@@ -82,7 +82,7 @@ If your database does not have a ``information_schema.columns`` table, or if its
 
 If such a query isn't possible, you may have to implement ``query_table_schema()`` yourself, which extracts this information from the database, and returns it in the proper form.
 
-If the information returned from ``query_table_schema()`` is requires slow or error-prone post-processing, you may delay that post-processing by overriding ``_process_table_schema()`` and implementing it there. The method ``_process_table_schema()`` only gets called for the columns that will be diffed.
+If the information returned from ``query_table_schema()`` requires slow or error-prone post-processing, you may delay that post-processing by overriding ``_process_table_schema()`` and implementing it there. The method ``_process_table_schema()`` only gets called for the columns that will be diffed.
 
 Documentation:
 
