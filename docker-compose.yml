@@ -73,10 +73,24 @@ services:
             - ./dev/trino-conf/etc:/etc/trino:ro
         networks:
             - local
+    
+    exasol:
+        image: 'exasol/docker-db'
+        container_name: exasol
+        hostname: exasol
+        ports:
+            - '8563:8563'
+            - '4444:4444' # ExaOperations WebUI
+        volumes:
+            - exasol-data:/exa
+        networks:
+            - local
+        privileged: true
 
 volumes:
   postgresql-data:
   mysql-data:
+  exasol-data:
 
 networks:
   local:

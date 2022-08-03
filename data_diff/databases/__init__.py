@@ -9,5 +9,6 @@ from .redshift import Redshift
 from .presto import Presto
 from .databricks import Databricks
 from .trino import Trino
+from .exasol import Exasol
 
 from .connect import connect_to_uri

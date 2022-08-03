@@ -240,6 +240,23 @@ DATABASE_TYPES = {
             "char(100)",
         ],
     },
+    db.Exasol: {
+        "int": [
+            "DECIMAL(18,0)",
+        ],
+        "datetime": [
+            "TIMESTAMP",
+            "TIMESTAMP WITH LOCAL TIME ZONE	",
+        ],
+        "float": [
+            "DOUBLE PRECISION",
+            "DECIMAL(10,2)",
+            "DECIMAL(36,6)",
+        ],
+        "uuid": [
+            "VARCHAR(100)",
+        ]
+    },
 }
 
 
