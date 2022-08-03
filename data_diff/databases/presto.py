@@ -40,15 +40,17 @@ class Presto(Database):
         if kw.get("schema"):
             self.default_schema = kw.get("schema")
 
-        if (
-            "password" in kw and "auth" in kw and kw.get("auth") == "basic"
-        ):  # if auth=basic, add basic authenticator for Presto
-            kw["auth"] = prestodb.auth.BasicAuthentication(kw.get("user"), kw.get("password"))
-            kw.pop("password")
+        try:
+            # checks if user and password are missing when auth=basic
+            kw.get("auth") == "basic" and "user" in kw and "password" in kw
+            # if auth=basic, add basic authenticator for Presto
+            kw["auth"] = prestodb.auth.BasicAuthentication(kw.pop("user"), kw.pop("password"))
+        except:
+            raise ValueError("User or password cannot be missing if auth==basic")
 
         if "cert" in kw:  # if a certificate was specified in URI, verify session with cert
-            cert = kw.get("cert")
-            kw.pop("cert")
+            cert = kw.pop("cert")
+
             self._conn = prestodb.dbapi.connect(**kw)
             self._conn._http_session.verify = cert
 

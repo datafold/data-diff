@@ -38,20 +38,22 @@ class Snowflake(Database):
 
         assert '"' not in schema, "Schema name should not contain quotes!"
         if (
-            "password" not in kw and "key" in kw
-        ):  # if private keys are used instead of password for Snowflake connection, read in key from path specified and pass as "private_key" to connector.
+            "key" in kw
+        ):  # if private keys are used for Snowflake connection, read in key from path specified and pass as "private_key" to connector.
             with open(kw.get("key"), "rb") as key:
-                p_key = serialization.load_pem_private_key(key.read(), password=None, backend=default_backend())
+                p_key = serialization.load_pem_private_key(
+                    key.read(),
+                    password=None if not kw.get("password") else kw.pop("password"),
+                    backend=default_backend(),
+                )
 
-            pkb = p_key.private_bytes(
+            kw["private_key"] = p_key.private_bytes(
                 encoding=serialization.Encoding.DER,
                 format=serialization.PrivateFormat.PKCS8,
                 encryption_algorithm=serialization.NoEncryption(),
             )
-            self._conn = snowflake.connector.connect(private_key=pkb, schema=f'"{schema}"', **kw)  # replaces password
 
-        else:  # otherwise use password for connection
-            self._conn = snowflake.connector.connect(schema=f'"{schema}"', **kw)
+        self._conn = snowflake.connector.connect(schema=f'"{schema}"', **kw)
 
         self.default_schema = schema
 
