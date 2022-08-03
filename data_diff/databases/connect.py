@@ -1,4 +1,4 @@
-from typing import Type, List, Optional
+from typing import Type, List, Optional, Union
 from itertools import zip_longest
 import dsnparse
 
@@ -173,9 +173,33 @@ def connect_with_dict(d, thread_count):
     return cls(**d)
 
 
-def connect(x, thread_count):
-    if isinstance(x, str):
-        return connect_to_uri(x, thread_count)
-    elif isinstance(x, dict):
-        return connect_with_dict(x, thread_count)
-    raise RuntimeError(x)
+def connect(db_conf: Union[str, dict], thread_count: Optional[int] = 1) -> Database:
+    """Connect to a database using the given database configuration.
+
+    Configuration can be given either as a URI string, or as a dict of {option: value}.
+
+    thread_count determines the max number of worker threads per database,
+    if relevant. None means no limit.
+
+    Parameters:
+        db_conf (str | dict): The configuration for the database to connect. URI or dict.
+        thread_count (int, optional): Size of the threadpool. Ignored by cloud databases. (default: 1)
+
+    Note: For non-cloud databases, a low thread-pool size may be a performance bottleneck.
+
+    Supported drivers:
+    - postgresql
+    - mysql
+    - oracle
+    - snowflake
+    - bigquery
+    - redshift
+    - presto
+    - databricks
+    - trino
+    """
+    if isinstance(db_conf, str):
+        return connect_to_uri(db_conf, thread_count)
+    elif isinstance(db_conf, dict):
+        return connect_with_dict(db_conf, thread_count)
+    raise TypeError(db_conf)

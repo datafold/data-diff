@@ -49,7 +49,7 @@ class TableSegment:
     """Signifies a segment of rows (and selected columns) within a table
 
     Parameters:
-        database (Database): Database instance. See :meth:`connect_to_uri`
+        database (Database): Database instance. See :meth:`connect`
         table_path (:data:`DbPath`): Path to table in form of a tuple. e.g. `('my_dataset', 'table_name')`
         key_column (str): Name of the key column, which uniquely identifies each row (usually id)
         update_column (str, optional): Name of updated column, which signals that rows changed (usually updated_at or last_update)

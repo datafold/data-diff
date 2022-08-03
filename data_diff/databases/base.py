@@ -74,7 +74,7 @@ class Database(AbstractDatabase):
 
     Used for providing connection code and implementation specific SQL utilities.
 
-    Instanciated using :meth:`~data_diff.connect_to_uri`
+    Instanciated using :meth:`~data_diff.connect`
     """
 
     TYPE_CLASSES: Dict[str, type] = {}
