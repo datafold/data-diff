@@ -192,7 +192,7 @@ class Database(AbstractDatabase):
     def _process_table_schema(self, path: DbPath, raw_schema: Dict[str, tuple], filter_columns: Sequence[str]):
         accept = {i.lower() for i in filter_columns}
 
-        col_dict = {name: self._parse_type(path, *row) for name, row in raw_schema.items() if name.lower() in accept}
+        col_dict = {row[0]: self._parse_type(path, *row) for name, row in raw_schema.items() if name.lower() in accept}
 
         self._refine_coltypes(path, col_dict)
 
