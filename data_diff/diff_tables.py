@@ -85,13 +85,13 @@ class TableSegment:
 
     def __post_init__(self):
         if not self.update_column and (self.min_update or self.max_update):
-            raise ValueError("Error: min_update/max_update feature requires to specify 'update_column'")
+            raise ValueError("Error: the min_update/max_update feature requires 'update_column' to be set.")
 
         if self.min_key is not None and self.max_key is not None and self.min_key >= self.max_key:
-            raise ValueError("Error: min_key expected to be smaller than max_key!")
+            raise ValueError(f"Error: min_key expected to be smaller than max_key! ({self.min_key} >= {self.max_key})")
 
         if self.min_update is not None and self.max_update is not None and self.min_update >= self.max_update:
-            raise ValueError("Error: min_update expected to be smaller than max_update!")
+            raise ValueError(f"Error: min_update expected to be smaller than max_update! ({self.min_update} >= {self.max_update})")
 
     @property
     def _update_column(self):

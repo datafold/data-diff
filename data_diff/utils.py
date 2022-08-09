@@ -18,6 +18,7 @@ def safezip(*args):
 
 def split_space(start, end, count):
     size = end - start
+    assert count <= size, (count, size)
     return list(range(start, end, (size + 1) // (count + 1)))[1 : count + 1]
 
 
