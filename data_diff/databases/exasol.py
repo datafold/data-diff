@@ -90,21 +90,15 @@ class Exasol(ThreadedDatabase):
             f'SELECT "COLUMN_NAME", "COLUMN_TYPE", 3 AS \'datetime_precision\', "COLUMN_NUM_PREC", "COLUMN_NUM_SCALE" FROM SYS.EXA_ALL_COLUMNS WHERE "COLUMN_TABLE" = \'{ table }\' AND "COLUMN_SCHEMA" = \'{ schema }\''
         )
 
-    def _process_table_schema(self, path: DbPath, raw_schema: Dict[str, tuple], filter_columns: Sequence[str]):
-        accept = {i.lower() for i in filter_columns}
-        
-        col_dict = {name: self._parse_type(row[1],row[2], row[3]) for name, row in raw_schema.items() if name.lower() in accept}
-
-        self._refine_coltypes(path, col_dict)
-
-        # Return a dict of form {name: type} after normalization
-        return col_dict
 
     def _parse_type(
         self,
+        table_path: DbPath,
+        col_name: str,
         type_repr: str,
         datetime_precision: int = None,
         numeric_precision: int = None,
+        numeric_scale: int = None,
     ) -> ColType:
         timestamp_regexps = {
             r"DATE": Datetime,
