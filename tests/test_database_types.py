@@ -249,14 +249,14 @@ DATABASE_TYPES = {
             "TIMESTAMP WITH LOCAL TIME ZONE",
         ],
         "float": [
-           "DOUBLE PRECISION",
-           "DOUBLE",
-           "DECIMAL(18,3)",
+            "DOUBLE PRECISION",
+            "DOUBLE",
+            "DECIMAL(18,3)",
         ],
         "uuid": [
             "VARCHAR(100)",
             "CHAR(50)",
-        ]
+        ],
     },
 }
 
@@ -614,7 +614,7 @@ class TestDiffCrossDatabaseTables(unittest.TestCase):
 
         values_in_source = PaginatedTable(src_table, src_conn)
         if target_db is db.Exasol and source_db is db.PostgreSQL and source_type == "timestamp with time zone":
-            values_in_source = ((a, b.replace(tzinfo=None)) for a, b in values_in_source)  
+            values_in_source = ((a, b.replace(tzinfo=None)) for a, b in values_in_source)
         if source_db is db.Presto or source_db is db.Trino:
             if source_type.startswith("decimal"):
                 values_in_source = ((a, Decimal(b)) for a, b in values_in_source)
