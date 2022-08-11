@@ -41,14 +41,14 @@ class Exasol(ThreadedDatabase):
         try:
             c = self._exasol.connect(**self.kwargs)
             return c
-        except Exception as e:
+        except pyexasol.ExaError as e:
             raise ConnectError(*e.args) from e
 
     def _query(self, sql_code: str):
         try:
             r = self._queue.submit(self._query_in_worker, sql_code)
             return r.result()
-        except Exception as e:
+        except pyexasol.ExaError as e:
             raise QueryError(e)
 
     def _query_in_worker(self, sql_code: str):
