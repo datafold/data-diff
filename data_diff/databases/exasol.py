@@ -21,7 +21,7 @@ def _query_conn(conn, sql_code: str) -> list:
 class Exasol(ThreadedDatabase):
     TYPE_CLASSES: Dict[str, type] = {
         "DECIMAL": Decimal,
-        "DOUBLE PRECISSION": Float,
+        "DOUBLE PRECISION": Float,
         # Text
         "CHAR": Text,
     }
@@ -39,14 +39,13 @@ class Exasol(ThreadedDatabase):
         try:
             c = self._exasol.connect(**self.kwargs)
             return c
-        except pyexasol.ExaError as e:
+        except self._exasol.ExaError as e:
             raise ConnectError(*e.args) from e
 
     def _query(self, sql_code: str):
         try:
-            r = self._queue.submit(self._query_in_worker, sql_code)
-            return r.result()
-        except pyexasol.ExaError as e:
+            return super()._query(sql_code)
+        except self._exasol.ExaError as e:
             raise QueryError(e)
 
     def _query_in_worker(self, sql_code: str):
@@ -117,7 +116,7 @@ class Exasol(ThreadedDatabase):
                 return n_cls(scale)
 
         double_regexps = {
-            r"DOUBLE PRECISSION": Float,
+            r"DOUBLE PRECISION": Float,
             r"DOUBLE": Float,
         }
         for regexp, d_cls in double_regexps.items():

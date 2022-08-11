@@ -30,6 +30,15 @@ CONNS = {k: db.connect_to_uri(v, N_THREADS) for k, v in CONN_STRINGS.items()}
 CONNS[db.MySQL].query("SET @@session.time_zone='+00:00'", None)
 oracle.SESSION_TIME_ZONE = postgresql.SESSION_TIME_ZONE = "UTC"
 
+if CONNS[db.Exasol]:
+    kw = dict(CONNS[db.Exasol].kwargs)
+    kw["driver"] = "exasol"
+    kw["host"] = kw.pop("dsn")
+    schema = kw.pop("schema")
+    conn_without_schema = db.connect.connect(kw)
+    conn_without_schema.query(f"CREATE SCHEMA IF NOT EXISTS {schema}", None)
+
+
 DATABASE_TYPES = {
     db.PostgreSQL: {
         # https://www.postgresql.org/docs/current/datatype-numeric.html#DATATYPE-INT
