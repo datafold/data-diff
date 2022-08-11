@@ -6,7 +6,7 @@ from parameterized import parameterized_class
 import preql
 import arrow  # comes with preql
 
-from data_diff.databases import connect_to_uri
+from data_diff.databases import connect
 from data_diff.diff_tables import TableDiffer, TableSegment, split_space
 from data_diff import databases as db
 from data_diff.utils import ArithAlphanumeric
@@ -21,7 +21,7 @@ from .common import (
 )
 
 DATABASE_URIS = {k.__name__: v for k, v in CONN_STRINGS.items()}
-DATABASE_INSTANCES = {k.__name__: connect_to_uri(v, N_THREADS) for k, v in CONN_STRINGS.items()}
+DATABASE_INSTANCES = {k.__name__: connect(v, N_THREADS) for k, v in CONN_STRINGS.items()}
 
 TEST_DATABASES = {x.__name__ for x in (db.MySQL, db.PostgreSQL, db.Oracle, db.Redshift, db.Snowflake, db.BigQuery)}
 

@@ -1,13 +1,13 @@
 import unittest
 
-from data_diff.databases.connect import connect_to_uri
+from data_diff.databases.connect import connect
 from data_diff import TableSegment, TableDiffer
 from .common import TEST_POSTGRESQL_CONN_STRING, random_table_suffix
 
 
 class TestWithConnection(unittest.TestCase):
     def setUp(self) -> None:
-        self.connection = connect_to_uri(TEST_POSTGRESQL_CONN_STRING)
+        self.connection = connect(TEST_POSTGRESQL_CONN_STRING)
 
         self.connection.query('CREATE EXTENSION IF NOT EXISTS "uuid-ossp";', None)
 

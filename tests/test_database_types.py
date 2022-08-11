@@ -25,7 +25,7 @@ from .common import (
 )
 
 
-CONNS = {k: db.connect_to_uri(v, N_THREADS) for k, v in CONN_STRINGS.items()}
+CONNS = {k: db.connect.connect(v, N_THREADS) for k, v in CONN_STRINGS.items()}
 
 CONNS[db.MySQL].query("SET @@session.time_zone='+00:00'", None)
 oracle.SESSION_TIME_ZONE = postgresql.SESSION_TIME_ZONE = "UTC"
