@@ -8,6 +8,8 @@ import uuid
 from datetime import datetime, timedelta, timezone
 import logging
 from decimal import Decimal
+from itertools import islice, accumulate, repeat, chain
+
 from parameterized import parameterized
 
 from data_diff import databases as db
@@ -290,53 +292,27 @@ class DateTimeFaker:
         self.max = max
 
     def __iter__(self):
-        iter = DateTimeFaker(self.max)
-        iter.prev = datetime(2000, 1, 1, 0, 0, 0, 0)
-        iter.i = 0
-        return iter
+        initial = datetime(2000, 1, 1, 0, 0, 0, 0)
+        step = timedelta(seconds=3, microseconds=571)
+        return islice(chain(self.MANUAL_FAKES, accumulate(repeat(step), initial=initial)), self.max)
 
     def __len__(self):
         return self.max
 
-    def __next__(self) -> datetime:
-        if self.i < len(self.MANUAL_FAKES):
-            fake = self.MANUAL_FAKES[self.i]
-            self.i += 1
-            return fake
-        elif self.i < self.max:
-            self.prev = self.prev + timedelta(seconds=3, microseconds=571)
-            self.i += 1
-            return self.prev
-        else:
-            raise StopIteration
-
 
 class IntFaker:
-    MANUAL_FAKES = [127, -3, -9, 37, 15, 127]
+    MANUAL_FAKES = [127, -3, -9, 37, 15, 0]
 
     def __init__(self, max):
         self.max = max
 
     def __iter__(self):
-        iter = IntFaker(self.max)
-        iter.prev = -128
-        iter.i = 0
-        return iter
+        initial = -128
+        step = 1
+        return islice(chain(self.MANUAL_FAKES, accumulate(repeat(step), initial=initial)), self.max)
 
     def __len__(self):
         return self.max
-
-    def __next__(self) -> int:
-        if self.i < len(self.MANUAL_FAKES):
-            fake = self.MANUAL_FAKES[self.i]
-            self.i += 1
-            return fake
-        elif self.i < self.max:
-            self.prev += 1
-            self.i += 1
-            return self.prev
-        else:
-            raise StopIteration
 
 
 class FloatFaker:
@@ -363,25 +339,12 @@ class FloatFaker:
         self.max = max
 
     def __iter__(self):
-        iter = FloatFaker(self.max)
-        iter.prev = -10.0001
-        iter.i = 0
-        return iter
+        initial = -10.0001
+        step = 0.00571
+        return islice(chain(self.MANUAL_FAKES, accumulate(repeat(step), initial=initial)), self.max)
 
     def __len__(self):
         return self.max
-
-    def __next__(self) -> float:
-        if self.i < len(self.MANUAL_FAKES):
-            fake = self.MANUAL_FAKES[self.i]
-            self.i += 1
-            return fake
-        elif self.i < self.max:
-            self.prev += 0.00571
-            self.i += 1
-            return self.prev
-        else:
-            raise StopIteration
 
 
 class UUID_Faker:

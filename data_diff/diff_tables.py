@@ -91,7 +91,9 @@ class TableSegment:
             raise ValueError(f"Error: min_key expected to be smaller than max_key! ({self.min_key} >= {self.max_key})")
 
         if self.min_update is not None and self.max_update is not None and self.min_update >= self.max_update:
-            raise ValueError(f"Error: min_update expected to be smaller than max_update! ({self.min_update} >= {self.max_update})")
+            raise ValueError(
+                f"Error: min_update expected to be smaller than max_update! ({self.min_update} >= {self.max_update})"
+            )
 
     @property
     def _update_column(self):
