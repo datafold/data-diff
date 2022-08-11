@@ -8,13 +8,13 @@ import uuid
 from datetime import datetime, timedelta, timezone
 import logging
 from decimal import Decimal
-from itertools import islice, accumulate, repeat, chain
+from itertools import islice, repeat, chain
 
 from parameterized import parameterized
 
 from data_diff import databases as db
 from data_diff.databases import postgresql, oracle
-from data_diff.utils import number_to_human
+from data_diff.utils import number_to_human, accumulate
 from data_diff.diff_tables import TableDiffer, TableSegment, DEFAULT_BISECTION_THRESHOLD
 from .common import (
     CONN_STRINGS,

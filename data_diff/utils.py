@@ -5,6 +5,7 @@ from typing import TypeVar, Generic
 from abc import ABC, abstractmethod
 from urllib.parse import urlparse
 from uuid import UUID
+import operator
 import string
 
 alphanums = string.digits + string.ascii_lowercase
@@ -221,3 +222,19 @@ def match_like(pattern: str, strs: Sequence[str]) -> Iterable[str]:
     for s in strs:
         if reo.match(s):
             yield s
+
+
+def accumulate(iterable, func=operator.add, *, initial=None):
+    'Return running totals'
+    # Taken from https://docs.python.org/3/library/itertools.html#itertools.accumulate, to backport 'initial' to 3.7
+    it = iter(iterable)
+    total = initial
+    if initial is None:
+        try:
+            total = next(it)
+        except StopIteration:
+            return
+    yield total
+    for element in it:
+        total = func(total, element)
+        yield total
