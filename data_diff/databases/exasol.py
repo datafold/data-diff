@@ -2,10 +2,8 @@ import re
 
 from .database_types import *
 from .base import ThreadedDatabase, import_helper, ConnectError, QueryError
-from .base import (
-    MD5_HEXDIGITS,
-    CHECKSUM_HEXDIGITS
-)
+from .base import MD5_HEXDIGITS, CHECKSUM_HEXDIGITS
+
 
 @import_helper("exasol")
 def import_exasol():
@@ -61,7 +59,7 @@ class Exasol(ThreadedDatabase):
         return f"CAST(TO_NUMBER(SUBSTR(HASH_MD5({s}) ,{1+MD5_HEXDIGITS-CHECKSUM_HEXDIGITS}, 16),'xxxxxxxxxxxxxxx') AS DECIMAL(36,0))"
 
     def quote(self, s: str):
-        return f"\"{s}\""
+        return f'"{s}"'
 
     def to_string(self, s: str):
         return f"cast({s} as varchar(1024))"
@@ -82,14 +80,10 @@ class Exasol(ThreadedDatabase):
             format_str = "FM" + "9" * 18
         return self.to_string(f"TO_CHAR({value}, '{format_str}')")
 
-
     def select_table_schema(self, path: DbPath) -> str:
         schema, table = self._normalize_table_path(path)
 
-        return (
-            f'SELECT "COLUMN_NAME", "COLUMN_TYPE", 3 AS \'datetime_precision\', "COLUMN_NUM_PREC", "COLUMN_NUM_SCALE" FROM SYS.EXA_ALL_COLUMNS WHERE "COLUMN_TABLE" = \'{ table }\' AND "COLUMN_SCHEMA" = \'{ schema }\''
-        )
-
+        return f'SELECT "COLUMN_NAME", "COLUMN_TYPE", 3 AS \'datetime_precision\', "COLUMN_NUM_PREC", "COLUMN_NUM_SCALE" FROM SYS.EXA_ALL_COLUMNS WHERE "COLUMN_TABLE" = \'{ table }\' AND "COLUMN_SCHEMA" = \'{ schema }\''
 
     def _parse_type(
         self,
