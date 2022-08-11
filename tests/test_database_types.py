@@ -30,7 +30,7 @@ CONNS = {k: db.connect_to_uri(v, N_THREADS) for k, v in CONN_STRINGS.items()}
 CONNS[db.MySQL].query("SET @@session.time_zone='+00:00'", None)
 oracle.SESSION_TIME_ZONE = postgresql.SESSION_TIME_ZONE = "UTC"
 
-if CONNS[db.Exasol]:
+if db.Exasol in CONNS:
     kw = dict(CONNS[db.Exasol].kwargs)
     kw["driver"] = "exasol"
     kw["host"] = kw.pop("dsn")
