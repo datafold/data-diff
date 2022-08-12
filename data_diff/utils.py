@@ -1,6 +1,6 @@
 import re
 import math
-from typing import Iterable, Tuple, Union, Any, Sequence
+from typing import Iterable, Tuple, Union, Any, Sequence, Dict
 from typing import TypeVar, Generic
 from abc import ABC, abstractmethod
 from urllib.parse import urlparse
@@ -225,7 +225,7 @@ def match_like(pattern: str, strs: Sequence[str]) -> Iterable[str]:
 
 
 def accumulate(iterable, func=operator.add, *, initial=None):
-    'Return running totals'
+    "Return running totals"
     # Taken from https://docs.python.org/3/library/itertools.html#itertools.accumulate, to backport 'initial' to 3.7
     it = iter(iterable)
     total = initial
@@ -238,3 +238,10 @@ def accumulate(iterable, func=operator.add, *, initial=None):
     for element in it:
         total = func(total, element)
         yield total
+
+
+def match_regexps(regexps: Dict[str, Any], s: str) -> Sequence[tuple]:
+    for regexp, v in regexps.items():
+        m = re.match(regexp + "$", s)
+        if m:
+            yield m, v

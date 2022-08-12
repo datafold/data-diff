@@ -1,5 +1,7 @@
 import re
 
+from ..utils import match_regexps
+
 from .database_types import *
 from .base import Database, import_helper, _query_conn
 from .base import (
@@ -94,27 +96,18 @@ class Presto(Database):
             r"timestamp\((\d)\)": Timestamp,
             r"timestamp\((\d)\) with time zone": TimestampTZ,
         }
-        for regexp, t_cls in timestamp_regexps.items():
-            m = re.match(regexp + "$", type_repr)
-            if m:
-                datetime_precision = int(m.group(1))
-                return t_cls(
-                    precision=datetime_precision if datetime_precision is not None else DEFAULT_DATETIME_PRECISION,
-                    rounds=self.ROUNDS_ON_PREC_LOSS,
-                )
+        for m, t_cls in match_regexps(timestamp_regexps, type_repr):
+            precision = int(m.group(1))
+            return t_cls(precision=precision, rounds=self.ROUNDS_ON_PREC_LOSS)
 
         number_regexps = {r"decimal\((\d+),(\d+)\)": Decimal}
-        for regexp, n_cls in number_regexps.items():
-            m = re.match(regexp + "$", type_repr)
-            if m:
-                prec, scale = map(int, m.groups())
-                return n_cls(scale)
+        for m, n_cls in match_regexps(number_regexps, type_repr):
+            _prec, scale = map(int, m.groups())
+            return n_cls(scale)
 
         string_regexps = {r"varchar\((\d+)\)": Text, r"char\((\d+)\)": Text}
-        for regexp, n_cls in string_regexps.items():
-            m = re.match(regexp + "$", type_repr)
-            if m:
-                return n_cls()
+        for m, n_cls in match_regexps(string_regexps, type_repr):
+            return n_cls()
 
         return super()._parse_type(table_path, col_name, type_repr, datetime_precision, numeric_precision)
 
