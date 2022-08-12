@@ -1,5 +1,7 @@
 import re
 
+from ..utils import match_regexps
+
 from .database_types import *
 from .base import ThreadedDatabase, import_helper, ConnectError, QueryError
 from .base import DEFAULT_DATETIME_PRECISION, TIMESTAMP_PRECISION_POS
@@ -99,14 +101,10 @@ class Oracle(ThreadedDatabase):
             r"TIMESTAMP\((\d)\) WITH TIME ZONE": TimestampTZ,
             r"TIMESTAMP\((\d)\)": Timestamp,
         }
-        for regexp, t_cls in regexps.items():
-            m = re.match(regexp + "$", type_repr)
-            if m:
-                datetime_precision = int(m.group(1))
-                return t_cls(
-                    precision=datetime_precision if datetime_precision is not None else DEFAULT_DATETIME_PRECISION,
-                    rounds=self.ROUNDS_ON_PREC_LOSS,
-                )
+
+        for m, t_cls in match_regexps(regexps, type_repr):
+            precision = int(m.group(1))
+            return t_cls(precision=precision, rounds=self.ROUNDS_ON_PREC_LOSS)
 
         return super()._parse_type(
             table_name, col_name, type_repr, datetime_precision, numeric_precision, numeric_scale
