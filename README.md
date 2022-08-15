@@ -157,7 +157,7 @@ Requires Python 3.7+ with pip.
 
 To connect to a database, we need to have its driver installed, in the form of a Python library.
 
-While you may install them manually, we offer an easy way to install them along with data-diff:
+While you may install them manually, we offer an easy way to install them along with data-diff<sup>*</sup>:
 
 - `pip install 'data-diff[mysql]'`
 
@@ -177,6 +177,19 @@ While you may install them manually, we offer an easy way to install them along 
 Users can also install several drivers at once:
 
 ```pip install 'data-diff[mysql,postgresql,snowflake]'```
+
+_<sup>*</sup> Some drivers have dependencies that cannot be installed using `pip` and still need to be installed manually._
+
+
+### Install Psycopg2
+
+In order to run Postgresql, you'll need `psycopg2`. This Python package requires some additional dependencies described in their [documentation](https://www.psycopg.org/docs/install.html#build-prerequisites). 
+An easy solution is to install [psycopg2-binary](https://www.psycopg.org/docs/install.html#quick-install) by running:
+
+```pip install psycopg2-binary```
+
+Which comes with a pre-compiled binary and does not require additonal prerequisites. However, note that for production use it is adviced to use `psycopg2`. 
+
 
 # How to use
 
