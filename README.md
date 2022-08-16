@@ -1,8 +1,8 @@
 # **data-diff**
 
 **data-diff is in shape to be run in production, but also under development. If
-you run into issues, please file an issue and we'll help you out ASAP! You can
-also find us in `#tools-data-diff` in the [Locally Optimistic Slack.][slack]**
+you run into issues or bugs, please [open an issue](https://github.com/datafold/data-diff/issues/new/choose) and we'll help you out ASAP! You can
+also find us in `#tools-data-diff` in the [Locally Optimistic Slack][slack], and we'd love to hear about your experience using data-diff.**
 
 **data-diff** is a command-line tool and Python library to efficiently diff
 rows across two different databases.
