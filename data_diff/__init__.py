@@ -41,7 +41,7 @@ def diff_tables(
     table2: TableSegment,
     *,
     # Name of the key column, which uniquely identifies each row (usually id)
-    key_column: str = "id",
+    key_column: str = table1.key_column,
     # Name of updated column, which signals that rows changed (usually updated_at or last_update)
     update_column: str = None,
     # Extra columns to compare
