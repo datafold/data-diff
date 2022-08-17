@@ -374,47 +374,47 @@ class TableDiffer:
     def _validate_and_adjust_columns(self, table1, table2):
         for c in table1._relevant_columns:
             if c not in table1._schema:
-                raise ValueError(f"Column '{c}' not found in schema for table {table1}")
+                raise ValueError(f"Column \'{c}\' not found in schema for table {table1}")
             if c not in table2._schema:
-                raise ValueError(f"Column '{c}' not found in schema for table {table2}")
+                raise ValueError(f"Column \'{c}\' not found in schema for table {table2}")
 
             # Update schemas to minimal mutual precision
             col1 = table1._schema[c]
             col2 = table2._schema[c]
             if isinstance(col1, PrecisionType):
                 if not isinstance(col2, PrecisionType):
-                    raise TypeError(f"Incompatible types for column '{c}':  {col1} <-> {col2}")
+                    raise TypeError(f"Incompatible types for column \'{c}\':  {col1} <-> {col2}")
 
                 lowest = min(col1, col2, key=attrgetter("precision"))
 
                 if col1.precision != col2.precision:
-                    logger.warning(f"Using reduced precision {lowest} for column '{c}'. Types={col1}, {col2}")
+                    logger.warning(f"Using reduced precision {lowest} for column \'{c}\'. Types={col1}, {col2}")
 
                 table1._schema[c] = col1.replace(precision=lowest.precision, rounds=lowest.rounds)
                 table2._schema[c] = col2.replace(precision=lowest.precision, rounds=lowest.rounds)
 
             elif isinstance(col1, NumericType):
                 if not isinstance(col2, NumericType):
-                    raise TypeError(f"Incompatible types for column '{c}':  {col1} <-> {col2}")
+                    raise TypeError(f"Incompatible types for column \'{c}\':  {col1} <-> {col2}")
 
                 lowest = min(col1, col2, key=attrgetter("precision"))
 
                 if col1.precision != col2.precision:
-                    logger.warning(f"Using reduced precision {lowest} for column '{c}'. Types={col1}, {col2}")
+                    logger.warning(f"Using reduced precision {lowest} for column \'{c}\'. Types={col1}, {col2}")
 
                 table1._schema[c] = col1.replace(precision=lowest.precision)
                 table2._schema[c] = col2.replace(precision=lowest.precision)
 
             elif isinstance(col1, StringType):
                 if not isinstance(col2, StringType):
-                    raise TypeError(f"Incompatible types for column '{c}':  {col1} <-> {col2}")
+                    raise TypeError(f"Incompatible types for column \'{c}\':  {col1} <-> {col2}")
 
         for t in [table1, table2]:
             for c in t._relevant_columns:
                 ctype = t._schema[c]
                 if not ctype.supported:
                     logger.warning(
-                        f"[{t.database.name}] Column '{c}' of type '{ctype}' has no compatibility handling. "
+                        f"[{t.database.name}] Column \'{c}\' of type \'{ctype}\' has no compatibility handling. "
                         "If encoding/formatting differs between databases, it may result in false positives."
                     )
 
