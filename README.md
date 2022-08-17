@@ -128,7 +128,6 @@ $ data-diff \
 | Databricks    | `databricks://<http_path>:<access_token>@<server_hostname>/<catalog>/<schema>`                                                      |  💛    |
 | Trino         | `trino://<username>:<password>@<hostname>:8080/<database>`                                                                          |  💛    |
 | ElasticSearch |                                                                                                                                     |  📝    |
-| Databricks    |                                                                                                                                     |  📝    |
 | Planetscale   |                                                                                                                                     |  📝    |
 | Clickhouse    |                                                                                                                                     |  📝    |
 | Pinot         |                                                                                                                                     |  📝    |
