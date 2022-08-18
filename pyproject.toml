@@ -27,7 +27,7 @@ python = "^3.7.1"
 runtype = "^0.2.6"
 dsnparse = "*"
 click = "^8.1"
-rich = "^10.16.2"
+rich = "*"
 toml = "^0.10.2"
 
 [tool.poetry.dev-dependencies]
