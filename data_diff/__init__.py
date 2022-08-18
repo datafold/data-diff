@@ -45,7 +45,7 @@ def diff_tables(
     # Name of updated column, which signals that rows changed (usually updated_at or last_update)
     update_column: str = None,
     # Extra columns to compare
-    extra_columns: Tuple[str, ...] = (),
+    extra_columns: Tuple[str, ...] = None,
     # Start/end key_column values, used to restrict the segment
     min_key: DbKey = None,
     max_key: DbKey = None,
