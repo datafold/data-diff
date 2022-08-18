@@ -33,7 +33,7 @@ toml = "^0.10.2"
 [tool.poetry.dev-dependencies]
 parameterized = "*"
 unittest-parallel = "*"
-preql = "^0.2.17"
+preql = "^0.2.19"
 mysql-connector-python = "*"
 databricks-sql-connector = "*"
 snowflake-connector-python = "*"

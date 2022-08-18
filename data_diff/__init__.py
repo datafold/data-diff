@@ -41,7 +41,7 @@ def diff_tables(
     table2: TableSegment,
     *,
     # Name of the key column, which uniquely identifies each row (usually id)
-    key_column: str = "id",
+    key_column: str = None,
     # Name of updated column, which signals that rows changed (usually updated_at or last_update)
     update_column: str = None,
     # Extra columns to compare
@@ -73,8 +73,7 @@ def diff_tables(
 
     """
     tables = [table1, table2]
-    segments = [
-        t.new(
+    override_attrs = {k:v for k,v in dict(
             key_column=key_column,
             update_column=update_column,
             extra_columns=extra_columns,
@@ -82,9 +81,9 @@ def diff_tables(
             max_key=max_key,
             min_update=min_update,
             max_update=max_update,
-        )
-        for t in tables
-    ]
+    ).items() if v is not None}
+
+    segments = [t.new(**override_attrs) for t in tables] if override_attrs else tables
 
     differ = TableDiffer(
         bisection_factor=bisection_factor,
