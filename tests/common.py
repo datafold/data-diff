@@ -21,6 +21,7 @@ TEST_REDSHIFT_CONN_STRING: str = None
 TEST_ORACLE_CONN_STRING: str = None
 TEST_DATABRICKS_CONN_STRING: str = os.environ.get("DATADIFF_DATABRICKS_URI")
 TEST_TRINO_CONN_STRING: str = os.environ.get("DATADIFF_TRINO_URI") or None
+TEST_CLICKHOUSE_CONN_STRING: str = "clickhouse://clickhouse:Password1@localhost:9000/clickhouse"
 
 DEFAULT_N_SAMPLES = 50
 N_SAMPLES = int(os.environ.get("N_SAMPLES", DEFAULT_N_SAMPLES))
@@ -62,6 +63,7 @@ CONN_STRINGS = {
     db.Presto: TEST_PRESTO_CONN_STRING,
     db.Databricks: TEST_DATABRICKS_CONN_STRING,
     db.Trino: TEST_TRINO_CONN_STRING,
+    db.Clickhouse: TEST_CLICKHOUSE_CONN_STRING,
 }
 
 
@@ -105,5 +107,5 @@ def _drop_table_if_exists(conn, table):
             conn.query(f"DROP TABLE {table}", None)
         else:
             conn.query(f"DROP TABLE IF EXISTS {table}", None)
-            if not isinstance(conn, (db.BigQuery, db.Databricks)):
+            if not isinstance(conn, (db.BigQuery, db.Databricks, db.Clickhouse)):
                 conn.query("COMMIT", None)
