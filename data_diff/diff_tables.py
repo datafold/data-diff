@@ -388,9 +388,16 @@ class TableDiffer:
                 table1_count = self.stats.get("table1_count")
                 table2_count = self.stats.get("table2_count")
                 diff_count = self.stats.get("diff_count")
-                err_message = str(error)[:20]   # Truncate possibly sensitive information.
+                err_message = str(error)[:20]  # Truncate possibly sensitive information.
                 event_json = create_end_event_json(
-                    error is None, runtime, table1.database.name, table2.database.name, table1_count, table2_count, diff_count, err_message
+                    error is None,
+                    runtime,
+                    table1.database.name,
+                    table2.database.name,
+                    table1_count,
+                    table2_count,
+                    diff_count,
+                    err_message,
                 )
                 send_event_json(event_json)
 

@@ -12,7 +12,9 @@ from .common import TEST_MYSQL_CONN_STRING
 
 def run_datadiff_cli(*args):
     try:
-        stdout = subprocess.check_output([sys.executable, "-m", "data_diff", '--no-tracking'] + list(args), stderr=subprocess.PIPE)
+        stdout = subprocess.check_output(
+            [sys.executable, "-m", "data_diff", "--no-tracking"] + list(args), stderr=subprocess.PIPE
+        )
     except subprocess.CalledProcessError as e:
         logging.error(e.stderr)
         raise
