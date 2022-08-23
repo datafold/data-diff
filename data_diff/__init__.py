@@ -1,5 +1,6 @@
 from typing import Tuple, Iterator, Optional, Union
 
+from .tracking import disable_tracking
 from .databases.connect import connect
 from .diff_tables import (
     TableSegment,

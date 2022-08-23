@@ -83,7 +83,7 @@ def _get_schema(pair):
 @click.option("--json", "json_output", is_flag=True, help="Print JSONL output for machine readability")
 @click.option("-v", "--verbose", is_flag=True, help="Print extra info")
 @click.option("-i", "--interactive", is_flag=True, help="Confirm queries, implies --debug")
-@click.option("--no-tracking", is_flag=True, help="Disable anonymous tracking.")
+@click.option("--no-tracking", is_flag=True, help="data-diff sends home anonymous usage data. Use this to disable it.")
 @click.option(
     "--case-sensitive",
     is_flag=True,
