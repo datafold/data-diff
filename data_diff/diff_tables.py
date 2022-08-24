@@ -12,10 +12,13 @@ from concurrent.futures import ThreadPoolExecutor, as_completed
 
 from runtype import dataclass
 
-from .sql import Select, Checksum, Compare, DbPath, DbKey, DbTime, Count, TableName, Time, Value
+from .sql import Select, Checksum, Compare, Count, TableName, Time, Value
 from .utils import CaseAwareMapping, CaseInsensitiveDict, safezip, split_space, CaseSensitiveDict, ArithString
 from .databases.base import Database
 from .databases.database_types import (
+    DbPath,
+    DbKey,
+    DbTime,
     IKey,
     Native_UUID,
     NumericType,
@@ -269,7 +272,7 @@ def diff_sets(a: set, b: set) -> Iterator:
     for i in s2 - s1:
         d[i[0]].append(("+", i))
 
-    for k, v in sorted(d.items(), key=lambda i: i[0]):
+    for _k, v in sorted(d.items(), key=lambda i: i[0]):
         yield from v
 
 

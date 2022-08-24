@@ -3,13 +3,11 @@ import re
 from ..utils import match_regexps
 
 from .database_types import *
-from .base import Database, import_helper, _query_conn
+from .base import Database, import_helper
 from .base import (
     MD5_HEXDIGITS,
     CHECKSUM_HEXDIGITS,
     TIMESTAMP_PRECISION_POS,
-    DEFAULT_DATETIME_PRECISION,
-    DEFAULT_NUMERIC_PRECISION,
 )
 
 

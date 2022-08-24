@@ -2,12 +2,12 @@ import math
 import sys
 import logging
 from typing import Dict, Tuple, Optional, Sequence, Type, List
-from functools import lru_cache, wraps
+from functools import wraps
 from concurrent.futures import ThreadPoolExecutor
 import threading
 from abc import abstractmethod
 
-from data_diff.utils import CaseAwareMapping, is_uuid, safezip
+from data_diff.utils import is_uuid, safezip
 from .database_types import (
     AbstractDatabase,
     ColType,
@@ -92,7 +92,7 @@ class Database(AbstractDatabase):
         logger.debug("Running SQL (%s): %s", type(self).__name__, sql_code)
         if getattr(self, "_interactive", False) and isinstance(sql_ast, Select):
             explained_sql = compiler.compile(Explain(sql_ast))
-            logger.info(f"EXPLAIN for SQL SELECT")
+            logger.info("EXPLAIN for SQL SELECT")
             logger.info(self._query(explained_sql))
             answer = input("Continue? [y/n] ")
             if not answer.lower() in ["y", "yes"]:
@@ -108,7 +108,7 @@ class Database(AbstractDatabase):
             assert len(res) == 1, (sql_code, res)
             return res[0]
         elif getattr(res_type, "__origin__", None) is list and len(res_type.__args__) == 1:
-            if res_type.__args__ == (int,) or res_type.__args__ == (str,):
+            if res_type.__args__ in ((int,), (str,)):
                 return [_one(row) for row in res]
             elif res_type.__args__ == (Tuple,):
                 return [tuple(row) for row in res]
@@ -271,7 +271,7 @@ class Database(AbstractDatabase):
         return f"concat({joined_exprs})"
 
     def timestamp_value(self, t: DbTime) -> str:
-        return "'%s'" % t.isoformat()
+        return f"'{t.isoformat()}'"
 
     def normalize_uuid(self, value: str, coltype: ColType_UUID) -> str:
         if isinstance(coltype, String_UUID):
