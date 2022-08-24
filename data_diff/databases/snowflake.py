@@ -1,7 +1,7 @@
 import logging
 
 from .database_types import *
-from .base import Database, import_helper, _query_conn, CHECKSUM_MASK
+from .base import ConnectError, Database, import_helper, _query_conn, CHECKSUM_MASK
 
 
 @import_helper("snowflake")
@@ -41,9 +41,11 @@ class Snowflake(Database):
             "key" in kw
         ):  # if private keys are used for Snowflake connection, read in key from path specified and pass as "private_key" to connector.
             with open(kw.get("key"), "rb") as key:
+                if 'password' in kw:
+                    raise ConnectError("Cannot use password and key at the same time")
                 p_key = serialization.load_pem_private_key(
                     key.read(),
-                    password=kw.pop("password", None),
+                    password=None,
                     backend=default_backend(),
                 )
 
