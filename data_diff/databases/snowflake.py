@@ -7,8 +7,10 @@ from .base import Database, import_helper, _query_conn, CHECKSUM_MASK
 @import_helper("snowflake")
 def import_snowflake():
     import snowflake.connector
+    from cryptography.hazmat.primitives import serialization
+    from cryptography.hazmat.backends import default_backend
 
-    return snowflake
+    return snowflake, serialization, default_backend
 
 
 class Snowflake(Database):
@@ -26,7 +28,7 @@ class Snowflake(Database):
     ROUNDS_ON_PREC_LOSS = False
 
     def __init__(self, *, schema: str, **kw):
-        snowflake = import_snowflake()
+        snowflake, serialization, default_backend = import_snowflake()
         logging.getLogger("snowflake.connector").setLevel(logging.WARNING)
 
         # Got an error: snowflake.connector.network.RetryRequest: could not find io module state (interpreter shutdown?)
@@ -35,10 +37,23 @@ class Snowflake(Database):
         logging.getLogger("snowflake.connector.network").disabled = True
 
         assert '"' not in schema, "Schema name should not contain quotes!"
-        self._conn = snowflake.connector.connect(
-            schema=f'"{schema}"',
-            **kw,
-        )
+        if (
+            "key" in kw
+        ):  # if private keys are used for Snowflake connection, read in key from path specified and pass as "private_key" to connector.
+            with open(kw.get("key"), "rb") as key:
+                p_key = serialization.load_pem_private_key(
+                    key.read(),
+                    password=kw.pop("password", None),
+                    backend=default_backend(),
+                )
+
+            kw["private_key"] = p_key.private_bytes(
+                encoding=serialization.Encoding.DER,
+                format=serialization.PrivateFormat.PKCS8,
+                encryption_algorithm=serialization.NoEncryption(),
+            )
+
+        self._conn = snowflake.connector.connect(schema=f'"{schema}"', **kw)
 
         self.default_schema = schema
 
