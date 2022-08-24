@@ -40,7 +40,18 @@ class Presto(Database):
     def __init__(self, **kw):
         prestodb = import_presto()
 
-        self._conn = prestodb.dbapi.connect(**kw)
+        if kw.get("schema"):
+            self.default_schema = kw.get("schema")
+
+        if kw.get("auth") == "basic":  # if auth=basic, add basic authenticator for Presto
+            kw["auth"] = prestodb.auth.BasicAuthentication(kw.pop("user"), kw.pop("password"))
+
+        if "cert" in kw:  # if a certificate was specified in URI, verify session with cert
+            cert = kw.pop("cert")
+            self._conn = prestodb.dbapi.connect(**kw)
+            self._conn._http_session.verify = cert
+        else:
+            self._conn = prestodb.dbapi.connect(**kw)
 
     def quote(self, s: str):
         return f'"{s}"'
