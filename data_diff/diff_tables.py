@@ -225,11 +225,11 @@ class TableSegment:
 
     def count_and_checksum(self) -> Tuple[int, int]:
         """Count and checksum the rows in the segment, in one pass."""
-        start = time.time()
+        start = time.monotonic()
         count, checksum = self.database.query(
             self._make_select(columns=[Count(), Checksum(self._relevant_columns_repr)]), tuple
         )
-        duration = time.time() - start
+        duration = time.monotonic() - start
         if duration > RECOMMENDED_CHECKSUM_DURATION:
             logger.warning(
                 f"Checksum is taking longer than expected ({duration:.2f}s). "
@@ -336,7 +336,7 @@ class TableDiffer:
             send_event_json(event_json)
 
         self.stats["diff_count"] = 0
-        start = time.time()
+        start = time.monotonic()
         try:
 
             # Query and validate schema
@@ -384,7 +384,7 @@ class TableDiffer:
             error = e
         finally:
             if is_tracking_enabled():
-                runtime = time.time() - start
+                runtime = time.monotonic() - start
                 table1_count = self.stats.get("table1_count")
                 table2_count = self.stats.get("table2_count")
                 diff_count = self.stats.get("diff_count")

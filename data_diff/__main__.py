@@ -189,7 +189,7 @@ def _main(
         for db in dbs:
             db.enable_interactive()
 
-    start = time.time()
+    start = time.monotonic()
 
     try:
         options = dict(
@@ -281,7 +281,7 @@ def _main(
 
             sys.stdout.flush()
 
-    end = time.time()
+    end = time.monotonic()
 
     logging.info(f"Duration: {end-start:.2f} seconds.")
 

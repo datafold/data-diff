@@ -527,7 +527,7 @@ class TestDiffCrossDatabaseTables(unittest.TestCase):
 
     @parameterized.expand(type_pairs, name_func=expand_params)
     def test_types(self, source_db, target_db, source_type, target_type, type_category):
-        start = time.time()
+        start = time.monotonic()
 
         self.src_conn = src_conn = CONNS[source_db]
         self.dst_conn = dst_conn = CONNS[target_db]
@@ -550,12 +550,12 @@ class TestDiffCrossDatabaseTables(unittest.TestCase):
         self.src_table = src_table = ".".join(map(src_conn.quote, src_table_path))
         self.dst_table = dst_table = ".".join(map(dst_conn.quote, dst_table_path))
 
-        start = time.time()
+        start = time.monotonic()
         if not BENCHMARK:
             _drop_table_if_exists(src_conn, src_table)
         _create_table_with_indexes(src_conn, src_table, source_type)
         _insert_to_table(src_conn, src_table, enumerate(sample_values, 1), source_type)
-        insertion_source_duration = time.time() - start
+        insertion_source_duration = time.monotonic() - start
 
         values_in_source = PaginatedTable(src_table, src_conn)
         if source_db is db.Presto or source_db is db.Trino:
@@ -564,12 +564,12 @@ class TestDiffCrossDatabaseTables(unittest.TestCase):
             elif source_type.startswith("timestamp"):
                 values_in_source = ((a, datetime.fromisoformat(b.rstrip(" UTC"))) for a, b in values_in_source)
 
-        start = time.time()
+        start = time.monotonic()
         if not BENCHMARK:
             _drop_table_if_exists(dst_conn, dst_table)
         _create_table_with_indexes(dst_conn, dst_table, target_type)
         _insert_to_table(dst_conn, dst_table, values_in_source, target_type)
-        insertion_target_duration = time.time() - start
+        insertion_target_duration = time.monotonic() - start
 
         if type_category == "uuid":
             self.table = TableSegment(self.src_conn, src_table_path, "col", None, ("id",), case_sensitive=False)
@@ -578,13 +578,13 @@ class TestDiffCrossDatabaseTables(unittest.TestCase):
             self.table = TableSegment(self.src_conn, src_table_path, "id", None, ("col",), case_sensitive=False)
             self.table2 = TableSegment(self.dst_conn, dst_table_path, "id", None, ("col",), case_sensitive=False)
 
-        start = time.time()
+        start = time.monotonic()
         self.assertEqual(N_SAMPLES, self.table.count())
-        count_source_duration = time.time() - start
+        count_source_duration = time.monotonic() - start
 
-        start = time.time()
+        start = time.monotonic()
         self.assertEqual(N_SAMPLES, self.table2.count())
-        count_target_duration = time.time() - start
+        count_target_duration = time.monotonic() - start
 
         # When testing, we configure these to their lowest possible values for
         # the DEFAULT_N_SAMPLES.
@@ -598,9 +598,9 @@ class TestDiffCrossDatabaseTables(unittest.TestCase):
             bisection_factor=ch_factor,
             max_threadpool_size=ch_threads,
         )
-        start = time.time()
+        start = time.monotonic()
         diff = list(differ.diff_tables(self.table, self.table2))
-        checksum_duration = time.time() - start
+        checksum_duration = time.monotonic() - start
         expected = []
         self.assertEqual(expected, diff)
         self.assertEqual(0, differ.stats.get("rows_downloaded", 0))
@@ -617,9 +617,9 @@ class TestDiffCrossDatabaseTables(unittest.TestCase):
         differ = TableDiffer(
             bisection_threshold=dl_threshold, bisection_factor=dl_factor, max_threadpool_size=dl_threads
         )
-        start = time.time()
+        start = time.monotonic()
         diff = list(differ.diff_tables(self.table, self.table2))
-        download_duration = time.time() - start
+        download_duration = time.monotonic() - start
         expected = []
         self.assertEqual(expected, diff)
         self.assertEqual(len(sample_values), differ.stats.get("rows_downloaded", 0))
