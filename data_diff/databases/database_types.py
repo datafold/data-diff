@@ -15,7 +15,6 @@ DbTime = datetime
 
 class ColType:
     supported = True
-    pass
 
 
 @dataclass
@@ -141,7 +140,7 @@ class AbstractDatabase(ABC):
         ...
 
     @abstractmethod
-    def concat(self, s: List[str]) -> str:
+    def concat(self, l: List[str]) -> str:
         "Provide SQL for concatenating a bunch of column into a string"
         ...
 
@@ -263,6 +262,7 @@ class AbstractDatabase(ABC):
             return self.normalize_uuid(value, coltype)
         return self.to_string(value)
 
+    @abstractmethod
     def _normalize_table_path(self, path: DbPath) -> DbPath:
         ...
 
