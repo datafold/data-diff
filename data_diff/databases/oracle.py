@@ -1,10 +1,8 @@
-import re
-
 from ..utils import match_regexps
 
 from .database_types import *
 from .base import ThreadedDatabase, import_helper, ConnectError, QueryError
-from .base import DEFAULT_DATETIME_PRECISION, TIMESTAMP_PRECISION_POS
+from .base import TIMESTAMP_PRECISION_POS
 
 SESSION_TIME_ZONE = None  # Changed by the tests
 
@@ -29,7 +27,7 @@ class Oracle(ThreadedDatabase):
     ROUNDS_ON_PREC_LOSS = True
 
     def __init__(self, *, host, database, thread_count, **kw):
-        self.kwargs = dict(dsn="%s/%s" % (host, database) if database else host, **kw)
+        self.kwargs = dict(dsn=f"{host}/{database}" if database else host, **kw)
 
         self.default_schema = kw.get("user")
 
@@ -73,12 +71,12 @@ class Oracle(ThreadedDatabase):
     def normalize_timestamp(self, value: str, coltype: TemporalType) -> str:
         if coltype.rounds:
             return f"to_char(cast({value} as timestamp({coltype.precision})), 'YYYY-MM-DD HH24:MI:SS.FF6')"
+
+        if coltype.precision > 0:
+            truncated = f"to_char({value}, 'YYYY-MM-DD HH24:MI:SS.FF{coltype.precision}')"
         else:
-            if coltype.precision > 0:
-                truncated = f"to_char({value}, 'YYYY-MM-DD HH24:MI:SS.FF{coltype.precision}')"
-            else:
-                truncated = f"to_char({value}, 'YYYY-MM-DD HH24:MI:SS.')"
-            return f"RPAD({truncated}, {TIMESTAMP_PRECISION_POS+6}, '0')"
+            truncated = f"to_char({value}, 'YYYY-MM-DD HH24:MI:SS.')"
+        return f"RPAD({truncated}, {TIMESTAMP_PRECISION_POS+6}, '0')"
 
     def normalize_number(self, value: str, coltype: FractionalType) -> str:
         # FM999.9990
@@ -89,7 +87,7 @@ class Oracle(ThreadedDatabase):
 
     def _parse_type(
         self,
-        table_name: DbPath,
+        table_path: DbPath,
         col_name: str,
         type_repr: str,
         datetime_precision: int = None,
@@ -107,7 +105,7 @@ class Oracle(ThreadedDatabase):
             return t_cls(precision=precision, rounds=self.ROUNDS_ON_PREC_LOSS)
 
         return super()._parse_type(
-            table_name, col_name, type_repr, datetime_precision, numeric_precision, numeric_scale
+            table_path, col_name, type_repr, datetime_precision, numeric_precision, numeric_scale
         )
 
     def offset_limit(self, offset: Optional[int] = None, limit: Optional[int] = None):

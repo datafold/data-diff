@@ -1,14 +1,14 @@
 """Provides classes for a pseudo-SQL AST that compiles to SQL code
 """
 
-from typing import List, Sequence, Union, Tuple, Optional
+from typing import Sequence, Union, Optional
 from datetime import datetime
 
 from runtype import dataclass
 
 from .utils import join_iter, ArithString
 
-from .databases.database_types import AbstractDatabase, DbPath, DbKey, DbTime
+from .databases.database_types import AbstractDatabase, DbPath
 
 
 class Sql:
@@ -66,11 +66,11 @@ class Value(Sql):
 
     def compile(self, c: Compiler):
         if isinstance(self.value, bytes):
-            return "b'%s'" % self.value.decode()
+            return f"b'{self.value.decode()}'"
         elif isinstance(self.value, str):
-            return "'%s'" % self.value
+            return f"'{self.value}'" % self.value
         elif isinstance(self.value, ArithString):
-            return "'%s'" % self.value
+            return f"'{self.value}'"
         return str(self.value)
 
 

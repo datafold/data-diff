@@ -269,14 +269,14 @@ def _main(
             print(f"Diff-Percent: {percent:.14f}%")
             print(f"Diff-Split: +{plus}  -{minus}")
     else:
-        for op, columns in diff_iter:
+        for op, values in diff_iter:
             color = COLOR_SCHEME[op]
 
             if json_output:
-                jsonl = json.dumps([op, list(columns)])
+                jsonl = json.dumps([op, list(values)])
                 rich.print(f"[{color}]{jsonl}[/{color}]")
             else:
-                text = f"{op} {', '.join(columns)}"
+                text = f"{op} {', '.join(values)}"
                 rich.print(f"[{color}]{text}[/{color}]")
 
             sys.stdout.flush()

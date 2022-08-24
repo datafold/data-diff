@@ -1,5 +1,4 @@
 import logging
-import math
 
 from .database_types import *
 from .base import MD5_HEXDIGITS, CHECKSUM_HEXDIGITS, Database, import_helper, _query_conn, parse_table_name
@@ -125,9 +124,9 @@ class Databricks(Database):
         if coltype.rounds:
             timestamp = f"cast(round(unix_micros({value}) / 1000000, {coltype.precision}) * 1000000 as bigint)"
             return f"date_format(timestamp_micros({timestamp}), 'yyyy-MM-dd HH:mm:ss.SSSSSS')"
-        else:
-            precision_format = "S" * coltype.precision + "0" * (6 - coltype.precision)
-            return f"date_format({value}, 'yyyy-MM-dd HH:mm:ss.{precision_format}')"
+
+        precision_format = "S" * coltype.precision + "0" * (6 - coltype.precision)
+        return f"date_format({value}, 'yyyy-MM-dd HH:mm:ss.{precision_format}')"
 
     def normalize_number(self, value: str, coltype: NumericType) -> str:
         return self.to_string(f"cast({value} as decimal(38, {coltype.precision}))")
