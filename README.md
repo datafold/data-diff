@@ -472,36 +472,29 @@ If you pass `--stats` you'll see e.g. what % of rows were different.
   gaps), and improvements to bypass Python/driver performance limitations when
   comparing huge amounts of rows locally (i.e. for very high `bisection_threshold` values).
 
-# Anonymous Tracking
+# Usage Analytics
 
-data-diff collects anonymous usage data, in order to improve the tool, and our understanding of our user base.
+data-diff collects anonymous usage data to help our team improve the tool and to apply development efforts to where our users need them most.
 
-The data is sent home once when the tool starts, and once when it ends its run.
-We do not collect any sensitive information.
-
-The collected data is limited to:
+We capture two events, one when the data-diff run starts and one when it finished. No user data or potentially sensitive information is or ever will be collected. The captured data is limited to:
 
 - Operating System and Python version
 
-- Names of databases used (postgresql, mysql, etc.)
+- Types of databases used (postgresql, mysql, etc.)
 
-- Sizes of tables used, elapsed run time, and diff count. (numbers only)
+- Sizes of tables diffed, run time, and diff row count (numbers only)
 
 - Error message, if any, truncated to the first 20 characters.
 
 - A persistent UUID to indentify the session, stored in `~/.datadiff.toml`
 
-If you do not wish to participate, it can be easily disabled.
+If you do not wish to participate, the tracking can be easily disabled with one of the following methods:
 
-## Disable
+* In the CLI, use the `--no-tracking` flag.
 
-There are several ways to disable the tracking.
+* In the config file, set `no_tracking = true` (for example, under `[run.default]`)
 
-In the CLI, use the `--no-tracking` flag.
-
-In the config file, set `no_tracking = true` (for example, under `[run.default]`)
-
-If you're using the Python API, do the following:
+* If you're using the Python API:
 
 ```python
 import data_diff
