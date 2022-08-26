@@ -476,7 +476,7 @@ If you pass `--stats` you'll see e.g. what % of rows were different.
 
 data-diff collects anonymous usage data to help our team improve the tool and to apply development efforts to where our users need them most.
 
-We capture two events, one when the data-diff run starts and one when it finished. No user data or potentially sensitive information is or ever will be collected. The captured data is limited to:
+We capture two events, one when the data-diff run starts and one when it is finished. No user data or potentially sensitive information is or ever will be collected. The captured data is limited to:
 
 - Operating System and Python version
 

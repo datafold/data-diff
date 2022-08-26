@@ -154,9 +154,6 @@ class Database(AbstractDatabase):
         elif issubclass(cls, Decimal):
             if numeric_scale is None:
                 numeric_scale = 0  # Needed for Oracle.
-                # raise ValueError(
-                #     f"{self.name}: Unexpected numeric_scale is NULL, for column {'.'.join(table_path)}.{col_name} of type {type_repr}."
-                # )
             return cls(precision=numeric_scale)
 
         elif issubclass(cls, Float):
@@ -176,7 +173,8 @@ class Database(AbstractDatabase):
         schema, table = self._normalize_table_path(path)
 
         return (
-            "SELECT column_name, data_type, datetime_precision, numeric_precision, numeric_scale FROM information_schema.columns "
+            "SELECT column_name, data_type, datetime_precision, numeric_precision, numeric_scale "
+            "FROM information_schema.columns "
             f"WHERE table_name = '{table}' AND table_schema = '{schema}'"
         )
 
