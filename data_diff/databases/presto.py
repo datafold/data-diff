@@ -89,7 +89,8 @@ class Presto(Database):
         schema, table = self._normalize_table_path(path)
 
         return (
-            f"SELECT column_name, data_type, 3 as datetime_precision, 3 as numeric_precision FROM INFORMATION_SCHEMA.COLUMNS "
+            "SELECT column_name, data_type, 3 as datetime_precision, 3 as numeric_precision "
+            "FROM INFORMATION_SCHEMA.COLUMNS "
             f"WHERE table_name = '{table}' AND table_schema = '{schema}'"
         )
 

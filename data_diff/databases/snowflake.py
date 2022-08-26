@@ -31,17 +31,15 @@ class Snowflake(Database):
         snowflake, serialization, default_backend = import_snowflake()
         logging.getLogger("snowflake.connector").setLevel(logging.WARNING)
 
-        # Got an error: snowflake.connector.network.RetryRequest: could not find io module state (interpreter shutdown?)
+        # Ignore the error: snowflake.connector.network.RetryRequest: could not find io module state
         # It's a known issue: https://github.com/snowflakedb/snowflake-connector-python/issues/145
-        # Found a quick solution in comments
         logging.getLogger("snowflake.connector.network").disabled = True
 
         assert '"' not in schema, "Schema name should not contain quotes!"
-        if (
-            "key" in kw
-        ):  # if private keys are used for Snowflake connection, read in key from path specified and pass as "private_key" to connector.
+        # If a private key is used, read it from the specified path and pass it as "private_key" to the connector.
+        if "key" in kw:
             with open(kw.get("key"), "rb") as key:
-                if 'password' in kw:
+                if "password" in kw:
                     raise ConnectError("Cannot use password and key at the same time")
                 p_key = serialization.load_pem_private_key(
                     key.read(),

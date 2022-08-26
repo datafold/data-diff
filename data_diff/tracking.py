@@ -2,7 +2,6 @@
 # This module contains all the functionality related to the anonymous tracking of data-diff use.
 #
 
-import toml
 import logging
 import os
 import json
@@ -11,6 +10,8 @@ from time import time
 from typing import Any, Dict, Optional
 import urllib.request
 from uuid import uuid4
+
+import toml
 
 TRACK_URL = "https://api.perfalytics.com/track"
 START_EVENT = "os_diff_run_start"
@@ -25,7 +26,7 @@ def _load_profile():
     try:
         with open(DEFAULT_PROFILE) as f:
             conf = toml.load(f)
-    except FileNotFoundError as e:
+    except FileNotFoundError:
         conf = {}
 
     if "anonymous_id" not in conf:
