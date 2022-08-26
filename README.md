@@ -46,6 +46,7 @@ better than MySQL.
   - [How to use from Python](#how-to-use-from-python)
 - [Technical Explanation](#technical-explanation)
   - [Performance Considerations](#performance-considerations)
+- [Anonymous Tracking](#anonymous-tracking)
 - [Development Setup](#development-setup)
 - [License](#license)
 
@@ -182,12 +183,12 @@ _<sup>*</sup> Some drivers have dependencies that cannot be installed using `pip
 
 ### Install Psycopg2
 
-In order to run Postgresql, you'll need `psycopg2`. This Python package requires some additional dependencies described in their [documentation](https://www.psycopg.org/docs/install.html#build-prerequisites). 
+In order to run Postgresql, you'll need `psycopg2`. This Python package requires some additional dependencies described in their [documentation](https://www.psycopg.org/docs/install.html#build-prerequisites).
 An easy solution is to install [psycopg2-binary](https://www.psycopg.org/docs/install.html#quick-install) by running:
 
 ```pip install psycopg2-binary```
 
-Which comes with a pre-compiled binary and does not require additonal prerequisites. However, note that for production use it is adviced to use `psycopg2`. 
+Which comes with a pre-compiled binary and does not require additonal prerequisites. However, note that for production use it is adviced to use `psycopg2`.
 
 
 # How to use
@@ -225,6 +226,8 @@ Options:
   - `-j` or `--threads` - Number of worker threads to use per database. Default=1.
   - `-w`, `--where` - An additional 'where' expression to restrict the search space.
   - `--conf`, `--run` - Specify the run and configuration from a TOML file. (see below)
+  - `--no-tracking` - data-diff sends home anonymous usage data. Use this to disable it.
+
 
 ### How to use with a configuration file
 
@@ -468,6 +471,38 @@ If you pass `--stats` you'll see e.g. what % of rows were different.
   `bisection_factor`/`threads`/`bisection_threshold` (especially with large key
   gaps), and improvements to bypass Python/driver performance limitations when
   comparing huge amounts of rows locally (i.e. for very high `bisection_threshold` values).
+
+# Usage Analytics
+
+data-diff collects anonymous usage data to help our team improve the tool and to apply development efforts to where our users need them most.
+
+We capture two events, one when the data-diff run starts and one when it finished. No user data or potentially sensitive information is or ever will be collected. The captured data is limited to:
+
+- Operating System and Python version
+
+- Types of databases used (postgresql, mysql, etc.)
+
+- Sizes of tables diffed, run time, and diff row count (numbers only)
+
+- Error message, if any, truncated to the first 20 characters.
+
+- A persistent UUID to indentify the session, stored in `~/.datadiff.toml`
+
+If you do not wish to participate, the tracking can be easily disabled with one of the following methods:
+
+* In the CLI, use the `--no-tracking` flag.
+
+* In the config file, set `no_tracking = true` (for example, under `[run.default]`)
+
+* If you're using the Python API:
+
+```python
+import data_diff
+data_diff.disable_tracking()    # Call this first, before making any API calls
+
+# Connect and diff your tables without any tracking
+```
+
 
 # Development Setup
 

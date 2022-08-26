@@ -5,6 +5,8 @@ import json
 import logging
 from itertools import islice
 
+from data_diff.tracking import disable_tracking
+
 from .utils import remove_password_from_url, safezip, match_like
 
 from .diff_tables import (
@@ -81,6 +83,7 @@ def _get_schema(pair):
 @click.option("--json", "json_output", is_flag=True, help="Print JSONL output for machine readability")
 @click.option("-v", "--verbose", is_flag=True, help="Print extra info")
 @click.option("-i", "--interactive", is_flag=True, help="Confirm queries, implies --debug")
+@click.option("--no-tracking", is_flag=True, help="data-diff sends home anonymous usage data. Use this to disable it.")
 @click.option(
     "--case-sensitive",
     is_flag=True,
@@ -128,6 +131,7 @@ def _main(
     debug,
     verbose,
     interactive,
+    no_tracking,
     threads,
     case_sensitive,
     json_output,
@@ -136,6 +140,9 @@ def _main(
     threads2=None,
     __conf__=None,
 ):
+
+    if no_tracking:
+        disable_tracking()
 
     if interactive:
         debug = True
@@ -182,7 +189,7 @@ def _main(
         for db in dbs:
             db.enable_interactive()
 
-    start = time.time()
+    start = time.monotonic()
 
     try:
         options = dict(
@@ -274,7 +281,7 @@ def _main(
 
             sys.stdout.flush()
 
-    end = time.time()
+    end = time.monotonic()
 
     logging.info(f"Duration: {end-start:.2f} seconds.")
 

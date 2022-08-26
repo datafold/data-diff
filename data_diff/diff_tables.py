@@ -12,8 +12,17 @@ from concurrent.futures import ThreadPoolExecutor, as_completed
 
 from runtype import dataclass
 
+from .tracking import create_end_event_json, create_start_event_json, send_event_json, is_tracking_enabled
 from .sql import Select, Checksum, Compare, Count, TableName, Time, Value
-from .utils import CaseAwareMapping, CaseInsensitiveDict, safezip, split_space, CaseSensitiveDict, ArithString
+from .utils import (
+    CaseAwareMapping,
+    CaseInsensitiveDict,
+    safezip,
+    split_space,
+    CaseSensitiveDict,
+    ArithString,
+    run_as_daemon,
+)
 from .databases.base import Database
 from .databases.database_types import (
     DbPath,
@@ -225,11 +234,11 @@ class TableSegment:
 
     def count_and_checksum(self) -> Tuple[int, int]:
         """Count and checksum the rows in the segment, in one pass."""
-        start = time.time()
+        start = time.monotonic()
         count, checksum = self.database.query(
             self._make_select(columns=[Count(), Checksum(self._relevant_columns_repr)]), tuple
         )
-        duration = time.time() - start
+        duration = time.monotonic() - start
         if duration > RECOMMENDED_CHECKSUM_DURATION:
             logger.warning(
                 f"Checksum is taking longer than expected ({duration:.2f}s). "
@@ -259,6 +268,11 @@ class TableSegment:
     @property
     def is_bounded(self):
         return self.min_key is not None and self.max_key is not None
+
+    def approximate_size(self):
+        if not self.is_bounded:
+            raise RuntimeError("Cannot approximate the size of an unbounded segment. Must have min_key and max_key.")
+        return self.max_key - self.min_key
 
 
 def diff_sets(a: set, b: set) -> Iterator:
@@ -325,45 +339,79 @@ class TableDiffer:
         if self.bisection_factor < 2:
             raise ValueError("Must have at least two segments per iteration (i.e. bisection_factor >= 2)")
 
-        # Query and validate schema
-        table1, table2 = self._threaded_call("with_schema", [table1, table2])
-        self._validate_and_adjust_columns(table1, table2)
+        if is_tracking_enabled():
+            options = dict(self)
+            event_json = create_start_event_json(options)
+            run_as_daemon(send_event_json, event_json)
 
-        key_type = table1._schema[table1.key_column]
-        key_type2 = table2._schema[table2.key_column]
-        if not isinstance(key_type, IKey):
-            raise NotImplementedError(f"Cannot use column of type {key_type} as a key")
-        if not isinstance(key_type2, IKey):
-            raise NotImplementedError(f"Cannot use column of type {key_type2} as a key")
-        assert key_type.python_type is key_type2.python_type
+        self.stats["diff_count"] = 0
+        start = time.monotonic()
+        try:
 
-        # Query min/max values
-        key_ranges = self._threaded_call_as_completed("query_key_range", [table1, table2])
+            # Query and validate schema
+            table1, table2 = self._threaded_call("with_schema", [table1, table2])
+            self._validate_and_adjust_columns(table1, table2)
 
-        # Start with the first completed value, so we don't waste time waiting
-        min_key1, max_key1 = self._parse_key_range_result(key_type, next(key_ranges))
+            key_type = table1._schema[table1.key_column]
+            key_type2 = table2._schema[table2.key_column]
+            if not isinstance(key_type, IKey):
+                raise NotImplementedError(f"Cannot use column of type {key_type} as a key")
+            if not isinstance(key_type2, IKey):
+                raise NotImplementedError(f"Cannot use column of type {key_type2} as a key")
+            assert key_type.python_type is key_type2.python_type
 
-        table1, table2 = [t.new(min_key=min_key1, max_key=max_key1) for t in (table1, table2)]
+            # Query min/max values
+            key_ranges = self._threaded_call_as_completed("query_key_range", [table1, table2])
 
-        logger.info(
-            f"Diffing tables | segments: {self.bisection_factor}, bisection threshold: {self.bisection_threshold}. "
-            f"key-range: {table1.min_key}..{table2.max_key}, "
-            f"size: {table2.max_key-table1.min_key}"
-        )
+            # Start with the first completed value, so we don't waste time waiting
+            min_key1, max_key1 = self._parse_key_range_result(key_type, next(key_ranges))
 
-        # Bisect (split) the table into segments, and diff them recursively.
-        yield from self._bisect_and_diff_tables(table1, table2)
+            table1, table2 = [t.new(min_key=min_key1, max_key=max_key1) for t in (table1, table2)]
 
-        # Now we check for the second min-max, to diff the portions we "missed".
-        min_key2, max_key2 = self._parse_key_range_result(key_type, next(key_ranges))
+            logger.info(
+                f"Diffing tables | segments: {self.bisection_factor}, bisection threshold: {self.bisection_threshold}. "
+                f"key-range: {table1.min_key}..{table2.max_key}, "
+                f"size: {table1.approximate_size()}"
+            )
 
-        if min_key2 < min_key1:
-            pre_tables = [t.new(min_key=min_key2, max_key=min_key1) for t in (table1, table2)]
-            yield from self._bisect_and_diff_tables(*pre_tables)
+            # Bisect (split) the table into segments, and diff them recursively.
+            yield from self._bisect_and_diff_tables(table1, table2)
 
-        if max_key2 > max_key1:
-            post_tables = [t.new(min_key=max_key1, max_key=max_key2) for t in (table1, table2)]
-            yield from self._bisect_and_diff_tables(*post_tables)
+            # Now we check for the second min-max, to diff the portions we "missed".
+            min_key2, max_key2 = self._parse_key_range_result(key_type, next(key_ranges))
+
+            if min_key2 < min_key1:
+                pre_tables = [t.new(min_key=min_key2, max_key=min_key1) for t in (table1, table2)]
+                yield from self._bisect_and_diff_tables(*pre_tables)
+
+            if max_key2 > max_key1:
+                post_tables = [t.new(min_key=max_key1, max_key=max_key2) for t in (table1, table2)]
+                yield from self._bisect_and_diff_tables(*post_tables)
+
+            error = None
+        except BaseException as e:  # Catch KeyboardInterrupt too
+            error = e
+        finally:
+            if is_tracking_enabled():
+                runtime = time.monotonic() - start
+                table1_count = self.stats.get("table1_count")
+                table2_count = self.stats.get("table2_count")
+                diff_count = self.stats.get("diff_count")
+                err_message = str(error)[:20]  # Truncate possibly sensitive information.
+                event_json = create_end_event_json(
+                    error is None,
+                    runtime,
+                    table1.database.name,
+                    table2.database.name,
+                    table1_count,
+                    table2_count,
+                    diff_count,
+                    err_message,
+                )
+                send_event_json(event_json)
+
+            if error:
+                raise error
 
     def _parse_key_range_result(self, key_type, key_range):
         mn, mx = key_range
@@ -440,6 +488,8 @@ class TableDiffer:
             if level == 0:
                 self.stats["table1_count"] = len(rows1)
                 self.stats["table2_count"] = len(rows2)
+
+            self.stats["diff_count"] += len(diff)
 
             logger.info(". " * level + f"Diff found {len(diff)} different rows.")
             self.stats["rows_downloaded"] = self.stats.get("rows_downloaded", 0) + max(len(rows1), len(rows2))

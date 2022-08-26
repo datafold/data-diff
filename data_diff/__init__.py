@@ -1,5 +1,6 @@
 from typing import Tuple, Iterator, Optional, Union
 
+from .tracking import disable_tracking
 from .databases.connect import connect
 from .diff_tables import (
     TableSegment,
@@ -73,7 +74,9 @@ def diff_tables(
 
     """
     tables = [table1, table2]
-    override_attrs = {k:v for k,v in dict(
+    override_attrs = {
+        k: v
+        for k, v in dict(
             key_column=key_column,
             update_column=update_column,
             extra_columns=extra_columns,
@@ -81,7 +84,9 @@ def diff_tables(
             max_key=max_key,
             min_update=min_update,
             max_update=max_update,
-    ).items() if v is not None}
+        ).items()
+        if v is not None
+    }
 
     segments = [t.new(**override_attrs) for t in tables] if override_attrs else tables
 

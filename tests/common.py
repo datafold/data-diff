@@ -5,8 +5,11 @@ import string
 import random
 
 from data_diff import databases as db
+from data_diff import tracking
 import logging
 import subprocess
+
+tracking.disable_tracking()
 
 # We write 'or None' because Github sometimes creates empty env vars for secrets
 TEST_MYSQL_CONN_STRING: str = "mysql://mysql:Password1@localhost/mysql"
