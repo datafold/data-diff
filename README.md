@@ -119,7 +119,7 @@ $ data-diff \
 
 | Database      | Connection string                                                                                                                   | Status |
 |---------------|-------------------------------------------------------------------------------------------------------------------------------------|--------|
-| PostgreSQL >=10    | `postgresql://<user>:<password>@<host>:5432/<database>`                                                                         |  💚    |
+| PostgreSQL >=10    | `postgresql://<user>:<password>@<host>:5432/<database>`                                                                             |  💚    |
 | MySQL         | `mysql://<user>:<password>@<hostname>:5432/<database>`                                                                              |  💚    |
 | Snowflake     | `"snowflake://<user>[:<password>]@<account>/<database>/<SCHEMA>?warehouse=<WAREHOUSE>&role=<role>[&authenticator=externalbrowser]"` |  💚    |
 | Oracle        | `oracle://<username>:<password>@<hostname>/database`                                                                                |  💛    |
@@ -128,9 +128,9 @@ $ data-diff \
 | Presto        | `presto://<username>:<password>@<hostname>:8080/<database>`                                                                         |  💛    |
 | Databricks    | `databricks://<http_path>:<access_token>@<server_hostname>/<catalog>/<schema>`                                                      |  💛    |
 | Trino         | `trino://<username>:<password>@<hostname>:8080/<database>`                                                                          |  💛    |
+| Clickhouse    | `clickhouse://<username>:<password>@<hostname>:9000/<database>`                                                                     |  💛    |
 | ElasticSearch |                                                                                                                                     |  📝    |
 | Planetscale   |                                                                                                                                     |  📝    |
-| Clickhouse    |                                                                                                                                     |  📝    |
 | Pinot         |                                                                                                                                     |  📝    |
 | Druid         |                                                                                                                                     |  📝    |
 | Kafka         |                                                                                                                                     |  📝    |
