@@ -7,6 +7,7 @@ from urllib.parse import urlparse
 from uuid import UUID
 import operator
 import string
+import threading
 
 alphanums = string.digits + string.ascii_lowercase
 
@@ -245,3 +246,10 @@ def match_regexps(regexps: Dict[str, Any], s: str) -> Sequence[tuple]:
         m = re.match(regexp + "$", s)
         if m:
             yield m, v
+
+
+def run_as_daemon(threadfunc, *args):
+    th = threading.Thread(target=threadfunc, args=args)
+    th.daemon = True
+    th.start()
+    return th

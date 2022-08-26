@@ -16,6 +16,7 @@ TRACK_URL = "https://api.perfalytics.com/track"
 START_EVENT = "os_diff_run_start"
 END_EVENT = "os_diff_run_end"
 TOKEN = "ccb8c3a6-3b6f-445c-ad67-994efa7bd020"
+TIMEOUT = 8
 
 DEFAULT_PROFILE = os.path.expanduser("~/.datadiff.toml")
 
@@ -106,7 +107,7 @@ def send_event_json(event_json):
     data = json.dumps(event_json).encode()
     try:
         req = urllib.request.Request(TRACK_URL, data=data, headers=headers)
-        with urllib.request.urlopen(req) as f:
+        with urllib.request.urlopen(req, timeout=TIMEOUT) as f:
             res = f.read()
             if f.code != 200:
                 raise RuntimeError(res)

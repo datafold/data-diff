@@ -14,7 +14,15 @@ from runtype import dataclass
 
 from .tracking import create_end_event_json, create_start_event_json, send_event_json, is_tracking_enabled
 from .sql import Select, Checksum, Compare, Count, TableName, Time, Value
-from .utils import CaseAwareMapping, CaseInsensitiveDict, safezip, split_space, CaseSensitiveDict, ArithString
+from .utils import (
+    CaseAwareMapping,
+    CaseInsensitiveDict,
+    safezip,
+    split_space,
+    CaseSensitiveDict,
+    ArithString,
+    run_as_daemon,
+)
 from .databases.base import Database
 from .databases.database_types import (
     DbPath,
@@ -334,7 +342,7 @@ class TableDiffer:
         if is_tracking_enabled():
             options = dict(self)
             event_json = create_start_event_json(options)
-            send_event_json(event_json)
+            run_as_daemon(send_event_json, event_json)
 
         self.stats["diff_count"] = 0
         start = time.monotonic()
