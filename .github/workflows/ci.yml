@@ -34,7 +34,7 @@ jobs:
           python-version: ${{ matrix.python-version }}
 
       - name: Build the stack
-        run: docker-compose up -d mysql postgres presto trino
+        run: docker-compose up -d mysql postgres presto trino clickhouse
 
       - name: Install Poetry
         run: pip install poetry
