@@ -88,7 +88,7 @@ class Clickhouse(ThreadedDatabase):
 
     def md5_to_int(self, s: str) -> str:
         substr_idx = 1 + MD5_HEXDIGITS - CHECKSUM_HEXDIGITS
-        return f'reinterpretAsUInt64(reverse(unhex(lowerUTF8(substr(hex(MD5({s})), {substr_idx})))))'
+        return f'reinterpretAsUInt128(reverse(unhex(lowerUTF8(substr(hex(MD5({s})), {substr_idx})))))'
 
     def to_string(self, s: str) -> str:
         return f"toString({s})"
