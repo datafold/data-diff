@@ -56,6 +56,11 @@ def _get_text_type(conn):
         return "STRING"
     return "varchar(100)"
 
+def _get_float_type(conn):
+    if isinstance(conn, db.BigQuery):
+        return "FLOAT64"
+    return "float"
+
 
 class TestUtils(unittest.TestCase):
     def test_split_space(self):
@@ -207,11 +212,13 @@ class TestDiffTables(TestPerDatabase):
     def setUp(self):
         super().setUp()
 
+        float_type = _get_float_type(self.connection)
+
         self.connection.query(
-            f"create table {self.table_src}(id int, userid int, movieid int, rating float, timestamp timestamp)", None
+            f"create table {self.table_src}(id int, userid int, movieid int, rating {float_type}, timestamp timestamp)", None
         )
         self.connection.query(
-            f"create table {self.table_dst}(id int, userid int, movieid int, rating float, timestamp timestamp)", None
+            f"create table {self.table_dst}(id int, userid int, movieid int, rating {float_type}, timestamp timestamp)", None
         )
         # self.preql(
         #     f"""
@@ -374,8 +381,10 @@ class TestUUIDs(TestPerDatabase):
     def setUp(self):
         super().setUp()
 
+        text_type = _get_text_type(self.connection)
+
         queries = [
-            f"CREATE TABLE {self.table_src}(id varchar(100), text_comment varchar(1000))",
+            f"CREATE TABLE {self.table_src}(id {text_type}, text_comment {text_type})",
         ]
         for i in range(100):
             queries.append(f"INSERT INTO {self.table_src} VALUES ('{uuid.uuid1(i)}', '{i}')")
@@ -414,8 +423,10 @@ class TestAlphanumericKeys(TestPerDatabase):
     def setUp(self):
         super().setUp()
 
+        text_type = _get_text_type(self.connection)
+
         queries = [
-            f"CREATE TABLE {self.table_src}(id varchar(100), text_comment varchar(1000))",
+            f"CREATE TABLE {self.table_src}(id {text_type}, text_comment {text_type})",
         ]
         for i in range(0, 10000, 1000):
             queries.append(f"INSERT INTO {self.table_src} VALUES ('{ArithAlphanumeric(int=i, max_len=10)}', '{i}')")
@@ -480,8 +491,10 @@ class TestTableUUID(TestPerDatabase):
     def setUp(self):
         super().setUp()
 
+        text_type = _get_text_type(self.connection)
+
         queries = [
-            f"CREATE TABLE {self.table_src}(id varchar(100), text_comment varchar(1000))",
+            f"CREATE TABLE {self.table_src}(id {text_type}, text_comment {text_type})",
         ]
         for i in range(10):
             uuid_value = uuid.uuid1(i)
@@ -512,9 +525,11 @@ class TestTableNullRowChecksum(TestPerDatabase):
     def setUp(self):
         super().setUp()
 
+        text_type = _get_text_type(self.connection)
+
         self.null_uuid = uuid.uuid1(1)
         queries = [
-            f"CREATE TABLE {self.table_src}(id varchar(100), text_comment varchar(1000))",
+            f"CREATE TABLE {self.table_src}(id {text_type}, text_comment {text_type})",
             f"INSERT INTO {self.table_src} VALUES ('{uuid.uuid1(1)}', '1')",
             f"CREATE TABLE {self.table_dst} AS SELECT * FROM {self.table_src}",
             # Add a row where a column has NULL value
@@ -624,10 +639,12 @@ class TestTableTableEmpty(TestPerDatabase):
     def setUp(self):
         super().setUp()
 
+        text_type = _get_text_type(self.connection)
+
         self.null_uuid = uuid.uuid1(1)
         queries = [
-            f"CREATE TABLE {self.table_src}(id varchar(100), text_comment varchar(1000))",
-            f"CREATE TABLE {self.table_dst}(id varchar(100), text_comment varchar(1000))",
+            f"CREATE TABLE {self.table_src}(id {text_type}, text_comment {text_type})",
+            f"CREATE TABLE {self.table_dst}(id {text_type}, text_comment {text_type})",
         ]
 
         self.diffs = [(uuid.uuid1(i), i) for i in range(100)]
