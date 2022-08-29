@@ -23,7 +23,7 @@ classifiers = [
 packages = [{ include = "data_diff" }]
 
 [tool.poetry.dependencies]
-python = "^3.8.0"
+python = "^3.7"
 runtype = "^0.2.6"
 dsnparse = "*"
 click = "^8.1"
