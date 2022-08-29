@@ -178,6 +178,7 @@ class TableSegment:
         if isinstance(self.min_key, ArithString):
             assert type(self.min_key) is type(self.max_key)
             checkpoints = split_space(self.min_key.int, self.max_key.int, count)
+            print("$$$$$", self.min_key, self.max_key, count)
             return [self.min_key.new(int=i) for i in checkpoints]
 
         return split_space(self.min_key, self.max_key, count)
