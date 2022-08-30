@@ -202,4 +202,4 @@ def connect(db_conf: Union[str, dict], thread_count: Optional[int] = 1) -> Datab
         return connect_to_uri(db_conf, thread_count)
     elif isinstance(db_conf, dict):
         return connect_with_dict(db_conf, thread_count)
-    raise TypeError(db_conf)
+    raise TypeError(f"db configuration must be a URI string or a dictionary. Instead got '{db_conf}'.")
