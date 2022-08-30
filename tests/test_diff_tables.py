@@ -56,6 +56,7 @@ def _get_text_type(conn):
         return "STRING"
     return "varchar(100)"
 
+
 def _get_float_type(conn):
     if isinstance(conn, db.BigQuery):
         return "FLOAT64"
@@ -215,10 +216,12 @@ class TestDiffTables(TestPerDatabase):
         float_type = _get_float_type(self.connection)
 
         self.connection.query(
-            f"create table {self.table_src}(id int, userid int, movieid int, rating {float_type}, timestamp timestamp)", None
+            f"create table {self.table_src}(id int, userid int, movieid int, rating {float_type}, timestamp timestamp)",
+            None,
         )
         self.connection.query(
-            f"create table {self.table_dst}(id int, userid int, movieid int, rating {float_type}, timestamp timestamp)", None
+            f"create table {self.table_dst}(id int, userid int, movieid int, rating {float_type}, timestamp timestamp)",
+            None,
         )
         # self.preql(
         #     f"""

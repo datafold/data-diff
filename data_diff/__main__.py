@@ -205,7 +205,9 @@ def _main(
     )
 
     if database1 is None or database2 is None:
-        logging.error(f"Error: Databases not specified. Got {database1} and {database2}. Use --help for more information.")
+        logging.error(
+            f"Error: Databases not specified. Got {database1} and {database2}. Use --help for more information."
+        )
         return
 
     try:
