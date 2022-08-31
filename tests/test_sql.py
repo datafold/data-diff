@@ -5,7 +5,6 @@ from data_diff.sql import Checksum, Compare, Compiler, Count, Enum, Explain, In,
 
 from .common import TEST_MYSQL_CONN_STRING
 
-
 class TestSQL(unittest.TestCase):
     def setUp(self):
         self.mysql = connect_to_uri(TEST_MYSQL_CONN_STRING)

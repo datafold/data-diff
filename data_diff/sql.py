@@ -17,8 +17,6 @@ class Sql:
 
 SqlOrStr = Union[Sql, str]
 
-CONCAT_SEP = "|"
-
 
 @dataclass
 class Compiler:
