@@ -63,12 +63,17 @@ CONN_STRINGS = {
     db.Trino: TEST_TRINO_CONN_STRING,
 }
 
-for k, v in CONN_STRINGS.items():
-    if v is None:
-        logging.warn(f"Connection to {k} not configured")
-    else:
-        logging.info(f"Testing database: {k}")
 
+def _print_used_dbs():
+    used = {k.__name__ for k, v in CONN_STRINGS.items() if v is not None}
+    unused = {k.__name__ for k, v in CONN_STRINGS.items() if v is None}
+
+    logging.info(f"Testing databases: {', '.join(used)}")
+    if unused:
+        logging.info(f"Connection not configured; skipping tests for: {', '.join(unused)}")
+
+
+_print_used_dbs()
 CONN_STRINGS = {k: v for k, v in CONN_STRINGS.items() if v is not None}
 
 

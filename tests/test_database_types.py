@@ -26,11 +26,18 @@ from .common import (
     _drop_table_if_exists,
 )
 
+CONNS = None
 
-CONNS = {k: db.connect.connect(v, N_THREADS) for k, v in CONN_STRINGS.items()}
 
-CONNS[db.MySQL].query("SET @@session.time_zone='+00:00'", None)
-oracle.SESSION_TIME_ZONE = postgresql.SESSION_TIME_ZONE = "UTC"
+def init_conns():
+    global CONNS
+    if CONNS is not None:
+        return
+
+    CONNS = {k: db.connect.connect(v, N_THREADS) for k, v in CONN_STRINGS.items()}
+    CONNS[db.MySQL].query("SET @@session.time_zone='+00:00'", None)
+    oracle.SESSION_TIME_ZONE = postgresql.SESSION_TIME_ZONE = "UTC"
+
 
 DATABASE_TYPES = {
     db.PostgreSQL: {
@@ -374,7 +381,7 @@ for source_db, source_type_categories in DATABASE_TYPES.items():
         ) in source_type_categories.items():  # int, datetime, ..
             for source_type in source_types:
                 for target_type in target_type_categories[type_category]:
-                    if CONNS.get(source_db, False) and CONNS.get(target_db, False):
+                    if CONN_STRINGS.get(source_db, False) and CONN_STRINGS.get(target_db, False):
                         type_pairs.append(
                             (
                                 source_db,
@@ -517,6 +524,9 @@ def _create_table_with_indexes(conn, table, type):
 
 class TestDiffCrossDatabaseTables(unittest.TestCase):
     maxDiff = 10000
+
+    def setUp(self) -> None:
+        init_conns()
 
     def tearDown(self) -> None:
         if not BENCHMARK:
