@@ -287,6 +287,9 @@ class Database(AbstractDatabase):
             return f"TRIM({value})"
         return self.to_string(value)
 
+    def random(self) -> str:
+        return "RANDOM()"
+
 
 class ThreadedDatabase(Database):
     """Access the database through singleton threads.

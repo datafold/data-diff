@@ -140,17 +140,12 @@ class UnknownColType(ColType):
     supported = False
 
 
-class AbstractDatabase(ABC):
+class AbstractDialect(ABC):
     name: str
 
     @abstractmethod
     def quote(self, s: str):
         "Quote SQL name (implementation specific)"
-        ...
-
-    @abstractmethod
-    def to_string(self, s: str) -> str:
-        "Provide SQL for casting a column to string"
         ...
 
     @abstractmethod
@@ -164,6 +159,21 @@ class AbstractDatabase(ABC):
         ...
 
     @abstractmethod
+    def to_string(self, s: str) -> str:
+        "Provide SQL for casting a column to string"
+        ...
+
+    @abstractmethod
+    def random(self) -> str:
+        "Provide SQL for generating a random number"
+
+    @abstractmethod
+    def offset_limit(self, offset: Optional[int] = None, limit: Optional[int] = None):
+        "Provide SQL fragment for limit and offset inside a select"
+        ...
+
+class AbstractDatabase(AbstractDialect):
+    @abstractmethod
     def timestamp_value(self, t: DbTime) -> str:
         "Provide SQL for the given timestamp value"
         ...
@@ -173,10 +183,6 @@ class AbstractDatabase(ABC):
         "Provide SQL for computing md5 and returning an int"
         ...
 
-    @abstractmethod
-    def offset_limit(self, offset: Optional[int] = None, limit: Optional[int] = None):
-        "Provide SQL fragment for limit and offset inside a select"
-        ...
 
     @abstractmethod
     def _query(self, sql_code: str) -> list:
