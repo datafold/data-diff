@@ -155,6 +155,8 @@ def _main(
             logging.debug(f"Applied run configuration: {__conf__}")
     elif verbose:
         logging.basicConfig(level=logging.INFO, format=LOG_FORMAT, datefmt=DATE_FORMAT)
+    else:
+        logging.basicConfig(level=logging.WARNING, format=LOG_FORMAT, datefmt=DATE_FORMAT)
 
     if limit and stats:
         logging.error("Cannot specify a limit when using the -s/--stats switch")
@@ -181,14 +183,6 @@ def _main(
             logging.error("Error: threads must be >= 1")
             return
 
-    db1 = connect(database1, threads1 or threads)
-    db2 = connect(database2, threads2 or threads)
-    dbs = db1, db2
-
-    if interactive:
-        for db in dbs:
-            db.enable_interactive()
-
     start = time.monotonic()
 
     try:
@@ -199,7 +193,7 @@ def _main(
             where=where,
         )
     except ParseError as e:
-        logging.error("Error while parsing age expression: %s" % e)
+        logging.error(f"Error while parsing age expression: {e}")
         return
 
     differ = TableDiffer(
@@ -209,6 +203,25 @@ def _main(
         max_threadpool_size=threads and threads * 2,
         debug=debug,
     )
+
+    if database1 is None or database2 is None:
+        logging.error(
+            f"Error: Databases not specified. Got {database1} and {database2}. Use --help for more information."
+        )
+        return
+
+    try:
+        db1 = connect(database1, threads1 or threads)
+        db2 = connect(database2, threads2 or threads)
+    except Exception as e:
+        logging.error(e)
+        return
+
+    dbs = db1, db2
+
+    if interactive:
+        for db in dbs:
+            db.enable_interactive()
 
     table_names = table1, table2
     table_paths = [db.parse_table_name(t) for db, t in safezip(dbs, table_names)]

@@ -20,8 +20,17 @@ from .common import (
     N_THREADS,
 )
 
+DATABASE_INSTANCES = None
 DATABASE_URIS = {k.__name__: v for k, v in CONN_STRINGS.items()}
-DATABASE_INSTANCES = {k.__name__: connect(v, N_THREADS) for k, v in CONN_STRINGS.items()}
+
+
+def init_instances():
+    global DATABASE_INSTANCES
+    if DATABASE_INSTANCES is not None:
+        return
+
+    DATABASE_INSTANCES = {k.__name__: connect(v, N_THREADS) for k, v in CONN_STRINGS.items()}
+
 
 TEST_DATABASES = {x.__name__ for x in (db.MySQL, db.PostgreSQL, db.Oracle, db.Redshift, db.Snowflake, db.BigQuery)}
 
@@ -56,6 +65,7 @@ def _get_text_type(conn):
         return "STRING"
     return "varchar(100)"
 
+
 def _get_float_type(conn):
     if isinstance(conn, db.BigQuery):
         return "FLOAT64"
@@ -79,6 +89,7 @@ class TestPerDatabase(unittest.TestCase):
 
     def setUp(self):
         assert self.db_name
+        init_instances()
 
         self.connection = DATABASE_INSTANCES[self.db_name]
         if self.with_preql:
@@ -215,10 +226,12 @@ class TestDiffTables(TestPerDatabase):
         float_type = _get_float_type(self.connection)
 
         self.connection.query(
-            f"create table {self.table_src}(id int, userid int, movieid int, rating {float_type}, timestamp timestamp)", None
+            f"create table {self.table_src}(id int, userid int, movieid int, rating {float_type}, timestamp timestamp)",
+            None,
         )
         self.connection.query(
-            f"create table {self.table_dst}(id int, userid int, movieid int, rating {float_type}, timestamp timestamp)", None
+            f"create table {self.table_dst}(id int, userid int, movieid int, rating {float_type}, timestamp timestamp)",
+            None,
         )
         # self.preql(
         #     f"""
