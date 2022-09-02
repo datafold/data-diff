@@ -4,6 +4,7 @@ from typing import Any, Dict, Sequence, List
 
 from runtype import dataclass
 
+from data_diff.utils import ArithString
 from data_diff.databases.database_types import AbstractDialect
 
 

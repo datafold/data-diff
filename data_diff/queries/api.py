@@ -31,6 +31,7 @@ def or_(*exprs: Expr):
         return exprs[0]
     return BinOp("OR", exprs)
 
+
 def and_(*exprs: Expr):
     exprs = args_as_tuple(exprs)
     if len(exprs) == 1:
