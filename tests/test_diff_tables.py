@@ -7,7 +7,8 @@ import preql
 import arrow  # comes with preql
 
 from data_diff.databases.connect import connect
-from data_diff.diff_tables import TableDiffer, TableSegment, split_space
+from data_diff.diff_tables import TableDiffer
+from data_diff.table_segment import TableSegment, split_space
 from data_diff import databases as db
 from data_diff.utils import ArithAlphanumeric
 

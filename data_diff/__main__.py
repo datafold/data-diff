@@ -9,13 +9,9 @@ from data_diff.tracking import disable_tracking
 
 from .utils import remove_password_from_url, safezip, match_like
 
-from .diff_tables import (
-    TableSegment,
-    TableDiffer,
-    DEFAULT_BISECTION_THRESHOLD,
-    DEFAULT_BISECTION_FACTOR,
-    create_schema,
-)
+from .diff_tables import TableDiffer, DEFAULT_BISECTION_THRESHOLD, DEFAULT_BISECTION_FACTOR
+from .table_segment import create_schema, TableSegment
+
 from .databases.connect import connect
 from .parse_time import parse_time_before_now, UNITS_STR, ParseError
 from .config import apply_config_from_file
