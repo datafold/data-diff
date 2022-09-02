@@ -187,25 +187,28 @@ class Database(AbstractDatabase):
         assert len(d) == len(rows)
         return d
 
-    def _process_table_schema(self, path: DbPath, raw_schema: Dict[str, tuple], filter_columns: Sequence[str]):
+    def _process_table_schema(self, path: DbPath, raw_schema: Dict[str, tuple], filter_columns: Sequence[str], where: str = None):
         accept = {i.lower() for i in filter_columns}
 
         col_dict = {row[0]: self._parse_type(path, *row) for name, row in raw_schema.items() if name.lower() in accept}
 
-        self._refine_coltypes(path, col_dict)
+        self._refine_coltypes(path, col_dict, where)
 
         # Return a dict of form {name: type} after normalization
         return col_dict
 
-    def _refine_coltypes(self, table_path: DbPath, col_dict: Dict[str, ColType]):
-        "Refine the types in the column dict, by querying the database for a sample of their values"
+    def _refine_coltypes(self, table_path: DbPath, col_dict: Dict[str, ColType], where: str = None):
+        """Refine the types in the column dict, by querying the database for a sample of their values
+
+        'where' restricts the rows to be sampled.
+        """
 
         text_columns = [k for k, v in col_dict.items() if isinstance(v, Text)]
         if not text_columns:
             return
 
         fields = [self.normalize_uuid(c, String_UUID()) for c in text_columns]
-        samples_by_row = self.query(Select(fields, TableName(table_path), limit=16), list)
+        samples_by_row = self.query(Select(fields, TableName(table_path), limit=16, where=where and [where]), list)
         if not samples_by_row:
             raise ValueError(f"Table {table_path} is empty.")
 

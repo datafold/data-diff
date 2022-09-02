@@ -111,7 +111,7 @@ class TableSegment:
         return self.database.normalize_value_by_type(col, col_type)
 
     def _with_raw_schema(self, raw_schema: dict) -> "TableSegment":
-        schema = self.database._process_table_schema(self.table_path, raw_schema, self._relevant_columns)
+        schema = self.database._process_table_schema(self.table_path, raw_schema, self._relevant_columns, self.where)
         return self.new(_schema=create_schema(self.database, self.table_path, schema, self.case_sensitive))
 
     def with_schema(self) -> "TableSegment":

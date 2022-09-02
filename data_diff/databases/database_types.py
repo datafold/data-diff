@@ -177,7 +177,7 @@ class AbstractDatabase(ABC):
         ...
 
     @abstractmethod
-    def _process_table_schema(self, path: DbPath, raw_schema: Dict[str, tuple], filter_columns: Sequence[str]):
+    def _process_table_schema(self, path: DbPath, raw_schema: Dict[str, tuple], filter_columns: Sequence[str], where: str = None):
         """Process the result of query_table_schema().
 
         Done in a separate step, to minimize the amount of processed columns.
