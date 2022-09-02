@@ -6,7 +6,7 @@ import os
 from numbers import Number
 from operator import attrgetter, methodcaller
 from collections import defaultdict
-from typing import List, Tuple, Iterator, Optional
+from typing import Tuple, Iterator, Optional
 import logging
 from concurrent.futures import ThreadPoolExecutor, as_completed
 
@@ -95,6 +95,7 @@ class TableDiffer:
 
         self.stats["diff_count"] = 0
         start = time.monotonic()
+        error = None
         try:
 
             # Query and validate schema
@@ -137,7 +138,6 @@ class TableDiffer:
                 post_tables = [t.new(min_key=max_key1, max_key=max_key2) for t in (table1, table2)]
                 yield from self._bisect_and_diff_tables(*post_tables)
 
-            error = None
         except BaseException as e:  # Catch KeyboardInterrupt too
             error = e
         finally:
@@ -308,7 +308,8 @@ class TableDiffer:
 
     def _thread_as_completed(self, func, iterable):
         if not self.threaded:
-            return map(func, iterable)
+            yield from map(func, iterable)
+            return
 
         with ThreadPoolExecutor(max_workers=self.max_threadpool_size) as task_pool:
             futures = [task_pool.submit(func, item) for item in iterable]

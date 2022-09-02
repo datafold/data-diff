@@ -5,19 +5,18 @@ import json
 import logging
 from itertools import islice
 
-from data_diff.tracking import disable_tracking
+import rich
+import click
+
 
 from .utils import remove_password_from_url, safezip, match_like
-
 from .diff_tables import TableDiffer, DEFAULT_BISECTION_THRESHOLD, DEFAULT_BISECTION_FACTOR
 from .table_segment import create_schema, TableSegment
-
 from .databases.connect import connect
 from .parse_time import parse_time_before_now, UNITS_STR, ParseError
 from .config import apply_config_from_file
+from .tracking import disable_tracking
 
-import rich
-import click
 
 LOG_FORMAT = "[%(asctime)s] %(levelname)s - %(message)s"
 DATE_FORMAT = "%H:%M:%S"
