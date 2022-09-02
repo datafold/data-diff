@@ -7,7 +7,8 @@ import preql
 import arrow  # comes with preql
 
 from data_diff.databases.connect import connect
-from data_diff.diff_tables import TableDiffer, TableSegment, split_space
+from data_diff.diff_tables import TableDiffer
+from data_diff.table_segment import TableSegment, split_space
 from data_diff import databases as db
 from data_diff.utils import ArithAlphanumeric
 
@@ -291,6 +292,18 @@ class TestDiffTables(TestPerDatabase):
         self.assertEqual(expected, diff)
         self.assertEqual(2, self.differ.stats["table1_count"])
         self.assertEqual(1, self.differ.stats["table2_count"])
+
+    def test_non_threaded(self):
+        differ = TableDiffer(3, 4, threaded=False)
+
+        time = "2022-01-01 00:00:00"
+        time_str = f"timestamp '{time}'"
+        cols = "id userid movieid rating timestamp".split()
+        _insert_row(self.connection, self.table_src, cols, [1, 1, 1, 9, time_str])
+        _insert_rows(self.connection, self.table_dst, cols, [[1, 1, 1, 9, time_str]])
+        _commit(self.connection)
+        diff = list(differ.diff_tables(self.table, self.table2))
+        self.assertEqual(diff, [])
 
     def test_diff_table_above_bisection_threshold(self):
         time = "2022-01-01 00:00:00"

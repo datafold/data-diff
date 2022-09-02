@@ -2,15 +2,8 @@ from typing import Tuple, Iterator, Optional, Union
 
 from .tracking import disable_tracking
 from .databases.connect import connect
-from .diff_tables import (
-    TableSegment,
-    TableDiffer,
-    DEFAULT_BISECTION_THRESHOLD,
-    DEFAULT_BISECTION_FACTOR,
-    DbKey,
-    DbTime,
-    DbPath,
-)
+from .databases.database_types import DbKey, DbTime, DbPath
+from .diff_tables import TableSegment, TableDiffer, DEFAULT_BISECTION_THRESHOLD, DEFAULT_BISECTION_FACTOR
 
 
 def connect_to_table(
