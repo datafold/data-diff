@@ -69,6 +69,20 @@ class ITable:
         resolve_names(self.source_table, exprs)
         return Select.make(self, where_exprs=exprs, _concat=True)
 
+    def order_by(self, *exprs):
+        exprs = _drop_skips(exprs)
+        if not exprs:
+            return self
+
+        resolve_names(self.source_table, exprs)
+        return Select.make(self, order_by_exprs=exprs)
+
+    def limit(self, limit: int):
+        if limit is SKIP:
+            return self
+
+        return Select.make(self, limit_expr=limit)
+
     def at(self, *exprs):
         # TODO
         exprs = _drop_skips(exprs)
@@ -108,7 +122,7 @@ class ITable:
 
 @dataclass
 class Concat(ExprNode):
-    args: list
+    exprs: list
     sep: str = None
 
     def compile(self, c: Compiler) -> str:
@@ -122,9 +136,10 @@ class Concat(ExprNode):
             items = list(join_iter(f"'{self.sep}'", items))
         return c.database.concat(items)
 
+
 @dataclass
 class Count(ExprNode):
-    expr: Expr = '*'
+    expr: Expr = "*"
     distinct: bool = False
 
     def compile(self, c: Compiler) -> str:

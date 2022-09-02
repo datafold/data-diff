@@ -4,11 +4,11 @@ import logging
 
 from runtype import dataclass
 
-from .utils import ArithString, split_space, ArithAlphanumeric
-
+from .utils import ArithString, split_space
 from .databases.base import Database
-from .databases.database_types import DbPath, DbKey, DbTime, Native_UUID, Schema, create_schema
-from .sql import Select, Checksum, Compare, Count, TableName, Time, Value
+from .databases.database_types import DbPath, DbKey, DbTime, Schema, create_schema
+from .queries import Count, Checksum, SKIP, table, this, Expr, min_, max_
+from .queries.extras import ApplyFuncAndNormalizeAsString, NormalizeAsString
 
 logger = logging.getLogger("table_segment")
 
@@ -66,38 +66,6 @@ class TableSegment:
                 f"Error: min_update expected to be smaller than max_update! ({self.min_update} >= {self.max_update})"
             )
 
-    @property
-    def _update_column(self):
-        return self._quote_column(self.update_column)
-
-    def _quote_column(self, c: str) -> str:
-        if self._schema:
-            c = self._schema.get_key(c)  # Get the actual name. Might be case-insensitive.
-        return self.database.quote(c)
-
-    def _normalize_column(self, name: str, template: str = None) -> str:
-        if not self._schema:
-            raise RuntimeError(
-                "Cannot compile query when the schema is unknown. Please use TableSegment.with_schema()."
-            )
-
-        col_type = self._schema[name]
-        col = self._quote_column(name)
-
-        if isinstance(col_type, Native_UUID):
-            # Normalize first, apply template after (for uuids)
-            # Needed because min/max(uuid) fails in postgresql
-            col = self.database.normalize_value_by_type(col, col_type)
-            if template is not None:
-                col = template % col  # Apply template using Python's string formatting
-            return col
-
-        # Apply template before normalizing (for ints)
-        if template is not None:
-            col = template % col  # Apply template using Python's string formatting
-
-        return self.database.normalize_value_by_type(col, col_type)
-
     def _with_raw_schema(self, raw_schema: dict) -> "TableSegment":
         schema = self.database._process_table_schema(self.table_path, raw_schema, self._relevant_columns, self.where)
         return self.new(_schema=create_schema(self.database, self.table_path, schema, self.case_sensitive))
@@ -111,37 +79,26 @@ class TableSegment:
 
     def _make_key_range(self):
         if self.min_key is not None:
-            yield Compare("<=", Value(self.min_key), self._quote_column(self.key_column))
+            yield self.min_key <= this[self.key_column]
         if self.max_key is not None:
-            yield Compare("<", self._quote_column(self.key_column), Value(self.max_key))
+            yield this[self.key_column] < self.max_key
 
     def _make_update_range(self):
         if self.min_update is not None:
-            yield Compare("<=", Time(self.min_update), self._update_column)
+            yield self.min_update <= this[self.update_column]
         if self.max_update is not None:
-            yield Compare("<", self._update_column, Time(self.max_update))
+            yield this[self.update_column] < self.max_update
 
-    def _make_select(self, *, table=None, columns=None, where=None, group_by=None, order_by=None):
-        if columns is None:
-            columns = [self._normalize_column(self.key_column)]
-        where = [
-            *self._make_key_range(),
-            *self._make_update_range(),
-            *([] if where is None else [where]),
-            *([] if self.where is None else [self.where]),
-        ]
-        order_by = None if order_by is None else [order_by]
-        return Select(
-            table=table or TableName(self.table_path),
-            where=where,
-            columns=columns,
-            group_by=group_by,
-            order_by=order_by,
-        )
+    @property
+    def source_table(self):
+        return table(*self.table_path, schema=self._schema)
+
+    def _make_select(self):
+        return self.source_table.where(*self._make_key_range(), *self._make_update_range(), self.where or SKIP)
 
     def get_values(self) -> list:
         "Download all the relevant values of the segment from the database"
-        select = self._make_select(columns=self._relevant_columns_repr)
+        select = self._make_select().select(*self._relevant_columns_repr)
         return self.database.query(select, List[Tuple])
 
     def choose_checkpoints(self, count: int) -> List[DbKey]:
@@ -185,19 +142,18 @@ class TableSegment:
         return [self.key_column] + extras
 
     @property
-    def _relevant_columns_repr(self) -> List[str]:
-        return [self._normalize_column(c) for c in self._relevant_columns]
+    def _relevant_columns_repr(self) -> List[Expr]:
+        return [NormalizeAsString(this[c]) for c in self._relevant_columns]
 
     def count(self) -> Tuple[int, int]:
         """Count how many rows are in the segment, in one pass."""
-        return self.database.query(self._make_select(columns=[Count()]), int)
+        return self.database.query(self._make_select().select(Count()), int)
 
     def count_and_checksum(self) -> Tuple[int, int]:
         """Count and checksum the rows in the segment, in one pass."""
         start = time.monotonic()
-        count, checksum = self.database.query(
-            self._make_select(columns=[Count(), Checksum(self._relevant_columns_repr)]), tuple
-        )
+        q = self._make_select().select(Count(), Checksum(self._relevant_columns_repr))
+        count, checksum = self.database.query(q, tuple)
         duration = time.monotonic() - start
         if duration > RECOMMENDED_CHECKSUM_DURATION:
             logger.warning(
@@ -212,11 +168,10 @@ class TableSegment:
     def query_key_range(self) -> Tuple[int, int]:
         """Query database for minimum and maximum key. This is used for setting the initial bounds."""
         # Normalizes the result (needed for UUIDs) after the min/max computation
-        select = self._make_select(
-            columns=[
-                self._normalize_column(self.key_column, "min(%s)"),
-                self._normalize_column(self.key_column, "max(%s)"),
-            ]
+        # TODO better error if there is no schema
+        select = self._make_select().select(
+            ApplyFuncAndNormalizeAsString(this[self.key_column], min_),
+            ApplyFuncAndNormalizeAsString(this[self.key_column], max_),
         )
         min_key, max_key = self.database.query(select, tuple)
 

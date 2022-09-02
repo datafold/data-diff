@@ -24,8 +24,10 @@ from .database_types import (
     UnknownColType,
     Text,
     DbTime,
+    DbPath,
 )
-from data_diff.sql import DbPath, SqlOrStr, Compiler, Explain, Select, TableName
+
+from data_diff.queries import Expr, Compiler, table, Select, SKIP
 
 logger = logging.getLogger("database")
 
@@ -87,7 +89,7 @@ class Database(AbstractDatabase):
     def name(self):
         return type(self).__name__
 
-    def query(self, sql_ast: SqlOrStr, res_type: type):
+    def query(self, sql_ast: Expr, res_type: type):
         "Query the given SQL code/AST, and attempt to convert the result to type 'res_type'"
 
         compiler = Compiler(self)
@@ -213,7 +215,7 @@ class Database(AbstractDatabase):
             return
 
         fields = [self.normalize_uuid(c, String_UUID()) for c in text_columns]
-        samples_by_row = self.query(Select(fields, TableName(table_path), limit=16, where=where and [where]), list)
+        samples_by_row = self.query(table(*table_path).select(*fields).where(where or SKIP).limit(16), list)
         if not samples_by_row:
             raise ValueError(f"Table {table_path} is empty.")
 
