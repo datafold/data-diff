@@ -480,14 +480,7 @@ def _insert_to_table(conn, table, values, type):
 
         elif isinstance(conn, db.Clickhouse):
             if type.startswith("DateTime64"):
-                # Clickhouse does not round microseconds when inserting in contrast to PostgreSQL and MySQL.
-                # For example, if we have '2022-06-01 15:10:05.009900' and want to store it with precision 3,
-                # Clickhouse will store it as '2022-06-01 15:10:05.009'
-                # Postgres/MySQL as '2022-06-01 15:10:05.010'
-                sample = sample.replace(tzinfo=None)
-                precision = int(type[11:].rstrip(')'))
-                microsecond = round(round(sample.microsecond / 1_000_000, precision) * 1_000_000, 6)
-                value = f"'{sample.replace(microsecond=int(microsecond))}'"
+                value = f"'{sample.replace(tzinfo=None)}'"
 
             elif type == 'DateTime':
                 sample = sample.replace(tzinfo=None)

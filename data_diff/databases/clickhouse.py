@@ -2,16 +2,21 @@ from typing import Optional, Type
 
 import clickhouse_driver.dbapi.connection
 
-from .base import ThreadedDatabase, import_helper, ConnectError
-from .base import MD5_HEXDIGITS, CHECKSUM_HEXDIGITS
-from .database_types import (
-    ColType, Decimal, Float, Integer, FractionalType, Native_UUID, TemporalType, Text, Timestamp
+from .base import (
+    MD5_HEXDIGITS,
+    CHECKSUM_HEXDIGITS,
+    TIMESTAMP_PRECISION_POS,
+    ThreadedDatabase,
+    import_helper,
+    ConnectError,
 )
+from .database_types import ColType, Decimal, Float, Integer, FractionalType, Native_UUID, TemporalType, Text, Timestamp
 
 
 @import_helper("clickhouse")
 def import_clickhouse():
     import clickhouse_driver
+
     return clickhouse_driver
 
 
@@ -24,42 +29,35 @@ class SingleConnection(clickhouse_driver.dbapi.connection.Connection):
 
 class Clickhouse(ThreadedDatabase):
     TYPE_CLASSES = {
-        'Int8': Integer,
-        'Int16': Integer,
-        'Int32': Integer,
-        'Int64': Integer,
-        'Int128': Integer,
-        'Int256': Integer,
-
-        'UInt8': Integer,
-        'UInt16': Integer,
-        'UInt32': Integer,
-        'UInt64': Integer,
-        'UInt128': Integer,
-        'UInt256': Integer,
-
-        'Float32': Float,
-        'Float64': Float,
-
-        'Decimal': Decimal,
-
-        'UUID': Native_UUID,
-
-        'String': Text,
-        'FixedString': Text,
-
-        'DateTime': Timestamp,
-        'DateTime64': Timestamp,
-
+        "Int8": Integer,
+        "Int16": Integer,
+        "Int32": Integer,
+        "Int64": Integer,
+        "Int128": Integer,
+        "Int256": Integer,
+        "UInt8": Integer,
+        "UInt16": Integer,
+        "UInt32": Integer,
+        "UInt64": Integer,
+        "UInt128": Integer,
+        "UInt256": Integer,
+        "Float32": Float,
+        "Float64": Float,
+        "Decimal": Decimal,
+        "UUID": Native_UUID,
+        "String": Text,
+        "FixedString": Text,
+        "DateTime": Timestamp,
+        "DateTime64": Timestamp,
     }
-    ROUNDS_ON_PREC_LOSS = True
+    ROUNDS_ON_PREC_LOSS = False
 
     def __init__(self, *, thread_count: int, **kw):
         super().__init__(thread_count=thread_count)
 
         self._args = kw
         # In Clickhouse database and schema are the same
-        self.default_schema = kw['database']
+        self.default_schema = kw["database"]
 
     def create_connection(self):
         clickhouse = import_clickhouse()
@@ -70,16 +68,16 @@ class Clickhouse(ThreadedDatabase):
             raise ConnectError(*e.args) from e
 
     def _parse_type_repr(self, type_repr: str) -> Optional[Type[ColType]]:
-        nullable_prefix = 'Nullable'
-        if type_repr.lower().startswith(nullable_prefix.lower()):
-            type_repr = type_repr[len(nullable_prefix):].lstrip('(').rstrip(')')
+        nullable_prefix = "Nullable("
+        if type_repr.startswith(nullable_prefix):
+            type_repr = type_repr.replace("Nullable(", "").rstrip(")")
 
-        if type_repr.startswith('Decimal'):
-            type_repr = 'Decimal'
-        elif type_repr.startswith('FixedString'):
-            type_repr = 'FixedString'
-        elif type_repr.startswith('DateTime64'):
-            type_repr = 'DateTime64'
+        if type_repr.startswith("Decimal"):
+            type_repr = "Decimal"
+        elif type_repr.startswith("FixedString"):
+            type_repr = "FixedString"
+        elif type_repr.startswith("DateTime64"):
+            type_repr = "DateTime64"
 
         return self.TYPE_CLASSES.get(type_repr)
 
@@ -88,19 +86,21 @@ class Clickhouse(ThreadedDatabase):
 
     def md5_to_int(self, s: str) -> str:
         substr_idx = 1 + MD5_HEXDIGITS - CHECKSUM_HEXDIGITS
-        return f'reinterpretAsUInt128(reverse(unhex(lowerUTF8(substr(hex(MD5({s})), {substr_idx})))))'
+        return f"reinterpretAsUInt128(reverse(unhex(lowerUTF8(substr(hex(MD5({s})), {substr_idx})))))"
 
     def to_string(self, s: str) -> str:
         return f"toString({s})"
 
     def normalize_timestamp(self, value: str, coltype: TemporalType) -> str:
+        prec= coltype.precision
         if coltype.rounds:
-            prec = coltype.precision
-            timestamp = f'toDateTime64(round(toUnixTimestamp64Micro(toDateTime64({value}, 6)) / 1000000, {prec}), 6)'
+            timestamp = f"toDateTime64(round(toUnixTimestamp64Micro(toDateTime64({value}, 6)) / 1000000, {prec}), 6)"
             return self.to_string(timestamp)
-        else:
-            fractional = f'toUnixTimestamp64Micro(toDateTime64({value}, 6)) % 1000000'
-            return f"formatDateTime({value}, '%Y-%m-%d %H:%M:%S') || '.' || {self.to_string(fractional)}"
+
+        fractional = f"toUnixTimestamp64Micro(toDateTime64({value}, {prec})) % 1000000"
+        fractional = f"lpad({self.to_string(fractional)}, 6, '0')"
+        value = f"formatDateTime({value}, '%Y-%m-%d %H:%M:%S') || '.' || {self.to_string(fractional)}"
+        return f"rpad({value}, {TIMESTAMP_PRECISION_POS + 6}, '0')"
 
     def _convert_db_precision_to_digits(self, p: int) -> int:
         # Done the same as for PostgreSQL but need to rewrite in another way
@@ -125,7 +125,7 @@ class Clickhouse(ThreadedDatabase):
         #    with length = digits in an integer part + 1 (symbol of ".") + precision
 
         if coltype.precision == 0:
-            return self.to_string(f'round({value})')
+            return self.to_string(f"round({value})")
 
         precision = coltype.precision
         # TODO: too complex, is there better performance way?
