@@ -218,7 +218,7 @@ class TableSegment:
 
         if count:
             assert checksum, (count, checksum)
-        return count or 0, checksum if checksum is None else int(checksum)
+        return count or 0, None if not checksum else int(checksum)
 
     def query_key_range(self) -> Tuple[int, int]:
         """Query database for minimum and maximum key. This is used for setting the initial bounds."""
