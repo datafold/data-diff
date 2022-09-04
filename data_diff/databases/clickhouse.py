@@ -1,7 +1,5 @@
 from typing import Optional, Type
 
-import clickhouse_driver.dbapi.connection
-
 from .base import (
     MD5_HEXDIGITS,
     CHECKSUM_HEXDIGITS,
@@ -18,13 +16,6 @@ def import_clickhouse():
     import clickhouse_driver
 
     return clickhouse_driver
-
-
-class SingleConnection(clickhouse_driver.dbapi.connection.Connection):
-    def cursor(self, cursor_factory=None):
-        if not len(self.cursors):
-            _ = super().cursor()
-        return self.cursors[0]
 
 
 class Clickhouse(ThreadedDatabase):
@@ -61,6 +52,15 @@ class Clickhouse(ThreadedDatabase):
 
     def create_connection(self):
         clickhouse = import_clickhouse()
+
+        class SingleConnection(clickhouse.dbapi.connection.Connection):
+            """Not thread-safe connection to Clickhouse"""
+
+            def cursor(self, cursor_factory=None):
+                if not len(self.cursors):
+                    _ = super().cursor()
+                return self.cursors[0]
+
         try:
             connection = SingleConnection(**self._args)
             return connection
