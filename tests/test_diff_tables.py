@@ -443,6 +443,16 @@ class TestUUIDs(TestPerDatabase):
 
         self.assertRaises(ValueError, list, differ.diff_tables(self.a, self.b))
 
+    def test_where_sampling(self):
+        a = self.a.replace(where="1=1")
+
+        differ = TableDiffer()
+        diff = list(differ.diff_tables(a, self.b))
+        self.assertEqual(diff, [("-", (str(self.new_uuid), "This one is different"))])
+
+        a_empty = self.a.replace(where="1=0")
+        self.assertRaises(ValueError, list, differ.diff_tables(a_empty, self.b))
+
 
 @test_per_database
 class TestAlphanumericKeys(TestPerDatabase):

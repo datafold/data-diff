@@ -83,7 +83,9 @@ class Databricks(Database):
             assert len(d) == len(rows)
             return d
 
-    def _process_table_schema(self, path: DbPath, raw_schema: Dict[str, tuple], filter_columns: Sequence[str]):
+    def _process_table_schema(
+        self, path: DbPath, raw_schema: Dict[str, tuple], filter_columns: Sequence[str], where: str = None
+    ):
         accept = {i.lower() for i in filter_columns}
         rows = [row for name, row in raw_schema.items() if name.lower() in accept]
 
@@ -115,7 +117,7 @@ class Databricks(Database):
 
         col_dict: Dict[str, ColType] = {row[0]: self._parse_type(path, *row) for row in resulted_rows}
 
-        self._refine_coltypes(path, col_dict)
+        self._refine_coltypes(path, col_dict, where)
         return col_dict
 
     def normalize_timestamp(self, value: str, coltype: TemporalType) -> str:
