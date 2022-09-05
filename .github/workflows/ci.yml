@@ -47,4 +47,5 @@ jobs:
             DATADIFF_SNOWFLAKE_URI: '${{ secrets.DATADIFF_SNOWFLAKE_URI }}'
             DATADIFF_PRESTO_URI: '${{ secrets.DATADIFF_PRESTO_URI }}'
             DATADIFF_TRINO_URI: '${{ secrets.DATADIFF_TRINO_URI }}'
+            DATADIFF_CLICKHOUSE_URI: 'clickhouse://clickhouse:Password1@localhost:9000/clickhouse'
         run: poetry run unittest-parallel -j 16
