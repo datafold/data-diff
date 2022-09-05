@@ -62,15 +62,14 @@ class Clickhouse(ThreadedDatabase):
                 return self.cursors[0]
 
         try:
-            connection = SingleConnection(**self._args)
-            return connection
+            return SingleConnection(**self._args)
         except clickhouse.OperationError as e:
             raise ConnectError(*e.args) from e
 
     def _parse_type_repr(self, type_repr: str) -> Optional[Type[ColType]]:
         nullable_prefix = "Nullable("
         if type_repr.startswith(nullable_prefix):
-            type_repr = type_repr.replace("Nullable(", "").rstrip(")")
+            type_repr = type_repr[len(nullable_prefix):].rstrip(")")
 
         if type_repr.startswith("Decimal"):
             type_repr = "Decimal"
