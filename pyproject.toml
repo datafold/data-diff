@@ -35,13 +35,13 @@ parameterized = "*"
 unittest-parallel = "*"
 preql = "^0.2.19"
 mysql-connector-python = "*"
-databricks-sql-connector = "*"
-snowflake-connector-python = "*"
+psycopg2 = "*"
+snowflake-connector-python = "^2.7.2"
 cryptography = "*"
 trino = "^0.314.0"
-psycopg2 = "*"
 presto-python-client = "*"
 clickhouse-driver = "*"
+# databricks-sql-connector = "*"
 
 [tool.poetry.extras]
 # When adding, update also: README + dev deps just above
