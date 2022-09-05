@@ -249,6 +249,30 @@ DATABASE_TYPES = {
             "char(100)",
         ],
     },
+    db.Clickhouse: {
+        "int": [
+            "Int8",
+            "Int16",
+            "Int32",
+            "Int64",
+            "Int128",
+            "Int256",
+        ],
+        "datetime": [
+            "DateTime64(6)",
+            "DateTime64(3)",
+            "DateTime64(0)",
+            "DateTime",
+        ],
+        "float": [
+            "Decimal(6, 2)",
+            "Float32",
+            "Float64",
+        ],
+        "uuid": [
+            "String",
+        ]
+    }
 }
 
 
@@ -451,14 +475,32 @@ def _insert_to_table(conn, table, values, type):
         if re.search(r"(time zone|tz)", type):
             sample = sample.replace(tzinfo=timezone.utc)
 
-        if isinstance(sample, (float, Decimal, int)):
+        if isinstance(sample, bytearray):
+            value = f"'{sample.decode()}'"
+
+        elif isinstance(conn, db.Clickhouse):
+            if type.startswith("DateTime64"):
+                value = f"'{sample.replace(tzinfo=None)}'"
+
+            elif type == 'DateTime':
+                sample = sample.replace(tzinfo=None)
+                # Clickhouse's DateTime does not allow to store micro/milli/nano seconds
+                value = f"'{str(sample)[:19]}'"
+
+            elif type.startswith('Decimal'):
+                precision = int(type[8:].rstrip(')').split(',')[1])
+                value = round(sample, precision)
+
+            else:
+                value = f"'{sample}'"
+
+        elif isinstance(sample, (float, Decimal, int)):
             value = str(sample)
         elif isinstance(sample, datetime) and isinstance(conn, (db.Presto, db.Oracle, db.Trino)):
             value = f"timestamp '{sample}'"
         elif isinstance(sample, datetime) and isinstance(conn, db.BigQuery) and type == "datetime":
             value = f"cast(timestamp '{sample}' as datetime)"
-        elif isinstance(sample, bytearray):
-            value = f"'{sample.decode()}'"
+
         else:
             value = f"'{sample}'"
 
@@ -478,14 +520,14 @@ def _insert_to_table(conn, table, values, type):
                 conn.query(insertion_query[0:-1], None)
                 insertion_query = default_insertion_query
 
-    if not isinstance(conn, (db.BigQuery, db.Databricks)):
+    if not isinstance(conn, (db.BigQuery, db.Databricks, db.Clickhouse)):
         conn.query("COMMIT", None)
 
 
 def _create_indexes(conn, table):
     # It is unfortunate that Presto doesn't support creating indexes...
     # Technically we could create it in the backing Postgres behind the scenes.
-    if isinstance(conn, (db.Snowflake, db.Redshift, db.Presto, db.BigQuery, db.Databricks, db.Trino)):
+    if isinstance(conn, (db.Snowflake, db.Redshift, db.Presto, db.BigQuery, db.Databricks, db.Trino, db.Clickhouse)):
         return
 
     try:
@@ -514,11 +556,13 @@ def _create_table_with_indexes(conn, table, type):
         already_exists = conn.query(f"SELECT COUNT(*) from tab where tname='{table.upper()}'", int) > 0
         if not already_exists:
             conn.query(f"CREATE TABLE {table}(id int, col {type})", None)
+    elif isinstance(conn, db.Clickhouse):
+        conn.query(f"CREATE TABLE {table}(id int, col {type}) engine = Memory;", None)
     else:
         conn.query(f"CREATE TABLE IF NOT EXISTS {table}(id int, col {type})", None)
 
     _create_indexes(conn, table)
-    if not isinstance(conn, (db.BigQuery, db.Databricks)):
+    if not isinstance(conn, (db.BigQuery, db.Databricks, db.Clickhouse)):
         conn.query("COMMIT", None)
 
 
