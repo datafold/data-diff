@@ -69,3 +69,6 @@ class MySQL(ThreadedDatabase):
 
     def normalize_uuid(self, value: str, coltype: ColType_UUID) -> str:
         return f"TRIM(CAST({value} AS char))"
+
+    def is_distinct_from(self, a: str, b: str) -> str:
+        return f"not ({a} <=> {b})"

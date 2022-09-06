@@ -1,3 +1,4 @@
+import logging
 import decimal
 from abc import ABC, abstractmethod
 from typing import Sequence, Optional, Tuple, Union, Dict, List
@@ -5,12 +6,14 @@ from datetime import datetime
 
 from runtype import dataclass
 
-from data_diff.utils import ArithAlphanumeric, ArithUUID, CaseAwareMapping
+from data_diff.utils import ArithAlphanumeric, ArithUUID, CaseAwareMapping, CaseInsensitiveDict, CaseSensitiveDict
 
 
 DbPath = Tuple[str, ...]
 DbKey = Union[int, str, bytes, ArithUUID, ArithAlphanumeric]
 DbTime = datetime
+
+logger = logging.getLogger("databases")
 
 
 class ColType:
@@ -129,6 +132,8 @@ class UnknownColType(ColType):
 
 
 class AbstractDatabase(ABC):
+    name: str
+
     @abstractmethod
     def quote(self, s: str):
         "Quote SQL name (implementation specific)"
@@ -142,6 +147,11 @@ class AbstractDatabase(ABC):
     @abstractmethod
     def concat(self, l: List[str]) -> str:
         "Provide SQL for concatenating a bunch of column into a string"
+        ...
+
+    @abstractmethod
+    def is_distinct_from(self, a: str, b: str) -> str:
+        "Provide SQL for a comparison where NULL = NULL is true"
         ...
 
     @abstractmethod
@@ -270,3 +280,15 @@ class AbstractDatabase(ABC):
 
 
 Schema = CaseAwareMapping
+
+
+def create_schema(db: AbstractDatabase, table_path: DbPath, schema: dict, case_sensitive: bool) -> CaseAwareMapping:
+    logger.debug(f"[{db.name}] Schema = {schema}")
+
+    if case_sensitive:
+        return CaseSensitiveDict(schema)
+
+    if len({k.lower() for k in schema}) < len(schema):
+        logger.warning(f'Ambiguous schema for {db}:{".".join(table_path)} | Columns = {", ".join(list(schema))}')
+        logger.warning("We recommend to disable case-insensitivity (set --case-sensitive).")
+    return CaseInsensitiveDict(schema)

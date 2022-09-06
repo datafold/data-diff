@@ -4,27 +4,15 @@ import logging
 
 from runtype import dataclass
 
-from .utils import ArithString, split_space, CaseAwareMapping, CaseInsensitiveDict, CaseSensitiveDict
+from .utils import ArithString, split_space
 
 from .databases.base import Database
-from .databases.database_types import DbPath, DbKey, DbTime, Native_UUID, Schema
+from .databases.database_types import DbPath, DbKey, DbTime, Native_UUID, Schema, create_schema
 from .sql import Select, Checksum, Compare, Count, TableName, Time, Value
 
 logger = logging.getLogger("table_segment")
 
 RECOMMENDED_CHECKSUM_DURATION = 10
-
-
-def create_schema(db: Database, table_path: DbPath, schema: dict, case_sensitive: bool) -> CaseAwareMapping:
-    logger.debug(f"[{db.name}] Schema = {schema}")
-
-    if case_sensitive:
-        return CaseSensitiveDict(schema)
-
-    if len({k.lower() for k in schema}) < len(schema):
-        logger.warning(f'Ambiguous schema for {db}:{".".join(table_path)} | Columns = {", ".join(list(schema))}')
-        logger.warning("We recommend to disable case-insensitivity (remove --any-case).")
-    return CaseInsensitiveDict(schema)
 
 
 @dataclass

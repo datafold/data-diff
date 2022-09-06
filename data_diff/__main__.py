@@ -11,7 +11,8 @@ import click
 
 from .utils import remove_password_from_url, safezip, match_like
 from .diff_tables import TableDiffer, DEFAULT_BISECTION_THRESHOLD, DEFAULT_BISECTION_FACTOR
-from .table_segment import create_schema, TableSegment
+from .table_segment import TableSegment
+from .databases.database_types import create_schema
 from .databases.connect import connect
 from .parse_time import parse_time_before_now, UNITS_STR, ParseError
 from .config import apply_config_from_file

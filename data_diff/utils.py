@@ -212,6 +212,7 @@ class CaseInsensitiveDict(CaseAwareMapping):
 
 class CaseSensitiveDict(dict, CaseAwareMapping):
     def get_key(self, key):
+        self[key]  # Throw KeyError is key doesn't exist
         return key
 
     def as_insensitive(self):
