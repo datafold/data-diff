@@ -150,6 +150,11 @@ class AbstractDatabase(ABC):
         ...
 
     @abstractmethod
+    def is_distinct_from(self, a: str, b: str) -> str:
+        "Provide SQL for a comparison where NULL = NULL is true"
+        ...
+
+    @abstractmethod
     def timestamp_value(self, t: DbTime) -> str:
         "Provide SQL for the given timestamp value"
         ...

@@ -270,8 +270,12 @@ class Database(AbstractDatabase):
         return f"LIMIT {limit}"
 
     def concat(self, l: List[str]) -> str:
+        assert len(l) > 1
         joined_exprs = ", ".join(l)
         return f"concat({joined_exprs})"
+
+    def is_distinct_from(self, a: str, b: str) -> str:
+        return f"{a} is distinct from {b}"
 
     def timestamp_value(self, t: DbTime) -> str:
         return f"'{t.isoformat()}'"
