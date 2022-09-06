@@ -521,6 +521,25 @@ class TestTableSegment(TestPerDatabase):
 
         self.assertRaises(ValueError, self.table.replace, min_key=10, max_key=0)
 
+    def test_case_awareness(self):
+        # create table
+        self.connection.query(f"create table {self.table_src}(id int, userid int, timestamp timestamp)", None)
+        _commit(self.connection)
+
+        # insert rows
+        cols = "id userid timestamp".split()
+        time = "2022-01-01 00:00:00.000000"
+        time_str = f"timestamp '{time}'"
+        _insert_rows(self.connection, self.table_src, cols, [[1, 9, time_str], [2, 2, time_str]])
+        _commit(self.connection)
+
+        res = tuple(self.table.replace(key_column="Id", case_sensitive=False).with_schema().query_key_range())
+        assert res == ("1", "2")
+
+        self.assertRaises(
+            KeyError, self.table.replace(key_column="Id", case_sensitive=True).with_schema().query_key_range
+        )
+
 
 @test_per_database
 class TestTableUUID(TestPerDatabase):
