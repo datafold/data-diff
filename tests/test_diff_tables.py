@@ -176,7 +176,7 @@ class TestDates(TestPerDatabase):
         )
 
     def test_basic(self):
-        differ = TableDiffer(10, 100)
+        differ = TableDiffer(bisection_factor=10, bisection_threshold=100)
         a = TableSegment(self.connection, self.table_src_path, "id", "datetime", case_sensitive=False)
         b = TableSegment(self.connection, self.table_dst_path, "id", "datetime", case_sensitive=False)
         assert a.count() == 6
@@ -186,7 +186,7 @@ class TestDates(TestPerDatabase):
         self.assertEqual(len(list(differ.diff_tables(a, b))), 1)
 
     def test_offset(self):
-        differ = TableDiffer(2, 10)
+        differ = TableDiffer(bisection_factor=2, bisection_threshold=10)
         sec1 = self.now.shift(seconds=-1).datetime
         a = TableSegment(self.connection, self.table_src_path, "id", "datetime", max_update=sec1, case_sensitive=False)
         b = TableSegment(self.connection, self.table_dst_path, "id", "datetime", max_update=sec1, case_sensitive=False)
@@ -250,7 +250,7 @@ class TestDiffTables(TestPerDatabase):
         self.table = TableSegment(self.connection, self.table_src_path, "id", "timestamp", case_sensitive=False)
         self.table2 = TableSegment(self.connection, self.table_dst_path, "id", "timestamp", case_sensitive=False)
 
-        self.differ = TableDiffer(3, 4)
+        self.differ = TableDiffer(bisection_factor=3, bisection_threshold=4)
 
     def test_properties_on_empty_table(self):
         table = self.table.with_schema()
@@ -287,7 +287,7 @@ class TestDiffTables(TestPerDatabase):
         self.assertEqual(1, self.differ.stats["table2_count"])
 
     def test_non_threaded(self):
-        differ = TableDiffer(3, 4, threaded=False)
+        differ = TableDiffer(bisection_factor=3, bisection_threshold=4, threaded=False)
 
         time = "2022-01-01 00:00:00"
         time_str = f"timestamp '{time}'"

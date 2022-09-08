@@ -1,7 +1,9 @@
 """Provides classes for performing a table diff
 """
 
+from contextlib import contextmanager
 import time
+import threading
 import os
 from numbers import Number
 from operator import attrgetter, methodcaller
@@ -44,7 +46,53 @@ DiffResult = Iterator[Tuple[str, tuple]]  # Iterator[Tuple[Literal["+", "-"], tu
 
 
 @dataclass
-class TableDiffer:
+class ThreadBase:
+    "Provides utility methods for optional threading"
+
+    threaded: bool = True
+    max_threadpool_size: Optional[int] = 1
+
+    def _thread_map(self, func, iterable):
+        if not self.threaded:
+            return map(func, iterable)
+
+        with ThreadPoolExecutor(max_workers=self.max_threadpool_size) as task_pool:
+            return task_pool.map(func, iterable)
+
+    def _threaded_call(self, func, iterable):
+        "Calls a method for each object in iterable."
+        return list(self._thread_map(methodcaller(func), iterable))
+
+    def _thread_as_completed(self, func, iterable):
+        if not self.threaded:
+            yield from map(func, iterable)
+            return
+
+        with ThreadPoolExecutor(max_workers=self.max_threadpool_size) as task_pool:
+            futures = [task_pool.submit(func, item) for item in iterable]
+            for future in as_completed(futures):
+                yield future.result()
+
+    def _threaded_call_as_completed(self, func, iterable):
+        "Calls a method for each object in iterable. Returned in order of completion."
+        return self._thread_as_completed(methodcaller(func), iterable)
+
+    def _run_thread(self, threadfunc, *args, daemon=False) -> threading.Thread:
+            th = threading.Thread(target=threadfunc, args=args)
+            if daemon:
+                th.daemon = True
+            th.start()
+            return th
+
+    @contextmanager
+    def _run_in_background(self, threadfunc, *args, daemon=False):
+        t = self._run_thread(threadfunc, *args, daemon=daemon)
+        yield t
+        t.join()
+
+
+@dataclass
+class TableDiffer(ThreadBase):
     """Finds the diff between two SQL tables
 
     The algorithm uses hashing to quickly check if the tables are different, and then applies a
@@ -62,11 +110,6 @@ class TableDiffer:
 
     bisection_factor: int = DEFAULT_BISECTION_FACTOR
     bisection_threshold: Number = DEFAULT_BISECTION_THRESHOLD  # Accepts inf for tests
-    threaded: bool = True
-    max_threadpool_size: Optional[int] = 1
-
-    # Enable/disable debug prints
-    debug: bool = False
 
     stats: dict = {}
 
@@ -291,27 +334,3 @@ class TableDiffer:
         if checksum1 != checksum2:
             return self._bisect_and_diff_tables(ti, table1, table2, level=level, max_rows=max(count1, count2))
 
-    def _thread_map(self, func, iterable):
-        if not self.threaded:
-            return map(func, iterable)
-
-        with ThreadPoolExecutor(max_workers=self.max_threadpool_size) as task_pool:
-            return task_pool.map(func, iterable)
-
-    def _threaded_call(self, func, iterable):
-        "Calls a method for each object in iterable."
-        return list(self._thread_map(methodcaller(func), iterable))
-
-    def _thread_as_completed(self, func, iterable):
-        if not self.threaded:
-            yield from map(func, iterable)
-            return
-
-        with ThreadPoolExecutor(max_workers=self.max_threadpool_size) as task_pool:
-            futures = [task_pool.submit(func, item) for item in iterable]
-            for future in as_completed(futures):
-                yield future.result()
-
-    def _threaded_call_as_completed(self, func, iterable):
-        "Calls a method for each object in iterable. Returned in order of completion."
-        return self._thread_as_completed(methodcaller(func), iterable)

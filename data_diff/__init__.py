@@ -55,8 +55,6 @@ def diff_tables(
     # Maximum size of each threadpool. None = auto. Only relevant when threaded is True.
     # There may be many pools, so number of actual threads can be a lot higher.
     max_threadpool_size: Optional[int] = 1,
-    # Enable/disable debug prints
-    debug: bool = False,
 ) -> Iterator:
     """Efficiently finds the diff between table1 and table2.
 
@@ -86,7 +84,6 @@ def diff_tables(
     differ = TableDiffer(
         bisection_factor=bisection_factor,
         bisection_threshold=bisection_threshold,
-        debug=debug,
         threaded=threaded,
         max_threadpool_size=max_threadpool_size,
     )

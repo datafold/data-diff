@@ -192,12 +192,19 @@ def _main(
         logging.error(f"Error while parsing age expression: {e}")
         return
 
-    differ = TableDiffer(
-        bisection_factor=bisection_factor,
-        bisection_threshold=bisection_threshold,
-        threaded=threaded,
-        max_threadpool_size=threads and threads * 2,
-    )
+    if algorithm == Algorithm.JOINDIFF:
+        differ = JoinDiffer(
+            threaded=threaded,
+            max_threadpool_size=threads and threads * 2,
+        )
+    else:
+        assert algorithm == Algorithm.HASHDIFF
+        differ = TableDiffer(
+            bisection_factor=bisection_factor,
+            bisection_threshold=bisection_threshold,
+            threaded=threaded,
+            max_threadpool_size=threads and threads * 2,
+        )
 
     if database1 is None or database2 is None:
         logging.error(
