@@ -15,6 +15,7 @@ from .presto import Presto
 from .databricks import Databricks
 from .trino import Trino
 from .clickhouse import Clickhouse
+from .vertica import Vertica
 
 
 @dataclass
@@ -87,6 +88,7 @@ MATCH_URI_PATH = {
     ),
     "trino": MatchUriPath(Trino, ["catalog", "schema"], help_str="trino://<user>@<host>/<catalog>/<schema>"),
     "clickhouse": MatchUriPath(Clickhouse, ["database?"], help_str="clickhouse://<user>:<pass>@<host>/<database>"),
+    "vertica": MatchUriPath(Vertica, ["database?"], help_str="vertica://<user>:<pass>@<host>/<database>"),
 }
 
 
@@ -113,6 +115,7 @@ def connect_to_uri(db_uri: str, thread_count: Optional[int] = 1) -> Database:
     - databricks
     - trino
     - clickhouse
+    - vertica
     """
 
     dsn = dsnparse.parse(db_uri)
@@ -200,6 +203,8 @@ def connect(db_conf: Union[str, dict], thread_count: Optional[int] = 1) -> Datab
     - presto
     - databricks
     - trino
+    - clickhouse
+    - vertica
     """
     if isinstance(db_conf, str):
         return connect_to_uri(db_conf, thread_count)

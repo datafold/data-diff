@@ -41,6 +41,7 @@ cryptography = "*"
 trino = "^0.314.0"
 presto-python-client = "*"
 clickhouse-driver = "*"
+vertica-python = "*"
 # databricks-sql-connector = "*"
 
 [tool.poetry.extras]
@@ -54,6 +55,7 @@ oracle = ["cx_Oracle"]
 databricks = ["databricks-sql-connector"]
 trino = ["trino"]
 clickhouse = ["clickhouse-driver"]
+vertica = ["vertica-python"]
 
 [build-system]
 requires = ["poetry-core>=1.0.0"]

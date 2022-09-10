@@ -133,6 +133,7 @@ $ data-diff \
 | Databricks    | `databricks://<http_path>:<access_token>@<server_hostname>/<catalog>/<schema>`                                                      |  💛    |
 | Trino         | `trino://<username>:<password>@<hostname>:8080/<database>`                                                                          |  💛    |
 | Clickhouse    | `clickhouse://<username>:<password>@<hostname>:9000/<database>`                                                                     |  💛    |
+| Vertica       | `vertica://<username>:<password>@<hostname>:5433/<database>`                                                                        |  💛    |
 | ElasticSearch |                                                                                                                                     |  📝    |
 | Planetscale   |                                                                                                                                     |  📝    |
 | Pinot         |                                                                                                                                     |  📝    |
@@ -176,6 +177,8 @@ While you may install them manually, we offer an easy way to install them along 
 - `pip install 'data-diff[trino]'`
 
 - `pip install 'data-diff[clickhouse]'`
+
+- `pip install 'data-diff[vertica]'`
 
 - For BigQuery, see: https://pypi.org/project/google-cloud-bigquery/
 
