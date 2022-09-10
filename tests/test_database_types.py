@@ -271,8 +271,8 @@ DATABASE_TYPES = {
         ],
         "uuid": [
             "String",
-        ]
-    }
+        ],
+    },
 }
 
 
@@ -482,13 +482,13 @@ def _insert_to_table(conn, table, values, type):
             if type.startswith("DateTime64"):
                 value = f"'{sample.replace(tzinfo=None)}'"
 
-            elif type == 'DateTime':
+            elif type == "DateTime":
                 sample = sample.replace(tzinfo=None)
                 # Clickhouse's DateTime does not allow to store micro/milli/nano seconds
                 value = f"'{str(sample)[:19]}'"
 
-            elif type.startswith('Decimal'):
-                precision = int(type[8:].rstrip(')').split(',')[1])
+            elif type.startswith("Decimal"):
+                precision = int(type[8:].rstrip(")").split(",")[1])
                 value = round(sample, precision)
 
             else:

@@ -386,7 +386,6 @@ class TestDiffTables(TestPerDatabase):
 
 @test_per_database
 class TestDiffTables2(TestPerDatabase):
-
     def test_diff_column_names(self):
         float_type = _get_float_type(self.connection)
 
