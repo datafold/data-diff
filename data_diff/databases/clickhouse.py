@@ -69,7 +69,7 @@ class Clickhouse(ThreadedDatabase):
     def _parse_type_repr(self, type_repr: str) -> Optional[Type[ColType]]:
         nullable_prefix = "Nullable("
         if type_repr.startswith(nullable_prefix):
-            type_repr = type_repr[len(nullable_prefix):].rstrip(")")
+            type_repr = type_repr[len(nullable_prefix) :].rstrip(")")
 
         if type_repr.startswith("Decimal"):
             type_repr = "Decimal"
@@ -91,7 +91,7 @@ class Clickhouse(ThreadedDatabase):
         return f"toString({s})"
 
     def normalize_timestamp(self, value: str, coltype: TemporalType) -> str:
-        prec= coltype.precision
+        prec = coltype.precision
         if coltype.rounds:
             timestamp = f"toDateTime64(round(toUnixTimestamp64Micro(toDateTime64({value}, 6)) / 1000000, {prec}), 6)"
             return self.to_string(timestamp)
