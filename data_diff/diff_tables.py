@@ -172,42 +172,42 @@ class TableDiffer:
             raise type(e)(f"Cannot apply {key_type} to {mn}, {mx}.") from e
 
     def _validate_and_adjust_columns(self, table1, table2):
-        for c in table1._relevant_columns:
-            if c not in table1._schema:
+        for c1, c2 in safezip(table1._relevant_columns, table2._relevant_columns):
+            if c1 not in table1._schema:
                 raise ValueError(f"Column '{c}' not found in schema for table {table1}")
-            if c not in table2._schema:
+            if c2 not in table2._schema:
                 raise ValueError(f"Column '{c}' not found in schema for table {table2}")
 
             # Update schemas to minimal mutual precision
-            col1 = table1._schema[c]
-            col2 = table2._schema[c]
+            col1 = table1._schema[c1]
+            col2 = table2._schema[c2]
             if isinstance(col1, PrecisionType):
                 if not isinstance(col2, PrecisionType):
-                    raise TypeError(f"Incompatible types for column '{c}':  {col1} <-> {col2}")
+                    raise TypeError(f"Incompatible types for column '{c1}':  {col1} <-> {col2}")
 
                 lowest = min(col1, col2, key=attrgetter("precision"))
 
                 if col1.precision != col2.precision:
-                    logger.warning(f"Using reduced precision {lowest} for column '{c}'. Types={col1}, {col2}")
+                    logger.warning(f"Using reduced precision {lowest} for column '{c1}'. Types={col1}, {col2}")
 
-                table1._schema[c] = col1.replace(precision=lowest.precision, rounds=lowest.rounds)
-                table2._schema[c] = col2.replace(precision=lowest.precision, rounds=lowest.rounds)
+                table1._schema[c1] = col1.replace(precision=lowest.precision, rounds=lowest.rounds)
+                table2._schema[c2] = col2.replace(precision=lowest.precision, rounds=lowest.rounds)
 
             elif isinstance(col1, NumericType):
                 if not isinstance(col2, NumericType):
-                    raise TypeError(f"Incompatible types for column '{c}':  {col1} <-> {col2}")
+                    raise TypeError(f"Incompatible types for column '{c1}':  {col1} <-> {col2}")
 
                 lowest = min(col1, col2, key=attrgetter("precision"))
 
                 if col1.precision != col2.precision:
-                    logger.warning(f"Using reduced precision {lowest} for column '{c}'. Types={col1}, {col2}")
+                    logger.warning(f"Using reduced precision {lowest} for column '{c1}'. Types={col1}, {col2}")
 
-                table1._schema[c] = col1.replace(precision=lowest.precision)
-                table2._schema[c] = col2.replace(precision=lowest.precision)
+                table1._schema[c1] = col1.replace(precision=lowest.precision)
+                table2._schema[c2] = col2.replace(precision=lowest.precision)
 
             elif isinstance(col1, StringType):
                 if not isinstance(col2, StringType):
-                    raise TypeError(f"Incompatible types for column '{c}':  {col1} <-> {col2}")
+                    raise TypeError(f"Incompatible types for column '{c1}':  {col1} <-> {col2}")
 
         for t in [table1, table2]:
             for c in t._relevant_columns:

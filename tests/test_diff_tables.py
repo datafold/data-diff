@@ -234,25 +234,7 @@ class TestDiffTables(TestPerDatabase):
             f"create table {self.table_dst}(id int, userid int, movieid int, rating {float_type}, timestamp timestamp)",
             None,
         )
-        # self.preql(
-        #     f"""
-        #     table {self.table_src_name} {{
-        #         userid: int
-        #         movieid: int
-        #         rating: float
-        #         timestamp: timestamp
-        #     }}
-
-        #     table {self.table_dst_name} {{
-        #         userid: int
-        #         movieid: int
-        #         rating: float
-        #         timestamp: timestamp
-        #     }}
-        #     commit()
-        # """
-        # )
-        self.preql.commit()
+        _commit(self.connection)
 
         self.table = TableSegment(self.connection, self.table_src_path, "id", "timestamp", case_sensitive=False)
         self.table2 = TableSegment(self.connection, self.table_dst_path, "id", "timestamp", case_sensitive=False)
@@ -400,6 +382,61 @@ class TestDiffTables(TestPerDatabase):
             ("+", ("4", time + ".000000")),
         ]
         self.assertEqual(expected, diff)
+
+
+@test_per_database
+class TestDiffTables2(TestPerDatabase):
+
+    def test_diff_column_names(self):
+        float_type = _get_float_type(self.connection)
+
+        self.connection.query(
+            f"create table {self.table_src}(id int, rating {float_type}, timestamp timestamp)",
+            None,
+        )
+        self.connection.query(
+            f"create table {self.table_dst}(id2 int, rating2 {float_type}, timestamp2 timestamp)",
+            None,
+        )
+        _commit(self.connection)
+
+        time = "2022-01-01 00:00:00"
+        time2 = "2021-01-01 00:00:00"
+
+        time_str = f"timestamp '{time}'"
+        time_str2 = f"timestamp '{time2}'"
+        _insert_rows(
+            self.connection,
+            self.table_src,
+            ["id", "rating", "timestamp"],
+            [
+                [1, 9, time_str],
+                [2, 9, time_str2],
+                [3, 9, time_str],
+                [4, 9, time_str2],
+                [5, 9, time_str],
+            ],
+        )
+
+        _insert_rows(
+            self.connection,
+            self.table_dst,
+            ["id2", "rating2", "timestamp2"],
+            [
+                [1, 9, time_str],
+                [2, 9, time_str2],
+                [3, 9, time_str],
+                [4, 9, time_str2],
+                [5, 9, time_str],
+            ],
+        )
+
+        table1 = TableSegment(self.connection, self.table_src_path, "id", "timestamp", case_sensitive=False)
+        table2 = TableSegment(self.connection, self.table_dst_path, "id2", "timestamp2", case_sensitive=False)
+
+        differ = TableDiffer()
+        diff = list(differ.diff_tables(table1, table2))
+        assert diff == []
 
 
 @test_per_database
