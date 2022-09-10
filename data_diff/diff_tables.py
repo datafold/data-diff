@@ -77,11 +77,11 @@ class ThreadBase:
         return self._thread_as_completed(methodcaller(func), iterable)
 
     def _run_thread(self, threadfunc, *args, daemon=False) -> threading.Thread:
-            th = threading.Thread(target=threadfunc, args=args)
-            if daemon:
-                th.daemon = True
-            th.start()
-            return th
+        th = threading.Thread(target=threadfunc, args=args)
+        if daemon:
+            th.daemon = True
+        th.start()
+        return th
 
     @contextmanager
     def _run_in_background(self, threadfunc, *args, daemon=False):
@@ -337,4 +337,3 @@ class TableDiffer(ThreadBase):
 
         if checksum1 != checksum2:
             yield from self._bisect_and_diff_tables(table1, table2, level=level, max_rows=max(count1, count2))
-

@@ -1,12 +1,16 @@
 from copy import deepcopy
+from enum import Enum
 import sys
 import time
 import json
 import logging
 from itertools import islice
+from typing import Optional
 
 import rich
 import click
+
+from data_diff.joindiff_tables import JoinDiffer
 
 
 from .utils import remove_password_from_url, safezip, match_like
@@ -28,6 +32,12 @@ COLOR_SCHEME = {
 }
 
 
+class Algorithm(Enum):
+    AUTO = "auto"
+    JOINDIFF = "joindiff"
+    HASHDIFF = "hashdiff"
+
+
 def _remove_passwords_in_dict(d: dict):
     for k, v in d.items():
         if k == "password":
@@ -43,13 +53,30 @@ def _get_schema(pair):
     return db.query_table_schema(table_path)
 
 
-@click.command()
+class MyHelpFormatter(click.HelpFormatter):
+    def __init__(self, **kwargs):
+        super().__init__(self, **kwargs)
+        self.indent_increment = 6
+
+    def write_usage(self, prog: str, args: str = "", prefix: Optional[str] = None) -> None:
+        self.write(f"data-diff - efficiently diff rows across database tables.\n\n")
+        self.write(f"Usage:\n")
+        self.write(f"  * In-db diff:    {prog} <database1> <table1> <table2> [OPTIONS]\n")
+        self.write(f"  * Cross-db diff: {prog} <database1> <table1> <database2> <table2> [OPTIONS]\n")
+        self.write(f"  * Using config:  {prog} --conf PATH [--run NAME] [OPTIONS]\n")
+        # s = super().write_usage(prog, args, prefix)
+
+
+click.Context.formatter_class = MyHelpFormatter
+
+
+@click.command(no_args_is_help=True)
 @click.argument("database1", required=False)
 @click.argument("table1", required=False)
 @click.argument("database2", required=False)
 @click.argument("table2", required=False)
-@click.option("-k", "--key-column", default=None, help="Name of primary key column. Default='id'.")
-@click.option("-t", "--update-column", default=None, help="Name of updated_at/last_updated column")
+@click.option("-k", "--key-column", default=None, help="Name of primary key column. Default='id'.", metavar="NAME")
+@click.option("-t", "--update-column", default=None, help="Name of updated_at/last_updated column", metavar="NAME")
 @click.option(
     "-c",
     "--columns",
@@ -58,13 +85,20 @@ def _get_schema(pair):
     help="Names of extra columns to compare."
     "Can be used more than once in the same command. "
     "Accepts a name or a pattern like in SQL. Example: -c col% -c another_col",
+    metavar="NAME",
 )
-@click.option("-l", "--limit", default=None, help="Maximum number of differences to find")
-@click.option("--bisection-factor", default=None, help=f"Segments per iteration. Default={DEFAULT_BISECTION_FACTOR}.")
+@click.option("-l", "--limit", default=None, help="Maximum number of differences to find", metavar="NUM")
+@click.option(
+    "--bisection-factor",
+    default=None,
+    help=f"Segments per iteration. Default={DEFAULT_BISECTION_FACTOR}.",
+    metavar="NUM",
+)
 @click.option(
     "--bisection-threshold",
     default=None,
     help=f"Minimal bisection threshold. Below it, data-diff will download the data and compare it locally. Default={DEFAULT_BISECTION_THRESHOLD}.",
+    metavar="NUM",
 )
 @click.option(
     "--min-age",
@@ -72,8 +106,11 @@ def _get_schema(pair):
     help="Considers only rows older than specified. Useful for specifying replication lag."
     "Example: --min-age=5min ignores rows from the last 5 minutes. "
     f"\nValid units: {UNITS_STR}",
+    metavar="AGE",
 )
-@click.option("--max-age", default=None, help="Considers only rows younger than specified. See --min-age.")
+@click.option(
+    "--max-age", default=None, help="Considers only rows younger than specified. See --min-age.", metavar="AGE"
+)
 @click.option("-s", "--stats", is_flag=True, help="Print stats instead of a detailed diff")
 @click.option("-d", "--debug", is_flag=True, help="Print debug info")
 @click.option("--json", "json_output", is_flag=True, help="Print JSONL output for machine readability")
@@ -92,21 +129,39 @@ def _get_schema(pair):
     help="Number of worker threads to use per database. Default=1. "
     "A higher number will increase performance, but take more capacity from your database. "
     "'serial' guarantees a single-threaded execution of the algorithm (useful for debugging).",
+    metavar="COUNT",
 )
-@click.option("-w", "--where", default=None, help="An additional 'where' expression to restrict the search space.")
+@click.option(
+    "-w", "--where", default=None, help="An additional 'where' expression to restrict the search space.", metavar="EXPR"
+)
+@click.option("-a", "--algorithm", default=Algorithm.AUTO.value, type=click.Choice([i.value for i in Algorithm]))
 @click.option(
     "--conf",
     default=None,
     help="Path to a configuration.toml file, to provide a default configuration, and a list of possible runs.",
+    metavar="PATH",
 )
 @click.option(
     "--run",
     default=None,
     help="Name of run-configuration to run. If used, CLI arguments for database and table must be omitted.",
+    metavar="NAME",
 )
 def main(conf, run, **kw):
+    indb_syntax = False
+    if kw["table2"] is None and kw["database2"]:
+        # Use the "database table table" form
+        kw["table2"] = kw["database2"]
+        kw["database2"] = kw["database1"]
+        indb_syntax = True
+
     if conf:
         kw = apply_config_from_file(conf, run, kw)
+
+    kw["algorithm"] = Algorithm(kw["algorithm"])
+    if kw["algorithm"] == Algorithm.AUTO:
+        kw["algorithm"] = Algorithm.JOINDIFF if indb_syntax else Algorithm.HASHDIFF
+
     return _main(**kw)
 
 
@@ -119,6 +174,7 @@ def _main(
     update_column,
     columns,
     limit,
+    algorithm,
     bisection_factor,
     bisection_threshold,
     min_age,
@@ -214,7 +270,10 @@ def _main(
 
     try:
         db1 = connect(database1, threads1 or threads)
-        db2 = connect(database2, threads2 or threads)
+        if database1 == database2:
+            db2 = db1
+        else:
+            db2 = connect(database2, threads2 or threads)
     except Exception as e:
         logging.error(e)
         return
@@ -277,6 +336,7 @@ def _main(
                 "different_+": plus,
                 "different_-": minus,
                 "total": max_table_count,
+                "stats": differ.stats,
             }
             print(json.dumps(json_output))
         else:
