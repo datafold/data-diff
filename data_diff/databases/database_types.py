@@ -172,6 +172,7 @@ class AbstractDialect(ABC):
         "Provide SQL fragment for limit and offset inside a select"
         ...
 
+
 class AbstractDatabase(AbstractDialect):
     @abstractmethod
     def timestamp_value(self, t: DbTime) -> str:
@@ -182,7 +183,6 @@ class AbstractDatabase(AbstractDialect):
     def md5_to_int(self, s: str) -> str:
         "Provide SQL for computing md5 and returning an int"
         ...
-
 
     @abstractmethod
     def _query(self, sql_code: str) -> list:
