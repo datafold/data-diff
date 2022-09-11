@@ -174,9 +174,9 @@ class TableDiffer:
     def _validate_and_adjust_columns(self, table1, table2):
         for c1, c2 in safezip(table1._relevant_columns, table2._relevant_columns):
             if c1 not in table1._schema:
-                raise ValueError(f"Column '{c}' not found in schema for table {table1}")
+                raise ValueError(f"Column '{c1}' not found in schema for table {table1}")
             if c2 not in table2._schema:
-                raise ValueError(f"Column '{c}' not found in schema for table {table2}")
+                raise ValueError(f"Column '{c2}' not found in schema for table {table2}")
 
             # Update schemas to minimal mutual precision
             col1 = table1._schema[c1]
