@@ -273,6 +273,24 @@ DATABASE_TYPES = {
             "String",
         ],
     },
+    db.Vertica: {
+        "int": ["int"],
+        "datetime": [
+            "timestamp(6) without time zone",
+            "timestamp(3) without time zone",
+            "timestamp(0) without time zone",
+            "timestamp with time zone",
+        ],
+        "float": [
+            "numeric(6, 2)",
+            "float",
+            "float8",
+        ],
+        "uuid": [
+            "varchar(100)",
+            "char(100)",
+        ],
+    },
 }
 
 
@@ -527,7 +545,9 @@ def _insert_to_table(conn, table, values, type):
 def _create_indexes(conn, table):
     # It is unfortunate that Presto doesn't support creating indexes...
     # Technically we could create it in the backing Postgres behind the scenes.
-    if isinstance(conn, (db.Snowflake, db.Redshift, db.Presto, db.BigQuery, db.Databricks, db.Trino, db.Clickhouse)):
+    if isinstance(
+        conn, (db.Snowflake, db.Redshift, db.Presto, db.BigQuery, db.Databricks, db.Trino, db.Clickhouse, db.Vertica)
+    ):
         return
 
     try:
