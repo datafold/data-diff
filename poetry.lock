@@ -600,7 +600,6 @@ testing = ["func-timeout", "jaraco.itertools", "pytest (>=6)", "pytest-black (>=
 
 [extras]
 clickhouse = ["clickhouse-driver"]
-databricks = []
 mysql = ["mysql-connector-python"]
 oracle = []
 postgresql = ["psycopg2"]
@@ -613,7 +612,7 @@ vertica = []
 [metadata]
 lock-version = "1.1"
 python-versions = "^3.7"
-content-hash = "485599df9bdf4501bb4b64673a52c0b869881084df985c75dcbf9debe09e33f7"
+content-hash = "6f68ef35366f62a4a47721baed5b2734e0a9015d7c4a49ff9a8410284acb6e71"
 
 [metadata.files]
 arrow = [
