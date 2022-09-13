@@ -4,7 +4,7 @@ from .database_types import *
 from .base import MD5_HEXDIGITS, CHECKSUM_HEXDIGITS, Database, import_helper, _query_conn, parse_table_name
 
 
-@import_helper("databricks")
+@import_helper(text="You can install it using 'pip install databricks-sql-connector'")
 def import_databricks():
     import databricks.sql
 
