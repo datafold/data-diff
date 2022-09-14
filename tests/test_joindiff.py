@@ -166,3 +166,29 @@ class TestJoindiff(TestPerDatabase):
             ("+", ("4", time + ".000000")),
         ]
         self.assertEqual(expected, diff)
+
+    def test_dup_pks(self):
+        time = "2022-01-01 00:00:00"
+        time_str = f"timestamp '{time}'"
+
+        cols = "id rating timestamp".split()
+
+        _insert_row(self.connection, self.table_src, cols, [1, 9, time_str])
+        _insert_row(self.connection, self.table_src, cols, [1, 10, time_str])
+        _insert_row(self.connection, self.table_dst, cols, [1, 9, time_str])
+
+        x = self.differ.diff_tables(self.table, self.table2)
+        self.assertRaises(ValueError, list, x)
+
+
+    def test_null_pks(self):
+        time = "2022-01-01 00:00:00"
+        time_str = f"timestamp '{time}'"
+
+        cols = "id rating timestamp".split()
+
+        _insert_row(self.connection, self.table_src, cols, ['null', 9, time_str])
+        _insert_row(self.connection, self.table_dst, cols, [1, 9, time_str])
+
+        x = self.differ.diff_tables(self.table, self.table2)
+        self.assertRaises(ValueError, list, x)
