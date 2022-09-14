@@ -3,7 +3,10 @@ from typing import Tuple, Iterator, Optional, Union
 from .tracking import disable_tracking
 from .databases.connect import connect
 from .databases.database_types import DbKey, DbTime, DbPath
-from .diff_tables import TableSegment, TableDiffer, DEFAULT_BISECTION_THRESHOLD, DEFAULT_BISECTION_FACTOR
+from .diff_tables import Algorithm
+from .hashdiff_tables import HashDiffer, DEFAULT_BISECTION_THRESHOLD, DEFAULT_BISECTION_FACTOR
+from .joindiff_tables import JoinDiffer
+from .table_segment import TableSegment
 
 
 def connect_to_table(
@@ -46,9 +49,11 @@ def diff_tables(
     # Start/end update_column values, used to restrict the segment
     min_update: DbTime = None,
     max_update: DbTime = None,
-    # Into how many segments to bisect per iteration
+    # Algorithm
+    algorithm: Algorithm = Algorithm.HASHDIFF,
+    # Into how many segments to bisect per iteration (hashdiff only)
     bisection_factor: int = DEFAULT_BISECTION_FACTOR,
-    # When should we stop bisecting and compare locally (in row count)
+    # When should we stop bisecting and compare locally (in row count; hashdiff only)
     bisection_threshold: int = DEFAULT_BISECTION_THRESHOLD,
     # Enable/disable threaded diffing. Needed to take advantage of database threads.
     threaded: bool = True,
@@ -81,10 +86,20 @@ def diff_tables(
 
     segments = [t.new(**override_attrs) for t in tables] if override_attrs else tables
 
-    differ = TableDiffer(
-        bisection_factor=bisection_factor,
-        bisection_threshold=bisection_threshold,
-        threaded=threaded,
-        max_threadpool_size=max_threadpool_size,
-    )
+    algorithm = Algorithm(algorithm)
+    if algorithm == Algorithm.HASHDIFF:
+        differ = HashDiffer(
+            bisection_factor=bisection_factor,
+            bisection_threshold=bisection_threshold,
+            threaded=threaded,
+            max_threadpool_size=max_threadpool_size,
+        )
+    elif algorithm == Algorithm.JOINDIFF:
+        differ = JoinDiffer(
+            threaded=threaded,
+            max_threadpool_size=max_threadpool_size,
+        )
+    else:
+        raise ValueError(f"Unknown algorithm: {algorithm}")
+
     return differ.diff_tables(*segments)

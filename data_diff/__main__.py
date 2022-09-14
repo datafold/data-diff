@@ -1,5 +1,4 @@
 from copy import deepcopy
-from enum import Enum
 import sys
 import time
 import json
@@ -10,11 +9,10 @@ from typing import Optional
 import rich
 import click
 
-from data_diff.joindiff_tables import JoinDiffer
-
-
 from .utils import remove_password_from_url, safezip, match_like
-from .diff_tables import TableDiffer, DEFAULT_BISECTION_THRESHOLD, DEFAULT_BISECTION_FACTOR
+from .diff_tables import Algorithm
+from .hashdiff_tables import HashDiffer, DEFAULT_BISECTION_THRESHOLD, DEFAULT_BISECTION_FACTOR
+from .joindiff_tables import JoinDiffer
 from .table_segment import TableSegment
 from .databases.database_types import create_schema
 from .databases.connect import connect
@@ -30,12 +28,6 @@ COLOR_SCHEME = {
     "+": "green",
     "-": "red",
 }
-
-
-class Algorithm(Enum):
-    AUTO = "auto"
-    JOINDIFF = "joindiff"
-    HASHDIFF = "hashdiff"
 
 
 def _remove_passwords_in_dict(d: dict):
@@ -64,7 +56,6 @@ class MyHelpFormatter(click.HelpFormatter):
         self.write(f"  * In-db diff:    {prog} <database1> <table1> <table2> [OPTIONS]\n")
         self.write(f"  * Cross-db diff: {prog} <database1> <table1> <database2> <table2> [OPTIONS]\n")
         self.write(f"  * Using config:  {prog} --conf PATH [--run NAME] [OPTIONS]\n")
-        # s = super().write_usage(prog, args, prefix)
 
 
 click.Context.formatter_class = MyHelpFormatter
@@ -255,7 +246,7 @@ def _main(
         )
     else:
         assert algorithm == Algorithm.HASHDIFF
-        differ = TableDiffer(
+        differ = HashDiffer(
             bisection_factor=bisection_factor,
             bisection_threshold=bisection_threshold,
             threaded=threaded,

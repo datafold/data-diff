@@ -7,7 +7,7 @@ import preql
 import arrow  # comes with preql
 
 from data_diff.databases.connect import connect
-from data_diff.diff_tables import TableDiffer
+from data_diff.hashdiff_tables import HashDiffer
 from data_diff.table_segment import TableSegment, split_space
 from data_diff import databases as db
 from data_diff.utils import ArithAlphanumeric, numberToAlphanum
@@ -176,7 +176,7 @@ class TestDates(TestPerDatabase):
         )
 
     def test_basic(self):
-        differ = TableDiffer(bisection_factor=10, bisection_threshold=100)
+        differ = HashDiffer(bisection_factor=10, bisection_threshold=100)
         a = TableSegment(self.connection, self.table_src_path, "id", "datetime", case_sensitive=False)
         b = TableSegment(self.connection, self.table_dst_path, "id", "datetime", case_sensitive=False)
         assert a.count() == 6
@@ -186,7 +186,7 @@ class TestDates(TestPerDatabase):
         self.assertEqual(len(list(differ.diff_tables(a, b))), 1)
 
     def test_offset(self):
-        differ = TableDiffer(bisection_factor=2, bisection_threshold=10)
+        differ = HashDiffer(bisection_factor=2, bisection_threshold=10)
         sec1 = self.now.shift(seconds=-1).datetime
         a = TableSegment(self.connection, self.table_src_path, "id", "datetime", max_update=sec1, case_sensitive=False)
         b = TableSegment(self.connection, self.table_dst_path, "id", "datetime", max_update=sec1, case_sensitive=False)
@@ -250,7 +250,7 @@ class TestDiffTables(TestPerDatabase):
         self.table = TableSegment(self.connection, self.table_src_path, "id", "timestamp", case_sensitive=False)
         self.table2 = TableSegment(self.connection, self.table_dst_path, "id", "timestamp", case_sensitive=False)
 
-        self.differ = TableDiffer(bisection_factor=3, bisection_threshold=4)
+        self.differ = HashDiffer(bisection_factor=3, bisection_threshold=4)
 
     def test_properties_on_empty_table(self):
         table = self.table.with_schema()
@@ -287,7 +287,7 @@ class TestDiffTables(TestPerDatabase):
         self.assertEqual(1, self.differ.stats["table2_count"])
 
     def test_non_threaded(self):
-        differ = TableDiffer(bisection_factor=3, bisection_threshold=4, threaded=False)
+        differ = HashDiffer(bisection_factor=3, bisection_threshold=4, threaded=False)
 
         time = "2022-01-01 00:00:00"
         time_str = f"timestamp '{time}'"
@@ -384,7 +384,7 @@ class TestDiffTables(TestPerDatabase):
         )
         _commit(self.connection)
 
-        differ = TableDiffer()
+        differ = HashDiffer()
         diff = list(differ.diff_tables(self.table, self.table2))
         expected = [
             ("-", ("2", time2 + ".000000")),
@@ -444,7 +444,7 @@ class TestDiffTables2(TestPerDatabase):
         table1 = TableSegment(self.connection, self.table_src_path, "id", "timestamp", case_sensitive=False)
         table2 = TableSegment(self.connection, self.table_dst_path, "id2", "timestamp2", case_sensitive=False)
 
-        differ = TableDiffer()
+        differ = HashDiffer()
         diff = list(differ.diff_tables(table1, table2))
         assert diff == []
 
@@ -480,7 +480,7 @@ class TestUUIDs(TestPerDatabase):
         self.b = TableSegment(self.connection, self.table_dst_path, "id", "text_comment", case_sensitive=False)
 
     def test_string_keys(self):
-        differ = TableDiffer()
+        differ = HashDiffer()
         diff = list(differ.diff_tables(self.a, self.b))
         self.assertEqual(diff, [("-", (str(self.new_uuid), "This one is different"))])
 
@@ -493,7 +493,7 @@ class TestUUIDs(TestPerDatabase):
     def test_where_sampling(self):
         a = self.a.replace(where="1=1")
 
-        differ = TableDiffer()
+        differ = HashDiffer()
         diff = list(differ.diff_tables(a, self.b))
         self.assertEqual(diff, [("-", (str(self.new_uuid), "This one is different"))])
 
@@ -534,7 +534,7 @@ class TestAlphanumericKeys(TestPerDatabase):
 
     def test_alphanum_keys(self):
 
-        differ = TableDiffer(bisection_factor=2, bisection_threshold=3)
+        differ = HashDiffer(bisection_factor=2, bisection_threshold=3)
         diff = list(differ.diff_tables(self.a, self.b))
         self.assertEqual(diff, [("-", (str(self.new_alphanum), "This one is different"))])
 
@@ -590,8 +590,7 @@ class TestVaryingAlphanumericKeys(TestPerDatabase):
         for a in alphanums:
             assert a - a == 0
 
-        # Test with the differ
-        differ = TableDiffer(threaded=False)
+        differ = HashDiffer()
         diff = list(differ.diff_tables(self.a, self.b))
         self.assertEqual(diff, [("-", (str(self.new_alphanum), "This one is different"))])
 
@@ -669,7 +668,7 @@ class TestTableUUID(TestPerDatabase):
         self.b = TableSegment(self.connection, self.table_dst_path, "id", "text_comment", case_sensitive=False)
 
     def test_uuid_column_with_nulls(self):
-        differ = TableDiffer()
+        differ = HashDiffer()
         diff = list(differ.diff_tables(self.a, self.b))
         self.assertEqual(diff, [("-", (str(self.null_uuid), None))])
 
@@ -719,7 +718,7 @@ class TestTableNullRowChecksum(TestPerDatabase):
         diff results, but it's not. This test helps to detect such cases.
         """
 
-        differ = TableDiffer(bisection_factor=2, bisection_threshold=3)
+        differ = HashDiffer(bisection_factor=2, bisection_threshold=3)
         diff = list(differ.diff_tables(self.a, self.b))
         self.assertEqual(diff, [("-", (str(self.null_uuid), None))])
 
@@ -783,7 +782,7 @@ class TestConcatMultipleColumnWithNulls(TestPerDatabase):
         value, it may lead that concat(pk_i, i, NULL) == concat(pk_i, i-diff, NULL). This test handle such cases.
         """
 
-        differ = TableDiffer(bisection_factor=2, bisection_threshold=4)
+        differ = HashDiffer(bisection_factor=2, bisection_threshold=4)
         diff = list(differ.diff_tables(self.a, self.b))
         self.assertEqual(diff, self.diffs)
 
@@ -814,7 +813,7 @@ class TestTableTableEmpty(TestPerDatabase):
         self.b = TableSegment(self.connection, self.table_dst_path, "id", "text_comment", case_sensitive=False)
 
     def test_right_table_empty(self):
-        differ = TableDiffer()
+        differ = HashDiffer()
         self.assertRaises(ValueError, list, differ.diff_tables(self.a, self.b))
 
     def test_left_table_empty(self):
@@ -827,5 +826,5 @@ class TestTableTableEmpty(TestPerDatabase):
 
         _commit(self.connection)
 
-        differ = TableDiffer()
+        differ = HashDiffer()
         self.assertRaises(ValueError, list, differ.diff_tables(self.a, self.b))
