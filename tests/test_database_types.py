@@ -15,7 +15,8 @@ from parameterized import parameterized
 from data_diff import databases as db
 from data_diff.databases import postgresql, oracle
 from data_diff.utils import number_to_human, accumulate
-from data_diff.diff_tables import TableDiffer, TableSegment, DEFAULT_BISECTION_THRESHOLD
+from data_diff.hashdiff_tables import HashDiffer, DEFAULT_BISECTION_THRESHOLD
+from data_diff.table_segment import TableSegment
 from .common import (
     CONN_STRINGS,
     N_SAMPLES,
@@ -667,7 +668,7 @@ class TestDiffCrossDatabaseTables(unittest.TestCase):
         ch_factor = min(max(int(N_SAMPLES / 250_000), 2), 128) if BENCHMARK else 2
         ch_threshold = min(DEFAULT_BISECTION_THRESHOLD, int(N_SAMPLES / ch_factor)) if BENCHMARK else 3
         ch_threads = N_THREADS
-        differ = TableDiffer(
+        differ = HashDiffer(
             bisection_threshold=ch_threshold,
             bisection_factor=ch_factor,
             max_threadpool_size=ch_threads,
@@ -688,7 +689,7 @@ class TestDiffCrossDatabaseTables(unittest.TestCase):
         dl_factor = max(int(N_SAMPLES / 100_000), 2) if BENCHMARK else 2
         dl_threshold = int(N_SAMPLES / dl_factor) + 1 if BENCHMARK else math.inf
         dl_threads = N_THREADS
-        differ = TableDiffer(
+        differ = HashDiffer(
             bisection_threshold=dl_threshold, bisection_factor=dl_factor, max_threadpool_size=dl_threads
         )
         start = time.monotonic()

@@ -1,7 +1,6 @@
 import unittest
 
-from data_diff.databases.connect import connect
-from data_diff import TableSegment, TableDiffer
+from data_diff import TableSegment, HashDiffer, connect
 from .common import TEST_POSTGRESQL_CONN_STRING, random_table_suffix
 
 
@@ -40,7 +39,7 @@ class TestWithConnection(unittest.TestCase):
         a = TableSegment(self.connection, (self.table_src,), "id", "comment")
         b = TableSegment(self.connection, (self.table_dst,), "id", "comment")
 
-        differ = TableDiffer()
+        differ = HashDiffer()
         diff = list(differ.diff_tables(a, b))
         uuid = diff[0][1][0]
         self.assertEqual(diff, [("-", (uuid, "This one is different"))])
