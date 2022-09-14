@@ -3,6 +3,7 @@
 """
 
 from decimal import Decimal
+from functools import partial
 import logging
 from contextlib import contextmanager
 from typing import Dict, List
@@ -83,10 +84,12 @@ class JoinDifferBase(ThreadBase):
         if table1.database is not table2.database:
             raise ValueError("Join-diff only works when both tables are in the same database")
 
-        with self._run_in_background(self._test_null_or_duplicate_keys, table1, table2):
-            with self._run_in_background(self._collect_stats, 1, table1):
-                with self._run_in_background(self._collect_stats, 2, table2):
-                    yield from self._outer_join(table1, table2)
+        with self._run_in_background(
+                    partial(self._test_null_or_duplicate_keys, table1, table2),
+                    partial(self._collect_stats, 1, table1),
+                    partial(self._collect_stats, 2, table2)
+                ):
+            yield from self._outer_join(table1, table2)
 
         logger.info("Diffing complete")
 
@@ -106,7 +109,7 @@ class JoinDifferBase(ThreadBase):
             q = t.select(*key_columns).where(or_(this[k] == None for k in key_columns))
             nulls = ts.database.query(q, list)
             if nulls:
-                raise ValueError(f"NULL values in one or more primary keys: {nulls}")
+                raise ValueError(f"NULL values in one or more primary keys")
 
         logger.debug("Done testing for null or duplicate keys")
 
@@ -161,7 +164,7 @@ class JoinDiffer(JoinDifferBase):
         b = table2._make_select()
 
         is_diff_cols = {
-            f"is_diff_col_{c1}": bool_to_int(a[c1].is_distinct_from(b[c2])) for c1, c2 in safezip(cols1, cols2)
+            f"is_diff_{c1}": bool_to_int(a[c1].is_distinct_from(b[c2])) for c1, c2 in safezip(cols1, cols2)
         }
 
         a_cols = {f"table1_{c}": NormalizeAsString(a[c]) for c in cols1}
@@ -180,23 +183,30 @@ class JoinDiffer(JoinDifferBase):
             .where(or_(this[c] == 1 for c in is_diff_cols))
         )
 
-        with self._run_in_background(self._sample_and_count_exclusive, db, diff_rows, a_cols, b_cols):
-            with self._run_in_background(self._count_diff_per_column, db, diff_rows, is_diff_cols):
+        with self._run_in_background(
+                    partial(self._sample_and_count_exclusive, db, diff_rows, a_cols, b_cols),
+                    partial(self._count_diff_per_column, db, diff_rows, cols1, is_diff_cols)
+                ):
 
-                logger.info("Querying for different rows")
-                for is_xa, is_xb, *x in db.query(diff_rows, list):
-                    assert not (is_xa and is_xb)  # Can't both be exclusive
-                    is_diff, a_row, b_row = _slice_tuple(x, len(is_diff_cols), len(a_cols), len(b_cols))
-                    if not is_xb:
-                        yield "-", tuple(a_row)
-                    if not is_xa:
-                        yield "+", tuple(b_row)
+            logger.info("Querying for different rows")
+            for is_xa, is_xb, *x in db.query(diff_rows, list):
+                if is_xa and is_xb:
+                    # Can't both be exclusive, meaning a pk is NULL
+                    # This can happen if the explicit null test didn't finish running yet
+                    raise ValueError(f"NULL values in one or more primary keys")
+                is_diff, a_row, b_row = _slice_tuple(x, len(is_diff_cols), len(a_cols), len(b_cols))
+                if not is_xb:
+                    yield "-", tuple(a_row)
+                if not is_xa:
+                    yield "+", tuple(b_row)
 
-    def _count_diff_per_column(self, db, diff_rows, is_diff_cols):
+    def _count_diff_per_column(self, db, diff_rows, cols, is_diff_cols):
         logger.info("Counting differences per column")
         is_diff_cols_counts = db.query(diff_rows.select(sum_(this[c]) for c in is_diff_cols), tuple)
-        for name, count in safezip(is_diff_cols, is_diff_cols_counts):
-            self.stats[f"count_{name}"] = count
+        diff_counts = {}
+        for name, count in safezip(cols, is_diff_cols_counts):
+            diff_counts[name] = count
+        self.stats['diff_counts'] = diff_counts
 
     def _sample_and_count_exclusive(self, db, diff_rows, a_cols, b_cols):
         logger.info("Counting and sampling exclusive rows")

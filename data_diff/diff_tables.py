@@ -52,15 +52,10 @@ class ThreadBase:
         "Calls a method for each object in iterable. Returned in order of completion."
         return self._thread_as_completed(methodcaller(func), iterable)
 
-    def _run_thread(self, threadfunc, *args, daemon=False) -> threading.Thread:
-        th = threading.Thread(target=threadfunc, args=args)
-        if daemon:
-            th.daemon = True
-        th.start()
-        return th
-
     @contextmanager
-    def _run_in_background(self, threadfunc, *args, daemon=False):
-        t = self._run_thread(threadfunc, *args, daemon=daemon)
-        yield t
-        t.join()
+    def _run_in_background(self, *funcs):
+        with ThreadPoolExecutor(max_workers=self.max_threadpool_size) as task_pool:
+            futures = [task_pool.submit(f) for f in funcs]
+            yield futures
+            for f in futures:
+                f.result()
