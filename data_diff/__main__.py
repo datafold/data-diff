@@ -197,7 +197,6 @@ def _main(
         bisection_threshold=bisection_threshold,
         threaded=threaded,
         max_threadpool_size=threads and threads * 2,
-        debug=debug,
     )
 
     if database1 is None or database2 is None:
