@@ -1,3 +1,4 @@
+import random
 from abc import ABC, abstractmethod
 from datetime import datetime
 from typing import Any, Dict, Sequence, List
@@ -50,6 +51,10 @@ class Compiler:
     def new_unique_name(self, prefix="tmp"):
         self._counter[0] += 1
         return f"{prefix}{self._counter[0]}"
+
+    def new_unique_table_name(self, prefix="tmp"):
+        self._counter[0] += 1
+        return f"{prefix}{self._counter[0]}_{'%x'%random.randrange(2**32)}"
 
     def add_table_context(self, *tables: Sequence):
         return self.replace(_table_context=self._table_context + list(tables))

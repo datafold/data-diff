@@ -95,3 +95,6 @@ class BigQuery(Database):
     def parse_table_name(self, name: str) -> DbPath:
         path = parse_table_name(name)
         return self._normalize_table_path(path)
+
+    def random(self) -> str:
+        return "RAND()"

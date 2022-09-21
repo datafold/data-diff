@@ -123,3 +123,6 @@ class Vertica(ThreadedDatabase):
     def normalize_uuid(self, value: str, coltype: ColType_UUID) -> str:
         # Trim doesn't work on CHAR type
         return f"TRIM(CAST({value} AS VARCHAR))"
+
+    def is_distinct_from(self, a: str, b: str) -> str:
+        return f"not ({a} <=> {b})"

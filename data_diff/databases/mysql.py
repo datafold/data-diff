@@ -73,3 +73,6 @@ class MySQL(ThreadedDatabase):
 
     def is_distinct_from(self, a: str, b: str) -> str:
         return f"not ({a} <=> {b})"
+
+    def random(self) -> str:
+        return "RAND()"

@@ -1,6 +1,7 @@
 import re
 
-from ..utils import match_regexps
+from data_diff.utils import match_regexps
+from data_diff.queries import ThreadLocalInterpreter
 
 from .database_types import *
 from .base import Database, import_helper
@@ -9,6 +10,14 @@ from .base import (
     CHECKSUM_HEXDIGITS,
     TIMESTAMP_PRECISION_POS,
 )
+
+def query_cursor(c, sql_code):
+    c.execute(sql_code)
+    if sql_code.lower().startswith("select"):
+        return c.fetchall()
+    # Required for the query to actually run 🤯
+    if re.match(r"(insert|create|truncate|drop)", sql_code, re.IGNORECASE):
+        return c.fetchone()
 
 
 @import_helper("presto")
@@ -63,12 +72,21 @@ class Presto(Database):
     def _query(self, sql_code: str) -> list:
         "Uses the standard SQL cursor interface"
         c = self._conn.cursor()
-        c.execute(sql_code)
-        if sql_code.lower().startswith("select"):
-            return c.fetchall()
-        # Required for the query to actually run 🤯
-        if re.match(r"(insert|create|truncate|drop)", sql_code, re.IGNORECASE):
-            return c.fetchone()
+
+        if isinstance(sql_code, ThreadLocalInterpreter):
+            # TODO reuse code from base.py
+            g = sql_code.interpret()
+            q = next(g)
+            while True:
+                res = query_cursor(c, q)
+                try:
+                    q = g.send(res)
+                except StopIteration:
+                    break
+            return
+
+        return query_cursor(c, sql_code)
+
 
     def close(self):
         self._conn.close()

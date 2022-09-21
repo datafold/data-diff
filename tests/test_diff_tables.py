@@ -81,6 +81,8 @@ def _get_text_type(conn):
 def _get_float_type(conn):
     if isinstance(conn, db.BigQuery):
         return "FLOAT64"
+    elif isinstance(conn, db.Presto):
+        return "REAL"
     return "float"
 
 

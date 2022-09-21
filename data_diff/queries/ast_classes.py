@@ -1,5 +1,5 @@
 from datetime import datetime
-from typing import Any, Generator, Sequence, Tuple, Union
+from typing import Any, Generator, ItemsView, Sequence, Tuple, Union
 
 from runtype import dataclass
 
@@ -118,6 +118,9 @@ class ITable:
 
     def count(self):
         return Select(self, [Count()])
+
+    def union(self, other: 'ITable'):
+        return Union(self, other)
 
 
 @dataclass
@@ -347,6 +350,22 @@ class Join(ExprNode, ITable):
 class GroupBy(ITable):
     def having(self):
         pass
+
+@dataclass
+class Union(ExprNode, ITable):
+    table1: ITable
+    table2: ITable
+
+    @property
+    def source_table(self):
+        return self  # TODO is this right?
+
+    def compile(self, parent_c: Compiler) -> str:
+        c = parent_c.replace(in_select=False)
+        union_all = f"{c.compile(self.table1)} UNION {c.compile(self.table2)}"
+        if parent_c.in_select:
+            union_all = f"({union_all}) {c.new_unique_name()}"
+        return union_all
 
 
 @dataclass

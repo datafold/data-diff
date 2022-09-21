@@ -3,7 +3,6 @@ from parameterized import parameterized_class
 from data_diff.databases.connect import connect
 from data_diff.table_segment import TableSegment, split_space
 from data_diff import databases as db
-from data_diff.utils import ArithAlphanumeric
 from data_diff.joindiff_tables import JoinDiffer
 
 from .test_diff_tables import TestPerDatabase, _get_float_type, _get_text_type, _commit, _insert_row, _insert_rows
@@ -26,7 +25,7 @@ def init_instances():
     DATABASE_INSTANCES = {k.__name__: connect(v, N_THREADS) for k, v in CONN_STRINGS.items()}
 
 
-TEST_DATABASES = {x.__name__ for x in (db.PostgreSQL,)}
+TEST_DATABASES = {x.__name__ for x in (db.PostgreSQL, db.Snowflake, db.MySQL, db.BigQuery, db.Presto, db.Vertica, db.Trino, db.Oracle, db.Redshift)}
 
 _class_per_db_dec = parameterized_class(
     ("name", "db_name"), [(name, name) for name in DATABASE_URIS if name in TEST_DATABASES]
