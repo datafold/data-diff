@@ -10,9 +10,10 @@ from typing import Dict, List
 
 from runtype import dataclass
 
+
 from .utils import safezip
 from .databases.base import Database
-from .databases import MySQL, BigQuery, Presto
+from .databases import MySQL, BigQuery, Presto, Oracle
 from .table_segment import TableSegment
 from .diff_tables import TableDiffer, DiffResult
 
@@ -51,13 +52,15 @@ def sample(table):
 def temp_table(db: Database, expr: Expr):
     c = Compiler(db)
 
-    name = c.new_unique_name("_temp_table")
+    name = c.new_unique_table_name("temp_table")
 
     if isinstance(db, BigQuery):
         name = f"{db.default_schema}.{name}"
         db.query(f"create table {c.quote(name)} OPTIONS(expiration_timestamp=TIMESTAMP_ADD(CURRENT_TIMESTAMP(), INTERVAL 1 DAY)) as {c.compile(expr)}", None)
     elif isinstance(db, Presto):
         db.query(f"create table {c.quote(name)} as {c.compile(expr)}", None)
+    elif isinstance(db, Oracle):
+        db.query(f"create global temporary table {c.quote(name)} as {c.compile(expr)}", None)
     else:
         db.query(f"create temporary table {c.quote(name)} as {c.compile(expr)}", None)
 
@@ -156,8 +159,13 @@ def bool_to_int(x):
 
 def _outerjoin(db: Database, a: ITable, b: ITable, keys1: List[str], keys2: List[str], select_fields: dict) -> ITable:
     on = [a[k1] == b[k2] for k1, k2 in safezip(keys1, keys2)]
-    is_exclusive_a = and_(b[k] == None for k in keys2)
-    is_exclusive_b = and_(a[k] == None for k in keys1)
+
+    if isinstance(db, Oracle):
+        is_exclusive_a = and_(bool_to_int(b[k] == None) for k in keys2)
+        is_exclusive_b = and_(bool_to_int(a[k] == None) for k in keys1)
+    else:
+        is_exclusive_a = and_(b[k] == None for k in keys2)
+        is_exclusive_b = and_(a[k] == None for k in keys1)
 
     if isinstance(db, MySQL):
         # No outer join
@@ -235,7 +243,10 @@ class JoinDiffer(JoinDifferBase):
 
     def _sample_and_count_exclusive(self, db, diff_rows, a_cols, b_cols):
         logger.info("Counting and sampling exclusive rows")
-        exclusive_rows_query = diff_rows.where(this.is_exclusive_a | this.is_exclusive_b)
+        if isinstance(db, Oracle):
+            exclusive_rows_query = diff_rows.where((this.is_exclusive_a==1) | (this.is_exclusive_b==1))
+        else:
+            exclusive_rows_query = diff_rows.where(this.is_exclusive_a | this.is_exclusive_b)
         with temp_table(db, exclusive_rows_query) as exclusive_rows:
             self.stats["exclusive_count"] = db.query(exclusive_rows.count(), int)
             sample_rows = db.query(sample(exclusive_rows.select(*this[list(a_cols)], *this[list(b_cols)])), list)

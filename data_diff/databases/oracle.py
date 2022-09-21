@@ -124,3 +124,9 @@ class Oracle(ThreadedDatabase):
     def normalize_uuid(self, value: str, coltype: ColType_UUID) -> str:
         # Cast is necessary for correct MD5 (trimming not enough)
         return f"CAST(TRIM({value}) AS VARCHAR(36))"
+
+    def random(self) -> str:
+        return "dbms_random.value"
+
+    def is_distinct_from(self, a: str, b: str) -> str:
+        return f"DECODE({a}, {b}, 1, 0) = 0"
