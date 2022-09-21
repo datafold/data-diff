@@ -14,7 +14,7 @@ from .databases.database_types import IKey, NumericType, PrecisionType, StringTy
 from .table_segment import TableSegment
 from .tracking import create_end_event_json, create_start_event_json, send_event_json, is_tracking_enabled
 
-from .diff_tables import ThreadBase, DiffResult
+from .diff_tables import TableDiffer, DiffResult
 
 BENCHMARK = os.environ.get("BENCHMARK", False)
 
@@ -40,7 +40,7 @@ def diff_sets(a: set, b: set) -> Iterator:
 
 
 @dataclass
-class HashDiffer(ThreadBase):
+class HashDiffer(TableDiffer):
     """Finds the diff between two SQL tables
 
     The algorithm uses hashing to quickly check if the tables are different, and then applies a
@@ -62,18 +62,6 @@ class HashDiffer(ThreadBase):
     stats: dict = {}
 
     def diff_tables(self, table1: TableSegment, table2: TableSegment) -> DiffResult:
-        """Diff the given tables.
-
-        Parameters:
-            table1 (TableSegment): The "before" table to compare. Or: source table
-            table2 (TableSegment): The "after" table to compare. Or: target table
-
-        Returns:
-            An iterator that yield pair-tuples, representing the diff. Items can be either
-            ('-', columns) for items in table1 but not in table2
-            ('+', columns) for items in table2 but not in table1
-            Where `columns` is a tuple of values for the involved columns, i.e. (id, ...extra)
-        """
         # Validate options
         if self.bisection_factor >= self.bisection_threshold:
             raise ValueError("Incorrect param values (bisection factor must be lower than threshold)")

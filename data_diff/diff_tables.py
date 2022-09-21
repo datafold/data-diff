@@ -1,12 +1,14 @@
 """Provides classes for performing a table diff
 """
 
+from abc import ABC, abstractmethod
 from enum import Enum
 from contextlib import contextmanager
-import threading
 from operator import methodcaller
 from typing import Tuple, Iterator, Optional
 from concurrent.futures import ThreadPoolExecutor, as_completed
+
+from .table_segment import TableSegment
 
 from runtype import dataclass
 
@@ -59,3 +61,20 @@ class ThreadBase:
             yield futures
             for f in futures:
                 f.result()
+
+
+class TableDiffer(ThreadBase, ABC):
+    @abstractmethod
+    def diff_tables(self, table1: TableSegment, table2: TableSegment) -> DiffResult:
+        """Diff the given tables.
+
+        Parameters:
+            table1 (TableSegment): The "before" table to compare. Or: source table
+            table2 (TableSegment): The "after" table to compare. Or: target table
+
+        Returns:
+            An iterator that yield pair-tuples, representing the diff. Items can be either -
+            ('-', row) for items in table1 but not in table2.
+            ('+', row) for items in table2 but not in table1.
+            Where `row` is a tuple of values, corresponding to the diffed columns.
+        """

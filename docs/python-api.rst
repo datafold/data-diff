@@ -5,11 +5,14 @@ Python API Reference
 
 .. autofunction:: connect
 
-.. autoclass:: TableDiffer
+.. autoclass:: HashDiffer
+    :members: __init__, diff_tables
+
+.. autoclass:: JoinDiffer
     :members: __init__, diff_tables
 
 .. autoclass:: TableSegment
-    :members: __init__, get_values, choose_checkpoints, segment_by_checkpoints, count, count_and_checksum, is_bounded, new
+    :members: __init__, get_values, choose_checkpoints, segment_by_checkpoints, count, count_and_checksum, is_bounded, new, with_schema
 
 .. autoclass:: data_diff.databases.database_types.AbstractDatabase
     :members:
