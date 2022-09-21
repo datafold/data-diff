@@ -25,7 +25,7 @@ def init_instances():
     DATABASE_INSTANCES = {k.__name__: connect(v, N_THREADS) for k, v in CONN_STRINGS.items()}
 
 
-TEST_DATABASES = {x.__name__ for x in (db.PostgreSQL, db.Snowflake, db.MySQL, db.BigQuery, db.Presto, db.Vertica, db.Trino, db.Oracle)}
+TEST_DATABASES = {x.__name__ for x in (db.PostgreSQL, db.Snowflake, db.MySQL, db.BigQuery, db.Presto, db.Vertica, db.Trino, db.Oracle, db.Redshift)}
 
 _class_per_db_dec = parameterized_class(
     ("name", "db_name"), [(name, name) for name in DATABASE_URIS if name in TEST_DATABASES]
