@@ -13,7 +13,7 @@ from runtype import dataclass
 from .utils import safezip
 from .databases.base import Database
 from .table_segment import TableSegment
-from .diff_tables import ThreadBase, DiffResult
+from .diff_tables import TableDiffer, DiffResult
 
 from .queries import table, sum_, min_, max_, avg
 from .queries.api import and_, if_, or_, outerjoin, this
@@ -73,7 +73,7 @@ def json_friendly_value(v):
 
 
 @dataclass
-class JoinDifferBase(ThreadBase):
+class JoinDifferBase(TableDiffer):
     """Finds the diff between two SQL tables using JOINs"""
 
     stats: dict = {}
@@ -145,6 +145,12 @@ def bool_to_int(x):
 
 
 class JoinDiffer(JoinDifferBase):
+    """Finds the diff between two SQL tables in the same database.
+
+    The algorithm uses an OUTER JOIN (or equivalent) with extra checks and statistics.
+
+    """
+
     def _outer_join(self, table1, table2):
         db = table1.database
         if db is not table2.database:

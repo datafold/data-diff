@@ -12,7 +12,7 @@ def normalize_spaces(s: str):
 
 
 class MockDialect(AbstractDialect):
-    def quote(self, s: str):
+    def quote(self, s: str) -> str:
         return s
 
     def concat(self, l: List[str]) -> str:
