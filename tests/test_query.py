@@ -128,3 +128,11 @@ class TestQuery(unittest.TestCase):
 
         q = c.compile(t.order_by(Random()).limit(10))
         assert q == "SELECT * FROM a ORDER BY random() limit 10"
+
+    def test_union_all(self):
+        c = Compiler(MockDialect())
+        a = table("a").select('x')
+        b = table("b").select('y')
+
+        q = c.compile(a.union(b))
+        assert q == "SELECT x FROM a UNION SELECT y FROM b"

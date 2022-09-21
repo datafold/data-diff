@@ -12,11 +12,12 @@ from runtype import dataclass
 
 from .utils import safezip
 from .databases.base import Database
+from .databases import MySQL, BigQuery, Presto
 from .table_segment import TableSegment
 from .diff_tables import TableDiffer, DiffResult
 
 from .queries import table, sum_, min_, max_, avg
-from .queries.api import and_, if_, or_, outerjoin, this
+from .queries.api import and_, if_, or_, outerjoin, leftjoin, rightjoin, this, ITable
 from .queries.ast_classes import Concat, Count, Expr, Random
 from .queries.compiler import Compiler
 from .queries.extras import NormalizeAsString
@@ -43,18 +44,27 @@ class Stats:
 
 
 def sample(table):
-    # TODO
     return table.order_by(Random()).limit(10)
 
 
 @contextmanager
 def temp_table(db: Database, expr: Expr):
     c = Compiler(db)
-    name = c.new_unique_name("tmp_table")
-    db.query(f"create temporary table {c.quote(name)} as {c.compile(expr)}", None)
+
+    name = c.new_unique_name("_temp_table")
+
+    if isinstance(db, BigQuery):
+        name = f"{db.default_schema}.{name}"
+        db.query(f"create table {c.quote(name)} OPTIONS(expiration_timestamp=TIMESTAMP_ADD(CURRENT_TIMESTAMP(), INTERVAL 1 DAY)) as {c.compile(expr)}", None)
+    elif isinstance(db, Presto):
+        db.query(f"create table {c.quote(name)} as {c.compile(expr)}", None)
+    else:
+        db.query(f"create temporary table {c.quote(name)} as {c.compile(expr)}", None)
+
     try:
         yield table(name, schema=expr.source_table.schema)
     finally:
+        # Only drops if create table succeeded (meaning, the table didn't already exist)
         db.query(f"drop table {c.quote(name)}", None)
 
 
@@ -144,6 +154,23 @@ def bool_to_int(x):
     return if_(x, 1, 0)
 
 
+def _outerjoin(db: Database, a: ITable, b: ITable, keys1: List[str], keys2: List[str], select_fields: dict) -> ITable:
+    on = [a[k1] == b[k2] for k1, k2 in safezip(keys1, keys2)]
+    is_exclusive_a = and_(b[k] == None for k in keys2)
+    is_exclusive_b = and_(a[k] == None for k in keys1)
+
+    if isinstance(db, MySQL):
+        # No outer join
+        l = leftjoin(a, b).on(*on).select(is_exclusive_a=is_exclusive_a, is_exclusive_b=False, **select_fields)
+        r = rightjoin(a, b).on(*on).select(is_exclusive_a=False, is_exclusive_b=is_exclusive_b, **select_fields)
+        return l.union(r)
+
+    return (
+        outerjoin(a, b).on(*on)
+        .select(is_exclusive_a=is_exclusive_a, is_exclusive_b=is_exclusive_b, **select_fields)
+    )
+
+
 class JoinDiffer(JoinDifferBase):
     """Finds the diff between two SQL tables in the same database.
 
@@ -177,15 +204,7 @@ class JoinDiffer(JoinDifferBase):
         b_cols = {f"table2_{c}": NormalizeAsString(b[c]) for c in cols2}
 
         diff_rows = (
-            outerjoin(a, b)
-            .on(a[k1] == b[k2] for k1, k2 in safezip(keys1, keys2))
-            .select(
-                is_exclusive_a=and_(b[k] == None for k in keys2),
-                is_exclusive_b=and_(a[k] == None for k in keys1),
-                **is_diff_cols,
-                **a_cols,
-                **b_cols,
-            )
+            _outerjoin(db, a, b, keys1, keys2, {**is_diff_cols, **a_cols, **b_cols})
             .where(or_(this[c] == 1 for c in is_diff_cols))
         )
 
