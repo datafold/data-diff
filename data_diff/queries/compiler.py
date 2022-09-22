@@ -12,7 +12,8 @@ from data_diff.databases.database_types import AbstractDialect
 @dataclass
 class Compiler:
     database: AbstractDialect
-    in_select: bool = False  # Compilation
+    in_select: bool = False  # Compilation runtime flag
+    in_join: bool = False    # Compilation runtime flag
 
     _table_context: List = []  # List[ITable]
     _subqueries: Dict[str, Any] = {}  # XXX not thread-safe

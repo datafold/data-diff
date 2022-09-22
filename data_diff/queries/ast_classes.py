@@ -1,5 +1,6 @@
+from dataclasses import field
 from datetime import datetime
-from typing import Any, Generator, ItemsView, Sequence, Tuple, Union
+from typing import Any, Generator, ItemsView, Optional, Sequence, Tuple, Union
 
 from runtype import dataclass
 
@@ -246,7 +247,7 @@ class Column(ExprNode, LazyOps):
                     t for t in c._table_context if isinstance(t, TableAlias) and t.source_table is self.source_table
                 ]
                 if not aliases:
-                    raise CompileError(f"No aliased table found for column {self.name}")  # TODO better error
+                    return c.quote(self.name)
                 elif len(aliases) > 1:
                     raise CompileError(f"Too many aliases for column {self.name}")
                 (alias,) = aliases
@@ -259,7 +260,7 @@ class Column(ExprNode, LazyOps):
 @dataclass
 class TablePath(ExprNode, ITable):
     path: DbPath
-    schema: Schema = None
+    schema: Optional[Schema] = field(default=None, repr=False)
 
     def insert_values(self, rows):
         pass
@@ -329,7 +330,7 @@ class Join(ExprNode, ITable):
         tables = [
             t if isinstance(t, TableAlias) else TableAlias(t, parent_c.new_unique_name()) for t in self.source_tables
         ]
-        c = parent_c.add_table_context(*tables)
+        c = parent_c.add_table_context(*tables).replace(in_join=True, in_select=False)
         op = " JOIN " if self.op is None else f" {self.op} JOIN "
         joined = op.join(c.compile(t) for t in tables)
 
@@ -344,6 +345,8 @@ class Join(ExprNode, ITable):
 
         if parent_c.in_select:
             select = f"({select}) {c.new_unique_name()}"
+        elif parent_c.in_join:
+            select = f"({select})"
         return select
 
 
@@ -365,12 +368,14 @@ class Union(ExprNode, ITable):
         union_all = f"{c.compile(self.table1)} UNION {c.compile(self.table2)}"
         if parent_c.in_select:
             union_all = f"({union_all}) {c.new_unique_name()}"
+        elif parent_c.in_join:
+            union_all = f"({union_all})"
         return union_all
 
 
 @dataclass
 class Select(ExprNode, ITable):
-    table: Expr = None
+    source_table: Expr = None
     columns: Sequence[Expr] = None
     where_exprs: Sequence[Expr] = None
     order_by_exprs: Sequence[Expr] = None
@@ -378,21 +383,17 @@ class Select(ExprNode, ITable):
     limit_expr: int = None
 
     @property
-    def source_table(self):
-        return self
-
-    @property
     def schema(self):
-        return self.table.schema
+        return self.source_table.schema
 
     def compile(self, parent_c: Compiler) -> str:
-        c = parent_c.replace(in_select=True).add_table_context(self.table)
+        c = parent_c.replace(in_select=True) #.add_table_context(self.table)
 
         columns = ", ".join(map(c.compile, self.columns)) if self.columns else "*"
         select = f"SELECT {columns}"
 
-        if self.table:
-            select += " FROM " + c.compile(self.table)
+        if self.source_table:
+            select += " FROM " + c.compile(self.source_table)
 
         if self.where_exprs:
             select += " WHERE " + " AND ".join(map(c.compile, self.where_exprs))
@@ -407,6 +408,8 @@ class Select(ExprNode, ITable):
             select += " " + c.database.offset_limit(0, self.limit_expr)
 
         if parent_c.in_select:
+            select = f"({select}) {c.new_unique_name()}"
+        elif parent_c.in_join:
             select = f"({select})"
         return select
 
