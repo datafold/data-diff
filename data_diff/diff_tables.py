@@ -257,7 +257,7 @@ class TableDiffer:
 
         # Recursively compare each pair of corresponding segments between table1 and table2
         for i, (t1, t2) in enumerate(safezip(segmented1, segmented2)):
-            ti.submit(self._diff_tables, ti, t1, t2, level + 1, i + 1, len(segmented1), priority=level)
+            ti.submit(self._diff_tables, ti, t1, t2, max_rows, level + 1, i + 1, len(segmented1), priority=level)
 
     def _diff_tables(self, ti: ThreadedYielder, table1: TableSegment, table2: TableSegment, max_rows: int, level=0, segment_index=None, segment_count=None):
         logger.info(
@@ -272,8 +272,7 @@ class TableDiffer:
         # the threshold) and _then_ download it.
         if BENCHMARK:
             if max_rows < self.bisection_threshold:
-                yield from self._bisect_and_diff_tables(ti, table1, table2, level=level, max_rows=max_rows)
-                return
+                return self._bisect_and_diff_tables(ti, table1, table2, level=level, max_rows=max_rows)
 
         (count1, checksum1), (count2, checksum2) = self._threaded_call("count_and_checksum", [table1, table2])
 
