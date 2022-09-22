@@ -10,7 +10,7 @@ from data_diff.databases.connect import connect
 from data_diff.diff_tables import TableDiffer
 from data_diff.table_segment import TableSegment, split_space
 from data_diff import databases as db
-from data_diff.utils import ArithAlphanumeric
+from data_diff.utils import ArithAlphanumeric, numberToAlphanum
 
 from .common import (
     TEST_MYSQL_CONN_STRING,
@@ -36,13 +36,24 @@ def init_instances():
 TEST_DATABASES = {x.__name__ for x in (db.MySQL, db.PostgreSQL, db.Oracle, db.Redshift, db.Snowflake, db.BigQuery)}
 
 
-_class_per_db_dec = parameterized_class(
-    ("name", "db_name"), [(name, name) for name in DATABASE_URIS if name in TEST_DATABASES]
-)
+def _class_per_db_dec(filter_name=None):
+    names = [
+        (name, name)
+        for name in DATABASE_URIS
+        if (name in TEST_DATABASES) and (filter_name is None or filter_name(name))
+    ]
+    return parameterized_class(("name", "db_name"), names)
 
 
 def test_per_database(cls):
-    return _class_per_db_dec(cls)
+    return _class_per_db_dec()(cls)
+
+
+def test_per_database__filter_name(filter_name):
+    def _test_per_database(cls):
+        return _class_per_db_dec(filter_name=filter_name)(cls)
+
+    return _test_per_database
 
 
 def _insert_row(conn, table, fields, values):
@@ -490,7 +501,7 @@ class TestUUIDs(TestPerDatabase):
         self.assertRaises(ValueError, list, differ.diff_tables(a_empty, self.b))
 
 
-@test_per_database
+@test_per_database__filter_name(lambda n: n != "MySQL")
 class TestAlphanumericKeys(TestPerDatabase):
     def setUp(self):
         super().setUp()
@@ -501,7 +512,8 @@ class TestAlphanumericKeys(TestPerDatabase):
             f"CREATE TABLE {self.table_src}(id {text_type}, text_comment {text_type})",
         ]
         for i in range(0, 10000, 1000):
-            queries.append(f"INSERT INTO {self.table_src} VALUES ('{ArithAlphanumeric(int=i, max_len=10)}', '{i}')")
+            a = ArithAlphanumeric(numberToAlphanum(i), max_len=10)
+            queries.append(f"INSERT INTO {self.table_src} VALUES ('{a}', '{i}')")
 
         queries += [
             f"CREATE TABLE {self.table_dst} AS SELECT * FROM {self.table_src}",
@@ -521,14 +533,65 @@ class TestAlphanumericKeys(TestPerDatabase):
         self.b = TableSegment(self.connection, self.table_dst_path, "id", "text_comment", case_sensitive=False)
 
     def test_alphanum_keys(self):
+
+        differ = TableDiffer(bisection_factor=2, bisection_threshold=3)
+        diff = list(differ.diff_tables(self.a, self.b))
+        self.assertEqual(diff, [("-", (str(self.new_alphanum), "This one is different"))])
+
+        self.connection.query(
+            f"INSERT INTO {self.table_src} VALUES ('@@@', '<-- this bad value should not break us')", None
+        )
+        _commit(self.connection)
+
+        self.a = TableSegment(self.connection, self.table_src_path, "id", "text_comment", case_sensitive=False)
+        self.b = TableSegment(self.connection, self.table_dst_path, "id", "text_comment", case_sensitive=False)
+
+        self.assertRaises(NotImplementedError, list, differ.diff_tables(self.a, self.b))
+
+
+@test_per_database__filter_name(lambda n: n != "MySQL")
+class TestVaryingAlphanumericKeys(TestPerDatabase):
+    def setUp(self):
+        super().setUp()
+
+        text_type = _get_text_type(self.connection)
+
+        queries = [
+            f"CREATE TABLE {self.table_src}(id {text_type}, text_comment {text_type})",
+        ]
+        for i in range(0, 10000, 1000):
+            a = ArithAlphanumeric(numberToAlphanum(i * i))
+            queries.append(f"INSERT INTO {self.table_src} VALUES ('{a}', '{i}')")
+
+        queries += [
+            f"CREATE TABLE {self.table_dst} AS SELECT * FROM {self.table_src}",
+        ]
+
+        self.new_alphanum = "aBcDeFgHiJ"
+        queries.append(f"INSERT INTO {self.table_src} VALUES ('{self.new_alphanum}', 'This one is different')")
+
+        # TODO test unexpected values?
+
+        for query in queries:
+            self.connection.query(query, None)
+
+        _commit(self.connection)
+
+        self.a = TableSegment(self.connection, self.table_src_path, "id", "text_comment", case_sensitive=False)
+        self.b = TableSegment(self.connection, self.table_dst_path, "id", "text_comment", case_sensitive=False)
+
+    def test_varying_alphanum_keys(self):
         # Test the class itself
-        assert str(ArithAlphanumeric(int=0, max_len=1)) == "0"
-        assert str(ArithAlphanumeric(int=0, max_len=10)) == "0" * 10
-        assert str(ArithAlphanumeric(int=1, max_len=10)) == "0" * 9 + "1"
+        values = ["---", "0123", "Z9", "ZZ", "_", "a", "a-", "a123", "a_"]
+        alphanums = [ArithAlphanumeric(v) for v in values]
+        alphanums.sort()
+        self.assertEqual(values, [str(i) for i in alphanums])
 
-        # Test in the differ
+        for a in alphanums:
+            assert a - a == 0
 
-        differ = TableDiffer()
+        # Test with the differ
+        differ = TableDiffer(threaded=False)
         diff = list(differ.diff_tables(self.a, self.b))
         self.assertEqual(diff, [("-", (str(self.new_alphanum), "This one is different"))])
 

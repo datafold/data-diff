@@ -122,7 +122,7 @@ class TableDiffer:
             logger.info(
                 f"Diffing tables | segments: {self.bisection_factor}, bisection threshold: {self.bisection_threshold}. "
                 f"key-range: {table1.min_key}..{table2.max_key}, "
-                f"size: {table1.approximate_size()}"
+                f"size: table1 <= {table1.approximate_size()}, table2 <= {table2.approximate_size()}"
             )
 
             ti = ThreadedYielder(self.max_threadpool_size)
@@ -222,12 +222,12 @@ class TableDiffer:
                         "If encoding/formatting differs between databases, it may result in false positives."
                     )
 
-    def _bisect_and_diff_tables(self, ti: ThreadedYielder, table1, table2, level=0, max_rows=None):
+    def _bisect_and_diff_tables(self, ti: ThreadedYielder, table1: TableSegment, table2: TableSegment, level=0, max_rows=None):
         assert table1.is_bounded and table2.is_bounded
 
         if max_rows is None:
             # We can be sure that row_count <= max_rows
-            max_rows = table1.max_key - table1.min_key
+            max_rows = max(table1.approximate_size(), table2.approximate_size())
 
         # If count is below the threshold, just download and compare the columns locally
         # This saves time, as bisection speed is limited by ping and query performance.
@@ -259,11 +259,11 @@ class TableDiffer:
         for i, (t1, t2) in enumerate(safezip(segmented1, segmented2)):
             ti.submit(self._diff_tables, ti, t1, t2, level + 1, i + 1, len(segmented1), priority=level)
 
-    def _diff_tables(self, ti: ThreadedYielder, table1, table2, level=0, segment_index=None, segment_count=None):
+    def _diff_tables(self, ti: ThreadedYielder, table1: TableSegment, table2: TableSegment, max_rows: int, level=0, segment_index=None, segment_count=None):
         logger.info(
             ". " * level + f"Diffing segment {segment_index}/{segment_count}, "
             f"key-range: {table1.min_key}..{table2.max_key}, "
-            f"size: {table2.max_key-table1.min_key}"
+            f"size <= {max_rows}"
         )
 
         # When benchmarking, we want the ability to skip checksumming. This
@@ -271,17 +271,17 @@ class TableDiffer:
         # default, data-diff will checksum the section first (when it's below
         # the threshold) and _then_ download it.
         if BENCHMARK:
-            max_rows_from_keys = max(table1.max_key - table1.min_key, table2.max_key - table2.min_key)
-            if max_rows_from_keys < self.bisection_threshold:
-                return self._bisect_and_diff_tables(ti, table1, table2, level=level, max_rows=max_rows_from_keys)
+            if max_rows < self.bisection_threshold:
+                yield from self._bisect_and_diff_tables(ti, table1, table2, level=level, max_rows=max_rows)
+                return
 
         (count1, checksum1), (count2, checksum2) = self._threaded_call("count_and_checksum", [table1, table2])
 
         if count1 == 0 and count2 == 0:
-            logger.warning(
-                "Uneven distribution of keys detected. (big gaps in the key column). "
-                "For better performance, we recommend to increase the bisection-threshold."
-            )
+            # logger.warning(
+            #     f"Uneven distribution of keys detected in segment {table1.min_key}..{table2.max_key}. (big gaps in the key column). "
+            #     "For better performance, we recommend to increase the bisection-threshold."
+            # )
             assert checksum1 is None and checksum2 is None
             return
 
