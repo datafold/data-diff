@@ -1,5 +1,4 @@
 import os
-import time
 from numbers import Number
 import logging
 from collections import defaultdict
@@ -8,13 +7,12 @@ from operator import attrgetter
 
 from runtype import dataclass
 
-from .utils import safezip, run_as_daemon
+from .utils import safezip
 from .thread_utils import ThreadedYielder
 from .databases.database_types import IKey, NumericType, PrecisionType, StringType
 from .table_segment import TableSegment
-from .tracking import create_end_event_json, create_start_event_json, send_event_json, is_tracking_enabled
 
-from .diff_tables import TableDiffer, DiffResult
+from .diff_tables import TableDiffer
 
 BENCHMARK = os.environ.get("BENCHMARK", False)
 
@@ -61,98 +59,14 @@ class HashDiffer(TableDiffer):
 
     stats: dict = {}
 
-    def diff_tables(self, table1: TableSegment, table2: TableSegment) -> DiffResult:
+    def __post_init__(self):
         # Validate options
         if self.bisection_factor >= self.bisection_threshold:
             raise ValueError("Incorrect param values (bisection factor must be lower than threshold)")
         if self.bisection_factor < 2:
             raise ValueError("Must have at least two segments per iteration (i.e. bisection_factor >= 2)")
 
-        if is_tracking_enabled():
-            options = dict(self)
-            event_json = create_start_event_json(options)
-            run_as_daemon(send_event_json, event_json)
 
-        self.stats["diff_count"] = 0
-        start = time.monotonic()
-        error = None
-        try:
-
-            # Query and validate schema
-            table1, table2 = self._threaded_call("with_schema", [table1, table2])
-            self._validate_and_adjust_columns(table1, table2)
-
-            key_type = table1._schema[table1.key_column]
-            key_type2 = table2._schema[table2.key_column]
-            if not isinstance(key_type, IKey):
-                raise NotImplementedError(f"Cannot use column of type {key_type} as a key")
-            if not isinstance(key_type2, IKey):
-                raise NotImplementedError(f"Cannot use column of type {key_type2} as a key")
-            assert key_type.python_type is key_type2.python_type
-
-            # Query min/max values
-            key_ranges = self._threaded_call_as_completed("query_key_range", [table1, table2])
-
-            # Start with the first completed value, so we don't waste time waiting
-            min_key1, max_key1 = self._parse_key_range_result(key_type, next(key_ranges))
-
-            table1, table2 = [t.new(min_key=min_key1, max_key=max_key1) for t in (table1, table2)]
-
-            logger.info(
-                f"Diffing tables | segments: {self.bisection_factor}, bisection threshold: {self.bisection_threshold}. "
-                f"key-range: {table1.min_key}..{table2.max_key}, "
-                f"size: table1 <= {table1.approximate_size()}, table2 <= {table2.approximate_size()}"
-            )
-
-            ti = ThreadedYielder(self.max_threadpool_size)
-            # Bisect (split) the table into segments, and diff them recursively.
-            ti.submit(self._bisect_and_diff_tables, ti, table1, table2)
-
-            # Now we check for the second min-max, to diff the portions we "missed".
-            min_key2, max_key2 = self._parse_key_range_result(key_type, next(key_ranges))
-
-            if min_key2 < min_key1:
-                pre_tables = [t.new(min_key=min_key2, max_key=min_key1) for t in (table1, table2)]
-                ti.submit(self._bisect_and_diff_tables, ti, *pre_tables)
-
-            if max_key2 > max_key1:
-                post_tables = [t.new(min_key=max_key1, max_key=max_key2) for t in (table1, table2)]
-                ti.submit(self._bisect_and_diff_tables, ti, *post_tables)
-
-            yield from ti
-
-        except BaseException as e:  # Catch KeyboardInterrupt too
-            error = e
-        finally:
-            if is_tracking_enabled():
-                runtime = time.monotonic() - start
-                table1_count = self.stats.get("table1_count")
-                table2_count = self.stats.get("table2_count")
-                diff_count = self.stats.get("diff_count")
-                err_message = str(error)[:20]  # Truncate possibly sensitive information.
-                event_json = create_end_event_json(
-                    error is None,
-                    runtime,
-                    table1.database.name,
-                    table2.database.name,
-                    table1_count,
-                    table2_count,
-                    diff_count,
-                    err_message,
-                )
-                send_event_json(event_json)
-
-            if error:
-                raise error
-
-    def _parse_key_range_result(self, key_type, key_range):
-        mn, mx = key_range
-        cls = key_type.make_value
-        # We add 1 because our ranges are exclusive of the end (like in Python)
-        try:
-            return cls(mn), cls(mx) + 1
-        except (TypeError, ValueError) as e:
-            raise type(e)(f"Cannot apply {key_type} to {mn}, {mx}.") from e
 
     def _validate_and_adjust_columns(self, table1, table2):
         for c1, c2 in safezip(table1._relevant_columns, table2._relevant_columns):
@@ -201,7 +115,40 @@ class HashDiffer(TableDiffer):
                         "If encoding/formatting differs between databases, it may result in false positives."
                     )
 
-    def _bisect_and_diff_tables(self, ti: ThreadedYielder, table1: TableSegment, table2: TableSegment, level=0, max_rows=None):
+
+    def _diff_segments(self, ti: ThreadedYielder, table1: TableSegment, table2: TableSegment, max_rows: int, level=0, segment_index=None, segment_count=None):
+        logger.info(
+            ". " * level + f"Diffing segment {segment_index}/{segment_count}, "
+            f"key-range: {table1.min_key}..{table2.max_key}, "
+            f"size <= {max_rows}"
+        )
+
+        # When benchmarking, we want the ability to skip checksumming. This
+        # allows us to download all rows for comparison in performance. By
+        # default, data-diff will checksum the section first (when it's below
+        # the threshold) and _then_ download it.
+        if BENCHMARK:
+            if max_rows < self.bisection_threshold:
+                return self._bisect_and_diff_segments(ti, table1, table2, level=level, max_rows=max_rows)
+
+        (count1, checksum1), (count2, checksum2) = self._threaded_call("count_and_checksum", [table1, table2])
+
+        if count1 == 0 and count2 == 0:
+            # logger.warning(
+            #     f"Uneven distribution of keys detected in segment {table1.min_key}..{table2.max_key}. (big gaps in the key column). "
+            #     "For better performance, we recommend to increase the bisection-threshold."
+            # )
+            assert checksum1 is None and checksum2 is None
+            return
+
+        if level == 1:
+            self.stats["table1_count"] = self.stats.get("table1_count", 0) + count1
+            self.stats["table2_count"] = self.stats.get("table2_count", 0) + count2
+
+        if checksum1 != checksum2:
+            return self._bisect_and_diff_segments(ti, table1, table2, level=level, max_rows=max(count1, count2))
+
+    def _bisect_and_diff_segments(self, ti: ThreadedYielder, table1: TableSegment, table2: TableSegment, level=0, max_rows=None):
         assert table1.is_bounded and table2.is_bounded
 
         if max_rows is None:
@@ -227,45 +174,4 @@ class HashDiffer(TableDiffer):
             self.stats["rows_downloaded"] = self.stats.get("rows_downloaded", 0) + max(len(rows1), len(rows2))
             return diff
 
-        # Choose evenly spaced checkpoints (according to min_key and max_key)
-        checkpoints = table1.choose_checkpoints(self.bisection_factor - 1)
-
-        # Create new instances of TableSegment between each checkpoint
-        segmented1 = table1.segment_by_checkpoints(checkpoints)
-        segmented2 = table2.segment_by_checkpoints(checkpoints)
-
-        # Recursively compare each pair of corresponding segments between table1 and table2
-        for i, (t1, t2) in enumerate(safezip(segmented1, segmented2)):
-            ti.submit(self._diff_tables, ti, t1, t2, max_rows, level + 1, i + 1, len(segmented1), priority=level)
-
-    def _diff_tables(self, ti: ThreadedYielder, table1: TableSegment, table2: TableSegment, max_rows: int, level=0, segment_index=None, segment_count=None):
-        logger.info(
-            ". " * level + f"Diffing segment {segment_index}/{segment_count}, "
-            f"key-range: {table1.min_key}..{table2.max_key}, "
-            f"size <= {max_rows}"
-        )
-
-        # When benchmarking, we want the ability to skip checksumming. This
-        # allows us to download all rows for comparison in performance. By
-        # default, data-diff will checksum the section first (when it's below
-        # the threshold) and _then_ download it.
-        if BENCHMARK:
-            if max_rows < self.bisection_threshold:
-                return self._bisect_and_diff_tables(ti, table1, table2, level=level, max_rows=max_rows)
-
-        (count1, checksum1), (count2, checksum2) = self._threaded_call("count_and_checksum", [table1, table2])
-
-        if count1 == 0 and count2 == 0:
-            # logger.warning(
-            #     f"Uneven distribution of keys detected in segment {table1.min_key}..{table2.max_key}. (big gaps in the key column). "
-            #     "For better performance, we recommend to increase the bisection-threshold."
-            # )
-            assert checksum1 is None and checksum2 is None
-            return
-
-        if level == 1:
-            self.stats["table1_count"] = self.stats.get("table1_count", 0) + count1
-            self.stats["table2_count"] = self.stats.get("table2_count", 0) + count2
-
-        if checksum1 != checksum2:
-            return self._bisect_and_diff_tables(ti, table1, table2, level=level, max_rows=max(count1, count2))
+        return super()._bisect_and_diff_segments(ti, table1, table2, level, max_rows)

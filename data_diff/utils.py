@@ -1,3 +1,4 @@
+import logging
 import re
 import math
 from typing import Iterable, Tuple, Union, Any, Sequence, Dict
@@ -214,6 +215,9 @@ class CaseAwareMapping(ABC, Generic[V]):
     def __contains__(self, key: str) -> bool:
         ...
 
+    def __repr__(self):
+        return repr(dict(self.items()))
+
 
 class CaseInsensitiveDict(CaseAwareMapping):
     def __init__(self, initial):
@@ -285,3 +289,7 @@ def run_as_daemon(threadfunc, *args):
     th.daemon = True
     th.start()
     return th
+
+
+def getLogger(name):
+    return logging.getLogger(name.rsplit('.', 1)[-1])

@@ -2,6 +2,7 @@
 
 """
 
+from collections import defaultdict
 from decimal import Decimal
 from functools import partial
 import logging
@@ -13,9 +14,10 @@ from runtype import dataclass
 
 from .utils import safezip
 from .databases.base import Database
-from .databases import MySQL, BigQuery, Presto, Oracle
+from .databases import MySQL, BigQuery, Presto, Oracle, PostgreSQL, Snowflake
 from .table_segment import TableSegment
 from .diff_tables import TableDiffer, DiffResult
+from .thread_utils import ThreadedYielder
 
 from .queries import table, sum_, min_, max_, avg
 from .queries.api import and_, if_, or_, outerjoin, leftjoin, rightjoin, this, ITable
@@ -67,8 +69,10 @@ def temp_table(db: Database, expr: Expr):
     try:
         yield table(name, schema=expr.source_table.schema)
     finally:
-        # Only drops if create table succeeded (meaning, the table didn't already exist)
-        db.query(f"drop table {c.quote(name)}", None)
+        if isinstance(db, (BigQuery, Presto)):
+            # Only drops if create table succeeded (meaning, the table didn't already exist)
+            # And if the table won't delete itself
+            db.query(f"drop table {c.quote(name)}", None)
 
 
 def _slice_tuple(t, *sizes):
@@ -90,28 +94,50 @@ class JoinDifferBase(TableDiffer):
     """Finds the diff between two SQL tables using JOINs"""
 
     stats: dict = {}
+    validate_unique_key: bool = True
 
-    def diff_tables(self, table1: TableSegment, table2: TableSegment) -> DiffResult:
-        table1, table2 = self._threaded_call("with_schema", [table1, table2])
+    def _diff_tables(self, table1: TableSegment, table2: TableSegment) -> DiffResult:
+        db = table1.database
 
         if table1.database is not table2.database:
             raise ValueError("Join-diff only works when both tables are in the same database")
 
+        table1, table2 = self._threaded_call("with_schema", [table1, table2])
+
+
+        bg_funcs = [partial(self._test_duplicate_keys, table1, table2)] if self.validate_unique_key else []
+
+        with self._run_in_background(*bg_funcs):
+            if isinstance(db, (Snowflake, BigQuery)):
+                # Don't segment the table; let the database handling parallelization
+                yield from self._diff_segments(None, table1, table2, None)
+            else:
+                yield from self._bisect_and_diff_tables(table1, table2)
+
+    def _diff_segments(self, ti: ThreadedYielder, table1: TableSegment, table2: TableSegment, max_rows: int, level=0, segment_index=None, segment_count=None):
+        assert table1.database is table2.database
+
+        logger.info(
+            ". " * level + f"Diffing segment {segment_index}/{segment_count}, "
+            f"key-range: {table1.min_key}..{table2.max_key}, "
+            f"size <= {max_rows}"
+        )
+
         with self._run_in_background(
-                    partial(self._test_null_or_duplicate_keys, table1, table2),
-                    partial(self._collect_stats, 1, table1),
-                    partial(self._collect_stats, 2, table2)
-                ):
+                partial(self._collect_stats, 1, table1),
+                partial(self._collect_stats, 2, table2),
+                partial(self._test_null_keys, table1, table2),
+            ):
             yield from self._outer_join(table1, table2)
 
         logger.info("Diffing complete")
 
-    def _test_null_or_duplicate_keys(self, table1, table2):
-        logger.info("Testing for null or duplicate keys")
+    def _test_duplicate_keys(self, table1, table2):
+        logger.debug("Testing for duplicate keys")
 
-        # Test null or duplicate keys
+        # Test duplicate keys
         for ts in [table1, table2]:
-            t = table(*ts.table_path, schema=ts._schema)
+            t = ts._make_select()
             key_columns = [ts.key_column]  # XXX
 
             q = t.select(total=Count(), total_distinct=Count(Concat(key_columns), distinct=True))
@@ -119,12 +145,19 @@ class JoinDifferBase(TableDiffer):
             if total != total_distinct:
                 raise ValueError("Duplicate primary keys")
 
+    def _test_null_keys(self, table1, table2):
+        logger.debug("Testing for null keys")
+
+        # Test null keys
+        for ts in [table1, table2]:
+            t = ts._make_select()
+            key_columns = [ts.key_column]  # XXX
+
             q = t.select(*key_columns).where(or_(this[k] == None for k in key_columns))
             nulls = ts.database.query(q, list)
             if nulls:
                 raise ValueError(f"NULL values in one or more primary keys")
 
-        logger.debug("Done testing for null or duplicate keys")
 
     def _collect_stats(self, i, table):
         logger.info(f"Collecting stats for table #{i}")
@@ -145,7 +178,9 @@ class JoinDifferBase(TableDiffer):
 
         res = db.query(table._make_select().select(**col_exprs), tuple)
         res = dict(zip([f"table{i}_{n}" for n in col_exprs], map(json_friendly_value, res)))
-        self.stats.update(res)
+        for k, v in res.items():
+            self.stats[k] = self.stats.get(k, 0) + (v or 0)
+        # self.stats.update(res)
 
         logger.debug(f"Done collecting stats for table #{i}")
 
@@ -221,7 +256,7 @@ class JoinDiffer(JoinDifferBase):
                     partial(self._count_diff_per_column, db, diff_rows, cols1, is_diff_cols)
                 ):
 
-            logger.info("Querying for different rows")
+            logger.debug("Querying for different rows")
             for is_xa, is_xb, *x in db.query(diff_rows, list):
                 if is_xa and is_xb:
                     # Can't both be exclusive, meaning a pk is NULL
@@ -238,7 +273,7 @@ class JoinDiffer(JoinDifferBase):
         is_diff_cols_counts = db.query(diff_rows.select(sum_(this[c]) for c in is_diff_cols), tuple)
         diff_counts = {}
         for name, count in safezip(cols, is_diff_cols_counts):
-            diff_counts[name] = count
+            diff_counts[name] = diff_counts.get(name, 0) + (count or 0)
         self.stats['diff_counts'] = diff_counts
 
     def _sample_and_count_exclusive(self, db, diff_rows, a_cols, b_cols):
@@ -247,6 +282,7 @@ class JoinDiffer(JoinDifferBase):
             exclusive_rows_query = diff_rows.where((this.is_exclusive_a==1) | (this.is_exclusive_b==1))
         else:
             exclusive_rows_query = diff_rows.where(this.is_exclusive_a | this.is_exclusive_b)
+
         with temp_table(db, exclusive_rows_query) as exclusive_rows:
             self.stats["exclusive_count"] = db.query(exclusive_rows.count(), int)
             sample_rows = db.query(sample(exclusive_rows.select(*this[list(a_cols)], *this[list(b_cols)])), list)

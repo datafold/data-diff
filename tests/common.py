@@ -45,6 +45,7 @@ if os.environ.get("LOG_LEVEL", False):
 logging.basicConfig(level=level)
 logging.getLogger("hashdiff_tables").setLevel(level)
 logging.getLogger("joindiff_tables").setLevel(level)
+logging.getLogger("diff_tables").setLevel(level)
 logging.getLogger("table_segment").setLevel(level)
 logging.getLogger("database").setLevel(level)
 

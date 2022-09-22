@@ -103,6 +103,10 @@ class TableSegment:
 
     def choose_checkpoints(self, count: int) -> List[DbKey]:
         "Suggests a bunch of evenly-spaced checkpoints to split by (not including start, end)"
+
+        if self.max_key - self.min_key <= count:
+            count = 1
+
         assert self.is_bounded
         if isinstance(self.min_key, ArithString):
             assert type(self.min_key) is type(self.max_key)
