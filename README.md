@@ -6,7 +6,7 @@ also find us in `#tools-data-diff` in the [Locally Optimistic Slack][slack].**
 
 **We'd love to hear about your experience using data-diff, and learn more your use cases. [Reach out to product team share any product feedback or feature requests!](https://calendly.com/jp-toor/customer-interview-oss)**
 
-**We are hiring!** Datafold is looking for developers with a deep understanding of databases and solid Python knowledge to join our open-source data-diff project and help us make it even better. [**Apply here!**](https://docs.google.com/forms/d/e/1FAIpQLScEa5tc9CM0uNsb3WigqRFq92OZENkThM04nIs7ZVl_bwsGMw/viewform)
+💸💸**Looking for paid contributors!**💸💸 If you're up for making money working on awesome open-source tools, we're looking for developers with a deep understanding of databases and solid Python knowledge. [**Apply here!**](https://docs.google.com/forms/d/e/1FAIpQLScEa5tc9CM0uNsb3WigqRFq92OZENkThM04nIs7ZVl_bwsGMw/viewform)
 
 ----
 
