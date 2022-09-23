@@ -15,7 +15,9 @@ alphanums = " -" + string.digits + string.ascii_uppercase + "_" + string.ascii_l
 
 def safezip(*args):
     "zip but makes sure all sequences are the same length"
-    assert len(set(map(len, args))) == 1
+    lens = list(map(len, args))
+    if len(set(lens)) != 1:
+        raise ValueError(f"Mismatching lengths in arguments to safezip: {lens}")
     return zip(*args)
 
 

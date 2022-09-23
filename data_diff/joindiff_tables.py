@@ -113,15 +113,17 @@ class JoinDifferBase(TableDiffer):
                 yield from self._diff_segments(None, table1, table2, None)
             else:
                 yield from self._bisect_and_diff_tables(table1, table2)
+            logger.info("Diffing complete")
 
     def _diff_segments(self, ti: ThreadedYielder, table1: TableSegment, table2: TableSegment, max_rows: int, level=0, segment_index=None, segment_count=None):
         assert table1.database is table2.database
 
-        logger.info(
-            ". " * level + f"Diffing segment {segment_index}/{segment_count}, "
-            f"key-range: {table1.min_key}..{table2.max_key}, "
-            f"size <= {max_rows}"
-        )
+        if segment_index or table1.min_key or max_rows:
+            logger.info(
+                ". " * level + f"Diffing segment {segment_index}/{segment_count}, "
+                f"key-range: {table1.min_key}..{table2.max_key}, "
+                f"size <= {max_rows}"
+            )
 
         with self._run_in_background(
                 partial(self._collect_stats, 1, table1),
@@ -129,8 +131,6 @@ class JoinDifferBase(TableDiffer):
                 partial(self._test_null_keys, table1, table2),
             ):
             yield from self._outer_join(table1, table2)
-
-        logger.info("Diffing complete")
 
     def _test_duplicate_keys(self, table1, table2):
         logger.debug("Testing for duplicate keys")

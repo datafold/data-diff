@@ -45,6 +45,19 @@ def _get_schema(pair):
     return db.query_table_schema(table_path)
 
 
+def diff_schemas(schema1, schema2, columns):
+    logging.info('Diffing schemas...')
+    attrs = 'name', 'type', 'datetime_precision', 'numeric_precision', 'numeric_scale'
+    for c in columns:
+        if c is None:   # Skip for convenience
+            continue
+        diffs = []
+        for attr, v1, v2 in safezip(attrs, schema1[c], schema2[c]):
+            if v1 != v2:
+                diffs.append(f"{attr}:({v1} != {v2})")
+        if diffs:
+            logging.warning(f"Schema mismatch in column '{c}': {', '.join(diffs)}")
+
 class MyHelpFormatter(click.HelpFormatter):
     def __init__(self, **kwargs):
         super().__init__(self, **kwargs)
@@ -300,7 +313,11 @@ def _main(
 
     columns = tuple(expanded_columns - {key_column, update_column})
 
-    logging.info(f"Diffing columns: key={key_column} update={update_column} extra={columns}")
+    if db1 is db2:
+        diff_schemas(schema1, schema2, (key_column, update_column,) + columns)
+
+
+    logging.info(f"Diffing using columns: key={key_column} update={update_column} extra={columns}")
 
     segments = [
         TableSegment(db, table_path, key_column, update_column, columns, **options)._with_raw_schema(raw_schema)
