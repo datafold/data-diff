@@ -2,11 +2,9 @@
 
 """
 
-from collections import defaultdict
 from decimal import Decimal
 from functools import partial
 import logging
-from contextlib import contextmanager
 from typing import Dict, List
 
 from runtype import dataclass
@@ -49,30 +47,17 @@ class Stats:
 def sample(table):
     return table.order_by(Random()).limit(10)
 
-
-@contextmanager
-def temp_table(db: Database, expr: Expr):
-    c = Compiler(db)
-
-    name = c.new_unique_table_name("temp_table")
-
+def create_temp_table(c: Compiler, name: str, expr: Expr):
+    db = c.database
     if isinstance(db, BigQuery):
         name = f"{db.default_schema}.{name}"
-        db.query(f"create table {c.quote(name)} OPTIONS(expiration_timestamp=TIMESTAMP_ADD(CURRENT_TIMESTAMP(), INTERVAL 1 DAY)) as {c.compile(expr)}", None)
+        return f"create table {c.quote(name)} OPTIONS(expiration_timestamp=TIMESTAMP_ADD(CURRENT_TIMESTAMP(), INTERVAL 1 DAY)) as {c.compile(expr)}"
     elif isinstance(db, Presto):
-        db.query(f"create table {c.quote(name)} as {c.compile(expr)}", None)
+        return f"create table {c.quote(name)} as {c.compile(expr)}"
     elif isinstance(db, Oracle):
-        db.query(f"create global temporary table {c.quote(name)} as {c.compile(expr)}", None)
+        return f"create global temporary table {c.quote(name)} as {c.compile(expr)}"
     else:
-        db.query(f"create temporary table {c.quote(name)} as {c.compile(expr)}", None)
-
-    try:
-        yield table(name, schema=expr.source_table.schema)
-    finally:
-        if isinstance(db, (BigQuery, Presto)):
-            # Only drops if create table succeeded (meaning, the table didn't already exist)
-            # And if the table won't delete itself
-            db.query(f"drop table {c.quote(name)}", None)
+        return f"create temporary table {c.quote(name)} as {c.compile(expr)}"
 
 
 def _slice_tuple(t, *sizes):
@@ -95,6 +80,7 @@ class JoinDifferBase(TableDiffer):
 
     stats: dict = {}
     validate_unique_key: bool = True
+    sample_exclusive_rows: bool = True
 
     def _diff_tables(self, table1: TableSegment, table2: TableSegment) -> DiffResult:
         db = table1.database
@@ -277,13 +263,30 @@ class JoinDiffer(JoinDifferBase):
         self.stats['diff_counts'] = diff_counts
 
     def _sample_and_count_exclusive(self, db, diff_rows, a_cols, b_cols):
-        logger.info("Counting and sampling exclusive rows")
         if isinstance(db, Oracle):
             exclusive_rows_query = diff_rows.where((this.is_exclusive_a==1) | (this.is_exclusive_b==1))
         else:
             exclusive_rows_query = diff_rows.where(this.is_exclusive_a | this.is_exclusive_b)
 
-        with temp_table(db, exclusive_rows_query) as exclusive_rows:
-            self.stats["exclusive_count"] = db.query(exclusive_rows.count(), int)
-            sample_rows = db.query(sample(exclusive_rows.select(*this[list(a_cols)], *this[list(b_cols)])), list)
-            self.stats["exclusive_sample"] = sample_rows
+        if not self.sample_exclusive_rows:
+            logger.info("Counting exclusive rows")
+            self.stats["exclusive_count"] = db.query(exclusive_rows_query.count(), int)
+            return
+
+        logger.info("Counting and sampling exclusive rows")
+        def exclusive_rows(expr):
+            c = Compiler(db)
+            name = c.new_unique_table_name("temp_table")
+            yield create_temp_table(c, name, expr)
+            exclusive_rows = table(name, schema=expr.source_table.schema)
+
+            count = yield exclusive_rows.count()
+            self.stats["exclusive_count"] = self.stats.get('exclusive_count', 0) + count[0][0]
+            sample_rows = yield sample(exclusive_rows.select(*this[list(a_cols)], *this[list(b_cols)]))
+            self.stats["exclusive_sample"] = self.stats.get('exclusive_sample', []) + sample_rows
+
+            # Only drops if create table succeeded (meaning, the table didn't already exist)
+            yield f"drop table {c.quote(name)}"
+
+        # Run as a sequence of thread-local queries (compiled into a ThreadLocalInterpreter)
+        db.query(exclusive_rows(exclusive_rows_query), None)

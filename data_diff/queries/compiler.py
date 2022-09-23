@@ -1,7 +1,7 @@
 import random
 from abc import ABC, abstractmethod
 from datetime import datetime
-from typing import Any, Dict, Sequence, List
+from typing import Any, Dict, Generator, Sequence, List, Union
 
 from runtype import dataclass
 
@@ -32,7 +32,7 @@ class Compiler:
             return f"WITH {subq}\n{res}"
         return res
 
-    def _compile(self, elem) -> str:
+    def _compile(self, elem) -> Union[str, 'ThreadLocalInterpreter']:
         if elem is None:
             return "NULL"
         elif isinstance(elem, Compilable):
@@ -47,6 +47,8 @@ class Compiler:
             return f"b'{elem.decode()}'"
         elif isinstance(elem, ArithString):
             return f"'{elem}'"
+        elif isinstance(elem, Generator):
+            return ThreadLocalInterpreter(self, elem)
         assert False, elem
 
     def new_unique_name(self, prefix="tmp"):
@@ -65,3 +67,23 @@ class Compilable(ABC):
     @abstractmethod
     def compile(self, c: Compiler) -> str:
         ...
+
+
+class ThreadLocalInterpreter:
+    """An interpeter used to execute a sequence of queries within the same thread.
+
+    Useful for cursor-sensitive operations, such as creating a temporary table.
+    """
+
+    def __init__(self, compiler: Compiler, gen: Generator):
+        self.gen = gen
+        self.compiler = compiler
+
+    def interpret(self):
+        q = next(self.gen)
+        while True:
+            try:
+                res = yield self.compiler.compile(q)
+                q = self.gen.send(res)
+            except StopIteration:
+                break

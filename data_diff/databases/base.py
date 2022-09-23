@@ -1,7 +1,7 @@
 import math
 import sys
 import logging
-from typing import Dict, Tuple, Optional, Sequence, Type, List
+from typing import Dict, Generator, Tuple, Optional, Sequence, Type, List, Union
 from functools import wraps
 from concurrent.futures import ThreadPoolExecutor
 import threading
@@ -27,7 +27,7 @@ from .database_types import (
     DbPath,
 )
 
-from data_diff.queries import Expr, Compiler, table, Select, SKIP
+from data_diff.queries import Expr, Compiler,  table, Select, SKIP, ThreadLocalInterpreter
 
 logger = logging.getLogger("database")
 
@@ -66,11 +66,29 @@ def _one(seq):
     return x
 
 
-def _query_conn(conn, sql_code: str) -> list:
+def _query_cursor(c, sql_code):
+    try:
+        c.execute(sql_code)
+        if sql_code.lower().startswith("select"):
+            return c.fetchall()
+    except Exception as e:
+        logger.exception(e)
+        raise
+
+def _query_conn(conn, sql_code: Union[str, ThreadLocalInterpreter]) -> list:
     c = conn.cursor()
-    c.execute(sql_code)
-    if sql_code.lower().startswith("select"):
-        return c.fetchall()
+
+    if isinstance(sql_code, ThreadLocalInterpreter):
+        g = sql_code.interpret()
+        q = next(g)
+        while True:
+            res = _query_cursor(c, q)
+            try:
+                q = g.send(res)
+            except StopIteration:
+                break
+    else:
+        return _query_cursor(c, sql_code)
 
 
 class Database(AbstractDatabase):
@@ -312,11 +330,11 @@ class ThreadedDatabase(Database):
         except ModuleNotFoundError as e:
             self._init_error = e
 
-    def _query(self, sql_code: str):
+    def _query(self, sql_code: Union[str, ThreadLocalInterpreter]):
         r = self._queue.submit(self._query_in_worker, sql_code)
         return r.result()
 
-    def _query_in_worker(self, sql_code: str):
+    def _query_in_worker(self, sql_code: Union[str, ThreadLocalInterpreter]):
         "This method runs in a worker thread"
         if self._init_error:
             raise self._init_error
