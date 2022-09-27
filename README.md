@@ -49,8 +49,8 @@ rows across two database tables.
   your SLO of e.g. 99.999% data integrity, and alert your team when data is
   missing.
 * **Debugging complex data pipelines.** Data can get lost in pipelines that
-  may span a half-dozen systems. It's extremely difficult to track down where a 
-  row got lost without verifying each intermediate datastore.
+  may span a half-dozen systems. **data-diff** helps you efficiently track down 
+  where a row got lost without needing to individually inspect intermediate datastores. 
 * **Detecting hard deletes for an `updated_at`-based pipeline**. If you're
   copying data to your warehouse based on an `updated_at`-style column, **data-diff** 
   can find any hard-deletes that you may have missed.
