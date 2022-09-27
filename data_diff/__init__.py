@@ -1,23 +1,28 @@
 from typing import Tuple, Iterator, Optional, Union
 
-from .databases.connect import connect_to_uri
-from .diff_tables import (
-    TableSegment,
-    TableDiffer,
-    DEFAULT_BISECTION_THRESHOLD,
-    DEFAULT_BISECTION_FACTOR,
-    DbKey,
-    DbTime,
-    DbPath,
-)
+from .tracking import disable_tracking
+from .databases.connect import connect
+from .databases.database_types import DbKey, DbTime, DbPath
+from .diff_tables import TableSegment, TableDiffer, DEFAULT_BISECTION_THRESHOLD, DEFAULT_BISECTION_FACTOR
 
 
 def connect_to_table(
-    db_uri: str, table_name: Union[DbPath, str], key_column: str = "id", thread_count: Optional[int] = 1, **kwargs
+    db_info: Union[str, dict],
+    table_name: Union[DbPath, str],
+    key_column: str = "id",
+    thread_count: Optional[int] = 1,
+    **kwargs,
 ):
-    """Connects to a URI and creates a TableSegment instance"""
+    """Connects to the given database, and creates a TableSegment instance
 
-    db = connect_to_uri(db_uri, thread_count=thread_count)
+    Parameters:
+        db_info: Either a URI string, or a dict of connection options.
+        table_name: Name of the table as a string, or a tuple that signifies the path.
+        key_column: Name of the key column
+        thread_count: Number of threads for this connection (only if using a threadpooled implementation)
+    """
+
+    db = connect(db_info, thread_count=thread_count)
 
     if isinstance(table_name, str):
         table_name = db.parse_table_name(table_name)
@@ -30,11 +35,11 @@ def diff_tables(
     table2: TableSegment,
     *,
     # Name of the key column, which uniquely identifies each row (usually id)
-    key_column: str = "id",
+    key_column: str = None,
     # Name of updated column, which signals that rows changed (usually updated_at or last_update)
     update_column: str = None,
     # Extra columns to compare
-    extra_columns: Tuple[str, ...] = (),
+    extra_columns: Tuple[str, ...] = None,
     # Start/end key_column values, used to restrict the segment
     min_key: DbKey = None,
     max_key: DbKey = None,
@@ -62,8 +67,9 @@ def diff_tables(
 
     """
     tables = [table1, table2]
-    segments = [
-        t.new(
+    override_attrs = {
+        k: v
+        for k, v in dict(
             key_column=key_column,
             update_column=update_column,
             extra_columns=extra_columns,
@@ -71,9 +77,11 @@ def diff_tables(
             max_key=max_key,
             min_update=min_update,
             max_update=max_update,
-        )
-        for t in tables
-    ]
+        ).items()
+        if v is not None
+    }
+
+    segments = [t.new(**override_attrs) for t in tables] if override_attrs else tables
 
     differ = TableDiffer(
         bisection_factor=bisection_factor,

@@ -1,16 +1,23 @@
+import logging
+import decimal
 from abc import ABC, abstractmethod
-from typing import Sequence, Optional, Tuple, Union, Dict
+from typing import Sequence, Optional, Tuple, Union, Dict, List
 from datetime import datetime
 
 from runtype import dataclass
 
+from data_diff.utils import ArithAlphanumeric, ArithUUID, CaseAwareMapping, CaseInsensitiveDict, CaseSensitiveDict
+
+
 DbPath = Tuple[str, ...]
-DbKey = Union[int, str, bytes]
+DbKey = Union[int, str, bytes, ArithUUID, ArithAlphanumeric]
 DbTime = datetime
+
+logger = logging.getLogger("databases")
 
 
 class ColType:
-    pass
+    supported = True
 
 
 @dataclass
@@ -49,12 +56,70 @@ class Float(FractionalType):
     pass
 
 
-class Decimal(FractionalType):
+class IKey(ABC):
+    "Interface for ColType, for using a column as a key in data-diff"
+    python_type: type
+
+    def make_value(self, value):
+        return self.python_type(value)
+
+
+class Decimal(FractionalType, IKey):  # Snowflake may use Decimal as a key
+    @property
+    def python_type(self) -> type:
+        if self.precision == 0:
+            return int
+        return decimal.Decimal
+
+
+class StringType(ColType):
+    pass
+
+
+class ColType_UUID(ColType, IKey):
+    python_type = ArithUUID
+
+
+class ColType_Alphanum(ColType, IKey):
+    python_type = ArithAlphanumeric
+
+
+class Native_UUID(ColType_UUID):
+    pass
+
+
+class String_UUID(StringType, ColType_UUID):
     pass
 
 
 @dataclass
-class Integer(NumericType):
+class String_Alphanum(StringType, ColType_Alphanum):
+    length: int
+
+    @staticmethod
+    def test_value(value: str) -> bool:
+        try:
+            ArithAlphanumeric(value)
+            return True
+        except ValueError:
+            return False
+
+    def make_value(self, value):
+        if len(value) != self.length:
+            raise ValueError(f"Expected alphanumeric value of length {self.length}, but got '{value}'.")
+        return self.python_type(value, max_len=self.length)
+
+
+@dataclass
+class Text(StringType):
+    supported = False
+
+
+@dataclass
+class Integer(NumericType, IKey):
+    precision: int = 0
+    python_type: type = int
+
     def __post_init__(self):
         assert self.precision == 0
 
@@ -63,8 +128,12 @@ class Integer(NumericType):
 class UnknownColType(ColType):
     text: str
 
+    supported = False
+
 
 class AbstractDatabase(ABC):
+    name: str
+
     @abstractmethod
     def quote(self, s: str):
         "Quote SQL name (implementation specific)"
@@ -76,8 +145,28 @@ class AbstractDatabase(ABC):
         ...
 
     @abstractmethod
+    def concat(self, l: List[str]) -> str:
+        "Provide SQL for concatenating a bunch of column into a string"
+        ...
+
+    @abstractmethod
+    def is_distinct_from(self, a: str, b: str) -> str:
+        "Provide SQL for a comparison where NULL = NULL is true"
+        ...
+
+    @abstractmethod
+    def timestamp_value(self, t: DbTime) -> str:
+        "Provide SQL for the given timestamp value"
+        ...
+
+    @abstractmethod
     def md5_to_int(self, s: str) -> str:
         "Provide SQL for computing md5 and returning an int"
+        ...
+
+    @abstractmethod
+    def offset_limit(self, offset: Optional[int] = None, limit: Optional[int] = None):
+        "Provide SQL fragment for limit and offset inside a select"
         ...
 
     @abstractmethod
@@ -91,9 +180,24 @@ class AbstractDatabase(ABC):
         ...
 
     @abstractmethod
-    def query_table_schema(self, path: DbPath, filter_columns: Optional[Sequence[str]] = None) -> Dict[str, ColType]:
-        "Query the table for its schema for table in 'path', and return {column: type}"
+    def query_table_schema(self, path: DbPath) -> Dict[str, tuple]:
+        """Query the table for its schema for table in 'path', and return {column: tuple}
+        where the tuple is (table_name, col_name, type_repr, datetime_precision?, numeric_precision?, numeric_scale?)
+        """
         ...
+
+    @abstractmethod
+    def _process_table_schema(
+        self, path: DbPath, raw_schema: Dict[str, tuple], filter_columns: Sequence[str], where: str = None
+    ):
+        """Process the result of query_table_schema().
+
+        Done in a separate step, to minimize the amount of processed columns.
+        Needed because processing each column may:
+        * throw errors and warnings
+        * query the database to sample values
+
+        """
 
     @abstractmethod
     def parse_table_name(self, name: str) -> DbPath:
@@ -138,6 +242,14 @@ class AbstractDatabase(ABC):
         """
         ...
 
+    @abstractmethod
+    def normalize_uuid(self, value: str, coltype: ColType_UUID) -> str:
+        """Creates an SQL expression, that converts 'value' to a normalized uuid.
+
+        i.e. just makes sure there is no trailing whitespace.
+        """
+        ...
+
     def normalize_value_by_type(self, value: str, coltype: ColType) -> str:
         """Creates an SQL expression, that converts 'value' to a normalized representation.
 
@@ -158,50 +270,25 @@ class AbstractDatabase(ABC):
             return self.normalize_timestamp(value, coltype)
         elif isinstance(coltype, FractionalType):
             return self.normalize_number(value, coltype)
+        elif isinstance(coltype, ColType_UUID):
+            return self.normalize_uuid(value, coltype)
         return self.to_string(value)
 
+    @abstractmethod
     def _normalize_table_path(self, path: DbPath) -> DbPath:
         ...
 
 
-class Schema(ABC):
-    @abstractmethod
-    def get_key(self, key: str) -> str:
-        ...
-
-    @abstractmethod
-    def __getitem__(self, key: str) -> ColType:
-        ...
-
-    @abstractmethod
-    def __setitem__(self, key: str, value):
-        ...
-
-    @abstractmethod
-    def __contains__(self, key: str) -> bool:
-        ...
+Schema = CaseAwareMapping
 
 
-class Schema_CaseSensitive(dict, Schema):
-    def get_key(self, key):
-        return key
+def create_schema(db: AbstractDatabase, table_path: DbPath, schema: dict, case_sensitive: bool) -> CaseAwareMapping:
+    logger.debug(f"[{db.name}] Schema = {schema}")
 
+    if case_sensitive:
+        return CaseSensitiveDict(schema)
 
-class Schema_CaseInsensitive(Schema):
-    def __init__(self, initial):
-        self._dict = {k.lower(): (k, v) for k, v in dict(initial).items()}
-
-    def get_key(self, key: str) -> str:
-        return self._dict[key.lower()][0]
-
-    def __getitem__(self, key: str) -> ColType:
-        return self._dict[key.lower()][1]
-
-    def __setitem__(self, key: str, value):
-        k = key.lower()
-        if k in self._dict:
-            key = self._dict[k][0]
-        self._dict[k] = key, value
-
-    def __contains__(self, key):
-        return key.lower() in self._dict
+    if len({k.lower() for k in schema}) < len(schema):
+        logger.warning(f'Ambiguous schema for {db}:{".".join(table_path)} | Columns = {", ".join(list(schema))}')
+        logger.warning("We recommend to disable case-insensitivity (set --case-sensitive).")
+    return CaseInsensitiveDict(schema)

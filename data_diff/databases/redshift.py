@@ -3,8 +3,8 @@ from .postgresql import PostgreSQL, MD5_HEXDIGITS, CHECKSUM_HEXDIGITS, TIMESTAMP
 
 
 class Redshift(PostgreSQL):
-    NUMERIC_TYPES = {
-        **PostgreSQL.NUMERIC_TYPES,
+    TYPE_CLASSES = {
+        **PostgreSQL.TYPE_CLASSES,
         "double": Float,
         "real": Float,
     }
@@ -34,6 +34,10 @@ class Redshift(PostgreSQL):
 
     def normalize_number(self, value: str, coltype: FractionalType) -> str:
         return self.to_string(f"{value}::decimal(38,{coltype.precision})")
+
+    def concat(self, l: List[str]) -> str:
+        joined_exprs = " || ".join(l)
+        return f"({joined_exprs})"
 
     def select_table_schema(self, path: DbPath) -> str:
         schema, table = self._normalize_table_path(path)

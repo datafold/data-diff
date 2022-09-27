@@ -1,4 +1,4 @@
-from typing import Type, List, Optional
+from typing import Type, List, Optional, Union
 from itertools import zip_longest
 import dsnparse
 
@@ -12,6 +12,10 @@ from .snowflake import Snowflake
 from .bigquery import BigQuery
 from .redshift import Redshift
 from .presto import Presto
+from .databricks import Databricks
+from .trino import Trino
+from .clickhouse import Clickhouse
+from .vertica import Vertica
 
 
 @dataclass
@@ -77,6 +81,14 @@ MATCH_URI_PATH = {
     ),
     "presto": MatchUriPath(Presto, ["catalog", "schema"], help_str="presto://<user>@<host>/<catalog>/<schema>"),
     "bigquery": MatchUriPath(BigQuery, ["dataset"], help_str="bigquery://<project>/<dataset>"),
+    "databricks": MatchUriPath(
+        Databricks,
+        ["catalog", "schema"],
+        help_str="databricks://:access_token@server_name/http_path",
+    ),
+    "trino": MatchUriPath(Trino, ["catalog", "schema"], help_str="trino://<user>@<host>/<catalog>/<schema>"),
+    "clickhouse": MatchUriPath(Clickhouse, ["database?"], help_str="clickhouse://<user>:<pass>@<host>/<database>"),
+    "vertica": MatchUriPath(Vertica, ["database?"], help_str="vertica://<user>:<pass>@<host>/<database>"),
 }
 
 
@@ -100,6 +112,10 @@ def connect_to_uri(db_uri: str, thread_count: Optional[int] = 1) -> Database:
     - bigquery
     - redshift
     - presto
+    - databricks
+    - trino
+    - clickhouse
+    - vertica
     """
 
     dsn = dsnparse.parse(db_uri)
@@ -113,12 +129,85 @@ def connect_to_uri(db_uri: str, thread_count: Optional[int] = 1) -> Database:
         raise NotImplementedError(f"Scheme {scheme} currently not supported")
 
     cls = matcher.database_cls
-    kw = matcher.match_path(dsn)
 
-    if scheme == "bigquery":
-        return cls(dsn.host, **kw)
+    if scheme == "databricks":
+        assert not dsn.user
+        kw = {}
+        kw["access_token"] = dsn.password
+        kw["http_path"] = dsn.path
+        kw["server_hostname"] = dsn.host
+        kw.update(dsn.query)
+    else:
+        kw = matcher.match_path(dsn)
+
+        if scheme == "bigquery":
+            kw["project"] = dsn.host
+            return cls(**kw)
+
+        if scheme == "snowflake":
+            kw["account"] = dsn.host
+            assert not dsn.port
+            kw["user"] = dsn.user
+            kw["password"] = dsn.password
+        else:
+            kw["host"] = dsn.host
+            kw["port"] = dsn.port
+            kw["user"] = dsn.user
+            if dsn.password:
+                kw["password"] = dsn.password
+
+    kw = {k: v for k, v in kw.items() if v is not None}
 
     if issubclass(cls, ThreadedDatabase):
-        return cls(dsn.host, dsn.port, dsn.user, dsn.password, thread_count=thread_count, **kw)
+        return cls(thread_count=thread_count, **kw)
 
-    return cls(dsn.host, dsn.port, dsn.user, dsn.password, **kw)
+    return cls(**kw)
+
+
+def connect_with_dict(d, thread_count):
+    d = dict(d)
+    driver = d.pop("driver")
+    try:
+        matcher = MATCH_URI_PATH[driver]
+    except KeyError:
+        raise NotImplementedError(f"Driver {driver} currently not supported")
+
+    cls = matcher.database_cls
+    if issubclass(cls, ThreadedDatabase):
+        return cls(thread_count=thread_count, **d)
+
+    return cls(**d)
+
+
+def connect(db_conf: Union[str, dict], thread_count: Optional[int] = 1) -> Database:
+    """Connect to a database using the given database configuration.
+
+    Configuration can be given either as a URI string, or as a dict of {option: value}.
+
+    thread_count determines the max number of worker threads per database,
+    if relevant. None means no limit.
+
+    Parameters:
+        db_conf (str | dict): The configuration for the database to connect. URI or dict.
+        thread_count (int, optional): Size of the threadpool. Ignored by cloud databases. (default: 1)
+
+    Note: For non-cloud databases, a low thread-pool size may be a performance bottleneck.
+
+    Supported drivers:
+    - postgresql
+    - mysql
+    - oracle
+    - snowflake
+    - bigquery
+    - redshift
+    - presto
+    - databricks
+    - trino
+    - clickhouse
+    - vertica
+    """
+    if isinstance(db_conf, str):
+        return connect_to_uri(db_conf, thread_count)
+    elif isinstance(db_conf, dict):
+        return connect_with_dict(db_conf, thread_count)
+    raise TypeError(f"db configuration must be a URI string or a dictionary. Instead got '{db_conf}'.")

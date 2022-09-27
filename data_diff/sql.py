@@ -1,12 +1,14 @@
 """Provides classes for a pseudo-SQL AST that compiles to SQL code
 """
 
-from typing import List, Sequence, Union, Tuple, Optional
+from typing import Sequence, Union, Optional
 from datetime import datetime
 
 from runtype import dataclass
 
-from .databases.database_types import AbstractDatabase, DbPath, DbKey, DbTime
+from .utils import join_iter, ArithString
+
+from .databases.database_types import AbstractDatabase, DbPath
 
 
 class Sql:
@@ -14,6 +16,8 @@ class Sql:
 
 
 SqlOrStr = Union[Sql, str]
+
+CONCAT_SEP = "|"
 
 
 @dataclass
@@ -62,9 +66,11 @@ class Value(Sql):
 
     def compile(self, c: Compiler):
         if isinstance(self.value, bytes):
-            return "b'%s'" % self.value.decode()
+            return f"b'{self.value.decode()}'"
         elif isinstance(self.value, str):
-            return "'%s'" % self.value
+            return f"'{self.value}'" % self.value
+        elif isinstance(self.value, ArithString):
+            return f"'{self.value}'"
         return str(self.value)
 
 
@@ -75,6 +81,7 @@ class Select(Sql):
     where: Sequence[SqlOrStr] = None
     order_by: Sequence[SqlOrStr] = None
     group_by: Sequence[SqlOrStr] = None
+    limit: int = None
 
     def compile(self, parent_c: Compiler):
         c = parent_c.replace(in_select=True)
@@ -92,6 +99,9 @@ class Select(Sql):
 
         if self.order_by:
             select += " ORDER BY " + ", ".join(map(c.compile, self.order_by))
+
+        if self.limit is not None:
+            select += " " + c.database.offset_limit(0, self.limit)
 
         if parent_c.in_select:
             select = "(%s)" % select
@@ -115,10 +125,12 @@ class Checksum(Sql):
 
     def compile(self, c: Compiler):
         if len(self.exprs) > 1:
-            compiled_exprs = ", ".join(map(c.compile, self.exprs))
-            expr = f"concat({compiled_exprs})"
+            compiled_exprs = [f"coalesce({c.compile(expr)}, '<null>')" for expr in self.exprs]
+            separated = list(join_iter(f"'|'", compiled_exprs))
+            expr = c.database.concat(separated)
         else:
-            expr ,= self.exprs
+            # No need to coalesce - safe to assume that key cannot be null
+            (expr,) = self.exprs
             expr = c.compile(expr)
         md5 = c.database.md5_to_int(expr)
         return f"sum({md5})"
@@ -173,10 +185,9 @@ class Max(Sql):
 @dataclass
 class Time(Sql):
     time: datetime
-    column: Optional[SqlOrStr] = None
 
     def compile(self, c: Compiler):
-        return "'%s'" % self.time.isoformat()
+        return c.database.timestamp_value(self.time)
 
 
 @dataclass

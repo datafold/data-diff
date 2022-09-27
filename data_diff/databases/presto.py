@@ -1,13 +1,13 @@
 import re
 
+from ..utils import match_regexps
+
 from .database_types import *
-from .base import Database, import_helper, _query_conn
+from .base import Database, import_helper
 from .base import (
     MD5_HEXDIGITS,
     CHECKSUM_HEXDIGITS,
     TIMESTAMP_PRECISION_POS,
-    DEFAULT_DATETIME_PRECISION,
-    DEFAULT_NUMERIC_PRECISION,
 )
 
 
@@ -20,24 +20,36 @@ def import_presto():
 
 class Presto(Database):
     default_schema = "public"
-    DATETIME_TYPES = {
+    TYPE_CLASSES = {
+        # Timestamps
         "timestamp with time zone": TimestampTZ,
         "timestamp without time zone": Timestamp,
         "timestamp": Timestamp,
-        # "datetime": Datetime,
-    }
-    NUMERIC_TYPES = {
+        # Numbers
         "integer": Integer,
+        "bigint": Integer,
         "real": Float,
         "double": Float,
+        # Text
+        "varchar": Text,
     }
     ROUNDS_ON_PREC_LOSS = True
 
-    def __init__(self, host, port, user, password, *, catalog, schema=None, **kw):
+    def __init__(self, **kw):
         prestodb = import_presto()
-        self.args = dict(host=host, user=user, catalog=catalog, schema=schema, **kw)
 
-        self._conn = prestodb.dbapi.connect(**self.args)
+        if kw.get("schema"):
+            self.default_schema = kw.get("schema")
+
+        if kw.get("auth") == "basic":  # if auth=basic, add basic authenticator for Presto
+            kw["auth"] = prestodb.auth.BasicAuthentication(kw.pop("user"), kw.pop("password"))
+
+        if "cert" in kw:  # if a certificate was specified in URI, verify session with cert
+            cert = kw.pop("cert")
+            self._conn = prestodb.dbapi.connect(**kw)
+            self._conn._http_session.verify = cert
+        else:
+            self._conn = prestodb.dbapi.connect(**kw)
 
     def quote(self, s: str):
         return f'"{s}"'
@@ -77,44 +89,38 @@ class Presto(Database):
         schema, table = self._normalize_table_path(path)
 
         return (
-            f"SELECT column_name, data_type, 3 as datetime_precision, 3 as numeric_precision FROM INFORMATION_SCHEMA.COLUMNS "
+            "SELECT column_name, data_type, 3 as datetime_precision, 3 as numeric_precision "
+            "FROM INFORMATION_SCHEMA.COLUMNS "
             f"WHERE table_name = '{table}' AND table_schema = '{schema}'"
         )
 
     def _parse_type(
-        self, col_name: str, type_repr: str, datetime_precision: int = None, numeric_precision: int = None
+        self,
+        table_path: DbPath,
+        col_name: str,
+        type_repr: str,
+        datetime_precision: int = None,
+        numeric_precision: int = None,
     ) -> ColType:
         timestamp_regexps = {
             r"timestamp\((\d)\)": Timestamp,
             r"timestamp\((\d)\) with time zone": TimestampTZ,
         }
-        for regexp, t_cls in timestamp_regexps.items():
-            m = re.match(regexp + "$", type_repr)
-            if m:
-                datetime_precision = int(m.group(1))
-                return t_cls(
-                    precision=datetime_precision if datetime_precision is not None else DEFAULT_DATETIME_PRECISION,
-                    rounds=self.ROUNDS_ON_PREC_LOSS,
-                )
+        for m, t_cls in match_regexps(timestamp_regexps, type_repr):
+            precision = int(m.group(1))
+            return t_cls(precision=precision, rounds=self.ROUNDS_ON_PREC_LOSS)
 
         number_regexps = {r"decimal\((\d+),(\d+)\)": Decimal}
-        for regexp, n_cls in number_regexps.items():
-            m = re.match(regexp + "$", type_repr)
-            if m:
-                prec, scale = map(int, m.groups())
-                return n_cls(scale)
+        for m, n_cls in match_regexps(number_regexps, type_repr):
+            _prec, scale = map(int, m.groups())
+            return n_cls(scale)
 
-        n_cls = self.NUMERIC_TYPES.get(type_repr)
-        if n_cls:
-            if issubclass(n_cls, Integer):
-                assert numeric_precision is not None
-                return n_cls(0)
+        string_regexps = {r"varchar\((\d+)\)": Text, r"char\((\d+)\)": Text}
+        for m, n_cls in match_regexps(string_regexps, type_repr):
+            return n_cls()
 
-            assert issubclass(n_cls, Float)
-            return n_cls(
-                precision=self._convert_db_precision_to_digits(
-                    numeric_precision if numeric_precision is not None else DEFAULT_NUMERIC_PRECISION
-                )
-            )
+        return super()._parse_type(table_path, col_name, type_repr, datetime_precision, numeric_precision)
 
-        return UnknownColType(type_repr)
+    def normalize_uuid(self, value: str, coltype: ColType_UUID) -> str:
+        # Trim doesn't work on CHAR type
+        return f"TRIM(CAST({value} AS VARCHAR))"

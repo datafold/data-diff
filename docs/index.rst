@@ -4,6 +4,7 @@
    :hidden:
 
    python-api
+   new-database-driver-guide
 
 Introduction
 ------------
@@ -65,14 +66,12 @@ How to use from Python
 Resources
 ---------
 
-- Git: `<https://github.com/datafold/data-diff>`_
-
--  Reference
-
-   -  :doc:`python-api`
-
--  Tutorials
-
-   -  TODO
+- Source code (git): `<https://github.com/datafold/data-diff>`_
+- API Reference
+   - :doc:`python-api`
+- Guides
+   - :doc:`new-database-driver-guide`
+- Tutorials
+   - TODO
 
 

@@ -32,15 +32,23 @@ jobs:
         uses: actions/setup-python@v3
         with:
           python-version: ${{ matrix.python-version }}
-      
+
       - name: Build the stack
-        run: docker-compose up -d mysql
+        run: docker-compose up -d mysql postgres presto trino clickhouse vertica
 
       - name: Install Poetry
         run: pip install poetry
 
       - name: Install package
-        run: poetry install
-      
+        run: "poetry install"
+
       - name: Run unit tests
-        run: poetry run python3 -m unittest
+        env:
+            DATADIFF_SNOWFLAKE_URI: '${{ secrets.DATADIFF_SNOWFLAKE_URI }}'
+            DATADIFF_PRESTO_URI: '${{ secrets.DATADIFF_PRESTO_URI }}'
+            DATADIFF_TRINO_URI: '${{ secrets.DATADIFF_TRINO_URI }}'
+            DATADIFF_CLICKHOUSE_URI: 'clickhouse://clickhouse:Password1@localhost:9000/clickhouse'
+            DATADIFF_VERTICA_URI: 'vertica://vertica:Password1@localhost:5433/vertica'
+        run: |
+          chmod +x tests/waiting_for_stack_up.sh
+          ./tests/waiting_for_stack_up.sh && poetry run unittest-parallel -j 16

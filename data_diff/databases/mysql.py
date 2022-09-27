@@ -11,26 +11,31 @@ def import_mysql():
 
 
 class MySQL(ThreadedDatabase):
-    DATETIME_TYPES = {
+    TYPE_CLASSES = {
+        # Dates
         "datetime": Datetime,
         "timestamp": Timestamp,
-    }
-    NUMERIC_TYPES = {
+        # Numbers
         "double": Float,
         "float": Float,
         "decimal": Decimal,
         "int": Integer,
+        "bigint": Integer,
+        # Text
+        "varchar": Text,
+        "char": Text,
+        "varbinary": Text,
+        "binary": Text,
     }
     ROUNDS_ON_PREC_LOSS = True
 
-    def __init__(self, host, port, user, password, *, database, thread_count, **kw):
-        args = dict(host=host, port=port, database=database, user=user, password=password, **kw)
-        self._args = {k: v for k, v in args.items() if v is not None}
+    def __init__(self, *, thread_count, **kw):
+        self._args = kw
 
         super().__init__(thread_count=thread_count)
 
         # In MySQL schema and database are synonymous
-        self.default_schema = database
+        self.default_schema = kw["database"]
 
     def create_connection(self):
         mysql = import_mysql()
@@ -41,8 +46,7 @@ class MySQL(ThreadedDatabase):
                 raise ConnectError("Bad user name or password") from e
             elif e.errno == mysql.errorcode.ER_BAD_DB_ERROR:
                 raise ConnectError("Database does not exist") from e
-            else:
-                raise ConnectError(*e.args) from e
+            raise ConnectError(*e.args) from e
 
     def quote(self, s: str):
         return f"`{s}`"
@@ -62,3 +66,9 @@ class MySQL(ThreadedDatabase):
 
     def normalize_number(self, value: str, coltype: FractionalType) -> str:
         return self.to_string(f"cast({value} as decimal(38, {coltype.precision}))")
+
+    def normalize_uuid(self, value: str, coltype: ColType_UUID) -> str:
+        return f"TRIM(CAST({value} AS char))"
+
+    def is_distinct_from(self, a: str, b: str) -> str:
+        return f"not ({a} <=> {b})"

@@ -1,8 +1,8 @@
 [tool.poetry]
 name = "data-diff"
-version = "0.2.1"
+version = "0.2.6"
 description = "Command-line tool and Python library to efficiently diff rows across two different databases."
-authors = ["Erez Shinnan <erezshin@gmail.com>", "Simon Eskildsen <simon@sirupsen.com>"]
+authors = ["Datafold <data-diff@datafold.com>"]
 license = "MIT"
 readme = "README.md"
 repository = "https://github.com/datafold/data-diff"
@@ -27,30 +27,42 @@ python = "^3.7"
 runtype = "^0.2.6"
 dsnparse = "*"
 click = "^8.1"
-rich = "^10.16.2"
-
-
-preql = { version = "^0.2.15", optional = true }
-psycopg2 = { version = "*", optional = true }
-mysql-connector-python = { version = "*", optional = true}
-snowflake-connector-python = { version = "*", optional = true }
+rich = "*"
+toml = "^0.10.2"
+mysql-connector-python = {version="*", optional=true}
+psycopg2 = {version="*", optional=true}
+snowflake-connector-python = {version="^2.7.2", optional=true}
+cryptography = {version="*", optional=true}
+trino = {version="^0.314.0", optional=true}
+presto-python-client = {version="*", optional=true}
+clickhouse-driver = {version="*", optional=true}
 
 [tool.poetry.dev-dependencies]
-mysql-connector-python = "*"
-preql = "^0.2.15"
-snowflake-connector-python = "*"
-psycopg2 = "*"
-presto-python-client = "*"
 parameterized = "*"
+unittest-parallel = "*"
+preql = "^0.2.19"
+mysql-connector-python = "*"
+psycopg2 = "*"
+snowflake-connector-python = "^2.7.2"
+cryptography = "*"
+trino = "^0.314.0"
+presto-python-client = "*"
+clickhouse-driver = "*"
+vertica-python = "*"
+# databricks-sql-connector = "*"
 
 [tool.poetry.extras]
 # When adding, update also: README + dev deps just above
 preql = ["preql"]
 mysql = ["mysql-connector-python"]
 postgresql = ["psycopg2"]
-snowflake = ["snowflake-connector-python"]
+snowflake = ["snowflake-connector-python", "cryptography"]
 presto = ["presto-python-client"]
 oracle = ["cx_Oracle"]
+# databricks = ["databricks-sql-connector"]
+trino = ["trino"]
+clickhouse = ["clickhouse-driver"]
+vertica = ["vertica-python"]
 
 [build-system]
 requires = ["poetry-core>=1.0.0"]

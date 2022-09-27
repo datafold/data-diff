@@ -2,6 +2,8 @@ from .database_types import *
 from .base import ThreadedDatabase, import_helper, ConnectError
 from .base import MD5_HEXDIGITS, CHECKSUM_HEXDIGITS, _CHECKSUM_BITSIZE, TIMESTAMP_PRECISION_POS
 
+SESSION_TIME_ZONE = None  # Changed by the tests
+
 
 @import_helper("postgresql")
 def import_postgresql():
@@ -13,26 +15,32 @@ def import_postgresql():
 
 
 class PostgreSQL(ThreadedDatabase):
-    DATETIME_TYPES = {
+    TYPE_CLASSES = {
+        # Timestamps
         "timestamp with time zone": TimestampTZ,
         "timestamp without time zone": Timestamp,
         "timestamp": Timestamp,
-        # "datetime": Datetime,
-    }
-    NUMERIC_TYPES = {
+        # Numbers
         "double precision": Float,
         "real": Float,
         "decimal": Decimal,
         "integer": Integer,
         "numeric": Decimal,
         "bigint": Integer,
+        # Text
+        "character": Text,
+        "character varying": Text,
+        "varchar": Text,
+        "text": Text,
+        # UUID
+        "uuid": Native_UUID,
     }
     ROUNDS_ON_PREC_LOSS = True
 
     default_schema = "public"
 
-    def __init__(self, host, port, user, password, *, database, thread_count, **kw):
-        self.args = dict(host=host, port=port, database=database, user=user, password=password, **kw)
+    def __init__(self, *, thread_count, **kw):
+        self._args = kw
 
         super().__init__(thread_count=thread_count)
 
@@ -41,10 +49,14 @@ class PostgreSQL(ThreadedDatabase):
         return super()._convert_db_precision_to_digits(p) - 2
 
     def create_connection(self):
+        if not self._args:
+            self._args["host"] = None  # psycopg2 requires 1+ arguments
+
         pg = import_postgresql()
         try:
-            c = pg.connect(**self.args)
-            # c.cursor().execute("SET TIME ZONE 'UTC'")
+            c = pg.connect(**self._args)
+            if SESSION_TIME_ZONE:
+                c.cursor().execute(f"SET TIME ZONE '{SESSION_TIME_ZONE}'")
             return c
         except pg.OperationalError as e:
             raise ConnectError(*e.args) from e

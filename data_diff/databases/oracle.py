@@ -1,8 +1,10 @@
-import re
+from ..utils import match_regexps
 
 from .database_types import *
 from .base import ThreadedDatabase, import_helper, ConnectError, QueryError
-from .base import DEFAULT_DATETIME_PRECISION, DEFAULT_NUMERIC_PRECISION
+from .base import TIMESTAMP_PRECISION_POS
+
+SESSION_TIME_ZONE = None  # Changed by the tests
 
 
 @import_helper("oracle")
@@ -13,20 +15,31 @@ def import_oracle():
 
 
 class Oracle(ThreadedDatabase):
+    TYPE_CLASSES: Dict[str, type] = {
+        "NUMBER": Decimal,
+        "FLOAT": Float,
+        # Text
+        "CHAR": Text,
+        "NCHAR": Text,
+        "NVARCHAR2": Text,
+        "VARCHAR2": Text,
+    }
     ROUNDS_ON_PREC_LOSS = True
 
-    def __init__(self, host, port, user, password, *, database, thread_count, **kw):
-        assert not port
-        self.kwargs = dict(user=user, password=password, dsn="%s/%s" % (host, database), **kw)
+    def __init__(self, *, host, database, thread_count, **kw):
+        self.kwargs = dict(dsn=f"{host}/{database}" if database else host, **kw)
 
-        self.default_schema = user
+        self.default_schema = kw.get("user")
 
         super().__init__(thread_count=thread_count)
 
     def create_connection(self):
         self._oracle = import_oracle()
         try:
-            return self._oracle.connect(**self.kwargs)
+            c = self._oracle.connect(**self.kwargs)
+            if SESSION_TIME_ZONE:
+                c.cursor().execute(f"ALTER SESSION SET TIME_ZONE = '{SESSION_TIME_ZONE}'")
+            return c
         except Exception as e:
             raise ConnectError(*e.args) from e
 
@@ -56,7 +69,14 @@ class Oracle(ThreadedDatabase):
         )
 
     def normalize_timestamp(self, value: str, coltype: TemporalType) -> str:
-        return f"to_char(cast({value} as timestamp({coltype.precision})), 'YYYY-MM-DD HH24:MI:SS.FF6')"
+        if coltype.rounds:
+            return f"to_char(cast({value} as timestamp({coltype.precision})), 'YYYY-MM-DD HH24:MI:SS.FF6')"
+
+        if coltype.precision > 0:
+            truncated = f"to_char({value}, 'YYYY-MM-DD HH24:MI:SS.FF{coltype.precision}')"
+        else:
+            truncated = f"to_char({value}, 'YYYY-MM-DD HH24:MI:SS.')"
+        return f"RPAD({truncated}, {TIMESTAMP_PRECISION_POS+6}, '0')"
 
     def normalize_number(self, value: str, coltype: FractionalType) -> str:
         # FM999.9990
@@ -67,40 +87,40 @@ class Oracle(ThreadedDatabase):
 
     def _parse_type(
         self,
+        table_path: DbPath,
         col_name: str,
         type_repr: str,
         datetime_precision: int = None,
         numeric_precision: int = None,
         numeric_scale: int = None,
     ) -> ColType:
-        """ """
         regexps = {
             r"TIMESTAMP\((\d)\) WITH LOCAL TIME ZONE": Timestamp,
             r"TIMESTAMP\((\d)\) WITH TIME ZONE": TimestampTZ,
+            r"TIMESTAMP\((\d)\)": Timestamp,
         }
-        for regexp, t_cls in regexps.items():
-            m = re.match(regexp + "$", type_repr)
-            if m:
-                datetime_precision = int(m.group(1))
-                return t_cls(
-                    precision=datetime_precision if datetime_precision is not None else DEFAULT_DATETIME_PRECISION,
-                    rounds=self.ROUNDS_ON_PREC_LOSS,
-                )
 
-        n_cls = {
-            "NUMBER": Decimal,
-            "FLOAT": Float,
-        }.get(type_repr, None)
-        if n_cls:
-            if issubclass(n_cls, Decimal):
-                assert numeric_scale is not None, (type_repr, numeric_precision, numeric_scale)
-                return n_cls(precision=numeric_scale)
+        for m, t_cls in match_regexps(regexps, type_repr):
+            precision = int(m.group(1))
+            return t_cls(precision=precision, rounds=self.ROUNDS_ON_PREC_LOSS)
 
-            assert issubclass(n_cls, Float)
-            return n_cls(
-                precision=self._convert_db_precision_to_digits(
-                    numeric_precision if numeric_precision is not None else DEFAULT_NUMERIC_PRECISION
-                )
-            )
+        return super()._parse_type(
+            table_path, col_name, type_repr, datetime_precision, numeric_precision, numeric_scale
+        )
 
-        return UnknownColType(type_repr)
+    def offset_limit(self, offset: Optional[int] = None, limit: Optional[int] = None):
+        if offset:
+            raise NotImplementedError("No support for OFFSET in query")
+
+        return f"FETCH NEXT {limit} ROWS ONLY"
+
+    def concat(self, l: List[str]) -> str:
+        joined_exprs = " || ".join(l)
+        return f"({joined_exprs})"
+
+    def timestamp_value(self, t: DbTime) -> str:
+        return "timestamp '%s'" % t.isoformat(" ")
+
+    def normalize_uuid(self, value: str, coltype: ColType_UUID) -> str:
+        # Cast is necessary for correct MD5 (trimming not enough)
+        return f"CAST(TRIM({value}) AS VARCHAR(36))"

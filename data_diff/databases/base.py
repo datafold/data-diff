@@ -1,14 +1,29 @@
 import math
 import sys
 import logging
-from typing import Dict, Tuple, Optional, Sequence
-from functools import lru_cache, wraps
+from typing import Dict, Tuple, Optional, Sequence, Type, List
+from functools import wraps
 from concurrent.futures import ThreadPoolExecutor
 import threading
 from abc import abstractmethod
 
-from .database_types import AbstractDatabase, ColType, Integer, Decimal, Float, UnknownColType
-from data_diff.sql import DbPath, SqlOrStr, Compiler, Explain, Select
+from data_diff.utils import is_uuid, safezip
+from .database_types import (
+    AbstractDatabase,
+    ColType,
+    Integer,
+    Decimal,
+    Float,
+    ColType_UUID,
+    Native_UUID,
+    String_Alphanum,
+    String_UUID,
+    TemporalType,
+    UnknownColType,
+    Text,
+    DbTime,
+)
+from data_diff.sql import DbPath, SqlOrStr, Compiler, Explain, Select, TableName
 
 logger = logging.getLogger("database")
 
@@ -59,10 +74,10 @@ class Database(AbstractDatabase):
 
     Used for providing connection code and implementation specific SQL utilities.
 
-    Instanciated using :meth:`~data_diff.connect_to_uri`
+    Instanciated using :meth:`~data_diff.connect`
     """
 
-    DATETIME_TYPES: Dict[str, type] = {}
+    TYPE_CLASSES: Dict[str, type] = {}
     default_schema: str = None
 
     @property
@@ -77,7 +92,7 @@ class Database(AbstractDatabase):
         logger.debug("Running SQL (%s): %s", type(self).__name__, sql_code)
         if getattr(self, "_interactive", False) and isinstance(sql_ast, Select):
             explained_sql = compiler.compile(Explain(sql_ast))
-            logger.info(f"EXPLAIN for SQL SELECT")
+            logger.info("EXPLAIN for SQL SELECT")
             logger.info(self._query(explained_sql))
             answer = input("Continue? [y/n] ")
             if not answer.lower() in ["y", "yes"]:
@@ -93,7 +108,7 @@ class Database(AbstractDatabase):
             assert len(res) == 1, (sql_code, res)
             return res[0]
         elif getattr(res_type, "__origin__", None) is list and len(res_type.__args__) == 1:
-            if res_type.__args__ == (int,):
+            if res_type.__args__ in ((int,), (str,)):
                 return [_one(row) for row in res]
             elif res_type.__args__ == (Tuple,):
                 return [tuple(row) for row in res]
@@ -109,8 +124,12 @@ class Database(AbstractDatabase):
         # See: https://en.wikipedia.org/wiki/Single-precision_floating-point_format
         return math.floor(math.log(2**p, 10))
 
+    def _parse_type_repr(self, type_repr: str) -> Optional[Type[ColType]]:
+        return self.TYPE_CLASSES.get(type_repr)
+
     def _parse_type(
         self,
+        table_path: DbPath,
         col_name: str,
         type_repr: str,
         datetime_precision: int = None,
@@ -119,28 +138,25 @@ class Database(AbstractDatabase):
     ) -> ColType:
         """ """
 
-        cls = self.DATETIME_TYPES.get(type_repr)
-        if cls:
+        cls = self._parse_type_repr(type_repr)
+        if not cls:
+            return UnknownColType(type_repr)
+
+        if issubclass(cls, TemporalType):
             return cls(
                 precision=datetime_precision if datetime_precision is not None else DEFAULT_DATETIME_PRECISION,
                 rounds=self.ROUNDS_ON_PREC_LOSS,
             )
 
-        cls = self.NUMERIC_TYPES.get(type_repr)
-        if cls:
-            if issubclass(cls, Integer):
-                # Some DBs have a constant numeric_scale, so they don't report it.
-                # We fill in the constant, so we need to ignore it for integers.
-                return cls(precision=0)
+        elif issubclass(cls, Integer):
+            return cls()
 
-            elif issubclass(cls, Decimal):
-                if numeric_scale is None:
-                    raise ValueError(
-                        f"{self.name}: Unexpected numeric_scale is NULL, for column {col_name} of type {type_repr}."
-                    )
-                return cls(precision=numeric_scale)
+        elif issubclass(cls, Decimal):
+            if numeric_scale is None:
+                numeric_scale = 0  # Needed for Oracle.
+            return cls(precision=numeric_scale)
 
-            assert issubclass(cls, Float)
+        elif issubclass(cls, Float):
             # assert numeric_scale is None
             return cls(
                 precision=self._convert_db_precision_to_digits(
@@ -148,27 +164,88 @@ class Database(AbstractDatabase):
                 )
             )
 
-        return UnknownColType(type_repr)
+        elif issubclass(cls, (Text, Native_UUID)):
+            return cls()
+
+        raise TypeError(f"Parsing {type_repr} returned an unknown type '{cls}'.")
 
     def select_table_schema(self, path: DbPath) -> str:
         schema, table = self._normalize_table_path(path)
 
         return (
-            "SELECT column_name, data_type, datetime_precision, numeric_precision, numeric_scale FROM information_schema.columns "
+            "SELECT column_name, data_type, datetime_precision, numeric_precision, numeric_scale "
+            "FROM information_schema.columns "
             f"WHERE table_name = '{table}' AND table_schema = '{schema}'"
         )
 
-    def query_table_schema(self, path: DbPath, filter_columns: Optional[Sequence[str]] = None) -> Dict[str, ColType]:
+    def query_table_schema(self, path: DbPath) -> Dict[str, tuple]:
         rows = self.query(self.select_table_schema(path), list)
         if not rows:
             raise RuntimeError(f"{self.name}: Table '{'.'.join(path)}' does not exist, or has no columns")
 
-        if filter_columns is not None:
-            accept = {i.lower() for i in filter_columns}
-            rows = [r for r in rows if r[0].lower() in accept]
+        d = {r[0]: r for r in rows}
+        assert len(d) == len(rows)
+        return d
+
+    def _process_table_schema(
+        self, path: DbPath, raw_schema: Dict[str, tuple], filter_columns: Sequence[str], where: str = None
+    ):
+        accept = {i.lower() for i in filter_columns}
+
+        col_dict = {row[0]: self._parse_type(path, *row) for name, row in raw_schema.items() if name.lower() in accept}
+
+        self._refine_coltypes(path, col_dict, where)
 
         # Return a dict of form {name: type} after normalization
-        return {row[0]: self._parse_type(*row) for row in rows}
+        return col_dict
+
+    def _refine_coltypes(self, table_path: DbPath, col_dict: Dict[str, ColType], where: str = None):
+        """Refine the types in the column dict, by querying the database for a sample of their values
+
+        'where' restricts the rows to be sampled.
+        """
+
+        text_columns = [k for k, v in col_dict.items() if isinstance(v, Text)]
+        if not text_columns:
+            return
+
+        fields = [self.normalize_uuid(c, String_UUID()) for c in text_columns]
+        samples_by_row = self.query(Select(fields, TableName(table_path), limit=16, where=where and [where]), list)
+        if not samples_by_row:
+            raise ValueError(f"Table {table_path} is empty.")
+
+        samples_by_col = list(zip(*samples_by_row))
+
+        for col_name, samples in safezip(text_columns, samples_by_col):
+            uuid_samples = [s for s in samples if s and is_uuid(s)]
+
+            if uuid_samples:
+                if len(uuid_samples) != len(samples):
+                    logger.warning(
+                        f"Mixed UUID/Non-UUID values detected in column {'.'.join(table_path)}.{col_name}, disabling UUID support."
+                    )
+                else:
+                    assert col_name in col_dict
+                    col_dict[col_name] = String_UUID()
+                    continue
+
+            alphanum_samples = [s for s in samples if s and String_Alphanum.test_value(s)]
+            if alphanum_samples:
+                if len(alphanum_samples) != len(samples):
+                    logger.warning(
+                        f"Mixed Alphanum/Non-Alphanum values detected in column {'.'.join(table_path)}.{col_name}, disabling Alphanum support."
+                    )
+                else:
+                    assert col_name in col_dict
+                    lens = set(map(len, alphanum_samples))
+                    if len(lens) > 1:
+                        logger.warning(
+                            f"Mixed Alphanum lengths detected in column {'.'.join(table_path)}.{col_name}, disabling Alphanum support."
+                        )
+                    else:
+                        (length,) = lens
+                        col_dict[col_name] = String_Alphanum(length=length)
+                        continue
 
     # @lru_cache()
     # def get_table_schema(self, path: DbPath) -> Dict[str, ColType]:
@@ -186,6 +263,28 @@ class Database(AbstractDatabase):
     def parse_table_name(self, name: str) -> DbPath:
         return parse_table_name(name)
 
+    def offset_limit(self, offset: Optional[int] = None, limit: Optional[int] = None):
+        if offset:
+            raise NotImplementedError("No support for OFFSET in query")
+
+        return f"LIMIT {limit}"
+
+    def concat(self, l: List[str]) -> str:
+        assert len(l) > 1
+        joined_exprs = ", ".join(l)
+        return f"concat({joined_exprs})"
+
+    def is_distinct_from(self, a: str, b: str) -> str:
+        return f"{a} is distinct from {b}"
+
+    def timestamp_value(self, t: DbTime) -> str:
+        return f"'{t.isoformat()}'"
+
+    def normalize_uuid(self, value: str, coltype: ColType_UUID) -> str:
+        if isinstance(coltype, String_UUID):
+            return f"TRIM({value})"
+        return self.to_string(value)
+
 
 class ThreadedDatabase(Database):
     """Access the database through singleton threads.
@@ -197,6 +296,7 @@ class ThreadedDatabase(Database):
         self._init_error = None
         self._queue = ThreadPoolExecutor(thread_count, initializer=self.set_conn)
         self.thread_local = threading.local()
+        logger.info(f"[{self.name}] Starting a threadpool, size={thread_count}.")
 
     def set_conn(self):
         assert not hasattr(self.thread_local, "conn")

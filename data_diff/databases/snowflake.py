@@ -1,60 +1,59 @@
 import logging
 
 from .database_types import *
-from .base import Database, import_helper, _query_conn, CHECKSUM_MASK
+from .base import ConnectError, Database, import_helper, _query_conn, CHECKSUM_MASK
 
 
 @import_helper("snowflake")
 def import_snowflake():
     import snowflake.connector
+    from cryptography.hazmat.primitives import serialization
+    from cryptography.hazmat.backends import default_backend
 
-    return snowflake
+    return snowflake, serialization, default_backend
 
 
 class Snowflake(Database):
-    DATETIME_TYPES = {
+    TYPE_CLASSES = {
+        # Timestamps
         "TIMESTAMP_NTZ": Timestamp,
         "TIMESTAMP_LTZ": Timestamp,
         "TIMESTAMP_TZ": TimestampTZ,
-    }
-    NUMERIC_TYPES = {
+        # Numbers
         "NUMBER": Decimal,
         "FLOAT": Float,
+        # Text
+        "TEXT": Text,
     }
     ROUNDS_ON_PREC_LOSS = False
 
-    def __init__(
-        self,
-        account: str,
-        _port: int,
-        user: str,
-        password: str,
-        *,
-        warehouse: str,
-        schema: str,
-        database: str,
-        role: str = None,
-        **kw,
-    ):
-        snowflake = import_snowflake()
+    def __init__(self, *, schema: str, **kw):
+        snowflake, serialization, default_backend = import_snowflake()
         logging.getLogger("snowflake.connector").setLevel(logging.WARNING)
 
-        # Got an error: snowflake.connector.network.RetryRequest: could not find io module state (interpreter shutdown?)
+        # Ignore the error: snowflake.connector.network.RetryRequest: could not find io module state
         # It's a known issue: https://github.com/snowflakedb/snowflake-connector-python/issues/145
-        # Found a quick solution in comments
         logging.getLogger("snowflake.connector.network").disabled = True
 
         assert '"' not in schema, "Schema name should not contain quotes!"
-        self._conn = snowflake.connector.connect(
-            user=user,
-            password=password,
-            account=account,
-            role=role,
-            database=database,
-            warehouse=warehouse,
-            schema=f'"{schema}"',
-            **kw,
-        )
+        # If a private key is used, read it from the specified path and pass it as "private_key" to the connector.
+        if "key" in kw:
+            with open(kw.get("key"), "rb") as key:
+                if "password" in kw:
+                    raise ConnectError("Cannot use password and key at the same time")
+                p_key = serialization.load_pem_private_key(
+                    key.read(),
+                    password=None,
+                    backend=default_backend(),
+                )
+
+            kw["private_key"] = p_key.private_bytes(
+                encoding=serialization.Encoding.DER,
+                format=serialization.PrivateFormat.PKCS8,
+                encryption_algorithm=serialization.NoEncryption(),
+            )
+
+        self._conn = snowflake.connector.connect(schema=f'"{schema}"', **kw)
 
         self.default_schema = schema
 
