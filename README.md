@@ -26,16 +26,16 @@ rows across two database tables.
   - [Common use-cases](#common-use-cases)
   - [Example Command and Output](#example-command-and-output)
   - [Supported Databases](#supported-databases)
-- [How to install](#how-to-install)
+- [**How to install**](#how-to-install)
   - [Install drivers](#install-drivers)
-- [How to use](#how-to-use)
+- [**How to use**](#how-to-use)
   - [How to use from the command-line](#how-to-use-from-the-command-line)
   - [How to use from Python](#how-to-use-from-python)
-- [Technical Explanation](#technical-explanation)
+- [**Technical Explanation**](#technical-explanation)
   - [Performance Considerations](#performance-considerations)
-- [Anonymous Tracking](#anonymous-tracking)
-- [Development Setup](#development-setup)
-- [License](#license)
+- [**Anonymous Tracking**](#anonymous-tracking)
+- [**Development Setup**](#development-setup)
+- [**License**](#license)
 
 # Introduction
 
@@ -48,12 +48,12 @@ rows across two database tables.
 * **Alerting and maintaining data integrity SLOs.** You can create and monitor
   your SLO of e.g. 99.999% data integrity, and alert your team when data is
   missing.
-* **Debugging complex data pipelines.** When data gets lost in pipelines that
-  may span a half-dozen systems, without verifying each intermediate datastore
-  it's extremely difficult to track down where a row got lost.
+* **Debugging complex data pipelines.** Data can get lost in pipelines that
+  may span a half-dozen systems. It's extremely difficult to track down where a 
+  row got lost without verifying each intermediate datastore.
 * **Detecting hard deletes for an `updated_at`-based pipeline**. If you're
-  copying data to your warehouse based on an `updated_at`-style column, then
-  you'll miss hard-deletes that **data-diff** can find for you.
+  copying data to your warehouse based on an `updated_at`-style column, **data-diff** 
+  can find any hard-deletes that you may have missed.
 * **Make your replication self-healing.** You can use **data-diff** to
   self-heal by using the diff output to write/update rows in the target
   database.
