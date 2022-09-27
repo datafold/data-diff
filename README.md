@@ -22,8 +22,7 @@ rows across two database tables.
 
 ## Table of Contents
 
-- [**data-diff**](#data-diff)
-  - [Table of Contents](#table-of-contents)
+- [**Introduction**](#introduction)
   - [Common use-cases](#common-use-cases)
   - [Example Command and Output](#example-command-and-output)
   - [Supported Databases](#supported-databases)
@@ -37,6 +36,8 @@ rows across two database tables.
 - [Anonymous Tracking](#anonymous-tracking)
 - [Development Setup](#development-setup)
 - [License](#license)
+
+# Introduction
 
 ## Common use-cases
 
