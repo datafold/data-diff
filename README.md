@@ -5,32 +5,14 @@ you run into issues, please file an issue and we'll help you out ASAP! You can
 also find us in `#tools-data-diff` in the [Locally Optimistic Slack.][slack]**
 
 **data-diff** is a command-line tool and Python library to efficiently diff
-rows across two different databases.
+rows across two database tables.
 
-* ⇄  Verifies across [many different databases][dbs] (e.g. PostgreSQL -> Snowflake)
+* ⇄  Verifies across [many different databases][dbs] (e.g. PostgreSQL ⇄ Snowflake) or within a database
 * 🔍 Outputs [diff of rows](#example-command-and-output) in detail
 * 🚨 Simple CLI/API to create monitoring and alerts
 * 🔁 Bridges column types of different formats and levels of precision (e.g. Double ⇆ Float ⇆ Decimal)
 * 🔥 Verify 25M+ rows in <10s, and 1B+ rows in ~5min.
 * ♾️  Works for tables with 10s of billions of rows
-
-**data-diff** splits the table into smaller segments, then checksums each
-segment in both databases. When the checksums for a segment aren't equal, it
-will further divide that segment into yet smaller segments, checksumming those
-until it gets to the differing row(s). See [Technical Explanation][tech-explain] for more
-details.
-
-This approach has performance within an order of magnitude of `count(*)` when
-there are few/no changes, but is able to output each differing row! By pushing
-the compute into the databases, it's _much_ faster than querying for and
-comparing every row.
-
-![Performance for 100M rows](https://user-images.githubusercontent.com/97400/175182987-a3900d4e-c097-4732-a4e9-19a40fac8cdc.png)
-
-**†:** The implementation for downloading all rows that `data-diff` and
-`count(*)` is compared to is not optimal. It is a single Python multi-threaded
-process. The performance is fairly driver-specific, e.g. PostgreSQL's performs 10x
-better than MySQL.
 
 ## Table of Contents
 
@@ -220,6 +202,24 @@ Run `help(diff_tables)` or [read the docs](https://data-diff.readthedocs.io/en/l
 
 In this section we'll be doing a walk-through of exactly how **data-diff**
 works, and how to tune `--bisection-factor` and `--bisection-threshold`.
+
+**data-diff** splits the table into smaller segments, then checksums each
+segment in both databases. When the checksums for a segment aren't equal, it
+will further divide that segment into yet smaller segments, checksumming those
+until it gets to the differing row(s). See [Technical Explanation][tech-explain] for more
+details.
+
+This approach has performance within an order of magnitude of `count(*)` when
+there are few/no changes, but is able to output each differing row! By pushing
+the compute into the databases, it's _much_ faster than querying for and
+comparing every row.
+
+![Performance for 100M rows](https://user-images.githubusercontent.com/97400/175182987-a3900d4e-c097-4732-a4e9-19a40fac8cdc.png)
+
+**†:** The implementation for downloading all rows that `data-diff` and
+`count(*)` is compared to is not optimal. It is a single Python multi-threaded
+process. The performance is fairly driver-specific, e.g. PostgreSQL's performs 10x
+better than MySQL.
 
 Let's consider a scenario with an `orders` table with 1M rows. Fivetran is
 replicating it contionously from PostgreSQL to Snowflake:
