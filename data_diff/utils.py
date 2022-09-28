@@ -9,7 +9,7 @@ import operator
 import string
 import threading
 
-alphanums = string.digits + string.ascii_lowercase
+alphanums = " -" + string.digits + string.ascii_uppercase + "_" + string.ascii_lowercase
 
 
 def safezip(*args):
@@ -28,6 +28,11 @@ class ArithString:
     @classmethod
     def new(cls, *args, **kw):
         return cls(*args, **kw)
+
+    def range(self, other: "ArithString", count: int):
+        assert isinstance(other, ArithString)
+        checkpoints = split_space(self.int, other.int, count)
+        return [self.new(int=i) for i in checkpoints]
 
 
 class ArithUUID(UUID, ArithString):
@@ -49,70 +54,96 @@ class ArithUUID(UUID, ArithString):
         return NotImplemented
 
 
-def numberToBase(num, base):
+def numberToAlphanum(num: int, base: str = alphanums) -> str:
     digits = []
     while num > 0:
-        num, remainder = divmod(num, base)
+        num, remainder = divmod(num, len(base))
         digits.append(remainder)
-    return "".join(alphanums[i] for i in digits[::-1])
+    return "".join(base[i] for i in digits[::-1])
+
+
+def alphanumToNumber(alphanum: str, base: str) -> int:
+    num = 0
+    for c in alphanum:
+        num = num * len(base) + base.index(c)
+    return num
+
+
+def justify_alphanums(s1: str, s2: str):
+    max_len = max(len(s1), len(s2))
+    s1 = s1.ljust(max_len)
+    s2 = s2.ljust(max_len)
+    return s1, s2
+
+
+def alphanums_to_numbers(s1: str, s2: str):
+    s1, s2 = justify_alphanums(s1, s2)
+    n1 = alphanumToNumber(s1, alphanums)
+    n2 = alphanumToNumber(s2, alphanums)
+    return n1, n2
 
 
 class ArithAlphanumeric(ArithString):
-    def __init__(self, str: str = None, int: int = None, max_len=None):
-        if str is None:
-            str = numberToBase(int, len(alphanums))
-        else:
-            assert int is None
-
-        if max_len and len(str) > max_len:
+    def __init__(self, s: str, max_len=None):
+        if s is None:
+            raise ValueError("Alphanum string cannot be None")
+        if max_len and len(s) > max_len:
             raise ValueError(f"Length of alphanum value '{str}' is longer than the expected {max_len}")
 
-        self._str = str
+        for ch in s:
+            if ch not in alphanums:
+                raise ValueError(f"Unexpected character {ch} in alphanum string")
+
+        self._str = s
         self._max_len = max_len
 
-    @property
-    def int(self):
-        return int(self._str, len(alphanums))
+    # @property
+    # def int(self):
+    #     return alphanumToNumber(self._str, alphanums)
 
     def __str__(self):
         s = self._str
         if self._max_len:
-            s = s.rjust(self._max_len, "0")
+            s = s.rjust(self._max_len, alphanums[0])
         return s
 
     def __len__(self):
         return len(self._str)
 
-    def __int__(self):
-        return self.int
-
     def __repr__(self):
         return f'alphanum"{self._str}"'
 
-    def __add__(self, other: "Union[ArithAlphanumeric, int]"):
+    def __add__(self, other: "Union[ArithAlphanumeric, int]") -> "ArithAlphanumeric":
         if isinstance(other, int):
-            res = self.new(int=self.int + other)
-            if len(str(res)) != len(self):
-                raise ValueError("Overflow error when adding to alphanumeric")
-            return res
+            if other != 1:
+                raise NotImplementedError("not implemented for arbitrary numbers")
+            lastchar = self._str[-1] if self._str else alphanums[0]
+            s = self._str[:-1] + alphanums[alphanums.index(lastchar) + other]
+            return self.new(s)
         return NotImplemented
 
-    def __sub__(self, other: "Union[ArithAlphanumeric, int]"):
-        if isinstance(other, int):
-            return type(self)(int=self.int - other)
-        elif isinstance(other, ArithAlphanumeric):
-            return self.int - other.int
+    def range(self, other: "ArithAlphanumeric", count: int):
+        assert isinstance(other, ArithAlphanumeric)
+        n1, n2 = alphanums_to_numbers(self._str, other._str)
+        split = split_space(n1, n2, count)
+        return [self.new(numberToAlphanum(s)) for s in split]
+
+    def __sub__(self, other: "Union[ArithAlphanumeric, int]") -> float:
+        if isinstance(other, ArithAlphanumeric):
+            n1, n2 = alphanums_to_numbers(self._str, other._str)
+            return n1 - n2
+
         return NotImplemented
 
     def __ge__(self, other):
         if not isinstance(other, type(self)):
             return NotImplemented
-        return self.int >= other.int
+        return self._str >= other._str
 
     def __lt__(self, other):
         if not isinstance(other, type(self)):
             return NotImplemented
-        return self.int < other.int
+        return self._str < other._str
 
     def new(self, *args, **kw):
         return type(self)(*args, **kw, max_len=self._max_len)

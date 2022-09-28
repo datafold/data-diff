@@ -92,10 +92,7 @@ class String_UUID(StringType, ColType_UUID):
     pass
 
 
-@dataclass
 class String_Alphanum(StringType, ColType_Alphanum):
-    length: int
-
     @staticmethod
     def test_value(value: str) -> bool:
         try:
@@ -103,6 +100,18 @@ class String_Alphanum(StringType, ColType_Alphanum):
             return True
         except ValueError:
             return False
+
+    def make_value(self, value):
+        return self.python_type(value)
+
+
+class String_VaryingAlphanum(String_Alphanum):
+    pass
+
+
+@dataclass
+class String_FixedAlphanum(String_Alphanum):
+    length: int
 
     def make_value(self, value):
         if len(value) != self.length:
