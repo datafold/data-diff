@@ -23,7 +23,8 @@ class TableSegment:
         database (Database): Database instance. See :meth:`connect`
         table_path (:data:`DbPath`): Path to table in form of a tuple. e.g. `('my_dataset', 'table_name')`
         key_column (str): Name of the key column, which uniquely identifies each row (usually id)
-        update_column (str, optional): Name of updated column, which signals that rows changed (usually updated_at or last_update)
+        update_column (str, optional): Name of updated column, which signals that rows changed (usually updated_at or last_update).
+            Used by `min_update` and `max_update`.
         extra_columns (Tuple[str, ...], optional): Extra columns to compare
         min_key (:data:`DbKey`, optional): Lowest key_column value, used to restrict the segment
         max_key (:data:`DbKey`, optional): Highest key_column value, used to restrict the segment

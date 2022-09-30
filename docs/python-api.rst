@@ -5,6 +5,10 @@ Python API Reference
 
 .. autofunction:: connect
 
+.. autofunction:: connect_to_table
+
+.. autofunction:: diff_tables
+
 .. autoclass:: HashDiffer
     :members: __init__, diff_tables
 
@@ -17,6 +21,10 @@ Python API Reference
 .. autoclass:: data_diff.databases.database_types.AbstractDatabase
     :members:
 
+.. autoclass:: data_diff.databases.database_types.AbstractDialect
+    :members:
+
 .. autodata:: DbKey
 .. autodata:: DbTime
 .. autodata:: DbPath
+.. autoenum:: Algorithm

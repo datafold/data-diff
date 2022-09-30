@@ -76,7 +76,15 @@ def json_friendly_value(v):
 
 @dataclass
 class JoinDifferBase(TableDiffer):
-    """Finds the diff between two SQL tables using JOINs"""
+    """Finds the diff between two SQL tables using JOINs
+
+    The two tables must reside in the same database, and their primary keys must be unique and not null.
+
+    Parameters:
+        threaded (bool): Enable/disable threaded diffing. Needed to take advantage of database threads.
+        max_threadpool_size (int): Maximum size of each threadpool. ``None`` means auto. Only relevant when `threaded` is ``True``.
+                                   There may be many pools, so number of actual threads can be a lot higher.
+    """
 
     stats: dict = {}
     validate_unique_key: bool = True
