@@ -1,6 +1,7 @@
 """Provides classes for performing a table diff
 """
 
+import re
 import time
 from abc import ABC, abstractmethod
 from enum import Enum
@@ -26,6 +27,10 @@ class Algorithm(Enum):
 
 
 DiffResult = Iterator[Tuple[str, tuple]]  # Iterator[Tuple[Literal["+", "-"], tuple]]
+
+def truncate_error(error: str):
+    first_line = error.split('\n', 1)[0]
+    return re.sub("'(.*?)'", "'***'", first_line)
 
 
 @dataclass
@@ -110,7 +115,7 @@ class TableDiffer(ThreadBase, ABC):
                 table1_count = self.stats.get("table1_count")
                 table2_count = self.stats.get("table2_count")
                 diff_count = self.stats.get("diff_count")
-                err_message = str(error)[:20]  # Truncate possibly sensitive information.
+                err_message = truncate_error(repr(error))
                 event_json = create_end_event_json(
                     error is None,
                     runtime,
@@ -186,7 +191,7 @@ class TableDiffer(ThreadBase, ABC):
         try:
             return cls(mn), cls(mx) + 1
         except (TypeError, ValueError) as e:
-            raise type(e)(f"Cannot apply {key_type} to {mn}, {mx}.") from e
+            raise type(e)(f"Cannot apply {key_type} to '{mn}', '{mx}'.") from e
 
 
     def _bisect_and_diff_segments(self, ti: ThreadedYielder, table1: TableSegment, table2: TableSegment, level=0, max_rows=None):

@@ -307,7 +307,7 @@ def _main(
             m1 = None if any(match_like(c, schema1.keys())) else f"{db1}/{table1}"
             m2 = None if any(match_like(c, schema2.keys())) else f"{db2}/{table2}"
             not_matched = ", ".join(m for m in [m1, m2] if m)
-            raise ValueError(f"Column {c} not found in: {not_matched}")
+            raise ValueError(f"Column '{c}' not found in: {not_matched}")
 
         expanded_columns |= match
 
