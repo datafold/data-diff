@@ -14,7 +14,7 @@ from runtype import dataclass
 
 from .utils import safezip, run_as_daemon
 from .thread_utils import ThreadedYielder
-from .databases.database_types import IKey, NumericType, PrecisionType, StringType
+from .databases.database_types import IKey, NumericType, PrecisionType, StringType, ColType_UUID
 from .table_segment import TableSegment
 from .tracking import create_end_event_json, create_start_event_json, send_event_json, is_tracking_enabled
 
@@ -209,6 +209,10 @@ class TableDiffer:
                 table1._schema[c1] = col1.replace(precision=lowest.precision)
                 table2._schema[c2] = col2.replace(precision=lowest.precision)
 
+            elif isinstance(col1, ColType_UUID):
+                if not isinstance(col2, ColType_UUID):
+                    raise TypeError(f"Incompatible types for column '{c1}':  {col1} <-> {col2}")
+
             elif isinstance(col1, StringType):
                 if not isinstance(col2, StringType):
                     raise TypeError(f"Incompatible types for column '{c1}':  {col1} <-> {col2}")
@@ -222,7 +226,9 @@ class TableDiffer:
                         "If encoding/formatting differs between databases, it may result in false positives."
                     )
 
-    def _bisect_and_diff_tables(self, ti: ThreadedYielder, table1: TableSegment, table2: TableSegment, level=0, max_rows=None):
+    def _bisect_and_diff_tables(
+        self, ti: ThreadedYielder, table1: TableSegment, table2: TableSegment, level=0, max_rows=None
+    ):
         assert table1.is_bounded and table2.is_bounded
 
         if max_rows is None:
@@ -259,7 +265,16 @@ class TableDiffer:
         for i, (t1, t2) in enumerate(safezip(segmented1, segmented2)):
             ti.submit(self._diff_tables, ti, t1, t2, max_rows, level + 1, i + 1, len(segmented1), priority=level)
 
-    def _diff_tables(self, ti: ThreadedYielder, table1: TableSegment, table2: TableSegment, max_rows: int, level=0, segment_index=None, segment_count=None):
+    def _diff_tables(
+        self,
+        ti: ThreadedYielder,
+        table1: TableSegment,
+        table2: TableSegment,
+        max_rows: int,
+        level=0,
+        segment_index=None,
+        segment_count=None,
+    ):
         logger.info(
             ". " * level + f"Diffing segment {segment_index}/{segment_count}, "
             f"key-range: {table1.min_key}..{table2.max_key}, "
