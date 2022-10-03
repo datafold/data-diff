@@ -9,6 +9,8 @@ from typing import Optional
 import rich
 import click
 
+from data_diff.databases.base import parse_table_name
+
 from .utils import remove_password_from_url, safezip, match_like
 from .diff_tables import Algorithm
 from .hashdiff_tables import HashDiffer, DEFAULT_BISECTION_THRESHOLD, DEFAULT_BISECTION_FACTOR
@@ -104,6 +106,7 @@ click.Context.formatter_class = MyHelpFormatter
     help=f"Minimal bisection threshold. Below it, data-diff will download the data and compare it locally. Default={DEFAULT_BISECTION_THRESHOLD}.",
     metavar="NUM",
 )
+@click.option("-m", "--materialize", default=None, metavar="TABLE_NAME", help="Materialize the diff results into a new table in the database.")
 @click.option(
     "--min-age",
     default=None,
@@ -192,6 +195,7 @@ def _main(
     case_sensitive,
     json_output,
     where,
+    materialize,
     threads1=None,
     threads2=None,
     __conf__=None,
@@ -256,6 +260,7 @@ def _main(
         differ = JoinDiffer(
             threaded=threaded,
             max_threadpool_size=threads and threads * 2,
+            materialize_to_table = materialize and parse_table_name(materialize)
         )
     else:
         assert algorithm == Algorithm.HASHDIFF

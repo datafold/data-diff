@@ -68,7 +68,7 @@ class ThreadBase:
     @contextmanager
     def _run_in_background(self, *funcs):
         with ThreadPoolExecutor(max_workers=self.max_threadpool_size) as task_pool:
-            futures = [task_pool.submit(f) for f in funcs]
+            futures = [task_pool.submit(f) for f in funcs if f is not None]
             yield futures
             for f in futures:
                 f.result()
