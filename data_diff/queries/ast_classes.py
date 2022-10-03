@@ -40,6 +40,10 @@ class Alias(ExprNode):
     def compile(self, c: Compiler) -> str:
         return f"{c.compile(self.expr)} AS {c.quote(self.name)}"
 
+    @property
+    def type(self):
+        return self.expr.type
+
 
 def _drop_skips(exprs):
     return [e for e in exprs if e is not SKIP]
@@ -163,6 +167,10 @@ class Func(ExprNode):
         args = ", ".join(c.compile(e) for e in self.args)
         return f"{self.name}({args})"
 
+def _expr_type(e: Expr):
+    if isinstance(e, ExprNode):
+        return e.type
+    return type(e)
 
 @dataclass
 class CaseWhen(ExprNode):
@@ -175,30 +183,40 @@ class CaseWhen(ExprNode):
         else_ = (" " + c.compile(self.else_)) if self.else_ else ""
         return f"CASE {when_thens}{else_} END"
 
+    @property
+    def type(self):
+        when_types = {_expr_type(w) for _c,w in self.cases }
+        if self.else_:
+            when_types |= _expr_type(self.else_)
+        if len(when_types) > 1:
+            raise RuntimeError(f"Non-matching types in when: {when_types}")
+        t ,= when_types
+        return t
+
 
 class LazyOps:
     def __add__(self, other):
         return BinOp("+", [self, other])
 
     def __gt__(self, other):
-        return BinOp(">", [self, other])
+        return BinBoolOp(">", [self, other])
 
     def __ge__(self, other):
-        return BinOp(">=", [self, other])
+        return BinBoolOp(">=", [self, other])
 
     def __eq__(self, other):
         if other is None:
-            return BinOp("IS", [self, None])
-        return BinOp("=", [self, other])
+            return BinBoolOp("IS", [self, None])
+        return BinBoolOp("=", [self, other])
 
     def __lt__(self, other):
-        return BinOp("<", [self, other])
+        return BinBoolOp("<", [self, other])
 
     def __le__(self, other):
-        return BinOp("<=", [self, other])
+        return BinBoolOp("<=", [self, other])
 
     def __or__(self, other):
-        return BinOp("OR", [self, other])
+        return BinBoolOp("OR", [self, other])
 
     def is_distinct_from(self, other):
         return IsDistinctFrom(self, other)
@@ -211,6 +229,7 @@ class LazyOps:
 class IsDistinctFrom(ExprNode, LazyOps):
     a: Expr
     b: Expr
+    type = bool
 
     def compile(self, c: Compiler) -> str:
         return c.database.is_distinct_from(c.compile(self.a), c.compile(self.b))
@@ -227,6 +246,9 @@ class BinOp(ExprNode, LazyOps):
     def compile(self, c: Compiler) -> str:
         a, b = self.args
         return f"({c.compile(a)} {self.op} {c.compile(b)})"
+
+class BinBoolOp(BinOp):
+    type = bool
 
 
 @dataclass(eq=False, order=False)
@@ -299,8 +321,9 @@ class Join(ExprNode, ITable):
 
     @property
     def schema(self):
-        # TODO combine both tables
-        return None
+        assert self.columns # TODO Implement SELECT *
+        s = self.source_tables[0].schema    # XXX
+        return type(s)({c.name: c.type for c in self.columns})
 
     def on(self, *exprs):
         if len(exprs) == 1:
@@ -375,7 +398,7 @@ class Union(ExprNode, ITable):
 
 @dataclass
 class Select(ExprNode, ITable):
-    source_table: Expr = None
+    table: Expr = None
     columns: Sequence[Expr] = None
     where_exprs: Sequence[Expr] = None
     order_by_exprs: Sequence[Expr] = None
@@ -384,7 +407,14 @@ class Select(ExprNode, ITable):
 
     @property
     def schema(self):
-        return self.source_table.schema
+        s = self.table.schema
+        if s is None or self.columns is None:
+            return s
+        return type(s)({c.name: c.type for c in self.columns})
+
+    @property
+    def source_table(self):
+        return self
 
     def compile(self, parent_c: Compiler) -> str:
         c = parent_c.replace(in_select=True) #.add_table_context(self.table)
@@ -392,8 +422,8 @@ class Select(ExprNode, ITable):
         columns = ", ".join(map(c.compile, self.columns)) if self.columns else "*"
         select = f"SELECT {columns}"
 
-        if self.source_table:
-            select += " FROM " + c.compile(self.source_table)
+        if self.table:
+            select += " FROM " + c.compile(self.table)
 
         if self.where_exprs:
             select += " WHERE " + " AND ".join(map(c.compile, self.where_exprs))

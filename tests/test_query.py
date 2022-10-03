@@ -79,6 +79,7 @@ class TestQuery(unittest.TestCase):
         c = Compiler(MockDialect())
         schema = dict(id="int", comment="varchar")
 
+        # test table
         t = table("a", schema=CaseInsensitiveDict(schema))
         q = t.select(this.Id, t["COMMENT"])
         assert c.compile(q) == "SELECT id, comment FROM a"
@@ -86,6 +87,19 @@ class TestQuery(unittest.TestCase):
         t = table("a", schema=CaseSensitiveDict(schema))
         self.assertRaises(KeyError, t.__getitem__, "Id")
         self.assertRaises(KeyError, t.select, this.Id)
+
+        # test select
+        q = t.select(this.id)
+        self.assertRaises(KeyError, q.__getitem__, "comment")
+
+        # test join
+        s = CaseInsensitiveDict({'x': int, 'y': int})
+        a = table("a", schema=s)
+        b = table("b", schema=s)
+        keys = ["x", "y"]
+        j = outerjoin(a, b).on(a[k] == b[k] for k in keys).select(a['x'], b['y'], xsum=a['x'] + b['x'])
+        j['x'], j['y'], j['xsum']
+        self.assertRaises(KeyError, j.__getitem__, "ysum")
 
     def test_commutable_select(self):
         # c = Compiler(MockDialect())

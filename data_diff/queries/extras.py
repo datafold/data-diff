@@ -12,11 +12,12 @@ from .ast_classes import Expr, ExprNode, Concat
 @dataclass
 class NormalizeAsString(ExprNode):
     expr: ExprNode
-    type: ColType = None
+    expr_type: ColType = None
+    type = str
 
     def compile(self, c: Compiler) -> str:
         expr = c.compile(self.expr)
-        return c.database.normalize_value_by_type(expr, self.type or self.expr.type)
+        return c.database.normalize_value_by_type(expr, self.expr_type or self.expr.type)
 
 
 @dataclass
