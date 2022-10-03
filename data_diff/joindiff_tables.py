@@ -60,6 +60,32 @@ def create_temp_table(c: Compiler, name: str, expr: Expr):
         return f"create temporary table {c.quote(name)} as {c.compile(expr)}"
 
 
+def bool_to_int(x):
+    return if_(x, 1, 0)
+
+
+def _outerjoin(db: Database, a: ITable, b: ITable, keys1: List[str], keys2: List[str], select_fields: dict) -> ITable:
+    on = [a[k1] == b[k2] for k1, k2 in safezip(keys1, keys2)]
+
+    if isinstance(db, Oracle):
+        is_exclusive_a = and_(bool_to_int(b[k] == None) for k in keys2)
+        is_exclusive_b = and_(bool_to_int(a[k] == None) for k in keys1)
+    else:
+        is_exclusive_a = and_(b[k] == None for k in keys2)
+        is_exclusive_b = and_(a[k] == None for k in keys1)
+
+    if isinstance(db, MySQL):
+        # No outer join
+        l = leftjoin(a, b).on(*on).select(is_exclusive_a=is_exclusive_a, is_exclusive_b=False, **select_fields)
+        r = rightjoin(a, b).on(*on).select(is_exclusive_a=False, is_exclusive_b=is_exclusive_b, **select_fields)
+        return l.union(r)
+
+    return (
+        outerjoin(a, b).on(*on)
+        .select(is_exclusive_a=is_exclusive_a, is_exclusive_b=is_exclusive_b, **select_fields)
+    )
+
+
 def _slice_tuple(t, *sizes):
     i = 0
     for size in sizes:
@@ -74,10 +100,12 @@ def json_friendly_value(v):
     return v
 
 
-@dataclass
-class JoinDifferBase(TableDiffer):
-    """Finds the diff between two SQL tables using JOINs
 
+@dataclass
+class JoinDiffer(TableDiffer):
+    """Finds the diff between two SQL tables in the same database, using JOINs.
+
+    The algorithm uses an OUTER JOIN (or equivalent) with extra checks and statistics.
     The two tables must reside in the same database, and their primary keys must be unique and not null.
 
     Parameters:
@@ -181,39 +209,6 @@ class JoinDifferBase(TableDiffer):
         # stats.diff_ratio_by_column = diff_stats
         # stats.diff_ratio_total = diff_stats['total_diff']
 
-
-def bool_to_int(x):
-    return if_(x, 1, 0)
-
-
-def _outerjoin(db: Database, a: ITable, b: ITable, keys1: List[str], keys2: List[str], select_fields: dict) -> ITable:
-    on = [a[k1] == b[k2] for k1, k2 in safezip(keys1, keys2)]
-
-    if isinstance(db, Oracle):
-        is_exclusive_a = and_(bool_to_int(b[k] == None) for k in keys2)
-        is_exclusive_b = and_(bool_to_int(a[k] == None) for k in keys1)
-    else:
-        is_exclusive_a = and_(b[k] == None for k in keys2)
-        is_exclusive_b = and_(a[k] == None for k in keys1)
-
-    if isinstance(db, MySQL):
-        # No outer join
-        l = leftjoin(a, b).on(*on).select(is_exclusive_a=is_exclusive_a, is_exclusive_b=False, **select_fields)
-        r = rightjoin(a, b).on(*on).select(is_exclusive_a=False, is_exclusive_b=is_exclusive_b, **select_fields)
-        return l.union(r)
-
-    return (
-        outerjoin(a, b).on(*on)
-        .select(is_exclusive_a=is_exclusive_a, is_exclusive_b=is_exclusive_b, **select_fields)
-    )
-
-
-class JoinDiffer(JoinDifferBase):
-    """Finds the diff between two SQL tables in the same database.
-
-    The algorithm uses an OUTER JOIN (or equivalent) with extra checks and statistics.
-
-    """
 
     def _outer_join(self, table1, table2):
         db = table1.database
