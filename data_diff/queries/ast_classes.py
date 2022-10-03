@@ -40,6 +40,10 @@ class Alias(ExprNode):
     def compile(self, c: Compiler) -> str:
         return f"{c.compile(self.expr)} AS {c.quote(self.name)}"
 
+    @property
+    def type(self):
+        return self.expr.type
+
 
 def _drop_skips(exprs):
     return [e for e in exprs if e is not SKIP]
@@ -163,6 +167,10 @@ class Func(ExprNode):
         args = ", ".join(c.compile(e) for e in self.args)
         return f"{self.name}({args})"
 
+def _expr_type(e: Expr):
+    if isinstance(e, ExprNode):
+        return e.type
+    return type(e)
 
 @dataclass
 class CaseWhen(ExprNode):
@@ -175,30 +183,40 @@ class CaseWhen(ExprNode):
         else_ = (" " + c.compile(self.else_)) if self.else_ else ""
         return f"CASE {when_thens}{else_} END"
 
+    @property
+    def type(self):
+        when_types = {_expr_type(w) for _c,w in self.cases }
+        if self.else_:
+            when_types |= _expr_type(self.else_)
+        if len(when_types) > 1:
+            raise RuntimeError(f"Non-matching types in when: {when_types}")
+        t ,= when_types
+        return t
+
 
 class LazyOps:
     def __add__(self, other):
         return BinOp("+", [self, other])
 
     def __gt__(self, other):
-        return BinOp(">", [self, other])
+        return BinBoolOp(">", [self, other])
 
     def __ge__(self, other):
-        return BinOp(">=", [self, other])
+        return BinBoolOp(">=", [self, other])
 
     def __eq__(self, other):
         if other is None:
-            return BinOp("IS", [self, None])
-        return BinOp("=", [self, other])
+            return BinBoolOp("IS", [self, None])
+        return BinBoolOp("=", [self, other])
 
     def __lt__(self, other):
-        return BinOp("<", [self, other])
+        return BinBoolOp("<", [self, other])
 
     def __le__(self, other):
-        return BinOp("<=", [self, other])
+        return BinBoolOp("<=", [self, other])
 
     def __or__(self, other):
-        return BinOp("OR", [self, other])
+        return BinBoolOp("OR", [self, other])
 
     def is_distinct_from(self, other):
         return IsDistinctFrom(self, other)
@@ -211,6 +229,7 @@ class LazyOps:
 class IsDistinctFrom(ExprNode, LazyOps):
     a: Expr
     b: Expr
+    type = bool
 
     def compile(self, c: Compiler) -> str:
         return c.database.is_distinct_from(c.compile(self.a), c.compile(self.b))
@@ -227,6 +246,9 @@ class BinOp(ExprNode, LazyOps):
     def compile(self, c: Compiler) -> str:
         a, b = self.args
         return f"({c.compile(a)} {self.op} {c.compile(b)})"
+
+class BinBoolOp(BinOp):
+    type = bool
 
 
 @dataclass(eq=False, order=False)
