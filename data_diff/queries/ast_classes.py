@@ -299,8 +299,9 @@ class Join(ExprNode, ITable):
 
     @property
     def schema(self):
-        # TODO combine both tables
-        return None
+        assert self.columns # TODO Implement SELECT *
+        s = self.source_tables[0].schema    # XXX
+        return type(s)({c.name: c.type for c in self.columns})
 
     def on(self, *exprs):
         if len(exprs) == 1:
@@ -375,7 +376,7 @@ class Union(ExprNode, ITable):
 
 @dataclass
 class Select(ExprNode, ITable):
-    source_table: Expr = None
+    table: Expr = None
     columns: Sequence[Expr] = None
     where_exprs: Sequence[Expr] = None
     order_by_exprs: Sequence[Expr] = None
@@ -384,7 +385,14 @@ class Select(ExprNode, ITable):
 
     @property
     def schema(self):
-        return self.source_table.schema
+        s = self.table.schema
+        if s is None or self.columns is None:
+            return s
+        return type(s)({c.name: c.type for c in self.columns})
+
+    @property
+    def source_table(self):
+        return self
 
     def compile(self, parent_c: Compiler) -> str:
         c = parent_c.replace(in_select=True) #.add_table_context(self.table)
@@ -392,8 +400,8 @@ class Select(ExprNode, ITable):
         columns = ", ".join(map(c.compile, self.columns)) if self.columns else "*"
         select = f"SELECT {columns}"
 
-        if self.source_table:
-            select += " FROM " + c.compile(self.source_table)
+        if self.table:
+            select += " FROM " + c.compile(self.table)
 
         if self.where_exprs:
             select += " WHERE " + " AND ".join(map(c.compile, self.where_exprs))
