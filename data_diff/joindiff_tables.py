@@ -10,7 +10,7 @@ from venv import create
 
 from runtype import dataclass
 
-from data_diff.databases.database_types import DbPath
+from data_diff.databases.database_types import DbPath, Schema
 
 
 from .utils import safezip
@@ -63,8 +63,12 @@ def create_temp_table(c: Compiler, name: str, expr: Expr):
     else:
         return f"create temporary table {c.quote(name)} as {c.compile(expr)}"
 
-def create_table(c: Compiler, name: DbPath, expr: Expr):
-    return f"create table {c.compile(TablePath(name))} as {c.compile(expr)}"
+# def create_table(c: Compiler, name: DbPath, schema: Schema):
+#     return f"create table {c.compile(TablePath(name))} as {c.compile(schema)}"
+
+def append_to_table(db, name: DbPath, expr: Expr):
+    db.query(create_table(name, expr.schema, if_not_exists=True), None)
+    db.query(insert_to_table(name, expr), None)
 
 
 def bool_to_int(x):
@@ -137,8 +141,12 @@ class JoinDiffer(TableDiffer):
 
 
         bg_funcs = [partial(self._test_duplicate_keys, table1, table2)] if self.validate_unique_key else []
+        # if self.materialize_to_table:
+        #     diff_rows, a_cols, b_cols, is_diff_cols = self._create_outer_join(table1, table2)
+        #     bg_funcs.append( partial(self._materialize_diff, db, diff_rows) )
 
         with self._run_in_background(*bg_funcs):
+
             if isinstance(db, (Snowflake, BigQuery)):
                 # Don't segment the table; let the database handling parallelization
                 yield from self._diff_segments(None, table1, table2, None)
@@ -156,12 +164,28 @@ class JoinDiffer(TableDiffer):
                 f"size <= {max_rows}"
             )
 
+        db = table1.database
+        diff_rows, a_cols, b_cols, is_diff_cols = self._create_outer_join(table1, table2)
+
         with self._run_in_background(
                 partial(self._collect_stats, 1, table1),
                 partial(self._collect_stats, 2, table2),
                 partial(self._test_null_keys, table1, table2),
+                partial(self._sample_and_count_exclusive, db, diff_rows, a_cols, b_cols),
+                partial(self._count_diff_per_column, db, diff_rows, list(a_cols), is_diff_cols),
             ):
-            yield from self._outer_join(table1, table2)
+
+            logger.debug("Querying for different rows")
+            for is_xa, is_xb, *x in db.query(diff_rows, list):
+                if is_xa and is_xb:
+                    # Can't both be exclusive, meaning a pk is NULL
+                    # This can happen if the explicit null test didn't finish running yet
+                    raise ValueError(f"NULL values in one or more primary keys")
+                is_diff, a_row, b_row = _slice_tuple(x, len(is_diff_cols), len(a_cols), len(b_cols))
+                if not is_xb:
+                    yield "-", tuple(a_row)
+                if not is_xa:
+                    yield "+", tuple(b_row)
 
     def _test_duplicate_keys(self, table1, table2):
         logger.debug("Testing for duplicate keys")
@@ -184,7 +208,7 @@ class JoinDiffer(TableDiffer):
             t = ts._make_select()
             key_columns = [ts.key_column]  # XXX
 
-            q = t.select(*key_columns).where(or_(this[k] == None for k in key_columns))
+            q = t.select(*this[key_columns]).where(or_(this[k] == None for k in key_columns))
             nulls = ts.database.query(q, list)
             if nulls:
                 raise ValueError(f"NULL values in one or more primary keys")
@@ -218,8 +242,7 @@ class JoinDiffer(TableDiffer):
         # stats.diff_ratio_by_column = diff_stats
         # stats.diff_ratio_total = diff_stats['total_diff']
 
-
-    def _outer_join(self, table1, table2):
+    def _create_outer_join(self, table1, table2):
         db = table1.database
         if db is not table2.database:
             raise ValueError("Joindiff only applies to tables within the same database")
@@ -248,10 +271,15 @@ class JoinDiffer(TableDiffer):
             _outerjoin(db, a, b, keys1, keys2, {**is_diff_cols, **a_cols, **b_cols})
             .where(or_(this[c] == 1 for c in is_diff_cols))
         )
+        return diff_rows, a_cols, b_cols, is_diff_cols
+
+    def _outer_join(self, table1, table2):
+        db = table1.database
+        diff_rows, a_cols, b_cols, is_diff_cols = self._create_outer_join(table1, table2)
 
         with self._run_in_background(
                     partial(self._sample_and_count_exclusive, db, diff_rows, a_cols, b_cols),
-                    partial(self._count_diff_per_column, db, diff_rows, cols1, is_diff_cols),
+                    partial(self._count_diff_per_column, db, diff_rows, list(a_cols), is_diff_cols),
                     partial(self._materialize_diff, db, diff_rows) if self.materialize_to_table else None
                 ):
 
