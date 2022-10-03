@@ -5,9 +5,11 @@
 from decimal import Decimal
 from functools import partial
 import logging
-from typing import Dict, List
+from typing import Dict, List, Optional
 
 from runtype import dataclass
+
+from data_diff.databases.database_types import DbPath, Schema
 
 
 from .utils import safezip
@@ -17,14 +19,15 @@ from .table_segment import TableSegment
 from .diff_tables import TableDiffer, DiffResult
 from .thread_utils import ThreadedYielder
 
-from .queries import table, sum_, min_, max_, avg
+from .queries import table, sum_, min_, max_, avg, SKIP
 from .queries.api import and_, if_, or_, outerjoin, leftjoin, rightjoin, this, ITable
-from .queries.ast_classes import Concat, Count, Expr, Random
+from .queries.ast_classes import Concat, Count, Expr, Random, TablePath
 from .queries.compiler import Compiler
 from .queries.extras import NormalizeAsString
 
-
 logger = logging.getLogger("joindiff_tables")
+
+WRITE_LIMIT = 1000
 
 
 def merge_dicts(dicts):
@@ -58,6 +61,18 @@ def create_temp_table(c: Compiler, name: str, expr: Expr):
         return f"create global temporary table {c.quote(name)} as {c.compile(expr)}"
     else:
         return f"create temporary table {c.quote(name)} as {c.compile(expr)}"
+
+
+def drop_table(db, name: DbPath):
+    t = TablePath(name)
+    db.query(t.drop(if_exists=True))
+
+def append_to_table(name: DbPath, expr: Expr):
+    t = TablePath(name, expr.schema)
+    yield t.create(if_not_exists=True)  # uses expr.schema
+    yield 'commit'
+    yield t.insert_expr(expr)
+    yield 'commit'
 
 
 def bool_to_int(x):
@@ -117,6 +132,8 @@ class JoinDiffer(TableDiffer):
     stats: dict = {}
     validate_unique_key: bool = True
     sample_exclusive_rows: bool = True
+    materialize_to_table: DbPath = None
+    write_limit: int = WRITE_LIMIT
 
     def _diff_tables(self, table1: TableSegment, table2: TableSegment) -> DiffResult:
         db = table1.database
@@ -128,8 +145,12 @@ class JoinDiffer(TableDiffer):
 
 
         bg_funcs = [partial(self._test_duplicate_keys, table1, table2)] if self.validate_unique_key else []
+        if self.materialize_to_table:
+            drop_table(db, self.materialize_to_table)
+            db.query('COMMIT')
 
         with self._run_in_background(*bg_funcs):
+
             if isinstance(db, (Snowflake, BigQuery)):
                 # Don't segment the table; let the database handling parallelization
                 yield from self._diff_segments(None, table1, table2, None)
@@ -147,12 +168,29 @@ class JoinDiffer(TableDiffer):
                 f"size <= {max_rows}"
             )
 
+        db = table1.database
+        diff_rows, a_cols, b_cols, is_diff_cols = self._create_outer_join(table1, table2)
+
         with self._run_in_background(
                 partial(self._collect_stats, 1, table1),
                 partial(self._collect_stats, 2, table2),
                 partial(self._test_null_keys, table1, table2),
+                partial(self._sample_and_count_exclusive, db, diff_rows, a_cols, b_cols),
+                partial(self._count_diff_per_column, db, diff_rows, list(a_cols), is_diff_cols),
+                partial(self._materialize_diff, db, diff_rows, segment_index=segment_index) if self.materialize_to_table else None,
             ):
-            yield from self._outer_join(table1, table2)
+
+            logger.debug("Querying for different rows")
+            for is_xa, is_xb, *x in db.query(diff_rows, list):
+                if is_xa and is_xb:
+                    # Can't both be exclusive, meaning a pk is NULL
+                    # This can happen if the explicit null test didn't finish running yet
+                    raise ValueError(f"NULL values in one or more primary keys")
+                is_diff, a_row, b_row = _slice_tuple(x, len(is_diff_cols), len(a_cols), len(b_cols))
+                if not is_xb:
+                    yield "-", tuple(a_row)
+                if not is_xa:
+                    yield "+", tuple(b_row)
 
     def _test_duplicate_keys(self, table1, table2):
         logger.debug("Testing for duplicate keys")
@@ -162,7 +200,7 @@ class JoinDiffer(TableDiffer):
             t = ts._make_select()
             key_columns = [ts.key_column]  # XXX
 
-            q = t.select(total=Count(), total_distinct=Count(Concat(key_columns), distinct=True))
+            q = t.select(total=Count(), total_distinct=Count(Concat(this[key_columns]), distinct=True))
             total, total_distinct = ts.database.query(q, tuple)
             if total != total_distinct:
                 raise ValueError("Duplicate primary keys")
@@ -175,7 +213,7 @@ class JoinDiffer(TableDiffer):
             t = ts._make_select()
             key_columns = [ts.key_column]  # XXX
 
-            q = t.select(*key_columns).where(or_(this[k] == None for k in key_columns))
+            q = t.select(*this[key_columns]).where(or_(this[k] == None for k in key_columns))
             nulls = ts.database.query(q, list)
             if nulls:
                 raise ValueError(f"NULL values in one or more primary keys")
@@ -188,10 +226,10 @@ class JoinDiffer(TableDiffer):
         # Metrics
         col_exprs = merge_dicts(
             {
-                f"sum_{c}": sum_(c),
-                f"avg_{c}": avg(c),
-                f"min_{c}": min_(c),
-                f"max_{c}": max_(c),
+                f"sum_{c}": sum_(this[c]),
+                f"avg_{c}": avg(this[c]),
+                f"min_{c}": min_(this[c]),
+                f"max_{c}": max_(this[c]),
             }
             for c in table._relevant_columns
             if c == "id"  # TODO just if the right type
@@ -209,8 +247,7 @@ class JoinDiffer(TableDiffer):
         # stats.diff_ratio_by_column = diff_stats
         # stats.diff_ratio_total = diff_stats['total_diff']
 
-
-    def _outer_join(self, table1, table2):
+    def _create_outer_join(self, table1, table2):
         db = table1.database
         if db is not table2.database:
             raise ValueError("Joindiff only applies to tables within the same database")
@@ -239,23 +276,8 @@ class JoinDiffer(TableDiffer):
             _outerjoin(db, a, b, keys1, keys2, {**is_diff_cols, **a_cols, **b_cols})
             .where(or_(this[c] == 1 for c in is_diff_cols))
         )
+        return diff_rows, a_cols, b_cols, is_diff_cols
 
-        with self._run_in_background(
-                    partial(self._sample_and_count_exclusive, db, diff_rows, a_cols, b_cols),
-                    partial(self._count_diff_per_column, db, diff_rows, cols1, is_diff_cols)
-                ):
-
-            logger.debug("Querying for different rows")
-            for is_xa, is_xb, *x in db.query(diff_rows, list):
-                if is_xa and is_xb:
-                    # Can't both be exclusive, meaning a pk is NULL
-                    # This can happen if the explicit null test didn't finish running yet
-                    raise ValueError(f"NULL values in one or more primary keys")
-                is_diff, a_row, b_row = _slice_tuple(x, len(is_diff_cols), len(a_cols), len(b_cols))
-                if not is_xb:
-                    yield "-", tuple(a_row)
-                if not is_xa:
-                    yield "+", tuple(b_row)
 
     def _count_diff_per_column(self, db, diff_rows, cols, is_diff_cols):
         logger.info("Counting differences per column")
@@ -280,7 +302,7 @@ class JoinDiffer(TableDiffer):
         def exclusive_rows(expr):
             c = Compiler(db)
             name = c.new_unique_table_name("temp_table")
-            yield create_temp_table(c, name, expr)
+            yield create_temp_table(c, name, expr.limit(self.write_limit))
             exclusive_rows = table(name, schema=expr.source_table.schema)
 
             count = yield exclusive_rows.count()
@@ -293,3 +315,10 @@ class JoinDiffer(TableDiffer):
 
         # Run as a sequence of thread-local queries (compiled into a ThreadLocalInterpreter)
         db.query(exclusive_rows(exclusive_rows_query), None)
+
+    def _materialize_diff(self, db, diff_rows, segment_index=None):
+        assert self.materialize_to_table
+
+        db.query(append_to_table(self.materialize_to_table, diff_rows.limit(self.write_limit)))
+        logger.info(f"Materialized diff to table '{'.'.join(self.materialize_to_table)}'.")
+

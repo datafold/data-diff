@@ -9,6 +9,7 @@ from uuid import UUID
 import operator
 import string
 import threading
+from datetime import datetime
 
 alphanums = " -" + string.digits + string.ascii_uppercase + "_" + string.ascii_lowercase
 
@@ -295,3 +296,8 @@ def run_as_daemon(threadfunc, *args):
 
 def getLogger(name):
     return logging.getLogger(name.rsplit('.', 1)[-1])
+
+def eval_name_template(name):
+    def get_timestamp(m):
+        return datetime.now().isoformat('_', 'seconds').replace(':', '_')
+    return re.sub('%t', get_timestamp, name)

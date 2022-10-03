@@ -107,7 +107,7 @@ class Database(AbstractDatabase):
     def name(self):
         return type(self).__name__
 
-    def query(self, sql_ast: Expr, res_type: type):
+    def query(self, sql_ast: Expr, res_type: type = None):
         "Query the given SQL code/AST, and attempt to convert the result to type 'res_type'"
 
         compiler = Compiler(self)

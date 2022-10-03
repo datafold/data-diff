@@ -140,7 +140,7 @@ class Concat(ExprNode):
 
     def compile(self, c: Compiler) -> str:
         # We coalesce because on some DBs (e.g. MySQL) concat('a', NULL) is NULL
-        items = [f"coalesce({c.compile(c.database.to_string(expr))}, '<null>')" for expr in self.exprs]
+        items = [f"coalesce({c.compile(c.database.to_string(c.compile(expr)))}, '<null>')" for expr in self.exprs]
         assert items
         if len(items) == 1:
             return items[0]
@@ -293,6 +293,9 @@ class TablePath(ExprNode, ITable):
         if not self.schema:
             raise ValueError("Schema must have a value to create table")
         return CreateTable(self, if_not_exists=if_not_exists)
+
+    def drop(self, if_exists=False):
+        return DropTable(self, if_exists=if_exists)
 
     def insert_values(self, rows):
         raise NotImplementedError()
@@ -513,13 +516,13 @@ def resolve_names(source_table, exprs):
         if isinstance(expr, ExprNode):
             for v in expr._dfs_values():
                 if isinstance(v, _ResolveColumn):
-                    v.resolve(source_table._get_column(v.name))
+                    v.resolve(source_table._get_column(v.resolve_name))
                     i += 1
 
 
 @dataclass(frozen=False, eq=False, order=False)
 class _ResolveColumn(ExprNode, LazyOps):
-    name: str
+    resolve_name: str
     resolved: Expr = None
 
     def resolve(self, expr):
@@ -528,14 +531,21 @@ class _ResolveColumn(ExprNode, LazyOps):
 
     def compile(self, c: Compiler) -> str:
         if self.resolved is None:
-            raise RuntimeError(f"Column not resolved: {self.name}")
+            raise RuntimeError(f"Column not resolved: {self.resolve_name}")
         return self.resolved.compile(c)
 
     @property
     def type(self):
         if self.resolved is None:
-            raise RuntimeError(f"Column not resolved: {self.name}")
+            raise RuntimeError(f"Column not resolved: {self.resolve_name}")
         return self.resolved.type
+
+    @property
+    def name(self):
+        if self.resolved is None:
+            raise RuntimeError(f"Column not resolved: {self.name}")
+        return self.resolved.name
+
 
 
 class This:
@@ -605,6 +615,15 @@ class CreateTable(Statement):
         schema = ', '.join(f'{k} {to_sql_type(v)}' for k, v in self.path.schema.items())
         ne = 'IF NOT EXISTS ' if self.if_not_exists else ''
         return f'CREATE TABLE {ne}{c.compile(self.path)}({schema})'
+
+@dataclass
+class DropTable(Statement):
+    path: TablePath
+    if_exists: bool = False
+
+    def compile(self, c: Compiler) -> str:
+        ie = 'IF EXISTS ' if self.if_exists else ''
+        return f'DROP TABLE {ie}{c.compile(self.path)}'
 
 @dataclass
 class InsertToTable(Statement):

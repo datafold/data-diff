@@ -9,7 +9,9 @@ from typing import Optional
 import rich
 import click
 
-from .utils import remove_password_from_url, safezip, match_like
+from data_diff.databases.base import parse_table_name
+
+from .utils import eval_name_template, remove_password_from_url, safezip, match_like
 from .diff_tables import Algorithm
 from .hashdiff_tables import HashDiffer, DEFAULT_BISECTION_THRESHOLD, DEFAULT_BISECTION_FACTOR
 from .joindiff_tables import JoinDiffer
@@ -104,6 +106,7 @@ click.Context.formatter_class = MyHelpFormatter
     help=f"Minimal bisection threshold. Below it, data-diff will download the data and compare it locally. Default={DEFAULT_BISECTION_THRESHOLD}.",
     metavar="NUM",
 )
+@click.option("-m", "--materialize", default=None, metavar="TABLE_NAME", help="Materialize the diff results into a new table in the database.")
 @click.option(
     "--min-age",
     default=None,
@@ -125,6 +128,11 @@ click.Context.formatter_class = MyHelpFormatter
     "--case-sensitive",
     is_flag=True,
     help="Column names are treated as case-sensitive. Otherwise, data-diff corrects their case according to schema.",
+)
+@click.option(
+    "--assume-unique-key",
+    is_flag=True,
+    help="Skip validating the uniqueness of the key column during joindiff, which is costly in non-cloud dbs.",
 )
 @click.option(
     "-j",
@@ -192,6 +200,8 @@ def _main(
     case_sensitive,
     json_output,
     where,
+    assume_unique_key,
+    materialize,
     threads1=None,
     threads2=None,
     __conf__=None,
@@ -256,6 +266,8 @@ def _main(
         differ = JoinDiffer(
             threaded=threaded,
             max_threadpool_size=threads and threads * 2,
+            validate_unique_key = not assume_unique_key,
+            materialize_to_table = materialize and parse_table_name(eval_name_template(materialize)),
         )
     else:
         assert algorithm == Algorithm.HASHDIFF
