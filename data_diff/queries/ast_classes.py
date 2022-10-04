@@ -1,6 +1,6 @@
 from dataclasses import field
 from datetime import datetime
-from typing import Any, Generator, ItemsView, Optional, Sequence, Tuple, Union
+from typing import Any, Generator, Optional, Sequence, Tuple, Union
 
 from runtype import dataclass
 
@@ -8,6 +8,7 @@ from data_diff.utils import ArithString, join_iter
 
 from .compiler import Compilable, Compiler
 from .base import SKIP, CompileError, DbPath, Schema, args_as_tuple
+
 
 
 class ExprNode(Compilable):
@@ -284,11 +285,16 @@ class TablePath(ExprNode, ITable):
     path: DbPath
     schema: Optional[Schema] = field(default=None, repr=False)
 
-    def insert_values(self, rows):
-        pass
+    def create(self, if_not_exists=False):
+        if not self.schema:
+            raise ValueError("Schema must have a value to create table")
+        return CreateTable(self, if_not_exists=if_not_exists)
 
-    def insert_query(self, query):
-        pass
+    def insert_values(self, rows):
+        raise NotImplementedError()
+
+    def insert_expr(self, expr: Expr):
+        return InsertToTable(self, expr)
 
     @property
     def source_table(self):
@@ -558,3 +564,38 @@ class Cast(ExprNode):
 class Random(ExprNode):
     def compile(self, c: Compiler) -> str:
         return c.database.random()
+
+
+# DDL
+
+class Statement(Compilable):
+    type = None
+
+def to_sql_type(t):
+    if isinstance(t, str):
+        return t
+    return {
+        int: "int",
+        str: "varchar",
+        bool: "boolean",
+    }[t]
+
+
+@dataclass
+class CreateTable(Statement):
+    path: TablePath
+    if_not_exists: bool = False
+
+    def compile(self, c: Compiler) -> str:
+        schema = ', '.join(f'{k} {to_sql_type(v)}' for k, v in self.path.schema.items())
+        ne = 'IF NOT EXISTS ' if self.if_not_exists else ''
+        return f'CREATE TABLE {ne}{c.compile(self.path)}({schema})'
+
+@dataclass
+class InsertToTable(Statement):
+    # TODO Support insert for only some columns
+    path: TablePath
+    expr: Expr
+
+    def compile(self, c: Compiler) -> str:
+        return f'INSERT INTO {c.compile(self.path)} {c.compile(self.expr)}'
