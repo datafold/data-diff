@@ -15,9 +15,11 @@ def leftjoin(*tables: ITable):
     "Left-joins each table into a 'struct'"
     return Join(tables, "LEFT")
 
+
 def rightjoin(*tables: ITable):
     "Right-joins each table into a 'struct'"
     return Join(tables, "RIGHT")
+
 
 def outerjoin(*tables: ITable):
     "Outer-joins each table into a 'struct'"

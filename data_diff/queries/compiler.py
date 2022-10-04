@@ -13,7 +13,7 @@ from data_diff.databases.database_types import AbstractDialect
 class Compiler:
     database: AbstractDialect
     in_select: bool = False  # Compilation runtime flag
-    in_join: bool = False    # Compilation runtime flag
+    in_join: bool = False  # Compilation runtime flag
 
     _table_context: List = []  # List[ITable]
     _subqueries: Dict[str, Any] = {}  # XXX not thread-safe
@@ -32,7 +32,7 @@ class Compiler:
             return f"WITH {subq}\n{res}"
         return res
 
-    def _compile(self, elem) -> Union[str, 'ThreadLocalInterpreter']:
+    def _compile(self, elem) -> Union[str, "ThreadLocalInterpreter"]:
         if elem is None:
             return "NULL"
         elif isinstance(elem, Compilable):

@@ -93,12 +93,12 @@ class TestQuery(unittest.TestCase):
         self.assertRaises(KeyError, q.__getitem__, "comment")
 
         # test join
-        s = CaseInsensitiveDict({'x': int, 'y': int})
+        s = CaseInsensitiveDict({"x": int, "y": int})
         a = table("a", schema=s)
         b = table("b", schema=s)
         keys = ["x", "y"]
-        j = outerjoin(a, b).on(a[k] == b[k] for k in keys).select(a['x'], b['y'], xsum=a['x'] + b['x'])
-        j['x'], j['y'], j['xsum']
+        j = outerjoin(a, b).on(a[k] == b[k] for k in keys).select(a["x"], b["y"], xsum=a["x"] + b["x"])
+        j["x"], j["y"], j["xsum"]
         self.assertRaises(KeyError, j.__getitem__, "ysum")
 
     def test_commutable_select(self):
@@ -145,8 +145,8 @@ class TestQuery(unittest.TestCase):
 
     def test_union_all(self):
         c = Compiler(MockDialect())
-        a = table("a").select('x')
-        b = table("b").select('y')
+        a = table("a").select("x")
+        b = table("b").select("y")
 
         q = c.compile(a.union(b))
         assert q == "SELECT x FROM a UNION SELECT y FROM b"

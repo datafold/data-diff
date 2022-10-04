@@ -10,7 +10,6 @@ from .compiler import Compilable, Compiler
 from .base import SKIP, CompileError, DbPath, Schema, args_as_tuple
 
 
-
 class ExprNode(Compilable):
     type: Any = None
 
@@ -129,7 +128,7 @@ class ITable:
     def count(self):
         return Select(self, [Count()])
 
-    def union(self, other: 'ITable'):
+    def union(self, other: "ITable"):
         return Union(self, other)
 
 
@@ -172,10 +171,12 @@ class Func(ExprNode):
         args = ", ".join(c.compile(e) for e in self.args)
         return f"{self.name}({args})"
 
+
 def _expr_type(e: Expr):
     if isinstance(e, ExprNode):
         return e.type
     return type(e)
+
 
 @dataclass
 class CaseWhen(ExprNode):
@@ -190,12 +191,12 @@ class CaseWhen(ExprNode):
 
     @property
     def type(self):
-        when_types = {_expr_type(w) for _c,w in self.cases }
+        when_types = {_expr_type(w) for _c, w in self.cases}
         if self.else_:
             when_types |= _expr_type(self.else_)
         if len(when_types) > 1:
             raise RuntimeError(f"Non-matching types in when: {when_types}")
-        t ,= when_types
+        (t,) = when_types
         return t
 
 
@@ -251,6 +252,7 @@ class BinOp(ExprNode, LazyOps):
     def compile(self, c: Compiler) -> str:
         a, b = self.args
         return f"({c.compile(a)} {self.op} {c.compile(b)})"
+
 
 class BinBoolOp(BinOp):
     type = bool
@@ -334,8 +336,8 @@ class Join(ExprNode, ITable):
 
     @property
     def schema(self):
-        assert self.columns # TODO Implement SELECT *
-        s = self.source_tables[0].schema    # XXX
+        assert self.columns  # TODO Implement SELECT *
+        s = self.source_tables[0].schema  # XXX
         return type(s)({c.name: c.type for c in self.columns})
 
     def on(self, *exprs):
@@ -390,6 +392,7 @@ class GroupBy(ITable):
     def having(self):
         pass
 
+
 @dataclass
 class Union(ExprNode, ITable):
     table1: ITable
@@ -441,7 +444,7 @@ class Select(ExprNode, ITable):
         return self
 
     def compile(self, parent_c: Compiler) -> str:
-        c = parent_c.replace(in_select=True) #.add_table_context(self.table)
+        c = parent_c.replace(in_select=True)  # .add_table_context(self.table)
 
         columns = ", ".join(map(c.compile, self.columns)) if self.columns else "*"
         select = f"SELECT {columns}"
@@ -547,7 +550,6 @@ class _ResolveColumn(ExprNode, LazyOps):
         return self.resolved.name
 
 
-
 class This:
     def __getattr__(self, name):
         return _ResolveColumn(name)
@@ -593,8 +595,10 @@ class Random(ExprNode):
 
 # DDL
 
+
 class Statement(Compilable):
     type = None
+
 
 def to_sql_type(t):
     if isinstance(t, str):
@@ -612,9 +616,10 @@ class CreateTable(Statement):
     if_not_exists: bool = False
 
     def compile(self, c: Compiler) -> str:
-        schema = ', '.join(f'{k} {to_sql_type(v)}' for k, v in self.path.schema.items())
-        ne = 'IF NOT EXISTS ' if self.if_not_exists else ''
-        return f'CREATE TABLE {ne}{c.compile(self.path)}({schema})'
+        schema = ", ".join(f"{k} {to_sql_type(v)}" for k, v in self.path.schema.items())
+        ne = "IF NOT EXISTS " if self.if_not_exists else ""
+        return f"CREATE TABLE {ne}{c.compile(self.path)}({schema})"
+
 
 @dataclass
 class DropTable(Statement):
@@ -622,8 +627,9 @@ class DropTable(Statement):
     if_exists: bool = False
 
     def compile(self, c: Compiler) -> str:
-        ie = 'IF EXISTS ' if self.if_exists else ''
-        return f'DROP TABLE {ie}{c.compile(self.path)}'
+        ie = "IF EXISTS " if self.if_exists else ""
+        return f"DROP TABLE {ie}{c.compile(self.path)}"
+
 
 @dataclass
 class InsertToTable(Statement):
@@ -632,4 +638,4 @@ class InsertToTable(Statement):
     expr: Expr
 
     def compile(self, c: Compiler) -> str:
-        return f'INSERT INTO {c.compile(self.path)} {c.compile(self.expr)}'
+        return f"INSERT INTO {c.compile(self.path)} {c.compile(self.expr)}"
