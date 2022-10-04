@@ -295,9 +295,11 @@ def run_as_daemon(threadfunc, *args):
 
 
 def getLogger(name):
-    return logging.getLogger(name.rsplit('.', 1)[-1])
+    return logging.getLogger(name.rsplit(".", 1)[-1])
+
 
 def eval_name_template(name):
     def get_timestamp(m):
-        return datetime.now().isoformat('_', 'seconds').replace(':', '_')
-    return re.sub('%t', get_timestamp, name)
+        return datetime.now().isoformat("_", "seconds").replace(":", "_")
+
+    return re.sub("%t", get_timestamp, name)

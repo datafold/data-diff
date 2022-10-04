@@ -25,7 +25,20 @@ def init_instances():
     DATABASE_INSTANCES = {k.__name__: connect(v, N_THREADS) for k, v in CONN_STRINGS.items()}
 
 
-TEST_DATABASES = {x.__name__ for x in (db.PostgreSQL, db.Snowflake, db.MySQL, db.BigQuery, db.Presto, db.Vertica, db.Trino, db.Oracle, db.Redshift)}
+TEST_DATABASES = {
+    x.__name__
+    for x in (
+        db.PostgreSQL,
+        db.Snowflake,
+        db.MySQL,
+        db.BigQuery,
+        db.Presto,
+        db.Vertica,
+        db.Trino,
+        db.Oracle,
+        db.Redshift,
+    )
+}
 
 _class_per_db_dec = parameterized_class(
     ("name", "db_name"), [(name, name) for name in DATABASE_URIS if name in TEST_DATABASES]
@@ -179,14 +192,13 @@ class TestJoindiff(TestPerDatabase):
         x = self.differ.diff_tables(self.table, self.table2)
         self.assertRaises(ValueError, list, x)
 
-
     def test_null_pks(self):
         time = "2022-01-01 00:00:00"
         time_str = f"timestamp '{time}'"
 
         cols = "id rating timestamp".split()
 
-        _insert_row(self.connection, self.table_src, cols, ['null', 9, time_str])
+        _insert_row(self.connection, self.table_src, cols, ["null", 9, time_str])
         _insert_row(self.connection, self.table_dst, cols, [1, 9, time_str])
 
         x = self.differ.diff_tables(self.table, self.table2)

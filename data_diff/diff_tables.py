@@ -20,6 +20,7 @@ from .databases.database_types import IKey
 
 logger = getLogger(__name__)
 
+
 class Algorithm(Enum):
     AUTO = "auto"
     JOINDIFF = "joindiff"
@@ -28,8 +29,9 @@ class Algorithm(Enum):
 
 DiffResult = Iterator[Tuple[str, tuple]]  # Iterator[Tuple[Literal["+", "-"], tuple]]
 
+
 def truncate_error(error: str):
-    first_line = error.split('\n', 1)[0]
+    first_line = error.split("\n", 1)[0]
     return re.sub("'(.*?)'", "'***'", first_line)
 
 
@@ -137,11 +139,18 @@ class TableDiffer(ThreadBase, ABC):
     def _diff_tables(self, table1: TableSegment, table2: TableSegment) -> DiffResult:
         return self._bisect_and_diff_tables(table1, table2)
 
-
     @abstractmethod
-    def _diff_segments(self, ti: ThreadedYielder, table1: TableSegment, table2: TableSegment, max_rows: int, level=0, segment_index=None, segment_count=None):
+    def _diff_segments(
+        self,
+        ti: ThreadedYielder,
+        table1: TableSegment,
+        table2: TableSegment,
+        max_rows: int,
+        level=0,
+        segment_index=None,
+        segment_count=None,
+    ):
         ...
-
 
     def _bisect_and_diff_tables(self, table1, table2):
         key_type = table1._schema[table1.key_column]
@@ -183,7 +192,6 @@ class TableDiffer(ThreadBase, ABC):
 
         return ti
 
-
     def _parse_key_range_result(self, key_type, key_range):
         mn, mx = key_range
         cls = key_type.make_value
@@ -193,8 +201,9 @@ class TableDiffer(ThreadBase, ABC):
         except (TypeError, ValueError) as e:
             raise type(e)(f"Cannot apply {key_type} to '{mn}', '{mx}'.") from e
 
-
-    def _bisect_and_diff_segments(self, ti: ThreadedYielder, table1: TableSegment, table2: TableSegment, level=0, max_rows=None):
+    def _bisect_and_diff_segments(
+        self, ti: ThreadedYielder, table1: TableSegment, table2: TableSegment, level=0, max_rows=None
+    ):
         assert table1.is_bounded and table2.is_bounded
 
         # Choose evenly spaced checkpoints (according to min_key and max_key)

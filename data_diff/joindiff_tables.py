@@ -50,6 +50,7 @@ class Stats:
 def sample(table):
     return table.order_by(Random()).limit(10)
 
+
 def create_temp_table(c: Compiler, name: str, expr: Expr):
     db = c.database
     if isinstance(db, BigQuery):
@@ -67,12 +68,13 @@ def drop_table(db, name: DbPath):
     t = TablePath(name)
     db.query(t.drop(if_exists=True))
 
+
 def append_to_table(name: DbPath, expr: Expr):
     t = TablePath(name, expr.schema)
     yield t.create(if_not_exists=True)  # uses expr.schema
-    yield 'commit'
+    yield "commit"
     yield t.insert_expr(expr)
-    yield 'commit'
+    yield "commit"
 
 
 def bool_to_int(x):
@@ -95,10 +97,7 @@ def _outerjoin(db: Database, a: ITable, b: ITable, keys1: List[str], keys2: List
         r = rightjoin(a, b).on(*on).select(is_exclusive_a=False, is_exclusive_b=is_exclusive_b, **select_fields)
         return l.union(r)
 
-    return (
-        outerjoin(a, b).on(*on)
-        .select(is_exclusive_a=is_exclusive_a, is_exclusive_b=is_exclusive_b, **select_fields)
-    )
+    return outerjoin(a, b).on(*on).select(is_exclusive_a=is_exclusive_a, is_exclusive_b=is_exclusive_b, **select_fields)
 
 
 def _slice_tuple(t, *sizes):
@@ -113,7 +112,6 @@ def json_friendly_value(v):
     if isinstance(v, Decimal):
         return float(v)
     return v
-
 
 
 @dataclass
@@ -143,11 +141,10 @@ class JoinDiffer(TableDiffer):
 
         table1, table2 = self._threaded_call("with_schema", [table1, table2])
 
-
         bg_funcs = [partial(self._test_duplicate_keys, table1, table2)] if self.validate_unique_key else []
         if self.materialize_to_table:
             drop_table(db, self.materialize_to_table)
-            db.query('COMMIT')
+            db.query("COMMIT")
 
         with self._run_in_background(*bg_funcs):
 
@@ -158,7 +155,16 @@ class JoinDiffer(TableDiffer):
                 yield from self._bisect_and_diff_tables(table1, table2)
             logger.info("Diffing complete")
 
-    def _diff_segments(self, ti: ThreadedYielder, table1: TableSegment, table2: TableSegment, max_rows: int, level=0, segment_index=None, segment_count=None):
+    def _diff_segments(
+        self,
+        ti: ThreadedYielder,
+        table1: TableSegment,
+        table2: TableSegment,
+        max_rows: int,
+        level=0,
+        segment_index=None,
+        segment_count=None,
+    ):
         assert table1.database is table2.database
 
         if segment_index or table1.min_key or max_rows:
@@ -172,13 +178,15 @@ class JoinDiffer(TableDiffer):
         diff_rows, a_cols, b_cols, is_diff_cols = self._create_outer_join(table1, table2)
 
         with self._run_in_background(
-                partial(self._collect_stats, 1, table1),
-                partial(self._collect_stats, 2, table2),
-                partial(self._test_null_keys, table1, table2),
-                partial(self._sample_and_count_exclusive, db, diff_rows, a_cols, b_cols),
-                partial(self._count_diff_per_column, db, diff_rows, list(a_cols), is_diff_cols),
-                partial(self._materialize_diff, db, diff_rows, segment_index=segment_index) if self.materialize_to_table else None,
-            ):
+            partial(self._collect_stats, 1, table1),
+            partial(self._collect_stats, 2, table2),
+            partial(self._test_null_keys, table1, table2),
+            partial(self._sample_and_count_exclusive, db, diff_rows, a_cols, b_cols),
+            partial(self._count_diff_per_column, db, diff_rows, list(a_cols), is_diff_cols),
+            partial(self._materialize_diff, db, diff_rows, segment_index=segment_index)
+            if self.materialize_to_table
+            else None,
+        ):
 
             logger.debug("Querying for different rows")
             for is_xa, is_xb, *x in db.query(diff_rows, list):
@@ -217,7 +225,6 @@ class JoinDiffer(TableDiffer):
             nulls = ts.database.query(q, list)
             if nulls:
                 raise ValueError(f"NULL values in one or more primary keys")
-
 
     def _collect_stats(self, i, table):
         logger.info(f"Collecting stats for table #{i}")
@@ -265,19 +272,15 @@ class JoinDiffer(TableDiffer):
         a = table1._make_select()
         b = table2._make_select()
 
-        is_diff_cols = {
-            f"is_diff_{c1}": bool_to_int(a[c1].is_distinct_from(b[c2])) for c1, c2 in safezip(cols1, cols2)
-        }
+        is_diff_cols = {f"is_diff_{c1}": bool_to_int(a[c1].is_distinct_from(b[c2])) for c1, c2 in safezip(cols1, cols2)}
 
         a_cols = {f"table1_{c}": NormalizeAsString(a[c]) for c in cols1}
         b_cols = {f"table2_{c}": NormalizeAsString(b[c]) for c in cols2}
 
-        diff_rows = (
-            _outerjoin(db, a, b, keys1, keys2, {**is_diff_cols, **a_cols, **b_cols})
-            .where(or_(this[c] == 1 for c in is_diff_cols))
+        diff_rows = _outerjoin(db, a, b, keys1, keys2, {**is_diff_cols, **a_cols, **b_cols}).where(
+            or_(this[c] == 1 for c in is_diff_cols)
         )
         return diff_rows, a_cols, b_cols, is_diff_cols
-
 
     def _count_diff_per_column(self, db, diff_rows, cols, is_diff_cols):
         logger.info("Counting differences per column")
@@ -285,11 +288,11 @@ class JoinDiffer(TableDiffer):
         diff_counts = {}
         for name, count in safezip(cols, is_diff_cols_counts):
             diff_counts[name] = diff_counts.get(name, 0) + (count or 0)
-        self.stats['diff_counts'] = diff_counts
+        self.stats["diff_counts"] = diff_counts
 
     def _sample_and_count_exclusive(self, db, diff_rows, a_cols, b_cols):
         if isinstance(db, Oracle):
-            exclusive_rows_query = diff_rows.where((this.is_exclusive_a==1) | (this.is_exclusive_b==1))
+            exclusive_rows_query = diff_rows.where((this.is_exclusive_a == 1) | (this.is_exclusive_b == 1))
         else:
             exclusive_rows_query = diff_rows.where(this.is_exclusive_a | this.is_exclusive_b)
 
@@ -299,6 +302,7 @@ class JoinDiffer(TableDiffer):
             return
 
         logger.info("Counting and sampling exclusive rows")
+
         def exclusive_rows(expr):
             c = Compiler(db)
             name = c.new_unique_table_name("temp_table")
@@ -306,9 +310,9 @@ class JoinDiffer(TableDiffer):
             exclusive_rows = table(name, schema=expr.source_table.schema)
 
             count = yield exclusive_rows.count()
-            self.stats["exclusive_count"] = self.stats.get('exclusive_count', 0) + count[0][0]
+            self.stats["exclusive_count"] = self.stats.get("exclusive_count", 0) + count[0][0]
             sample_rows = yield sample(exclusive_rows.select(*this[list(a_cols)], *this[list(b_cols)]))
-            self.stats["exclusive_sample"] = self.stats.get('exclusive_sample', []) + sample_rows
+            self.stats["exclusive_sample"] = self.stats.get("exclusive_sample", []) + sample_rows
 
             # Only drops if create table succeeded (meaning, the table didn't already exist)
             yield f"drop table {c.quote(name)}"
@@ -321,4 +325,3 @@ class JoinDiffer(TableDiffer):
 
         db.query(append_to_table(self.materialize_to_table, diff_rows.limit(self.write_limit)))
         logger.info(f"Materialized diff to table '{'.'.join(self.materialize_to_table)}'.")
-

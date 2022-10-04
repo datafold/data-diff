@@ -27,7 +27,7 @@ from .database_types import (
     DbPath,
 )
 
-from data_diff.queries import Expr, Compiler,  table, Select, SKIP, ThreadLocalInterpreter
+from data_diff.queries import Expr, Compiler, table, Select, SKIP, ThreadLocalInterpreter
 
 logger = logging.getLogger("database")
 
@@ -74,6 +74,7 @@ def _query_cursor(c, sql_code):
     except Exception as e:
         logger.exception(e)
         raise
+
 
 def _query_conn(conn, sql_code: Union[str, ThreadLocalInterpreter]) -> list:
     c = conn.cursor()

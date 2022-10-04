@@ -66,8 +66,6 @@ class HashDiffer(TableDiffer):
         if self.bisection_factor < 2:
             raise ValueError("Must have at least two segments per iteration (i.e. bisection_factor >= 2)")
 
-
-
     def _validate_and_adjust_columns(self, table1, table2):
         for c1, c2 in safezip(table1._relevant_columns, table2._relevant_columns):
             if c1 not in table1._schema:
@@ -115,8 +113,16 @@ class HashDiffer(TableDiffer):
                         "If encoding/formatting differs between databases, it may result in false positives."
                     )
 
-
-    def _diff_segments(self, ti: ThreadedYielder, table1: TableSegment, table2: TableSegment, max_rows: int, level=0, segment_index=None, segment_count=None):
+    def _diff_segments(
+        self,
+        ti: ThreadedYielder,
+        table1: TableSegment,
+        table2: TableSegment,
+        max_rows: int,
+        level=0,
+        segment_index=None,
+        segment_count=None,
+    ):
         logger.info(
             ". " * level + f"Diffing segment {segment_index}/{segment_count}, "
             f"key-range: {table1.min_key}..{table2.max_key}, "
@@ -148,7 +154,9 @@ class HashDiffer(TableDiffer):
         if checksum1 != checksum2:
             return self._bisect_and_diff_segments(ti, table1, table2, level=level, max_rows=max(count1, count2))
 
-    def _bisect_and_diff_segments(self, ti: ThreadedYielder, table1: TableSegment, table2: TableSegment, level=0, max_rows=None):
+    def _bisect_and_diff_segments(
+        self, ti: ThreadedYielder, table1: TableSegment, table2: TableSegment, level=0, max_rows=None
+    ):
         assert table1.is_bounded and table2.is_bounded
 
         if max_rows is None:

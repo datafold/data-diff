@@ -48,10 +48,10 @@ def _get_schema(pair):
 
 
 def diff_schemas(schema1, schema2, columns):
-    logging.info('Diffing schemas...')
-    attrs = 'name', 'type', 'datetime_precision', 'numeric_precision', 'numeric_scale'
+    logging.info("Diffing schemas...")
+    attrs = "name", "type", "datetime_precision", "numeric_precision", "numeric_scale"
     for c in columns:
-        if c is None:   # Skip for convenience
+        if c is None:  # Skip for convenience
             continue
         diffs = []
         for attr, v1, v2 in safezip(attrs, schema1[c], schema2[c]):
@@ -59,6 +59,7 @@ def diff_schemas(schema1, schema2, columns):
                 diffs.append(f"{attr}:({v1} != {v2})")
         if diffs:
             logging.warning(f"Schema mismatch in column '{c}': {', '.join(diffs)}")
+
 
 class MyHelpFormatter(click.HelpFormatter):
     def __init__(self, **kwargs):
@@ -106,7 +107,13 @@ click.Context.formatter_class = MyHelpFormatter
     help=f"Minimal bisection threshold. Below it, data-diff will download the data and compare it locally. Default={DEFAULT_BISECTION_THRESHOLD}.",
     metavar="NUM",
 )
-@click.option("-m", "--materialize", default=None, metavar="TABLE_NAME", help="Materialize the diff results into a new table in the database.")
+@click.option(
+    "-m",
+    "--materialize",
+    default=None,
+    metavar="TABLE_NAME",
+    help="Materialize the diff results into a new table in the database. (joindiff only)",
+)
 @click.option(
     "--min-age",
     default=None,
@@ -266,8 +273,8 @@ def _main(
         differ = JoinDiffer(
             threaded=threaded,
             max_threadpool_size=threads and threads * 2,
-            validate_unique_key = not assume_unique_key,
-            materialize_to_table = materialize and parse_table_name(eval_name_template(materialize)),
+            validate_unique_key=not assume_unique_key,
+            materialize_to_table=materialize and parse_table_name(eval_name_template(materialize)),
         )
     else:
         assert algorithm == Algorithm.HASHDIFF
@@ -326,8 +333,15 @@ def _main(
     columns = tuple(expanded_columns - {key_column, update_column})
 
     if db1 is db2:
-        diff_schemas(schema1, schema2, (key_column, update_column,) + columns)
-
+        diff_schemas(
+            schema1,
+            schema2,
+            (
+                key_column,
+                update_column,
+            )
+            + columns,
+        )
 
     logging.info(f"Diffing using columns: key={key_column} update={update_column} extra={columns}")
 

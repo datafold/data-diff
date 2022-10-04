@@ -11,6 +11,7 @@ from .base import (
     TIMESTAMP_PRECISION_POS,
 )
 
+
 def query_cursor(c, sql_code):
     c.execute(sql_code)
     if sql_code.lower().startswith("select"):
@@ -86,7 +87,6 @@ class Presto(Database):
             return
 
         return query_cursor(c, sql_code)
-
 
     def close(self):
         self._conn.close()
