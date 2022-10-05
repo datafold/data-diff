@@ -98,9 +98,6 @@ def apply_query(callback: Callable[[str], Any], sql_code: Union[str, ThreadLocal
         return callback(sql_code)
 
 
-
-
-
 class Database(AbstractDatabase):
     """Base abstract class for databases.
 
@@ -351,8 +348,6 @@ class Database(AbstractDatabase):
         c = conn.cursor()
         callback = partial(self._query_cursor, c)
         return apply_query(callback, sql_code)
-
-
 
 
 class ThreadedDatabase(Database):

@@ -31,10 +31,12 @@ class ExprNode(Compilable):
 
 Expr = Union[ExprNode, str, bool, int, datetime, ArithString, None]
 
+
 def get_type(e: Expr) -> type:
     if isinstance(e, ExprNode):
         return e.type
     return type(e)
+
 
 @dataclass
 class Alias(ExprNode):
@@ -633,6 +635,5 @@ class InsertToTable(Statement):
 
 @dataclass
 class Commit(Statement):
-
     def compile(self, c: Compiler) -> str:
         return "COMMIT" if not c.database.is_autocommit else SKIP

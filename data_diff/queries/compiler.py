@@ -65,4 +65,3 @@ class Compilable(ABC):
     @abstractmethod
     def compile(self, c: Compiler) -> str:
         ...
-

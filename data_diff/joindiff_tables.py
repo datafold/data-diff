@@ -73,6 +73,7 @@ def drop_table_oracle(name: DbPath):
         yield t.drop()
     yield commit
 
+
 def drop_table(name: DbPath):
     t = TablePath(name)
     yield t.drop(if_exists=True)
@@ -87,6 +88,7 @@ def append_to_table_oracle(name: DbPath, expr: Expr):
         yield commit
     yield t.insert_expr(expr)
     yield commit
+
 
 def append_to_table(name: DbPath, expr: Expr):
     assert expr.schema, expr

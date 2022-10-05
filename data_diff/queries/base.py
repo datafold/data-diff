@@ -5,7 +5,8 @@ from data_diff.databases.database_types import DbPath, DbKey, Schema
 
 class _SKIP:
     def __repr__(self):
-        return 'SKIP'
+        return "SKIP"
+
 
 SKIP = _SKIP()
 
