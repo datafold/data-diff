@@ -1,6 +1,6 @@
 from .database_types import *
-from .base import Database, import_helper, parse_table_name, ConnectError
-from .base import TIMESTAMP_PRECISION_POS
+from .base import Database, import_helper, parse_table_name, ConnectError, apply_query
+from .base import TIMESTAMP_PRECISION_POS, ThreadLocalInterpreter
 
 
 @import_helper(text="Please install BigQuery and configure your google-cloud access.")
@@ -47,7 +47,7 @@ class BigQuery(Database):
             return value.decode()
         return value
 
-    def _query(self, sql_code: str):
+    def _query_atom(self, sql_code: str):
         from google.cloud import bigquery
 
         try:
@@ -59,6 +59,9 @@ class BigQuery(Database):
         if res and isinstance(res[0], bigquery.table.Row):
             res = [tuple(self._normalize_returned_value(v) for v in row.values()) for row in res]
         return res
+
+    def _query(self, sql_code: Union[str, ThreadLocalInterpreter]):
+        return apply_query(self._query_atom, sql_code)
 
     def to_string(self, s: str):
         return f"cast({s} as string)"
@@ -98,3 +101,15 @@ class BigQuery(Database):
 
     def random(self) -> str:
         return "RAND()"
+
+    @property
+    def is_autocommit(self) -> bool:
+        return True
+
+    def type_repr(self, t) -> str:
+        try:
+            return {
+                str: "STRING",
+            }[t]
+        except KeyError:
+            return super().type_repr(t)

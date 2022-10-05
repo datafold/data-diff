@@ -1,7 +1,7 @@
 import logging
 
 from .database_types import *
-from .base import MD5_HEXDIGITS, CHECKSUM_HEXDIGITS, Database, import_helper, _query_conn, parse_table_name
+from .base import MD5_HEXDIGITS, CHECKSUM_HEXDIGITS, Database, import_helper, parse_table_name
 
 
 @import_helper(text="You can install it using 'pip install databricks-sql-connector'")
@@ -52,7 +52,7 @@ class Databricks(Database):
 
     def _query(self, sql_code: str) -> list:
         "Uses the standard SQL cursor interface"
-        return _query_conn(self._conn, sql_code)
+        return self._query_conn(self._conn, sql_code)
 
     def quote(self, s: str):
         return f"`{s}`"

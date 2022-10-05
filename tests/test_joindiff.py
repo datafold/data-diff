@@ -1,6 +1,8 @@
+from typing import List
 from parameterized import parameterized_class
 
 from data_diff.databases.connect import connect
+from data_diff.queries.ast_classes import TablePath
 from data_diff.table_segment import TableSegment, split_space
 from data_diff import databases as db
 from data_diff.joindiff_tables import JoinDiffer
@@ -8,6 +10,7 @@ from data_diff.joindiff_tables import JoinDiffer
 from .test_diff_tables import TestPerDatabase, _get_float_type, _get_text_type, _commit, _insert_row, _insert_rows
 
 from .common import (
+    random_table_suffix,
     str_to_checksum,
     CONN_STRINGS,
     N_THREADS,
@@ -80,10 +83,24 @@ class TestJoindiff(TestPerDatabase):
         _insert_rows(self.connection, self.table_dst, cols, [[1, 1, 1, 9, time_str]])
         _commit(self.connection)
         diff = list(self.differ.diff_tables(self.table, self.table2))
-        expected = [("-", ("2", time + ".000000"))]
+        expected_row = ("2", time + ".000000")
+        expected = [("-", expected_row)]
         self.assertEqual(expected, diff)
         self.assertEqual(2, self.differ.stats["table1_count"])
         self.assertEqual(1, self.differ.stats["table2_count"])
+
+        # Test materialize
+        materialize_path = self.connection.parse_table_name(f'test_mat_{random_table_suffix()}')
+        mdiffer = self.differ.replace(materialize_to_table=materialize_path)
+        diff = list(mdiffer.diff_tables(self.table, self.table2))
+        self.assertEqual(expected, diff)
+
+        t = TablePath(materialize_path)
+        rows = self.connection.query( t.select(), List[tuple] )
+        self.connection.query( t.drop() )
+        # is_xa, is_xb, is_diff1, is_diff2, row1, row2
+        assert rows == [(1, 0, 1, 1) + expected_row + (None, None)], rows
+
 
     def test_diff_table_above_bisection_threshold(self):
         time = "2022-01-01 00:00:00"

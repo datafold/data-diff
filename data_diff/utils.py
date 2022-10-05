@@ -247,6 +247,9 @@ class CaseInsensitiveDict(CaseAwareMapping):
     def items(self) -> Iterable[Tuple[str, V]]:
         return ((k, v[1]) for k, v in self._dict.items())
 
+    def __len__(self):
+        return len(self._dict)
+
 
 class CaseSensitiveDict(dict, CaseAwareMapping):
     def get_key(self, key):

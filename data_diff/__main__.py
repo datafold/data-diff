@@ -9,8 +9,6 @@ from typing import Optional
 import rich
 import click
 
-from data_diff.databases.base import parse_table_name
-
 from .utils import eval_name_template, remove_password_from_url, safezip, match_like
 from .diff_tables import Algorithm
 from .hashdiff_tables import HashDiffer, DEFAULT_BISECTION_THRESHOLD, DEFAULT_BISECTION_FACTOR
@@ -269,22 +267,6 @@ def _main(
         logging.error(f"Error while parsing age expression: {e}")
         return
 
-    if algorithm == Algorithm.JOINDIFF:
-        differ = JoinDiffer(
-            threaded=threaded,
-            max_threadpool_size=threads and threads * 2,
-            validate_unique_key=not assume_unique_key,
-            materialize_to_table=materialize and parse_table_name(eval_name_template(materialize)),
-        )
-    else:
-        assert algorithm == Algorithm.HASHDIFF
-        differ = HashDiffer(
-            bisection_factor=bisection_factor,
-            bisection_threshold=bisection_threshold,
-            threaded=threaded,
-            max_threadpool_size=threads and threads * 2,
-        )
-
     if database1 is None or database2 is None:
         logging.error(
             f"Error: Databases not specified. Got {database1} and {database2}. Use --help for more information."
@@ -306,6 +288,22 @@ def _main(
     if interactive:
         for db in dbs:
             db.enable_interactive()
+
+    if algorithm == Algorithm.JOINDIFF:
+        differ = JoinDiffer(
+            threaded=threaded,
+            max_threadpool_size=threads and threads * 2,
+            validate_unique_key=not assume_unique_key,
+            materialize_to_table=materialize and db1.parse_table_name(eval_name_template(materialize)),
+        )
+    else:
+        assert algorithm == Algorithm.HASHDIFF
+        differ = HashDiffer(
+            bisection_factor=bisection_factor,
+            bisection_threshold=bisection_threshold,
+            threaded=threaded,
+            max_threadpool_size=threads and threads * 2,
+        )
 
     table_names = table1, table2
     table_paths = [db.parse_table_name(t) for db, t in safezip(dbs, table_names)]

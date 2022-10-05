@@ -1,10 +1,10 @@
+from functools import partial
 import re
 
 from data_diff.utils import match_regexps
-from data_diff.queries import ThreadLocalInterpreter
 
 from .database_types import *
-from .base import Database, import_helper
+from .base import Database, import_helper, ThreadLocalInterpreter
 from .base import (
     MD5_HEXDIGITS,
     CHECKSUM_HEXDIGITS,
@@ -75,16 +75,7 @@ class Presto(Database):
         c = self._conn.cursor()
 
         if isinstance(sql_code, ThreadLocalInterpreter):
-            # TODO reuse code from base.py
-            g = sql_code.interpret()
-            q = next(g)
-            while True:
-                res = query_cursor(c, q)
-                try:
-                    q = g.send(res)
-                except StopIteration:
-                    break
-            return
+            return sql_code.apply_queries(partial(query_cursor, c))
 
         return query_cursor(c, sql_code)
 
@@ -142,3 +133,6 @@ class Presto(Database):
     def normalize_uuid(self, value: str, coltype: ColType_UUID) -> str:
         # Trim doesn't work on CHAR type
         return f"TRIM(CAST({value} AS VARCHAR))"
+
+    def is_autocommit(self) -> bool:
+        return False

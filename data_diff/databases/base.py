@@ -1,8 +1,8 @@
 import math
 import sys
 import logging
-from typing import Dict, Generator, Tuple, Optional, Sequence, Type, List, Union
-from functools import wraps
+from typing import Any, Callable, Dict, Generator, Tuple, Optional, Sequence, Type, List, Union
+from functools import partial, wraps
 from concurrent.futures import ThreadPoolExecutor
 import threading
 from abc import abstractmethod
@@ -27,7 +27,7 @@ from .database_types import (
     DbPath,
 )
 
-from data_diff.queries import Expr, Compiler, table, Select, SKIP, ThreadLocalInterpreter
+from data_diff.queries import Expr, Compiler, table, Select, SKIP
 
 logger = logging.getLogger("database")
 
@@ -66,30 +66,39 @@ def _one(seq):
     return x
 
 
-def _query_cursor(c, sql_code):
-    try:
-        c.execute(sql_code)
-        if sql_code.lower().startswith("select"):
-            return c.fetchall()
-    except Exception as e:
-        logger.exception(e)
-        raise
+class ThreadLocalInterpreter:
+    """An interpeter used to execute a sequence of queries within the same thread.
 
+    Useful for cursor-sensitive operations, such as creating a temporary table.
+    """
 
-def _query_conn(conn, sql_code: Union[str, ThreadLocalInterpreter]) -> list:
-    c = conn.cursor()
+    def __init__(self, compiler: Compiler, gen: Generator):
+        self.gen = gen
+        self.compiler = compiler
 
-    if isinstance(sql_code, ThreadLocalInterpreter):
-        g = sql_code.interpret()
-        q = next(g)
+    def apply_queries(self, callback: Callable[[str], Any]):
+        q: Expr = next(self.gen)
         while True:
-            res = _query_cursor(c, q)
+            sql = self.compiler.compile(q)
             try:
-                q = g.send(res)
+                try:
+                    res = callback(sql) if sql is not SKIP else SKIP
+                except Exception as e:
+                    q = self.gen.throw(type(e), e)
+                else:
+                    q = self.gen.send(res)
             except StopIteration:
                 break
+
+
+def apply_query(callback: Callable[[str], Any], sql_code: Union[str, ThreadLocalInterpreter]) -> list:
+    if isinstance(sql_code, ThreadLocalInterpreter):
+        return sql_code.apply_queries(callback)
     else:
-        return _query_cursor(c, sql_code)
+        return callback(sql_code)
+
+
+
 
 
 class Database(AbstractDatabase):
@@ -108,11 +117,17 @@ class Database(AbstractDatabase):
     def name(self):
         return type(self).__name__
 
-    def query(self, sql_ast: Expr, res_type: type = None):
+    def query(self, sql_ast: Union[Expr, Generator], res_type: type = None):
         "Query the given SQL code/AST, and attempt to convert the result to type 'res_type'"
 
         compiler = Compiler(self)
-        sql_code = compiler.compile(sql_ast)
+        if isinstance(sql_ast, Generator):
+            sql_code = ThreadLocalInterpreter(compiler, sql_ast)
+        else:
+            sql_code = compiler.compile(sql_ast)
+            if sql_code is SKIP:
+                return SKIP
+
         logger.debug("Running SQL (%s): %s", type(self).__name__, sql_code)
         if getattr(self, "_interactive", False) and isinstance(sql_ast, Select):
             explained_sql = compiler.compile(Explain(sql_ast))
@@ -134,7 +149,7 @@ class Database(AbstractDatabase):
         elif getattr(res_type, "__origin__", None) is list and len(res_type.__args__) == 1:
             if res_type.__args__ in ((int,), (str,)):
                 return [_one(row) for row in res]
-            elif res_type.__args__ == (Tuple,):
+            elif res_type.__args__ in [(Tuple,), (tuple,)]:
                 return [tuple(row) for row in res]
             else:
                 raise ValueError(res_type)
@@ -311,6 +326,34 @@ class Database(AbstractDatabase):
     def random(self) -> str:
         return "RANDOM()"
 
+    def type_repr(self, t) -> str:
+        if isinstance(t, str):
+            return t
+        return {
+            int: "INT",
+            str: "VARCHAR",
+            bool: "BOOLEAN",
+            float: "FLOAT",
+        }[t]
+
+    def _query_cursor(self, c, sql_code: str):
+        assert isinstance(sql_code, str), sql_code
+        try:
+            c.execute(sql_code)
+            if sql_code.lower().startswith("select"):
+                return c.fetchall()
+        except Exception as e:
+            # logger.exception(e)
+            # logger.error(f'Caused by SQL: {sql_code}')
+            raise
+
+    def _query_conn(self, conn, sql_code: Union[str, ThreadLocalInterpreter]) -> list:
+        c = conn.cursor()
+        callback = partial(self._query_cursor, c)
+        return apply_query(callback, sql_code)
+
+
+
 
 class ThreadedDatabase(Database):
     """Access the database through singleton threads.
@@ -339,7 +382,7 @@ class ThreadedDatabase(Database):
         "This method runs in a worker thread"
         if self._init_error:
             raise self._init_error
-        return _query_conn(self.thread_local.conn, sql_code)
+        return self._query_conn(self.thread_local.conn, sql_code)
 
     @abstractmethod
     def create_connection(self):
@@ -347,6 +390,10 @@ class ThreadedDatabase(Database):
 
     def close(self):
         self._queue.shutdown()
+
+    @property
+    def is_autocommit(self) -> bool:
+        return False
 
 
 CHECKSUM_HEXDIGITS = 15  # Must be 15 or lower

@@ -1,6 +1,6 @@
 import logging
 import decimal
-from abc import ABC, abstractmethod
+from abc import ABC, abstractmethod, abstractproperty
 from typing import Sequence, Optional, Tuple, Union, Dict, List
 from datetime import datetime
 
@@ -291,6 +291,10 @@ class AbstractDatabase(AbstractDialect):
 
     @abstractmethod
     def _normalize_table_path(self, path: DbPath) -> DbPath:
+        ...
+
+    @abstractproperty
+    def is_autocommit(self) -> bool:
         ...
 
 

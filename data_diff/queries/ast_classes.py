@@ -186,7 +186,7 @@ class CaseWhen(ExprNode):
     def compile(self, c: Compiler) -> str:
         assert self.cases
         when_thens = " ".join(f"WHEN {c.compile(when)} THEN {c.compile(then)}" for when, then in self.cases)
-        else_ = (" " + c.compile(self.else_)) if self.else_ else ""
+        else_ = (" ELSE " + c.compile(self.else_)) if self.else_ is not None else ""
         return f"CASE {when_thens}{else_} END"
 
     @property
@@ -600,23 +600,13 @@ class Statement(Compilable):
     type = None
 
 
-def to_sql_type(t):
-    if isinstance(t, str):
-        return t
-    return {
-        int: "int",
-        str: "varchar(1024)",
-        bool: "boolean",
-    }[t]
-
-
 @dataclass
 class CreateTable(Statement):
     path: TablePath
     if_not_exists: bool = False
 
     def compile(self, c: Compiler) -> str:
-        schema = ", ".join(f"{k} {to_sql_type(v)}" for k, v in self.path.schema.items())
+        schema = ", ".join(f"{k} {c.database.type_repr(v)}" for k, v in self.path.schema.items())
         ne = "IF NOT EXISTS " if self.if_not_exists else ""
         return f"CREATE TABLE {ne}{c.compile(self.path)}({schema})"
 
@@ -639,3 +629,10 @@ class InsertToTable(Statement):
 
     def compile(self, c: Compiler) -> str:
         return f"INSERT INTO {c.compile(self.path)} {c.compile(self.expr)}"
+
+
+@dataclass
+class Commit(Statement):
+
+    def compile(self, c: Compiler) -> str:
+        return "COMMIT" if not c.database.is_autocommit else SKIP

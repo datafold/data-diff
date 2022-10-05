@@ -2,6 +2,7 @@
 
 """
 
+from contextlib import suppress
 from decimal import Decimal
 from functools import partial
 import logging
@@ -10,6 +11,7 @@ from typing import Dict, List, Optional
 from runtype import dataclass
 
 from data_diff.databases.database_types import DbPath, Schema
+from data_diff.databases.base import QueryError
 
 
 from .utils import safezip
@@ -19,7 +21,7 @@ from .table_segment import TableSegment
 from .diff_tables import TableDiffer, DiffResult
 from .thread_utils import ThreadedYielder
 
-from .queries import table, sum_, min_, max_, avg, SKIP
+from .queries import table, sum_, min_, max_, avg, SKIP, commit
 from .queries.api import and_, if_, or_, outerjoin, leftjoin, rightjoin, this, ITable
 from .queries.ast_classes import Concat, Count, Expr, Random, TablePath
 from .queries.compiler import Compiler
@@ -51,30 +53,48 @@ def sample(table):
     return table.order_by(Random()).limit(10)
 
 
-def create_temp_table(c: Compiler, name: str, expr: Expr):
+def create_temp_table(c: Compiler, table: TablePath, expr: Expr):
     db = c.database
     if isinstance(db, BigQuery):
-        name = f"{db.default_schema}.{name}"
-        return f"create table {c.quote(name)} OPTIONS(expiration_timestamp=TIMESTAMP_ADD(CURRENT_TIMESTAMP(), INTERVAL 1 DAY)) as {c.compile(expr)}"
+        return f"create table {c.compile(table)} OPTIONS(expiration_timestamp=TIMESTAMP_ADD(CURRENT_TIMESTAMP(), INTERVAL 1 DAY)) as {c.compile(expr)}"
     elif isinstance(db, Presto):
-        return f"create table {c.quote(name)} as {c.compile(expr)}"
+        return f"create table {c.compile(table)} as {c.compile(expr)}"
     elif isinstance(db, Oracle):
-        return f"create global temporary table {c.quote(name)} as {c.compile(expr)}"
+        return f"create global temporary table {c.compile(table)} as {c.compile(expr)}"
     else:
-        return f"create temporary table {c.quote(name)} as {c.compile(expr)}"
+        return f"create temporary table {c.compile(table)} as {c.compile(expr)}"
 
 
-def drop_table(db, name: DbPath):
+def drop_table_oracle(name: DbPath):
     t = TablePath(name)
-    db.query(t.drop(if_exists=True))
+    # Experience shows double drop is necessary
+    with suppress(QueryError):
+        yield t.drop()
+        yield t.drop()
+    yield commit
 
+def drop_table(name: DbPath):
+    t = TablePath(name)
+    yield t.drop(if_exists=True)
+    yield commit
+
+
+def append_to_table_oracle(name: DbPath, expr: Expr):
+    assert expr.schema, expr
+    t = TablePath(name, expr.schema)
+    with suppress(QueryError):
+        yield t.create()  # uses expr.schema
+        yield commit
+    yield t.insert_expr(expr)
+    yield commit
 
 def append_to_table(name: DbPath, expr: Expr):
+    assert expr.schema, expr
     t = TablePath(name, expr.schema)
     yield t.create(if_not_exists=True)  # uses expr.schema
-    yield "commit"
+    yield commit
     yield t.insert_expr(expr)
-    yield "commit"
+    yield commit
 
 
 def bool_to_int(x):
@@ -143,8 +163,10 @@ class JoinDiffer(TableDiffer):
 
         bg_funcs = [partial(self._test_duplicate_keys, table1, table2)] if self.validate_unique_key else []
         if self.materialize_to_table:
-            drop_table(db, self.materialize_to_table)
-            db.query("COMMIT")
+            if isinstance(db, Oracle):
+                db.query(drop_table_oracle(self.materialize_to_table))
+            else:
+                db.query(drop_table(self.materialize_to_table))
 
         with self._run_in_background(*bg_funcs):
 
@@ -306,8 +328,8 @@ class JoinDiffer(TableDiffer):
         def exclusive_rows(expr):
             c = Compiler(db)
             name = c.new_unique_table_name("temp_table")
-            yield create_temp_table(c, name, expr.limit(self.write_limit))
-            exclusive_rows = table(name, schema=expr.source_table.schema)
+            exclusive_rows = TablePath(name, schema=expr.source_table.schema)
+            yield create_temp_table(c, exclusive_rows, expr.limit(self.write_limit))
 
             count = yield exclusive_rows.count()
             self.stats["exclusive_count"] = self.stats.get("exclusive_count", 0) + count[0][0]
@@ -315,7 +337,7 @@ class JoinDiffer(TableDiffer):
             self.stats["exclusive_sample"] = self.stats.get("exclusive_sample", []) + sample_rows
 
             # Only drops if create table succeeded (meaning, the table didn't already exist)
-            yield f"drop table {c.quote(name)}"
+            yield exclusive_rows.drop()
 
         # Run as a sequence of thread-local queries (compiled into a ThreadLocalInterpreter)
         db.query(exclusive_rows(exclusive_rows_query), None)
@@ -323,5 +345,6 @@ class JoinDiffer(TableDiffer):
     def _materialize_diff(self, db, diff_rows, segment_index=None):
         assert self.materialize_to_table
 
-        db.query(append_to_table(self.materialize_to_table, diff_rows.limit(self.write_limit)))
+        f = append_to_table_oracle if isinstance(db, Oracle) else append_to_table
+        db.query(f(self.materialize_to_table, diff_rows.limit(self.write_limit)))
         logger.info(f"Materialized diff to table '{'.'.join(self.materialize_to_table)}'.")

@@ -43,9 +43,9 @@ class Oracle(ThreadedDatabase):
         except Exception as e:
             raise ConnectError(*e.args) from e
 
-    def _query(self, sql_code: str):
+    def _query_cursor(self, c, sql_code: str):
         try:
-            return super()._query(sql_code)
+            return super()._query_cursor(c, sql_code)
         except self._oracle.DatabaseError as e:
             raise QueryError(e)
 
@@ -130,3 +130,11 @@ class Oracle(ThreadedDatabase):
 
     def is_distinct_from(self, a: str, b: str) -> str:
         return f"DECODE({a}, {b}, 1, 0) = 0"
+
+    def type_repr(self, t) -> str:
+        try:
+            return {
+                str: "VARCHAR(1024)",
+            }[t]
+        except KeyError:
+            return super().type_repr(t)

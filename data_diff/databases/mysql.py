@@ -76,3 +76,11 @@ class MySQL(ThreadedDatabase):
 
     def random(self) -> str:
         return "RAND()"
+
+    def type_repr(self, t) -> str:
+        try:
+            return {
+                str: "VARCHAR(1024)",
+            }[t]
+        except KeyError:
+            return super().type_repr(t)

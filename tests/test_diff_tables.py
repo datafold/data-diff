@@ -515,6 +515,10 @@ class TestAlphanumericKeys(TestPerDatabase):
         ]
         for i in range(0, 10000, 1000):
             a = ArithAlphanumeric(numberToAlphanum(i), max_len=10)
+            if not a and isinstance(self.connection, db.Oracle):
+                # Skip empty string, because Oracle treats it as NULL ..
+                continue
+
             queries.append(f"INSERT INTO {self.table_src} VALUES ('{a}', '{i}')")
 
         queries += [
@@ -563,6 +567,10 @@ class TestVaryingAlphanumericKeys(TestPerDatabase):
         ]
         for i in range(0, 10000, 1000):
             a = ArithAlphanumeric(numberToAlphanum(i * i))
+            if not a and isinstance(self.connection, db.Oracle):
+                # Skip empty string, because Oracle treats it as NULL ..
+                continue
+
             queries.append(f"INSERT INTO {self.table_src} VALUES ('{a}', '{i}')")
 
         queries += [
