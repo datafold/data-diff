@@ -32,6 +32,10 @@ class ExprNode(Compilable):
 
 Expr = Union[ExprNode, str, bool, int, datetime, ArithString, None]
 
+def get_type(e: Expr) -> type:
+    if isinstance(e, ExprNode):
+        return e.type
+    return type(e)
 
 @dataclass
 class Alias(ExprNode):
@@ -43,7 +47,7 @@ class Alias(ExprNode):
 
     @property
     def type(self):
-        return self.expr.type
+        return get_type(self.expr)
 
 
 def _drop_skips(exprs):
@@ -392,6 +396,17 @@ class Union(ExprNode, ITable):
     def source_table(self):
         return self  # TODO is this right?
 
+    @property
+    def type(self):
+        return self.table1.type
+
+    @property
+    def schema(self):
+        s1 = self.table1.schema
+        s2 = self.table2.schema
+        assert len(s1) == len(s2)
+        return s1
+
     def compile(self, parent_c: Compiler) -> str:
         c = parent_c.replace(in_select=False)
         union_all = f"{c.compile(self.table1)} UNION {c.compile(self.table2)}"
@@ -576,7 +591,7 @@ def to_sql_type(t):
         return t
     return {
         int: "int",
-        str: "varchar",
+        str: "varchar(1024)",
         bool: "boolean",
     }[t]
 
