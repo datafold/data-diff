@@ -9,7 +9,7 @@ from runtype import dataclass
 
 from .utils import safezip
 from .thread_utils import ThreadedYielder
-from .databases.database_types import IKey, NumericType, PrecisionType, StringType
+from .databases.database_types import ColType_UUID, IKey, NumericType, PrecisionType, StringType
 from .table_segment import TableSegment
 
 from .diff_tables import TableDiffer
@@ -100,6 +100,10 @@ class HashDiffer(TableDiffer):
                 table1._schema[c1] = col1.replace(precision=lowest.precision)
                 table2._schema[c2] = col2.replace(precision=lowest.precision)
 
+            elif isinstance(col1, ColType_UUID):
+                if not isinstance(col2, ColType_UUID):
+                    raise TypeError(f"Incompatible types for column '{c1}':  {col1} <-> {col2}")
+
             elif isinstance(col1, StringType):
                 if not isinstance(col2, StringType):
                     raise TypeError(f"Incompatible types for column '{c1}':  {col1} <-> {col2}")
@@ -159,13 +163,14 @@ class HashDiffer(TableDiffer):
     ):
         assert table1.is_bounded and table2.is_bounded
 
+        max_space_size = max(table1.approximate_size(), table2.approximate_size())
         if max_rows is None:
-            # We can be sure that row_count <= max_rows
-            max_rows = max(table1.approximate_size(), table2.approximate_size())
+            # We can be sure that row_count <= max_rows iff the table key is unique
+            max_rows = max_space_size
 
         # If count is below the threshold, just download and compare the columns locally
         # This saves time, as bisection speed is limited by ping and query performance.
-        if max_rows < self.bisection_threshold:
+        if max_rows < self.bisection_threshold or max_space_size < self.bisection_factor * 2:
             rows1, rows2 = self._threaded_call("get_values", [table1, table2])
             diff = list(diff_sets(rows1, rows2))
 

@@ -207,7 +207,8 @@ class TableDiffer(ThreadBase, ABC):
         assert table1.is_bounded and table2.is_bounded
 
         # Choose evenly spaced checkpoints (according to min_key and max_key)
-        checkpoints = table1.choose_checkpoints(self.bisection_factor - 1)
+        biggest_table = max(table1, table2, key=methodcaller('approximate_size'))
+        checkpoints = biggest_table.choose_checkpoints(self.bisection_factor - 1)
 
         # Create new instances of TableSegment between each checkpoint
         segmented1 = table1.segment_by_checkpoints(checkpoints)
