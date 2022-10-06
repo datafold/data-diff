@@ -231,13 +231,14 @@ class TableDiffer:
     ):
         assert table1.is_bounded and table2.is_bounded
 
+        max_space_size = max(table1.approximate_size(), table2.approximate_size())
         if max_rows is None:
-            # We can be sure that row_count <= max_rows
-            max_rows = max(table1.approximate_size(), table2.approximate_size())
+            # We can be sure that row_count <= max_rows iff the table key is unique
+            max_rows = max_space_size
 
         # If count is below the threshold, just download and compare the columns locally
         # This saves time, as bisection speed is limited by ping and query performance.
-        if max_rows < self.bisection_threshold:
+        if max_rows < self.bisection_threshold or max_space_size < self.bisection_factor * 2:
             rows1, rows2 = self._threaded_call("get_values", [table1, table2])
             diff = list(diff_sets(rows1, rows2))
 
@@ -255,7 +256,8 @@ class TableDiffer:
             return diff
 
         # Choose evenly spaced checkpoints (according to min_key and max_key)
-        checkpoints = table1.choose_checkpoints(self.bisection_factor - 1)
+        biggest_table = max(table1, table2, key=methodcaller('approximate_size'))
+        checkpoints = biggest_table.choose_checkpoints(self.bisection_factor - 1)
 
         # Create new instances of TableSegment between each checkpoint
         segmented1 = table1.segment_by_checkpoints(checkpoints)
