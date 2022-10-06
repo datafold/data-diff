@@ -562,7 +562,7 @@ class This:
         return _ResolveColumn(name)
 
     def __getitem__(self, name):
-        if isinstance(name, list):
+        if isinstance(name, (list, tuple)):
             return [_ResolveColumn(n) for n in name]
         return _ResolveColumn(name)
 

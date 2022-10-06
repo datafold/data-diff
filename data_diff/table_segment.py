@@ -1,5 +1,5 @@
 import time
-from typing import List, Tuple
+from typing import List, Sequence, Tuple
 import logging
 
 from runtype import dataclass
@@ -22,12 +22,12 @@ class TableSegment:
     Parameters:
         database (Database): Database instance. See :meth:`connect`
         table_path (:data:`DbPath`): Path to table in form of a tuple. e.g. `('my_dataset', 'table_name')`
-        key_column (str): Name of the key column, which uniquely identifies each row (usually id)
-        update_column (str, optional): Name of updated column, which signals that rows changed (usually updated_at or last_update).
+        key_columns (Tuple[str]): Name of the key column, which uniquely identifies each row (usually id)
+        update_column (str, optional): Name of updated column, which signals that rows changed (usually updated_at or last_update)
             Used by `min_update` and `max_update`.
         extra_columns (Tuple[str, ...], optional): Extra columns to compare
-        min_key (:data:`DbKey`, optional): Lowest key_column value, used to restrict the segment
-        max_key (:data:`DbKey`, optional): Highest key_column value, used to restrict the segment
+        min_key (:data:`DbKey`, optional): Lowest key value, used to restrict the segment
+        max_key (:data:`DbKey`, optional): Highest key value, used to restrict the segment
         min_update (:data:`DbTime`, optional): Lowest update_column value, used to restrict the segment
         max_update (:data:`DbTime`, optional): Highest update_column value, used to restrict the segment
         where (str, optional): An additional 'where' expression to restrict the search space.
@@ -41,7 +41,7 @@ class TableSegment:
     table_path: DbPath
 
     # Columns
-    key_column: str
+    key_columns: Tuple[str, ...]
     update_column: str = None
     extra_columns: Tuple[str, ...] = ()
 
@@ -80,9 +80,13 @@ class TableSegment:
 
     def _make_key_range(self):
         if self.min_key is not None:
-            yield self.min_key <= this[self.key_column]
+            assert len(self.key_columns) == 1
+            k ,= self.key_columns
+            yield self.min_key <= this[k]
         if self.max_key is not None:
-            yield this[self.key_column] < self.max_key
+            assert len(self.key_columns) == 1
+            k ,= self.key_columns
+            yield this[k] < self.max_key
 
     def _make_update_range(self):
         if self.min_update is not None:
@@ -144,7 +148,7 @@ class TableSegment:
         if self.update_column and self.update_column not in extras:
             extras = [self.update_column] + extras
 
-        return [self.key_column] + extras
+        return list(self.key_columns) + extras
 
     @property
     def _relevant_columns_repr(self) -> List[Expr]:
@@ -174,9 +178,10 @@ class TableSegment:
         """Query database for minimum and maximum key. This is used for setting the initial bounds."""
         # Normalizes the result (needed for UUIDs) after the min/max computation
         # TODO better error if there is no schema
+        k ,= self.key_columns
         select = self._make_select().select(
-            ApplyFuncAndNormalizeAsString(this[self.key_column], min_),
-            ApplyFuncAndNormalizeAsString(this[self.key_column], max_),
+            ApplyFuncAndNormalizeAsString(this[k], min_),
+            ApplyFuncAndNormalizeAsString(this[k], max_),
         )
         min_key, max_key = self.database.query(select, tuple)
 

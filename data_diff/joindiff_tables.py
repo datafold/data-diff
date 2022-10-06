@@ -241,7 +241,7 @@ class JoinDiffer(TableDiffer):
         # Test duplicate keys
         for ts in [table1, table2]:
             t = ts._make_select()
-            key_columns = [ts.key_column]  # XXX
+            key_columns = ts.key_columns
 
             q = t.select(total=Count(), total_distinct=Count(Concat(this[key_columns]), distinct=True))
             total, total_distinct = ts.database.query(q, tuple)
@@ -254,7 +254,7 @@ class JoinDiffer(TableDiffer):
         # Test null keys
         for ts in [table1, table2]:
             t = ts._make_select()
-            key_columns = [ts.key_column]  # XXX
+            key_columns = ts.key_columns
 
             q = t.select(*this[key_columns]).where(or_(this[k] == None for k in key_columns))
             nulls = ts.database.query(q, list)
@@ -294,8 +294,8 @@ class JoinDiffer(TableDiffer):
         if db is not table2.database:
             raise ValueError("Joindiff only applies to tables within the same database")
 
-        keys1 = [table1.key_column]  # XXX
-        keys2 = [table2.key_column]  # XXX
+        keys1 = table1.key_columns
+        keys2 = table2.key_columns
         if len(keys1) != len(keys2):
             raise ValueError("The provided key columns are of a different count")
 

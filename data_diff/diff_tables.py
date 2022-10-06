@@ -153,8 +153,15 @@ class TableDiffer(ThreadBase, ABC):
         ...
 
     def _bisect_and_diff_tables(self, table1, table2):
-        key_type = table1._schema[table1.key_column]
-        key_type2 = table2._schema[table2.key_column]
+        if len(table1.key_columns) > 1:
+            raise NotImplementedError("Composite key not supported yet!")
+        if len(table2.key_columns) > 1:
+            raise NotImplementedError("Composite key not supported yet!")
+        key1 ,= table1.key_columns
+        key2 ,= table2.key_columns
+
+        key_type = table1._schema[key1]
+        key_type2 = table2._schema[key2]
         if not isinstance(key_type, IKey):
             raise NotImplementedError(f"Cannot use column of type {key_type} as a key")
         if not isinstance(key_type2, IKey):

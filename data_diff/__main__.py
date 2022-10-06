@@ -80,7 +80,7 @@ click.Context.formatter_class = MyHelpFormatter
 @click.argument("table1", required=False)
 @click.argument("database2", required=False)
 @click.argument("table2", required=False)
-@click.option("-k", "--key-column", default=None, help="Name of primary key column. Default='id'.", metavar="NAME")
+@click.option("-k", "--key-columns", default=[], multiple=True, help="Names of primary key columns. Default='id'.", metavar="NAME")
 @click.option("-t", "--update-column", default=None, help="Name of updated_at/last_updated column", metavar="NAME")
 @click.option(
     "-c",
@@ -187,7 +187,7 @@ def _main(
     table1,
     database2,
     table2,
-    key_column,
+    key_columns,
     update_column,
     columns,
     limit,
@@ -233,7 +233,7 @@ def _main(
         logging.error("Cannot specify a limit when using the -s/--stats switch")
         return
 
-    key_column = key_column or "id"
+    key_columns = key_columns or ("id",)
     bisection_factor = DEFAULT_BISECTION_FACTOR if bisection_factor is None else int(bisection_factor)
     bisection_threshold = DEFAULT_BISECTION_THRESHOLD if bisection_threshold is None else int(bisection_threshold)
 
@@ -328,23 +328,23 @@ def _main(
 
         expanded_columns |= match
 
-    columns = tuple(expanded_columns - {key_column, update_column})
+    columns = tuple(expanded_columns - {*key_columns, update_column})
 
     if db1 is db2:
         diff_schemas(
             schema1,
             schema2,
             (
-                key_column,
+                *key_columns,
                 update_column,
+                *columns,
             )
-            + columns,
         )
 
-    logging.info(f"Diffing using columns: key={key_column} update={update_column} extra={columns}")
+    logging.info(f"Diffing using columns: key={key_columns} update={update_column} extra={columns}")
 
     segments = [
-        TableSegment(db, table_path, key_column, update_column, columns, **options)._with_raw_schema(raw_schema)
+        TableSegment(db, table_path, key_columns, update_column, columns, **options)._with_raw_schema(raw_schema)
         for db, table_path, raw_schema in safezip(dbs, table_paths, schemas)
     ]
 

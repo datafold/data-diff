@@ -1,3 +1,4 @@
+from functools import wraps
 from typing import List
 from parameterized import parameterized_class
 
@@ -28,9 +29,7 @@ def init_instances():
     DATABASE_INSTANCES = {k.__name__: connect(v, N_THREADS) for k, v in CONN_STRINGS.items()}
 
 
-TEST_DATABASES = {
-    x.__name__
-    for x in (
+TEST_DATABASES = (
         db.PostgreSQL,
         db.Snowflake,
         db.MySQL,
@@ -40,16 +39,62 @@ TEST_DATABASES = {
         db.Trino,
         db.Oracle,
         db.Redshift,
-    )
-}
-
-_class_per_db_dec = parameterized_class(
-    ("name", "db_name"), [(name, name) for name in DATABASE_URIS if name in TEST_DATABASES]
 )
 
 
-def test_per_database(cls):
+def test_per_database(cls, dbs=TEST_DATABASES):
+    dbs = {db.__name__ for db in dbs}
+    _class_per_db_dec = parameterized_class(
+        ("name", "db_name"), [(name, name) for name in DATABASE_URIS if name in dbs]
+    )
     return _class_per_db_dec(cls)
+
+def test_per_database2(*dbs):
+    @wraps(test_per_database)
+    def dec(cls):
+        return test_per_database(cls, dbs)
+    return dec
+
+
+@test_per_database2(db.Snowflake, db.BigQuery)
+class TestCompositeKey(TestPerDatabase):
+    def setUp(self):
+        super().setUp()
+
+        float_type = _get_float_type(self.connection)
+
+        self.connection.query(
+            f"create table {self.table_src}(id int, userid int, movieid int, rating {float_type}, timestamp timestamp)",
+        )
+        self.connection.query(
+            f"create table {self.table_dst}(id int, userid int, movieid int, rating {float_type}, timestamp timestamp)",
+        )
+        _commit(self.connection)
+
+        self.differ = JoinDiffer()
+
+    def test_composite_key(self):
+        time = "2022-01-01 00:00:00"
+        time_str = f"timestamp '{time}'"
+
+        cols = "id userid movieid rating timestamp".split()
+        _insert_rows(self.connection, self.table_src, cols, [[1, 1, 1, 9, time_str], [2, 2, 2, 9, time_str]])
+        _insert_rows(self.connection, self.table_dst, cols, [[1, 1, 1, 9, time_str], [2, 3, 2, 9, time_str]])
+        _commit(self.connection)
+
+        # Sanity
+        table1 = TableSegment(self.connection, self.table_src_path, ("id",), "timestamp", ('userid',), case_sensitive=False)
+        table2 = TableSegment(self.connection, self.table_dst_path, ("id",), "timestamp", ('userid',), case_sensitive=False)
+        diff = list(self.differ.diff_tables(table1, table2))
+        assert len(diff) == 2
+        assert self.differ.stats['exclusive_count'] == 0
+
+        # Test pks diffed, by checking exclusive_count
+        table1 = TableSegment(self.connection, self.table_src_path, ("id", "userid"), "timestamp", case_sensitive=False)
+        table2 = TableSegment(self.connection, self.table_dst_path, ("id", "userid"), "timestamp", case_sensitive=False)
+        diff = list(self.differ.diff_tables(table1, table2))
+        assert len(diff) == 2
+        assert self.differ.stats['exclusive_count'] == 2
 
 
 @test_per_database
@@ -61,16 +106,14 @@ class TestJoindiff(TestPerDatabase):
 
         self.connection.query(
             f"create table {self.table_src}(id int, userid int, movieid int, rating {float_type}, timestamp timestamp)",
-            None,
         )
         self.connection.query(
             f"create table {self.table_dst}(id int, userid int, movieid int, rating {float_type}, timestamp timestamp)",
-            None,
         )
         _commit(self.connection)
 
-        self.table = TableSegment(self.connection, self.table_src_path, "id", "timestamp", case_sensitive=False)
-        self.table2 = TableSegment(self.connection, self.table_dst_path, "id", "timestamp", case_sensitive=False)
+        self.table = TableSegment(self.connection, self.table_src_path, ("id",), "timestamp", case_sensitive=False)
+        self.table2 = TableSegment(self.connection, self.table_dst_path, ("id",), "timestamp", case_sensitive=False)
 
         self.differ = JoinDiffer()
 

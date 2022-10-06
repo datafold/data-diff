@@ -647,11 +647,11 @@ class TestDiffCrossDatabaseTables(unittest.TestCase):
         insertion_target_duration = time.monotonic() - start
 
         if type_category == "uuid":
-            self.table = TableSegment(self.src_conn, src_table_path, "col", None, ("id",), case_sensitive=False)
-            self.table2 = TableSegment(self.dst_conn, dst_table_path, "col", None, ("id",), case_sensitive=False)
+            self.table = TableSegment(self.src_conn, src_table_path, ("col",), None, ("id",), case_sensitive=False)
+            self.table2 = TableSegment(self.dst_conn, dst_table_path, ("col",), None, ("id",), case_sensitive=False)
         else:
-            self.table = TableSegment(self.src_conn, src_table_path, "id", None, ("col",), case_sensitive=False)
-            self.table2 = TableSegment(self.dst_conn, dst_table_path, "id", None, ("col",), case_sensitive=False)
+            self.table = TableSegment(self.src_conn, src_table_path, ("id",), None, ("col",), case_sensitive=False)
+            self.table2 = TableSegment(self.dst_conn, dst_table_path, ("id",), None, ("col",), case_sensitive=False)
 
         start = time.monotonic()
         self.assertEqual(N_SAMPLES, self.table.count())

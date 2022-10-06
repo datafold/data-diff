@@ -44,6 +44,11 @@ def _class_per_db_dec(filter_name=None):
     ]
     return parameterized_class(("name", "db_name"), names)
 
+def _table_segment(database, table_path, key_columns, *args, **kw):
+    if isinstance(key_columns, str):
+        key_columns = (key_columns,)
+    return TableSegment(database, table_path, key_columns, *args, **kw)
+
 
 def test_per_database(cls):
     return _class_per_db_dec()(cls)
@@ -102,7 +107,7 @@ class TestPerDatabase(unittest.TestCase):
     preql = None
 
     def setUp(self):
-        assert self.db_name
+        assert self.db_name, self.db_name
         init_instances()
 
         self.connection = DATABASE_INSTANCES[self.db_name]
@@ -170,17 +175,17 @@ class TestDates(TestPerDatabase):
         self.preql.commit()
 
     def test_init(self):
-        a = TableSegment(
+        a = _table_segment(
             self.connection, self.table_src_path, "id", "datetime", max_update=self.now.datetime, case_sensitive=False
         )
         self.assertRaises(
-            ValueError, TableSegment, self.connection, self.table_src_path, "id", max_update=self.now.datetime
+            ValueError, _table_segment, self.connection, self.table_src_path, "id", max_update=self.now.datetime
         )
 
     def test_basic(self):
         differ = HashDiffer(bisection_factor=10, bisection_threshold=100)
-        a = TableSegment(self.connection, self.table_src_path, "id", "datetime", case_sensitive=False)
-        b = TableSegment(self.connection, self.table_dst_path, "id", "datetime", case_sensitive=False)
+        a = _table_segment(self.connection, self.table_src_path, "id", "datetime", case_sensitive=False)
+        b = _table_segment(self.connection, self.table_dst_path, "id", "datetime", case_sensitive=False)
         assert a.count() == 6
         assert b.count() == 5
 
@@ -190,23 +195,23 @@ class TestDates(TestPerDatabase):
     def test_offset(self):
         differ = HashDiffer(bisection_factor=2, bisection_threshold=10)
         sec1 = self.now.shift(seconds=-1).datetime
-        a = TableSegment(self.connection, self.table_src_path, "id", "datetime", max_update=sec1, case_sensitive=False)
-        b = TableSegment(self.connection, self.table_dst_path, "id", "datetime", max_update=sec1, case_sensitive=False)
+        a = _table_segment(self.connection, self.table_src_path, "id", "datetime", max_update=sec1, case_sensitive=False)
+        b = _table_segment(self.connection, self.table_dst_path, "id", "datetime", max_update=sec1, case_sensitive=False)
         assert a.count() == 4
         assert b.count() == 3
 
         assert not list(differ.diff_tables(a, a))
         self.assertEqual(len(list(differ.diff_tables(a, b))), 1)
 
-        a = TableSegment(self.connection, self.table_src_path, "id", "datetime", min_update=sec1, case_sensitive=False)
-        b = TableSegment(self.connection, self.table_dst_path, "id", "datetime", min_update=sec1, case_sensitive=False)
+        a = _table_segment(self.connection, self.table_src_path, "id", "datetime", min_update=sec1, case_sensitive=False)
+        b = _table_segment(self.connection, self.table_dst_path, "id", "datetime", min_update=sec1, case_sensitive=False)
         assert a.count() == 2
         assert b.count() == 2
         assert not list(differ.diff_tables(a, b))
 
         day1 = self.now.shift(days=-1).datetime
 
-        a = TableSegment(
+        a = _table_segment(
             self.connection,
             self.table_src_path,
             "id",
@@ -215,7 +220,7 @@ class TestDates(TestPerDatabase):
             max_update=sec1,
             case_sensitive=False,
         )
-        b = TableSegment(
+        b = _table_segment(
             self.connection,
             self.table_dst_path,
             "id",
@@ -249,8 +254,8 @@ class TestDiffTables(TestPerDatabase):
         )
         _commit(self.connection)
 
-        self.table = TableSegment(self.connection, self.table_src_path, "id", "timestamp", case_sensitive=False)
-        self.table2 = TableSegment(self.connection, self.table_dst_path, "id", "timestamp", case_sensitive=False)
+        self.table = _table_segment(self.connection, self.table_src_path, "id", "timestamp", case_sensitive=False)
+        self.table2 = _table_segment(self.connection, self.table_dst_path, "id", "timestamp", case_sensitive=False)
 
         self.differ = HashDiffer(bisection_factor=3, bisection_threshold=4)
 
@@ -443,8 +448,8 @@ class TestDiffTables2(TestPerDatabase):
             ],
         )
 
-        table1 = TableSegment(self.connection, self.table_src_path, "id", "timestamp", case_sensitive=False)
-        table2 = TableSegment(self.connection, self.table_dst_path, "id2", "timestamp2", case_sensitive=False)
+        table1 = _table_segment(self.connection, self.table_src_path, "id", "timestamp", case_sensitive=False)
+        table2 = _table_segment(self.connection, self.table_dst_path, "id2", "timestamp2", case_sensitive=False)
 
         differ = HashDiffer()
         diff = list(differ.diff_tables(table1, table2))
@@ -478,8 +483,8 @@ class TestUUIDs(TestPerDatabase):
 
         _commit(self.connection)
 
-        self.a = TableSegment(self.connection, self.table_src_path, "id", "text_comment", case_sensitive=False)
-        self.b = TableSegment(self.connection, self.table_dst_path, "id", "text_comment", case_sensitive=False)
+        self.a = _table_segment(self.connection, self.table_src_path, "id", "text_comment", case_sensitive=False)
+        self.b = _table_segment(self.connection, self.table_dst_path, "id", "text_comment", case_sensitive=False)
 
     def test_string_keys(self):
         differ = HashDiffer()
@@ -535,8 +540,8 @@ class TestAlphanumericKeys(TestPerDatabase):
 
         _commit(self.connection)
 
-        self.a = TableSegment(self.connection, self.table_src_path, "id", "text_comment", case_sensitive=False)
-        self.b = TableSegment(self.connection, self.table_dst_path, "id", "text_comment", case_sensitive=False)
+        self.a = _table_segment(self.connection, self.table_src_path, "id", "text_comment", case_sensitive=False)
+        self.b = _table_segment(self.connection, self.table_dst_path, "id", "text_comment", case_sensitive=False)
 
     def test_alphanum_keys(self):
 
@@ -549,8 +554,8 @@ class TestAlphanumericKeys(TestPerDatabase):
         )
         _commit(self.connection)
 
-        self.a = TableSegment(self.connection, self.table_src_path, "id", "text_comment", case_sensitive=False)
-        self.b = TableSegment(self.connection, self.table_dst_path, "id", "text_comment", case_sensitive=False)
+        self.a = _table_segment(self.connection, self.table_src_path, "id", "text_comment", case_sensitive=False)
+        self.b = _table_segment(self.connection, self.table_dst_path, "id", "text_comment", case_sensitive=False)
 
         self.assertRaises(NotImplementedError, list, differ.diff_tables(self.a, self.b))
 
@@ -587,8 +592,8 @@ class TestVaryingAlphanumericKeys(TestPerDatabase):
 
         _commit(self.connection)
 
-        self.a = TableSegment(self.connection, self.table_src_path, "id", "text_comment", case_sensitive=False)
-        self.b = TableSegment(self.connection, self.table_dst_path, "id", "text_comment", case_sensitive=False)
+        self.a = _table_segment(self.connection, self.table_src_path, "id", "text_comment", case_sensitive=False)
+        self.b = _table_segment(self.connection, self.table_dst_path, "id", "text_comment", case_sensitive=False)
 
     def test_varying_alphanum_keys(self):
         # Test the class itself
@@ -609,8 +614,8 @@ class TestVaryingAlphanumericKeys(TestPerDatabase):
         )
         _commit(self.connection)
 
-        self.a = TableSegment(self.connection, self.table_src_path, "id", "text_comment", case_sensitive=False)
-        self.b = TableSegment(self.connection, self.table_dst_path, "id", "text_comment", case_sensitive=False)
+        self.a = _table_segment(self.connection, self.table_src_path, "id", "text_comment", case_sensitive=False)
+        self.b = _table_segment(self.connection, self.table_dst_path, "id", "text_comment", case_sensitive=False)
 
         self.assertRaises(NotImplementedError, list, differ.diff_tables(self.a, self.b))
 
@@ -619,8 +624,8 @@ class TestVaryingAlphanumericKeys(TestPerDatabase):
 class TestTableSegment(TestPerDatabase):
     def setUp(self) -> None:
         super().setUp()
-        self.table = TableSegment(self.connection, self.table_src_path, "id", "timestamp", case_sensitive=False)
-        self.table2 = TableSegment(self.connection, self.table_dst_path, "id", "timestamp", case_sensitive=False)
+        self.table = _table_segment(self.connection, self.table_src_path, "id", "timestamp", case_sensitive=False)
+        self.table2 = _table_segment(self.connection, self.table_dst_path, "id", "timestamp", case_sensitive=False)
 
     def test_table_segment(self):
         early = datetime.datetime(2021, 1, 1, 0, 0)
@@ -641,11 +646,11 @@ class TestTableSegment(TestPerDatabase):
         _insert_rows(self.connection, self.table_src, cols, [[1, 9, time_str], [2, 2, time_str]])
         _commit(self.connection)
 
-        res = tuple(self.table.replace(key_column="Id", case_sensitive=False).with_schema().query_key_range())
+        res = tuple(self.table.replace(key_columns=("Id",), case_sensitive=False).with_schema().query_key_range())
         assert res == ("1", "2")
 
         self.assertRaises(
-            KeyError, self.table.replace(key_column="Id", case_sensitive=True).with_schema().query_key_range
+            KeyError, self.table.replace(key_columns=("Id",), case_sensitive=True).with_schema().query_key_range
         )
 
 
@@ -674,8 +679,8 @@ class TestTableUUID(TestPerDatabase):
 
         _commit(self.connection)
 
-        self.a = TableSegment(self.connection, self.table_src_path, "id", "text_comment", case_sensitive=False)
-        self.b = TableSegment(self.connection, self.table_dst_path, "id", "text_comment", case_sensitive=False)
+        self.a = _table_segment(self.connection, self.table_src_path, "id", "text_comment", case_sensitive=False)
+        self.b = _table_segment(self.connection, self.table_dst_path, "id", "text_comment", case_sensitive=False)
 
     def test_uuid_column_with_nulls(self):
         differ = HashDiffer()
@@ -704,8 +709,8 @@ class TestTableNullRowChecksum(TestPerDatabase):
 
         _commit(self.connection)
 
-        self.a = TableSegment(self.connection, self.table_src_path, "id", "text_comment", case_sensitive=False)
-        self.b = TableSegment(self.connection, self.table_dst_path, "id", "text_comment", case_sensitive=False)
+        self.a = _table_segment(self.connection, self.table_src_path, "id", "text_comment", case_sensitive=False)
+        self.b = _table_segment(self.connection, self.table_dst_path, "id", "text_comment", case_sensitive=False)
 
     def test_uuid_columns_with_nulls(self):
         """
@@ -762,10 +767,10 @@ class TestConcatMultipleColumnWithNulls(TestPerDatabase):
 
         _commit(self.connection)
 
-        self.a = TableSegment(
+        self.a = _table_segment(
             self.connection, self.table_src_path, "id", extra_columns=("c1", "c2"), case_sensitive=False
         )
-        self.b = TableSegment(
+        self.b = _table_segment(
             self.connection, self.table_dst_path, "id", extra_columns=("c1", "c2"), case_sensitive=False
         )
 
@@ -819,8 +824,8 @@ class TestTableTableEmpty(TestPerDatabase):
 
         _commit(self.connection)
 
-        self.a = TableSegment(self.connection, self.table_src_path, "id", "text_comment", case_sensitive=False)
-        self.b = TableSegment(self.connection, self.table_dst_path, "id", "text_comment", case_sensitive=False)
+        self.a = _table_segment(self.connection, self.table_src_path, "id", "text_comment", case_sensitive=False)
+        self.b = _table_segment(self.connection, self.table_dst_path, "id", "text_comment", case_sensitive=False)
 
     def test_right_table_empty(self):
         differ = HashDiffer()

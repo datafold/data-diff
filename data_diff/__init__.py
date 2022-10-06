@@ -1,4 +1,4 @@
-from typing import Tuple, Iterator, Optional, Union
+from typing import Sequence, Tuple, Iterator, Optional, Union
 
 from .tracking import disable_tracking
 from .databases.connect import connect
@@ -12,7 +12,7 @@ from .table_segment import TableSegment
 def connect_to_table(
     db_info: Union[str, dict],
     table_name: Union[DbPath, str],
-    key_column: str = "id",
+    key_columns: str = ("id",),
     thread_count: Optional[int] = 1,
     **kwargs,
 ) -> TableSegment:
@@ -21,19 +21,21 @@ def connect_to_table(
     Parameters:
         db_info: Either a URI string, or a dict of connection options.
         table_name: Name of the table as a string, or a tuple that signifies the path.
-        key_column: Name of the key column
+        key_columns: Names of the key columns
         thread_count: Number of threads for this connection (only if using a threadpooled db implementation)
 
     See Also:
         :meth:`connect`
     """
+    if isinstance(key_columns, str):
+        key_columns = (key_columns,)
 
     db = connect(db_info, thread_count=thread_count)
 
     if isinstance(table_name, str):
         table_name = db.parse_table_name(table_name)
 
-    return TableSegment(db, table_name, key_column, **kwargs)
+    return TableSegment(db, table_name, key_columns, **kwargs)
 
 
 def diff_tables(
@@ -41,7 +43,7 @@ def diff_tables(
     table2: TableSegment,
     *,
     # Name of the key column, which uniquely identifies each row (usually id)
-    key_column: str = None,
+    key_columns: Sequence[str] = None,
     # Name of updated column, which signals that rows changed (usually updated_at or last_update)
     update_column: str = None,
     # Extra columns to compare
@@ -67,12 +69,12 @@ def diff_tables(
     """Finds the diff between table1 and table2.
 
     Parameters:
-        key_column (str): Name of the key column, which uniquely identifies each row (usually id)
+        key_columns (Tuple[str, ...]): Name of the key column, which uniquely identifies each row (usually id)
         update_column (str, optional): Name of updated column, which signals that rows changed (usually updated_at or last_update).
             Used by `min_update` and `max_update`.
         extra_columns (Tuple[str, ...], optional): Extra columns to compare
-        min_key (:data:`DbKey`, optional): Lowest key_column value, used to restrict the segment
-        max_key (:data:`DbKey`, optional): Highest key_column value, used to restrict the segment
+        min_key (:data:`DbKey`, optional): Lowest key value, used to restrict the segment
+        max_key (:data:`DbKey`, optional): Highest key value, used to restrict the segment
         min_update (:data:`DbTime`, optional): Lowest update_column value, used to restrict the segment
         max_update (:data:`DbTime`, optional): Highest update_column value, used to restrict the segment
         algorithm (:class:`Algorithm`): Which diffing algorithm to use (`HASHDIFF` or `JOINDIFF`)
@@ -84,7 +86,7 @@ def diff_tables(
 
     Note:
         The following parameters are used to override the corresponding attributes of the given :class:`TableSegment` instances:
-        `key_column`, `update_column`, `extra_columns`, `min_key`, `max_key`. If different values are needed per table, it's
+        `key_columns`, `update_column`, `extra_columns`, `min_key`, `max_key`. If different values are needed per table, it's
         possible to omit them here, and instead set them directly when creating each :class:`TableSegment`.
 
     Example:
@@ -98,11 +100,14 @@ def diff_tables(
         :class:`JoinDiffer`
 
     """
+    if isinstance(key_columns, str):
+        key_columns = (key_columns,)
+
     tables = [table1, table2]
     override_attrs = {
         k: v
         for k, v in dict(
-            key_column=key_column,
+            key_columns=key_columns,
             update_column=update_column,
             extra_columns=extra_columns,
             min_key=min_key,
