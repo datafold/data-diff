@@ -66,7 +66,7 @@ def create_temp_table(c: Compiler, table: TablePath, expr: Expr):
 
 
 def drop_table_oracle(name: DbPath):
-    t = TablePath(name)
+    t = table(name)
     # Experience shows double drop is necessary
     with suppress(QueryError):
         yield t.drop()
@@ -75,14 +75,15 @@ def drop_table_oracle(name: DbPath):
 
 
 def drop_table(name: DbPath):
-    t = TablePath(name)
+    t = table(name)
     yield t.drop(if_exists=True)
     yield commit
 
 
-def append_to_table_oracle(name: DbPath, expr: Expr):
+def append_to_table_oracle(path: DbPath, expr: Expr):
+    """See append_to_table"""
     assert expr.schema, expr
-    t = TablePath(name, expr.schema)
+    t = table(path, schema=expr.schema)
     with suppress(QueryError):
         yield t.create()  # uses expr.schema
         yield commit
@@ -90,9 +91,11 @@ def append_to_table_oracle(name: DbPath, expr: Expr):
     yield commit
 
 
-def append_to_table(name: DbPath, expr: Expr):
+def append_to_table(path: DbPath, expr: Expr):
+    """Append to table
+    """
     assert expr.schema, expr
-    t = TablePath(name, expr.schema)
+    t = table(path, schema=expr.schema)
     yield t.create(if_not_exists=True)  # uses expr.schema
     yield commit
     yield t.insert_expr(expr)
@@ -143,17 +146,25 @@ class JoinDiffer(TableDiffer):
     The algorithm uses an OUTER JOIN (or equivalent) with extra checks and statistics.
     The two tables must reside in the same database, and their primary keys must be unique and not null.
 
+    All parameters are optional.
+
     Parameters:
         threaded (bool): Enable/disable threaded diffing. Needed to take advantage of database threads.
         max_threadpool_size (int): Maximum size of each threadpool. ``None`` means auto. Only relevant when `threaded` is ``True``.
                                    There may be many pools, so number of actual threads can be a lot higher.
+        validate_unique_key (bool): Enable/disable validating that the key columns are unique.
+                                    Single query, and can't be threaded, so it's very slow on non-cloud dbs.
+                                    Future versions will detect UNIQUE constraints in the schema.
+        sample_exclusive_rows (bool): Enable/disable sampling of exclusive rows. Creates a temporary table.
+        materialize_to_table (DbPath, optional): Path of new table to write diff results to. Disabled if not provided.
+        write_limit (int): Maximum number of rows to write when materializing, per thread.
     """
 
-    stats: dict = {}
     validate_unique_key: bool = True
     sample_exclusive_rows: bool = True
     materialize_to_table: DbPath = None
     write_limit: int = WRITE_LIMIT
+    stats: dict = {}
 
     def _diff_tables(self, table1: TableSegment, table2: TableSegment) -> DiffResult:
         db = table1.database
@@ -330,7 +341,7 @@ class JoinDiffer(TableDiffer):
         def exclusive_rows(expr):
             c = Compiler(db)
             name = c.new_unique_table_name("temp_table")
-            exclusive_rows = TablePath(name, schema=expr.source_table.schema)
+            exclusive_rows = table(name, schema=expr.source_table.schema)
             yield create_temp_table(c, exclusive_rows, expr.limit(self.write_limit))
 
             count = yield exclusive_rows.count()

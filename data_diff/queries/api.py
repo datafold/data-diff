@@ -30,8 +30,11 @@ def cte(expr: Expr, *, name: Optional[str] = None, params: Sequence[str] = None)
     return Cte(expr, name, params)
 
 
-def table(*path: str, schema: Schema = None) -> ITable:
-    assert all(isinstance(i, str) for i in path), path
+def table(*path: str, schema: Schema = None) -> TablePath:
+    if len(path) == 1 and isinstance(path[0], tuple):
+        path ,= path
+    if not all(isinstance(i, str) for i in path):
+        raise TypeError(f"All elements of table path must be of type 'str'. Got: {path}")
     return TablePath(path, schema)
 
 
