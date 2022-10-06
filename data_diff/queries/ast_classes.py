@@ -248,12 +248,17 @@ class BinOp(ExprNode, LazyOps):
     op: str
     args: Sequence[Expr]
 
-    def __post_init__(self):
-        assert len(self.args) == 2, self.args
-
     def compile(self, c: Compiler) -> str:
-        a, b = self.args
-        return f"({c.compile(a)} {self.op} {c.compile(b)})"
+        expr = f" {self.op} ".join(c.compile(a) for a in self.args)
+        return f"({expr})"
+
+    @property
+    def type(self):
+        types = {get_type(i) for i in self.args}
+        if len(types) > 1:
+            raise TypeError(f"Expected all args to have the same type, got {types}")
+        t ,= types
+        return t
 
 
 class BinBoolOp(BinOp):
