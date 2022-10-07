@@ -253,6 +253,7 @@ Same-DB diff only:
                             Use `%t` in the name to place a timestamp.
                             Example: `-m test_mat_%t`
   - `--assume-unique-key` - Skip validating the uniqueness of the key column during joindiff, which is costly in non-cloud dbs.
+  - `--sample-exclusive-rows` - Sample several rows that only appear in one of the tables, but not the other. Use with `-s`.
 
 Cross-DB diff only:
   - `--bisection-threshold` - Minimal size of segment to be split. Smaller segments will be downloaded and compared locally.

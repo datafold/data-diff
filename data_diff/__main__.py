@@ -140,6 +140,11 @@ click.Context.formatter_class = MyHelpFormatter
     help="Skip validating the uniqueness of the key column during joindiff, which is costly in non-cloud dbs.",
 )
 @click.option(
+    "--sample-exclusive-rows",
+    is_flag=True,
+    help="Sample several rows that only appear in one of the tables, but not the other.",
+)
+@click.option(
     "-j",
     "--threads",
     default=None,
@@ -206,6 +211,7 @@ def _main(
     json_output,
     where,
     assume_unique_key,
+    sample_exclusive_rows,
     materialize,
     threads1=None,
     threads2=None,
@@ -294,6 +300,7 @@ def _main(
             threaded=threaded,
             max_threadpool_size=threads and threads * 2,
             validate_unique_key=not assume_unique_key,
+            sample_exclusive_rows=sample_exclusive_rows,
             materialize_to_table=materialize and db1.parse_table_name(eval_name_template(materialize)),
         )
     else:
