@@ -129,8 +129,8 @@ class Database(AbstractDatabase):
         if getattr(self, "_interactive", False) and isinstance(sql_ast, Select):
             explained_sql = compiler.compile(Explain(sql_ast))
             explain = self._query(explained_sql)
-            for row, in explain:
-                logger.debug(f'EXPLAIN: {row}')
+            for (row,) in explain:
+                logger.debug(f"EXPLAIN: {row}")
             answer = input("Continue? [y/n] ")
             if not answer.lower() in ["y", "yes"]:
                 sys.exit(1)

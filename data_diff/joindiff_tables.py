@@ -92,8 +92,7 @@ def append_to_table_oracle(path: DbPath, expr: Expr):
 
 
 def append_to_table(path: DbPath, expr: Expr):
-    """Append to table
-    """
+    """Append to table"""
     assert expr.schema, expr
     t = table(path, schema=expr.schema)
     yield t.create(if_not_exists=True)  # uses expr.schema

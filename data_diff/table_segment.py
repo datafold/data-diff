@@ -81,11 +81,11 @@ class TableSegment:
     def _make_key_range(self):
         if self.min_key is not None:
             assert len(self.key_columns) == 1
-            k ,= self.key_columns
+            (k,) = self.key_columns
             yield self.min_key <= this[k]
         if self.max_key is not None:
             assert len(self.key_columns) == 1
-            k ,= self.key_columns
+            (k,) = self.key_columns
             yield this[k] < self.max_key
 
     def _make_update_range(self):
@@ -178,7 +178,7 @@ class TableSegment:
         """Query database for minimum and maximum key. This is used for setting the initial bounds."""
         # Normalizes the result (needed for UUIDs) after the min/max computation
         # TODO better error if there is no schema
-        k ,= self.key_columns
+        (k,) = self.key_columns
         select = self._make_select().select(
             ApplyFuncAndNormalizeAsString(this[k], min_),
             ApplyFuncAndNormalizeAsString(this[k], max_),

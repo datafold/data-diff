@@ -252,6 +252,7 @@ Options:
 
 Same-DB diff only:
   - `-m`, `--materialize` - Materialize the diff results into a new table in the database.
+                            If a table exists by that name, it will be replaced.
                             Use `%t` in the name to place a timestamp.
                             Example: `-m test_mat_%t`
   - `--assume-unique-key` - Skip validating the uniqueness of the key column during joindiff, which is costly in non-cloud dbs.

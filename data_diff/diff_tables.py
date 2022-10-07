@@ -157,8 +157,8 @@ class TableDiffer(ThreadBase, ABC):
             raise NotImplementedError("Composite key not supported yet!")
         if len(table2.key_columns) > 1:
             raise NotImplementedError("Composite key not supported yet!")
-        key1 ,= table1.key_columns
-        key2 ,= table2.key_columns
+        (key1,) = table1.key_columns
+        (key2,) = table2.key_columns
 
         key_type = table1._schema[key1]
         key_type2 = table2._schema[key2]
@@ -214,7 +214,7 @@ class TableDiffer(ThreadBase, ABC):
         assert table1.is_bounded and table2.is_bounded
 
         # Choose evenly spaced checkpoints (according to min_key and max_key)
-        biggest_table = max(table1, table2, key=methodcaller('approximate_size'))
+        biggest_table = max(table1, table2, key=methodcaller("approximate_size"))
         checkpoints = biggest_table.choose_checkpoints(self.bisection_factor - 1)
 
         # Create new instances of TableSegment between each checkpoint

@@ -80,7 +80,9 @@ click.Context.formatter_class = MyHelpFormatter
 @click.argument("table1", required=False)
 @click.argument("database2", required=False)
 @click.argument("table2", required=False)
-@click.option("-k", "--key-columns", default=[], multiple=True, help="Names of primary key columns. Default='id'.", metavar="NAME")
+@click.option(
+    "-k", "--key-columns", default=[], multiple=True, help="Names of primary key columns. Default='id'.", metavar="NAME"
+)
 @click.option("-t", "--update-column", default=None, help="Name of updated_at/last_updated column", metavar="NAME")
 @click.option(
     "-c",
@@ -110,7 +112,7 @@ click.Context.formatter_class = MyHelpFormatter
     "--materialize",
     default=None,
     metavar="TABLE_NAME",
-    help="Materialize the diff results into a new table in the database. (joindiff only)",
+    help="(joindiff only) Materialize the diff results into a new table in the database. If a table exists by that name, it will be replaced.",
 )
 @click.option(
     "--min-age",
@@ -345,7 +347,7 @@ def _main(
                 *key_columns,
                 update_column,
                 *columns,
-            )
+            ),
         )
 
     logging.info(f"Diffing using columns: key={key_columns} update={update_column} extra={columns}")
@@ -385,7 +387,7 @@ def _main(
             if differ.stats:
                 print("Extra-Info:")
                 for k, v in differ.stats.items():
-                    print(f'  {k} = {v}')
+                    print(f"  {k} = {v}")
     else:
         for op, values in diff_iter:
             color = COLOR_SCHEME[op]

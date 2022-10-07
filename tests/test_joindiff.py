@@ -30,15 +30,15 @@ def init_instances():
 
 
 TEST_DATABASES = (
-        db.PostgreSQL,
-        db.Snowflake,
-        db.MySQL,
-        db.BigQuery,
-        db.Presto,
-        db.Vertica,
-        db.Trino,
-        db.Oracle,
-        db.Redshift,
+    db.PostgreSQL,
+    db.Snowflake,
+    db.MySQL,
+    db.BigQuery,
+    db.Presto,
+    db.Vertica,
+    db.Trino,
+    db.Oracle,
+    db.Redshift,
 )
 
 
@@ -49,10 +49,12 @@ def test_per_database(cls, dbs=TEST_DATABASES):
     )
     return _class_per_db_dec(cls)
 
+
 def test_per_database2(*dbs):
     @wraps(test_per_database)
     def dec(cls):
         return test_per_database(cls, dbs)
+
     return dec
 
 
@@ -83,18 +85,22 @@ class TestCompositeKey(TestPerDatabase):
         _commit(self.connection)
 
         # Sanity
-        table1 = TableSegment(self.connection, self.table_src_path, ("id",), "timestamp", ('userid',), case_sensitive=False)
-        table2 = TableSegment(self.connection, self.table_dst_path, ("id",), "timestamp", ('userid',), case_sensitive=False)
+        table1 = TableSegment(
+            self.connection, self.table_src_path, ("id",), "timestamp", ("userid",), case_sensitive=False
+        )
+        table2 = TableSegment(
+            self.connection, self.table_dst_path, ("id",), "timestamp", ("userid",), case_sensitive=False
+        )
         diff = list(self.differ.diff_tables(table1, table2))
         assert len(diff) == 2
-        assert self.differ.stats['exclusive_count'] == 0
+        assert self.differ.stats["exclusive_count"] == 0
 
         # Test pks diffed, by checking exclusive_count
         table1 = TableSegment(self.connection, self.table_src_path, ("id", "userid"), "timestamp", case_sensitive=False)
         table2 = TableSegment(self.connection, self.table_dst_path, ("id", "userid"), "timestamp", case_sensitive=False)
         diff = list(self.differ.diff_tables(table1, table2))
         assert len(diff) == 2
-        assert self.differ.stats['exclusive_count'] == 2
+        assert self.differ.stats["exclusive_count"] == 2
 
 
 @test_per_database

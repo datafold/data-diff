@@ -257,7 +257,7 @@ class BinOp(ExprNode, LazyOps):
         types = {get_type(i) for i in self.args}
         if len(types) > 1:
             raise TypeError(f"Expected all args to have the same type, got {types}")
-        t ,= types
+        (t,) = types
         return t
 
 
@@ -606,6 +606,7 @@ class Explain(ExprNode):
 
     def compile(self, c: Compiler) -> str:
         return c.database.explain_as_text(c.compile(self.select))
+
 
 # DDL
 

@@ -44,6 +44,7 @@ def _class_per_db_dec(filter_name=None):
     ]
     return parameterized_class(("name", "db_name"), names)
 
+
 def _table_segment(database, table_path, key_columns, *args, **kw):
     if isinstance(key_columns, str):
         key_columns = (key_columns,)
@@ -195,16 +196,24 @@ class TestDates(TestPerDatabase):
     def test_offset(self):
         differ = HashDiffer(bisection_factor=2, bisection_threshold=10)
         sec1 = self.now.shift(seconds=-1).datetime
-        a = _table_segment(self.connection, self.table_src_path, "id", "datetime", max_update=sec1, case_sensitive=False)
-        b = _table_segment(self.connection, self.table_dst_path, "id", "datetime", max_update=sec1, case_sensitive=False)
+        a = _table_segment(
+            self.connection, self.table_src_path, "id", "datetime", max_update=sec1, case_sensitive=False
+        )
+        b = _table_segment(
+            self.connection, self.table_dst_path, "id", "datetime", max_update=sec1, case_sensitive=False
+        )
         assert a.count() == 4
         assert b.count() == 3
 
         assert not list(differ.diff_tables(a, a))
         self.assertEqual(len(list(differ.diff_tables(a, b))), 1)
 
-        a = _table_segment(self.connection, self.table_src_path, "id", "datetime", min_update=sec1, case_sensitive=False)
-        b = _table_segment(self.connection, self.table_dst_path, "id", "datetime", min_update=sec1, case_sensitive=False)
+        a = _table_segment(
+            self.connection, self.table_src_path, "id", "datetime", min_update=sec1, case_sensitive=False
+        )
+        b = _table_segment(
+            self.connection, self.table_dst_path, "id", "datetime", min_update=sec1, case_sensitive=False
+        )
         assert a.count() == 2
         assert b.count() == 2
         assert not list(differ.diff_tables(a, b))
