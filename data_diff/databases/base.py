@@ -16,8 +16,10 @@ from .database_types import (
     Float,
     ColType_UUID,
     Native_UUID,
-    String_Alphanum,
     String_UUID,
+    String_Alphanum,
+    String_FixedAlphanum,
+    String_VaryingAlphanum,
     TemporalType,
     UnknownColType,
     Text,
@@ -79,6 +81,7 @@ class Database(AbstractDatabase):
 
     TYPE_CLASSES: Dict[str, type] = {}
     default_schema: str = None
+    SUPPORTS_ALPHANUMS = True
 
     @property
     def name(self):
@@ -229,23 +232,22 @@ class Database(AbstractDatabase):
                     col_dict[col_name] = String_UUID()
                     continue
 
-            alphanum_samples = [s for s in samples if s and String_Alphanum.test_value(s)]
-            if alphanum_samples:
-                if len(alphanum_samples) != len(samples):
-                    logger.warning(
-                        f"Mixed Alphanum/Non-Alphanum values detected in column {'.'.join(table_path)}.{col_name}, disabling Alphanum support."
-                    )
-                else:
-                    assert col_name in col_dict
-                    lens = set(map(len, alphanum_samples))
-                    if len(lens) > 1:
+            if self.SUPPORTS_ALPHANUMS:  # Anything but MySQL (so far)
+                alphanum_samples = [s for s in samples if String_Alphanum.test_value(s)]
+                if alphanum_samples:
+                    if len(alphanum_samples) != len(samples):
                         logger.warning(
-                            f"Mixed Alphanum lengths detected in column {'.'.join(table_path)}.{col_name}, disabling Alphanum support."
+                            f"Mixed Alphanum/Non-Alphanum values detected in column {'.'.join(table_path)}.{col_name}. It cannot be used as a key."
                         )
                     else:
-                        (length,) = lens
-                        col_dict[col_name] = String_Alphanum(length=length)
-                        continue
+                        assert col_name in col_dict
+                        lens = set(map(len, alphanum_samples))
+                        if len(lens) > 1:
+                            col_dict[col_name] = String_VaryingAlphanum()
+                        else:
+                            (length,) = lens
+                            col_dict[col_name] = String_FixedAlphanum(length=length)
+                            continue
 
     # @lru_cache()
     # def get_table_schema(self, path: DbPath) -> Dict[str, ColType]:

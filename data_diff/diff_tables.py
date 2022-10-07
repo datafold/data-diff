@@ -13,7 +13,8 @@ from concurrent.futures import ThreadPoolExecutor, as_completed
 from runtype import dataclass
 
 from .utils import safezip, run_as_daemon
-from .databases.database_types import IKey, NumericType, PrecisionType, StringType
+from .thread_utils import ThreadedYielder
+from .databases.database_types import IKey, NumericType, PrecisionType, StringType, ColType_UUID
 from .table_segment import TableSegment
 from .tracking import create_end_event_json, create_start_event_json, send_event_json, is_tracking_enabled
 
@@ -121,22 +122,25 @@ class TableDiffer:
             logger.info(
                 f"Diffing tables | segments: {self.bisection_factor}, bisection threshold: {self.bisection_threshold}. "
                 f"key-range: {table1.min_key}..{table2.max_key}, "
-                f"size: {table1.approximate_size()}"
+                f"size: table1 <= {table1.approximate_size()}, table2 <= {table2.approximate_size()}"
             )
 
+            ti = ThreadedYielder(self.max_threadpool_size)
             # Bisect (split) the table into segments, and diff them recursively.
-            yield from self._bisect_and_diff_tables(table1, table2)
+            ti.submit(self._bisect_and_diff_tables, ti, table1, table2)
 
             # Now we check for the second min-max, to diff the portions we "missed".
             min_key2, max_key2 = self._parse_key_range_result(key_type, next(key_ranges))
 
             if min_key2 < min_key1:
                 pre_tables = [t.new(min_key=min_key2, max_key=min_key1) for t in (table1, table2)]
-                yield from self._bisect_and_diff_tables(*pre_tables)
+                ti.submit(self._bisect_and_diff_tables, ti, *pre_tables)
 
             if max_key2 > max_key1:
                 post_tables = [t.new(min_key=max_key1, max_key=max_key2) for t in (table1, table2)]
-                yield from self._bisect_and_diff_tables(*post_tables)
+                ti.submit(self._bisect_and_diff_tables, ti, *post_tables)
+
+            yield from ti
 
         except BaseException as e:  # Catch KeyboardInterrupt too
             error = e
@@ -205,6 +209,10 @@ class TableDiffer:
                 table1._schema[c1] = col1.replace(precision=lowest.precision)
                 table2._schema[c2] = col2.replace(precision=lowest.precision)
 
+            elif isinstance(col1, ColType_UUID):
+                if not isinstance(col2, ColType_UUID):
+                    raise TypeError(f"Incompatible types for column '{c1}':  {col1} <-> {col2}")
+
             elif isinstance(col1, StringType):
                 if not isinstance(col2, StringType):
                     raise TypeError(f"Incompatible types for column '{c1}':  {col1} <-> {col2}")
@@ -218,16 +226,19 @@ class TableDiffer:
                         "If encoding/formatting differs between databases, it may result in false positives."
                     )
 
-    def _bisect_and_diff_tables(self, table1, table2, level=0, max_rows=None):
+    def _bisect_and_diff_tables(
+        self, ti: ThreadedYielder, table1: TableSegment, table2: TableSegment, level=0, max_rows=None
+    ):
         assert table1.is_bounded and table2.is_bounded
 
+        max_space_size = max(table1.approximate_size(), table2.approximate_size())
         if max_rows is None:
-            # We can be sure that row_count <= max_rows
-            max_rows = table1.max_key - table1.min_key
+            # We can be sure that row_count <= max_rows iff the table key is unique
+            max_rows = max_space_size
 
         # If count is below the threshold, just download and compare the columns locally
         # This saves time, as bisection speed is limited by ping and query performance.
-        if max_rows < self.bisection_threshold:
+        if max_rows < self.bisection_threshold or max_space_size < self.bisection_factor * 2:
             rows1, rows2 = self._threaded_call("get_values", [table1, table2])
             diff = list(diff_sets(rows1, rows2))
 
@@ -242,30 +253,34 @@ class TableDiffer:
 
             logger.info(". " * level + f"Diff found {len(diff)} different rows.")
             self.stats["rows_downloaded"] = self.stats.get("rows_downloaded", 0) + max(len(rows1), len(rows2))
-            yield from diff
-            return
+            return diff
 
         # Choose evenly spaced checkpoints (according to min_key and max_key)
-        checkpoints = table1.choose_checkpoints(self.bisection_factor - 1)
+        biggest_table = max(table1, table2, key=methodcaller('approximate_size'))
+        checkpoints = biggest_table.choose_checkpoints(self.bisection_factor - 1)
 
         # Create new instances of TableSegment between each checkpoint
         segmented1 = table1.segment_by_checkpoints(checkpoints)
         segmented2 = table2.segment_by_checkpoints(checkpoints)
 
         # Recursively compare each pair of corresponding segments between table1 and table2
-        diff_iters = [
-            self._diff_tables(t1, t2, level + 1, i + 1, len(segmented1))
-            for i, (t1, t2) in enumerate(safezip(segmented1, segmented2))
-        ]
+        for i, (t1, t2) in enumerate(safezip(segmented1, segmented2)):
+            ti.submit(self._diff_tables, ti, t1, t2, max_rows, level + 1, i + 1, len(segmented1), priority=level)
 
-        for res in self._thread_map(list, diff_iters):
-            yield from res
-
-    def _diff_tables(self, table1, table2, level=0, segment_index=None, segment_count=None):
+    def _diff_tables(
+        self,
+        ti: ThreadedYielder,
+        table1: TableSegment,
+        table2: TableSegment,
+        max_rows: int,
+        level=0,
+        segment_index=None,
+        segment_count=None,
+    ):
         logger.info(
             ". " * level + f"Diffing segment {segment_index}/{segment_count}, "
             f"key-range: {table1.min_key}..{table2.max_key}, "
-            f"size: {table2.max_key-table1.min_key}"
+            f"size <= {max_rows}"
         )
 
         # When benchmarking, we want the ability to skip checksumming. This
@@ -273,18 +288,16 @@ class TableDiffer:
         # default, data-diff will checksum the section first (when it's below
         # the threshold) and _then_ download it.
         if BENCHMARK:
-            max_rows_from_keys = max(table1.max_key - table1.min_key, table2.max_key - table2.min_key)
-            if max_rows_from_keys < self.bisection_threshold:
-                yield from self._bisect_and_diff_tables(table1, table2, level=level, max_rows=max_rows_from_keys)
-                return
+            if max_rows < self.bisection_threshold:
+                return self._bisect_and_diff_tables(ti, table1, table2, level=level, max_rows=max_rows)
 
         (count1, checksum1), (count2, checksum2) = self._threaded_call("count_and_checksum", [table1, table2])
 
         if count1 == 0 and count2 == 0:
-            logger.warning(
-                "Uneven distribution of keys detected. (big gaps in the key column). "
-                "For better performance, we recommend to increase the bisection-threshold."
-            )
+            # logger.warning(
+            #     f"Uneven distribution of keys detected in segment {table1.min_key}..{table2.max_key}. (big gaps in the key column). "
+            #     "For better performance, we recommend to increase the bisection-threshold."
+            # )
             assert checksum1 is None and checksum2 is None
             return
 
@@ -293,7 +306,7 @@ class TableDiffer:
             self.stats["table2_count"] = self.stats.get("table2_count", 0) + count2
 
         if checksum1 != checksum2:
-            yield from self._bisect_and_diff_tables(table1, table2, level=level, max_rows=max(count1, count2))
+            return self._bisect_and_diff_tables(ti, table1, table2, level=level, max_rows=max(count1, count2))
 
     def _thread_map(self, func, iterable):
         if not self.threaded:

@@ -28,6 +28,7 @@ class MySQL(ThreadedDatabase):
         "binary": Text,
     }
     ROUNDS_ON_PREC_LOSS = True
+    SUPPORTS_ALPHANUMS = False
 
     def __init__(self, *, thread_count, **kw):
         self._args = kw

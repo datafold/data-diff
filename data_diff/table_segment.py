@@ -4,7 +4,7 @@ import logging
 
 from runtype import dataclass
 
-from .utils import ArithString, split_space
+from .utils import ArithString, split_space, ArithAlphanumeric
 
 from .databases.base import Database
 from .databases.database_types import DbPath, DbKey, DbTime, Native_UUID, Schema, create_schema
@@ -149,8 +149,9 @@ class TableSegment:
         assert self.is_bounded
         if isinstance(self.min_key, ArithString):
             assert type(self.min_key) is type(self.max_key)
-            checkpoints = split_space(self.min_key.int, self.max_key.int, count)
-            return [self.min_key.new(int=i) for i in checkpoints]
+            checkpoints = self.min_key.range(self.max_key, count)
+            assert all(self.min_key <= x <= self.max_key for x in checkpoints)
+            return checkpoints
 
         return split_space(self.min_key, self.max_key, count)
 
