@@ -15,34 +15,9 @@ _data-diff is in shape to be run in production, but also under development._
 
 <img width="454" alt="Screen Shot 2022-10-07 at 2 37 48 PM" src="https://user-images.githubusercontent.com/1799931/194626900-81be9980-b81e-47ca-934c-8bcb6262dfae.png">
 
-- [**Introduction**](#introduction)
-  - [Common use-cases](#common-use-cases)
-  - [Example Command and Output](#example-command-and-output)
-  - [Supported Databases](#supported-databases)
-- [**How to install**](#how-to-install)
-  - [Install drivers](#install-drivers)
-- [**How to use**](#how-to-use)
-  - [How to use from the command-line](#how-to-use-from-the-command-line)
-  - [How to use from Python](#how-to-use-from-python)
-- [**Technical Explanation**](#technical-explanation)
-  - [Performance Considerations](#performance-considerations)
-- [**Anonymous Tracking**](#anonymous-tracking)
-- [**Development Setup**](#development-setup)
-- [**License**](#license)
+# Todo: working on reorganizing/consolidating common use-cases and features
 
-
-* ⇄  Verifies across [many different databases][dbs] (e.g. PostgreSQL ⇄ Snowflake) or within a database
-* 🔍 Outputs [diff of rows](#example-command-and-output) in detail
-* 🚨 Simple CLI/API to create monitoring and alerts
-* 🔁 Bridges column types of different formats and levels of precision (e.g. Double ⇆ Float ⇆ Decimal)
-* 🔥 Verify 25M+ rows in <10s, and 1B+ rows in ~5min.
-* ♾️  Works for tables with 10s of billions of rows
-
-
-
-# Introduction
-
-## Common use-cases
+## WIP Common use-cases
 
 * **Verify data migrations.** Verify that all data was copied when doing a
   critical data migration. For example, migrating from Heroku PostgreSQL to Amazon RDS.
@@ -60,85 +35,34 @@ _data-diff is in shape to be run in production, but also under development._
 * **Make your replication self-healing.** You can use **data-diff** to
   self-heal by using the diff output to write/update rows in the target
   database.
+  
+# Todo: working on reorganizing/consolidating common use-cases and features
 
-## Example Command and Output
+## WIP Features
 
-Below we run a comparison with the CLI for 25M rows in PostgreSQL where the
-right-hand table is missing single row with `id=12500048`:
+* ⇄  Verifies across [many different databases][dbs] (e.g. PostgreSQL ⇄ Snowflake) or within a database
+* 🔍 Outputs [diff of rows](#example-command-and-output) in detail
+* 🚨 Simple CLI/API to create monitoring and alerts
+* 🔁 Bridges column types of different formats and levels of precision (e.g. Double ⇆ Float ⇆ Decimal)
+* 🔥 Verify 25M+ rows in <10s, and 1B+ rows in ~5min.
+* ♾️  Works for tables with 10s of billions of rows
 
-```
-$ data-diff \
-    postgresql://user:password@localhost/database rating \
-    postgresql://user:password@localhost/database rating_del1 \
-    --bisection-threshold 100000 \ # for readability, try default first
-    --bisection-factor 6 \ # for readability, try default first
-    --update-column timestamp \
-    --verbose
 
-    # Consider running with --interactive the first time.
-    # Runs `EXPLAIN` for you to verify the queries are using indexes.
-    # --interactive
-[10:15:00] INFO - Diffing tables | segments: 6, bisection threshold: 100000.
-[10:15:00] INFO - . Diffing segment 1/6, key-range: 1..4166683, size: 4166682
-[10:15:03] INFO - . Diffing segment 2/6, key-range: 4166683..8333365, size: 4166682
-[10:15:06] INFO - . Diffing segment 3/6, key-range: 8333365..12500047, size: 4166682
-[10:15:09] INFO - . Diffing segment 4/6, key-range: 12500047..16666729, size: 4166682
-[10:15:12] INFO - . . Diffing segment 1/6, key-range: 12500047..13194494, size: 694447
-[10:15:13] INFO - . . . Diffing segment 1/6, key-range: 12500047..12615788, size: 115741
-[10:15:13] INFO - . . . . Diffing segment 1/6, key-range: 12500047..12519337, size: 19290
-[10:15:13] INFO - . . . . Diff found 1 different rows.
-[10:15:13] INFO - . . . . Diffing segment 2/6, key-range: 12519337..12538627, size: 19290
-[10:15:13] INFO - . . . . Diffing segment 3/6, key-range: 12538627..12557917, size: 19290
-[10:15:13] INFO - . . . . Diffing segment 4/6, key-range: 12557917..12577207, size: 19290
-[10:15:13] INFO - . . . . Diffing segment 5/6, key-range: 12577207..12596497, size: 19290
-[10:15:13] INFO - . . . . Diffing segment 6/6, key-range: 12596497..12615788, size: 19291
-[10:15:13] INFO - . . . Diffing segment 2/6, key-range: 12615788..12731529, size: 115741
-[10:15:13] INFO - . . . Diffing segment 3/6, key-range: 12731529..12847270, size: 115741
-[10:15:13] INFO - . . . Diffing segment 4/6, key-range: 12847270..12963011, size: 115741
-[10:15:14] INFO - . . . Diffing segment 5/6, key-range: 12963011..13078752, size: 115741
-[10:15:14] INFO - . . . Diffing segment 6/6, key-range: 13078752..13194494, size: 115742
-[10:15:14] INFO - . . Diffing segment 2/6, key-range: 13194494..13888941, size: 694447
-[10:15:14] INFO - . . Diffing segment 3/6, key-range: 13888941..14583388, size: 694447
-[10:15:15] INFO - . . Diffing segment 4/6, key-range: 14583388..15277835, size: 694447
-[10:15:15] INFO - . . Diffing segment 5/6, key-range: 15277835..15972282, size: 694447
-[10:15:15] INFO - . . Diffing segment 6/6, key-range: 15972282..16666729, size: 694447
-+ (12500048, 1268104625)
-[10:15:16] INFO - . Diffing segment 5/6, key-range: 16666729..20833411, size: 4166682
-[10:15:19] INFO - . Diffing segment 6/6, key-range: 20833411..25000096, size: 4166685
-```
+## Getting started
 
-## Supported Databases
-
-| Database      | Connection string                                                                                                                   | Status |
-|---------------|-------------------------------------------------------------------------------------------------------------------------------------|--------|
-| PostgreSQL >=10    | `postgresql://<user>:<password>@<host>:5432/<database>`                                                                             |  💚    |
-| MySQL         | `mysql://<user>:<password>@<hostname>:5432/<database>`                                                                              |  💚    |
-| Snowflake     | `"snowflake://<user>[:<password>]@<account>/<database>/<SCHEMA>?warehouse=<WAREHOUSE>&role=<role>[&authenticator=externalbrowser]"` |  💚    |
-| Oracle        | `oracle://<username>:<password>@<hostname>/database`                                                                                |  💛    |
-| BigQuery      | `bigquery://<project>/<dataset>`                                                                                                    |  💛    |
-| Redshift      | `redshift://<username>:<password>@<hostname>:5439/<database>`                                                                       |  💛    |
-| Presto        | `presto://<username>:<password>@<hostname>:8080/<database>`                                                                         |  💛    |
-| Databricks    | `databricks://<http_path>:<access_token>@<server_hostname>/<catalog>/<schema>`                                                      |  💛    |
-| Trino         | `trino://<username>:<password>@<hostname>:8080/<database>`                                                                          |  💛    |
-| Clickhouse    | `clickhouse://<username>:<password>@<hostname>:9000/<database>`                                                                     |  💛    |
-| Vertica       | `vertica://<username>:<password>@<hostname>:5433/<database>`                                                                        |  💛    |
-| ElasticSearch |                                                                                                                                     |  📝    |
-| Planetscale   |                                                                                                                                     |  📝    |
-| Pinot         |                                                                                                                                     |  📝    |
-| Druid         |                                                                                                                                     |  📝    |
-| Kafka         |                                                                                                                                     |  📝    |
-
-* 💚: Implemented and thoroughly tested.
-* 💛: Implemented, but not thoroughly tested yet.
-* ⏳: Implementation in progress.
-* 📝: Implementation planned. Contributions welcome.
-
-If a database is not on the list, we'd still love to support it. Open an issue
-to discuss it.
-
-Note: Because URLs allow many special characters, and may collide with the syntax of your command-line,
-it's recommended to surround them with quotes. Alternatively, you may provide them in a TOML file via the `--config` option.
-
+- [Install data-diff](#how-to-install)
+  - [Install drivers](#install-drivers)
+- [**How to use**](#how-to-use)
+  - [How to use from the command-line](#how-to-use-from-the-command-line)
+  - [How to use from Python](#how-to-use-from-python)
+- [**Details**](#details)
+  - [Example Command and Output](#example-command-and-output)
+  - [Supported Databases](#supported-databases)
+- [**Technical Explanation**](#technical-explanation)
+  - [Performance Considerations](#performance-considerations)
+- [**Anonymous Tracking**](#anonymous-tracking)
+- [**Development Setup**](#development-setup)
+- [**License**](#license)
 
 # How to install
 
@@ -298,6 +222,86 @@ for different_row in diff_tables(table1, table2):
 ```
 
 Run `help(diff_tables)` or [read the docs](https://data-diff.readthedocs.io/en/latest/) to learn about the different options.
+
+# Details
+
+## Example Command and Output
+
+Below we run a comparison with the CLI for 25M rows in PostgreSQL where the
+right-hand table is missing single row with `id=12500048`:
+
+```
+$ data-diff \
+    postgresql://user:password@localhost/database rating \
+    postgresql://user:password@localhost/database rating_del1 \
+    --bisection-threshold 100000 \ # for readability, try default first
+    --bisection-factor 6 \ # for readability, try default first
+    --update-column timestamp \
+    --verbose
+
+    # Consider running with --interactive the first time.
+    # Runs `EXPLAIN` for you to verify the queries are using indexes.
+    # --interactive
+[10:15:00] INFO - Diffing tables | segments: 6, bisection threshold: 100000.
+[10:15:00] INFO - . Diffing segment 1/6, key-range: 1..4166683, size: 4166682
+[10:15:03] INFO - . Diffing segment 2/6, key-range: 4166683..8333365, size: 4166682
+[10:15:06] INFO - . Diffing segment 3/6, key-range: 8333365..12500047, size: 4166682
+[10:15:09] INFO - . Diffing segment 4/6, key-range: 12500047..16666729, size: 4166682
+[10:15:12] INFO - . . Diffing segment 1/6, key-range: 12500047..13194494, size: 694447
+[10:15:13] INFO - . . . Diffing segment 1/6, key-range: 12500047..12615788, size: 115741
+[10:15:13] INFO - . . . . Diffing segment 1/6, key-range: 12500047..12519337, size: 19290
+[10:15:13] INFO - . . . . Diff found 1 different rows.
+[10:15:13] INFO - . . . . Diffing segment 2/6, key-range: 12519337..12538627, size: 19290
+[10:15:13] INFO - . . . . Diffing segment 3/6, key-range: 12538627..12557917, size: 19290
+[10:15:13] INFO - . . . . Diffing segment 4/6, key-range: 12557917..12577207, size: 19290
+[10:15:13] INFO - . . . . Diffing segment 5/6, key-range: 12577207..12596497, size: 19290
+[10:15:13] INFO - . . . . Diffing segment 6/6, key-range: 12596497..12615788, size: 19291
+[10:15:13] INFO - . . . Diffing segment 2/6, key-range: 12615788..12731529, size: 115741
+[10:15:13] INFO - . . . Diffing segment 3/6, key-range: 12731529..12847270, size: 115741
+[10:15:13] INFO - . . . Diffing segment 4/6, key-range: 12847270..12963011, size: 115741
+[10:15:14] INFO - . . . Diffing segment 5/6, key-range: 12963011..13078752, size: 115741
+[10:15:14] INFO - . . . Diffing segment 6/6, key-range: 13078752..13194494, size: 115742
+[10:15:14] INFO - . . Diffing segment 2/6, key-range: 13194494..13888941, size: 694447
+[10:15:14] INFO - . . Diffing segment 3/6, key-range: 13888941..14583388, size: 694447
+[10:15:15] INFO - . . Diffing segment 4/6, key-range: 14583388..15277835, size: 694447
+[10:15:15] INFO - . . Diffing segment 5/6, key-range: 15277835..15972282, size: 694447
+[10:15:15] INFO - . . Diffing segment 6/6, key-range: 15972282..16666729, size: 694447
++ (12500048, 1268104625)
+[10:15:16] INFO - . Diffing segment 5/6, key-range: 16666729..20833411, size: 4166682
+[10:15:19] INFO - . Diffing segment 6/6, key-range: 20833411..25000096, size: 4166685
+```
+
+## Supported Databases
+
+| Database      | Connection string                                                                                                                   | Status |
+|---------------|-------------------------------------------------------------------------------------------------------------------------------------|--------|
+| PostgreSQL >=10    | `postgresql://<user>:<password>@<host>:5432/<database>`                                                                             |  💚    |
+| MySQL         | `mysql://<user>:<password>@<hostname>:5432/<database>`                                                                              |  💚    |
+| Snowflake     | `"snowflake://<user>[:<password>]@<account>/<database>/<SCHEMA>?warehouse=<WAREHOUSE>&role=<role>[&authenticator=externalbrowser]"` |  💚    |
+| Oracle        | `oracle://<username>:<password>@<hostname>/database`                                                                                |  💛    |
+| BigQuery      | `bigquery://<project>/<dataset>`                                                                                                    |  💛    |
+| Redshift      | `redshift://<username>:<password>@<hostname>:5439/<database>`                                                                       |  💛    |
+| Presto        | `presto://<username>:<password>@<hostname>:8080/<database>`                                                                         |  💛    |
+| Databricks    | `databricks://<http_path>:<access_token>@<server_hostname>/<catalog>/<schema>`                                                      |  💛    |
+| Trino         | `trino://<username>:<password>@<hostname>:8080/<database>`                                                                          |  💛    |
+| Clickhouse    | `clickhouse://<username>:<password>@<hostname>:9000/<database>`                                                                     |  💛    |
+| Vertica       | `vertica://<username>:<password>@<hostname>:5433/<database>`                                                                        |  💛    |
+| ElasticSearch |                                                                                                                                     |  📝    |
+| Planetscale   |                                                                                                                                     |  📝    |
+| Pinot         |                                                                                                                                     |  📝    |
+| Druid         |                                                                                                                                     |  📝    |
+| Kafka         |                                                                                                                                     |  📝    |
+
+* 💚: Implemented and thoroughly tested.
+* 💛: Implemented, but not thoroughly tested yet.
+* ⏳: Implementation in progress.
+* 📝: Implementation planned. Contributions welcome.
+
+If a database is not on the list, we'd still love to support it. Open an issue
+to discuss it.
+
+Note: Because URLs allow many special characters, and may collide with the syntax of your command-line,
+it's recommended to surround them with quotes. Alternatively, you may provide them in a TOML file via the `--config` option.
 
 # Technical Explanation
 
