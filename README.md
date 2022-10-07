@@ -17,10 +17,20 @@ rows across two different databases.
 * 🔍 Outputs [diff of rows](#example-command-and-output) in detail
 * 🚨 Simple CLI/API to create monitoring and alerts
 * 🔁 Bridges column types of different formats and levels of precision (e.g. Double ⇆ Float ⇆ Decimal)
-* 🔥 Verify 25M+ rows in <10s, and 1B+ rows in ~5min.
+* 🔥 Fast! Verify 25M+ rows in <10s, and 1B+ rows in ~5min.
 * ♾️  Works for tables with 10s of billions of rows
 
-**data-diff** splits the table into smaller segments, then checksums each
+data-diff can diff tables within the same database, or across different databases.
+
+**Same-DB Diff**: Uses an outer-join to diff the rows as efficiently and accurately as possible.
+
+Supports materializing the diff results to a database table.
+
+Can also collect various extra statistics about the tables.
+
+**Cross-DB Diff**: Employs a divide and conquer algorithm based on hashing, optimized for few changes.
+
+data-diff splits the table into smaller segments, then checksums each
 segment in both databases. When the checksums for a segment aren't equal, it
 will further divide that segment into yet smaller segments, checksumming those
 until it gets to the differing row(s). See [Technical Explanation][tech-explain] for more
@@ -69,8 +79,8 @@ better than MySQL.
   may span a half-dozen systems, without verifying each intermediate datastore
   it's extremely difficult to track down where a row got lost.
 * **Detecting hard deletes for an `updated_at`-based pipeline**. If you're
-  copying data to your warehouse based on an `updated_at`-style column, then
-  you'll miss hard-deletes that **data-diff** can find for you.
+  copying data to your warehouse based on an `updated_at`-style column, data-diff
+  can find any hard-deletes that you might have missed.
 * **Make your replication self-healing.** You can use **data-diff** to
   self-heal by using the diff output to write/update rows in the target
   database.
@@ -217,7 +227,7 @@ may be case-sensitive. This is the case for the Snowflake schema and table names
 Options:
 
   - `--help` - Show help message and exit.
-  - `-k` or `--key-column` - Name of the primary key column
+  - `-k` or `--key-columns` - Name of the primary key column. If none provided, default is 'id'.
   - `-t` or `--update-column` - Name of updated_at/last_updated column
   - `-c` or `--columns` - Names of extra columns to compare.  Can be used more than once in the same command.
                           Accepts a name or a pattern like in SQL.
@@ -232,12 +242,22 @@ Options:
                   Example: `--min-age=5min` ignores rows from the last 5 minutes.
                   Valid units: `d, days, h, hours, min, minutes, mon, months, s, seconds, w, weeks, y, years`
   - `--max-age` - Considers only rows younger than specified. See `--min-age`.
-  - `--bisection-factor` - Segments per iteration. When set to 2, it performs binary search.
-  - `--bisection-threshold` - Minimal bisection threshold. i.e. maximum size of pages to diff locally.
   - `-j` or `--threads` - Number of worker threads to use per database. Default=1.
   - `-w`, `--where` - An additional 'where' expression to restrict the search space.
   - `--conf`, `--run` - Specify the run and configuration from a TOML file. (see below)
   - `--no-tracking` - data-diff sends home anonymous usage data. Use this to disable it.
+  - `-a`, `--algorithm` `[auto|joindiff|hashdiff]` - Force algorithm choice
+
+Same-DB diff only:
+  - `-m`, `--materialize` - Materialize the diff results into a new table in the database.
+                            Use `%t` in the name to place a timestamp.
+                            Example: `-m test_mat_%t`
+  - `--assume-unique-key` - Skip validating the uniqueness of the key column during joindiff, which is costly in non-cloud dbs.
+
+Cross-DB diff only:
+  - `--bisection-threshold` - Minimal size of segment to be split. Smaller segments will be downloaded and compared locally.
+  - `--bisection-factor` - Segments per iteration. When set to 2, it performs binary search.
+
 
 
 ### How to use with a configuration file

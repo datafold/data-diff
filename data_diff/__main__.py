@@ -375,6 +375,10 @@ def _main(
             print(f"Diff-Total: {len(diff)} changed rows out of {max_table_count}")
             print(f"Diff-Percent: {percent:.14f}%")
             print(f"Diff-Split: +{plus}  -{minus}")
+            if differ.stats:
+                print("Extra-Info:")
+                for k, v in differ.stats.items():
+                    print(f'  {k} = {v}')
     else:
         for op, values in diff_iter:
             color = COLOR_SCHEME[op]
