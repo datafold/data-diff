@@ -84,3 +84,6 @@ class MySQL(ThreadedDatabase):
             }[t]
         except KeyError:
             return super().type_repr(t)
+
+    def explain_as_text(self, query: str) -> str:
+        return f"EXPLAIN FORMAT=TREE {query}"

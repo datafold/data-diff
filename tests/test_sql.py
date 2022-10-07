@@ -91,7 +91,7 @@ class TestSQL(unittest.TestCase):
         )
 
     def test_explain(self):
-        expected_sql = "EXPLAIN SELECT count(id) FROM `marine_mammals`.`walrus` WHERE (id IN (1, 2, 3))"
+        expected_sql = "EXPLAIN FORMAT=TREE SELECT count(id) FROM `marine_mammals`.`walrus` WHERE (id IN (1, 2, 3))"
         self.assertEqual(
             expected_sql,
             self.compiler.compile(

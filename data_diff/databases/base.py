@@ -27,7 +27,7 @@ from .database_types import (
     DbPath,
 )
 
-from data_diff.queries import Expr, Compiler, table, Select, SKIP
+from data_diff.queries import Expr, Compiler, table, Select, SKIP, Explain
 
 logger = logging.getLogger("database")
 
@@ -114,7 +114,7 @@ class Database(AbstractDatabase):
     def name(self):
         return type(self).__name__
 
-    def query(self, sql_ast: Union[Expr, Generator], res_type: type = None):
+    def query(self, sql_ast: Union[Expr, Generator], res_type: type = list):
         "Query the given SQL code/AST, and attempt to convert the result to type 'res_type'"
 
         compiler = Compiler(self)
@@ -128,8 +128,9 @@ class Database(AbstractDatabase):
         logger.debug("Running SQL (%s): %s", type(self).__name__, sql_code)
         if getattr(self, "_interactive", False) and isinstance(sql_ast, Select):
             explained_sql = compiler.compile(Explain(sql_ast))
-            logger.info("EXPLAIN for SQL SELECT")
-            logger.info(self._query(explained_sql))
+            explain = self._query(explained_sql)
+            for row, in explain:
+                logger.debug(f'EXPLAIN: {row}')
             answer = input("Continue? [y/n] ")
             if not answer.lower() in ["y", "yes"]:
                 sys.exit(1)
@@ -337,7 +338,7 @@ class Database(AbstractDatabase):
         assert isinstance(sql_code, str), sql_code
         try:
             c.execute(sql_code)
-            if sql_code.lower().startswith("select"):
+            if sql_code.lower().startswith(("select", "explain", "show")):
                 return c.fetchall()
         except Exception as e:
             # logger.exception(e)
@@ -348,6 +349,9 @@ class Database(AbstractDatabase):
         c = conn.cursor()
         callback = partial(self._query_cursor, c)
         return apply_query(callback, sql_code)
+
+    def explain_as_text(self, query: str) -> str:
+        return f"EXPLAIN {query}"
 
 
 class ThreadedDatabase(Database):

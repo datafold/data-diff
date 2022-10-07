@@ -172,6 +172,11 @@ class AbstractDialect(ABC):
         "Provide SQL fragment for limit and offset inside a select"
         ...
 
+    @abstractmethod
+    def explain_as_text(self, query: str) -> str:
+        "Provide SQL for explaining a query, returned in as table(varchar)"
+        ...
+
 
 class AbstractDatabase(AbstractDialect):
     @abstractmethod

@@ -32,6 +32,9 @@ class MockDialect(AbstractDialect):
         x = offset and f"offset {offset}", limit and f"limit {limit}"
         return " ".join(filter(None, x))
 
+    def explain_as_text(self, query: str) -> str:
+        return f"explain {query}"
+
 
 class TestQuery(unittest.TestCase):
     def setUp(self):

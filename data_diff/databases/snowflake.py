@@ -90,3 +90,6 @@ class Snowflake(Database):
 
     def is_autocommit(self) -> bool:
         return True
+
+    def explain_as_text(self, query: str) -> str:
+        return f"EXPLAIN USING TEXT {query}"

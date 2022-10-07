@@ -600,6 +600,13 @@ class Random(ExprNode):
         return c.database.random()
 
 
+@dataclass
+class Explain(ExprNode):
+    select: Select
+
+    def compile(self, c: Compiler) -> str:
+        return c.database.explain_as_text(c.compile(self.select))
+
 # DDL
 
 
