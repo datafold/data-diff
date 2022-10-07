@@ -66,7 +66,7 @@ _This section may be rephrased or relocated._
 
 Requires Python 3.7+ with pip.
 
-```pip install data-diff```
+```pip3 install data-diff```
 
 ## Install drivers
 
@@ -74,30 +74,30 @@ To connect to a database, we need to have its driver installed, in the form of a
 
 While you may install them manually, we offer an easy way to install them along with data-diff<sup>*</sup>:
 
-- `pip install 'data-diff[mysql]'`
+- `pip3 install 'data-diff[mysql]'`
 
-- `pip install 'data-diff[postgresql]'`
+- `pip3 install 'data-diff[postgresql]'`
 
-- `pip install 'data-diff[snowflake]'`
+- `pip3 install 'data-diff[snowflake]'`
 
-- `pip install 'data-diff[presto]'`
+- `pip3 install 'data-diff[presto]'`
 
-- `pip install 'data-diff[oracle]'`
+- `pip3 install 'data-diff[oracle]'`
 
-- `pip install 'data-diff[trino]'`
+- `pip3 install 'data-diff[trino]'`
 
-- `pip install 'data-diff[clickhouse]'`
+- `pip3 install 'data-diff[clickhouse]'`
 
-- `pip install 'data-diff[vertica]'`
+- `pip3 install 'data-diff[vertica]'`
 
 - For BigQuery, see: https://pypi.org/project/google-cloud-bigquery/
 
 
 Users can also install several drivers at once:
 
-```pip install 'data-diff[mysql,postgresql,snowflake]'```
+```pip3 install 'data-diff[mysql,postgresql,snowflake]'```
 
-_<sup>*</sup> Some drivers have dependencies that cannot be installed using `pip` and still need to be installed manually._
+_<sup>*</sup> Some drivers have dependencies that cannot be installed using `pip3` and still need to be installed manually._
 
 
 ### Install Psycopg2
@@ -105,7 +105,7 @@ _<sup>*</sup> Some drivers have dependencies that cannot be installed using `pip
 In order to run Postgresql, you'll need `psycopg2`. This Python package requires some additional dependencies described in their [documentation](https://www.psycopg.org/docs/install.html#build-prerequisites).
 An easy solution is to install [psycopg2-binary](https://www.psycopg.org/docs/install.html#quick-install) by running:
 
-```pip install psycopg2-binary```
+```pip3 install psycopg2-binary```
 
 Which comes with a pre-compiled binary and does not require additonal prerequisites. However, note that for production use it is adviced to use `psycopg2`.
 
@@ -540,7 +540,7 @@ directly with `poetry` rather than go through the package.
 $ brew install mysql postgresql # MacOS dependencies for C bindings
 $ apt-get install libpq-dev libmysqlclient-dev # Debian dependencies
 
-$ pip install poetry # Python dependency isolation tool
+$ pip3 install poetry # Python dependency isolation tool
 $ poetry install # Install dependencies
 ```
 **2. Start Databases**
