@@ -15,9 +15,8 @@ _data-diff is in shape to be run in production, but also under development._
 
 <img width="454" alt="Screen Shot 2022-10-07 at 2 37 48 PM" src="https://user-images.githubusercontent.com/1799931/194626900-81be9980-b81e-47ca-934c-8bcb6262dfae.png">
 
-# Todo: working on reorganizing/consolidating common use-cases and features
-
-## WIP Common use-cases
+## [WIP] Common use-cases
+_This section may be rephrased or relocated._
 
 * **Verify data migrations.** Verify that all data was copied when doing a
   critical data migration. For example, migrating from Heroku PostgreSQL to Amazon RDS.
@@ -35,10 +34,9 @@ _data-diff is in shape to be run in production, but also under development._
 * **Make your replication self-healing.** You can use **data-diff** to
   self-heal by using the diff output to write/update rows in the target
   database.
-  
-# Todo: working on reorganizing/consolidating common use-cases and features
 
-## WIP Features
+## [WIP] Features
+_This section may be rephrased or relocated._
 
 * ⇄  Verifies across [many different databases][dbs] (e.g. PostgreSQL ⇄ Snowflake) or within a database
 * 🔍 Outputs [diff of rows](#example-command-and-output) in detail
