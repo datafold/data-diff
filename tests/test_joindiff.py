@@ -137,6 +137,8 @@ class TestJoindiff(TestPerDatabase):
         self.assertEqual(expected, diff)
         self.assertEqual(2, self.differ.stats["table1_count"])
         self.assertEqual(1, self.differ.stats["table2_count"])
+        self.assertEqual(3, self.differ.stats["table1_sum_id"])
+        self.assertEqual(1, self.differ.stats["table2_sum_id"])
 
         # Test materialize
         materialize_path = self.connection.parse_table_name(f"test_mat_{random_table_suffix()}")

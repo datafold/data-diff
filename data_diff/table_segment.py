@@ -177,7 +177,6 @@ class TableSegment:
     def query_key_range(self) -> Tuple[int, int]:
         """Query database for minimum and maximum key. This is used for setting the initial bounds."""
         # Normalizes the result (needed for UUIDs) after the min/max computation
-        # TODO better error if there is no schema
         (k,) = self.key_columns
         select = self._make_select().select(
             ApplyFuncAndNormalizeAsString(this[k], min_),

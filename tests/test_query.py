@@ -1,4 +1,4 @@
-from cmath import exp
+from datetime import datetime
 from typing import List, Optional
 import unittest
 from data_diff.databases.database_types import AbstractDialect, CaseInsensitiveDict, CaseSensitiveDict
@@ -34,6 +34,9 @@ class MockDialect(AbstractDialect):
 
     def explain_as_text(self, query: str) -> str:
         return f"explain {query}"
+
+    def timestamp_value(self, t: datetime) -> str:
+        return f"timestamp '{t}'"
 
 
 class TestQuery(unittest.TestCase):

@@ -485,8 +485,6 @@ class TestUUIDs(TestPerDatabase):
         self.new_uuid = uuid.uuid1(32132131)
         queries.append(f"INSERT INTO {self.table_src} VALUES ('{self.new_uuid}', 'This one is different')")
 
-        # TODO test unexpected values?
-
         for query in queries:
             self.connection.query(query, None)
 
@@ -542,8 +540,6 @@ class TestAlphanumericKeys(TestPerDatabase):
         self.new_alphanum = "aBcDeFgHiJ"
         queries.append(f"INSERT INTO {self.table_src} VALUES ('{self.new_alphanum}', 'This one is different')")
 
-        # TODO test unexpected values?
-
         for query in queries:
             self.connection.query(query, None)
 
@@ -593,8 +589,6 @@ class TestVaryingAlphanumericKeys(TestPerDatabase):
 
         self.new_alphanum = "aBcDeFgHiJ"
         queries.append(f"INSERT INTO {self.table_src} VALUES ('{self.new_alphanum}', 'This one is different')")
-
-        # TODO test unexpected values?
 
         for query in queries:
             self.connection.query(query, None)

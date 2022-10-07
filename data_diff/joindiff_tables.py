@@ -10,7 +10,7 @@ from typing import Dict, List, Optional
 
 from runtype import dataclass
 
-from data_diff.databases.database_types import DbPath, Schema
+from data_diff.databases.database_types import DbPath, NumericType, Schema
 from data_diff.databases.base import QueryError
 
 
@@ -273,7 +273,7 @@ class JoinDiffer(TableDiffer):
                 f"max_{c}": max_(this[c]),
             }
             for c in table._relevant_columns
-            if c == "id"  # TODO just if the right type
+            if isinstance(table._schema[c], NumericType)
         )
         col_exprs["count"] = Count()
 

@@ -83,7 +83,7 @@ class Presto(Database):
         self._conn.close()
 
     def normalize_timestamp(self, value: str, coltype: TemporalType) -> str:
-        # TODO
+        # TODO rounds
         if coltype.rounds:
             s = f"date_format(cast({value} as timestamp(6)), '%Y-%m-%d %H:%i:%S.%f')"
         else:
