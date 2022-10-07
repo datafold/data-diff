@@ -1,26 +1,19 @@
 # **data-diff**
 
-**data-diff is in shape to be run in production, but also under development. If
-you run into issues or bugs, please [open an issue](https://github.com/datafold/data-diff/issues/new/choose) and we'll help you out ASAP! You can
-also find us in `#tools-data-diff` in the [Locally Optimistic Slack][slack].**
-
-**We'd love to hear about your experience using data-diff, and learn more your use cases. [Reach out to product team share any product feedback or feature requests!](https://calendly.com/jp-toor/customer-interview-oss)**
-
-💸💸 **Looking for paid contributors!** 💸💸 If you're up for making money working on awesome open-source tools, we're looking for developers with a deep understanding of databases and solid Python knowledge. [**Apply here!**](https://docs.google.com/forms/d/e/1FAIpQLScEa5tc9CM0uNsb3WigqRFq92OZENkThM04nIs7ZVl_bwsGMw/viewform)
+_data-diff is in shape to be run in production, but also under development._
+- 🐞Bugs? 💡Issues? 
+  - Please [open an issue](https://github.com/datafold/data-diff/issues/new/choose)!
+- 💬 Prefer to chat live? 
+  - Find us in [#tools-data-diff](https://locallyoptimistic.slack.com/archives/C03HUNGQV0S) in the [Locally Optimistic Slack][slack].
+  - [Please Reach out to the product team](https://calendly.com/jp-toor/customer-interview-oss) share any product feedback or feature requests!
+- 💸💸 **Looking for paid contributors!** 💸💸
+  - We're looking for developers with a deep understanding of databases and solid Python knowledge. [**Apply here!**](https://docs.google.com/forms/d/e/1FAIpQLScEa5tc9CM0uNsb3WigqRFq92OZENkThM04nIs7ZVl_bwsGMw/viewform)
 
 ----
 
-**data-diff** is a command-line tool and Python library to efficiently diff
-rows across two database tables.
+**data-diff** enables data analysts and engineers to inspect row-level impact of data changes. Any data professional can use data-diff to avoid code errors that cause data errors.
 
-* ⇄  Verifies across [many different databases][dbs] (e.g. PostgreSQL ⇄ Snowflake) or within a database
-* 🔍 Outputs [diff of rows](#example-command-and-output) in detail
-* 🚨 Simple CLI/API to create monitoring and alerts
-* 🔁 Bridges column types of different formats and levels of precision (e.g. Double ⇆ Float ⇆ Decimal)
-* 🔥 Verify 25M+ rows in <10s, and 1B+ rows in ~5min.
-* ♾️  Works for tables with 10s of billions of rows
-
-## Table of Contents
+<img width="454" alt="Screen Shot 2022-10-07 at 2 37 48 PM" src="https://user-images.githubusercontent.com/1799931/194626900-81be9980-b81e-47ca-934c-8bcb6262dfae.png">
 
 - [**Introduction**](#introduction)
   - [Common use-cases](#common-use-cases)
@@ -36,6 +29,16 @@ rows across two database tables.
 - [**Anonymous Tracking**](#anonymous-tracking)
 - [**Development Setup**](#development-setup)
 - [**License**](#license)
+
+
+* ⇄  Verifies across [many different databases][dbs] (e.g. PostgreSQL ⇄ Snowflake) or within a database
+* 🔍 Outputs [diff of rows](#example-command-and-output) in detail
+* 🚨 Simple CLI/API to create monitoring and alerts
+* 🔁 Bridges column types of different formats and levels of precision (e.g. Double ⇆ Float ⇆ Decimal)
+* 🔥 Verify 25M+ rows in <10s, and 1B+ rows in ~5min.
+* ♾️  Works for tables with 10s of billions of rows
+
+
 
 # Introduction
 
