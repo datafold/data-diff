@@ -1,6 +1,7 @@
+from typing import Union
 import logging
 
-from .database_types import *
+from .database_types import Timestamp, TimestampTZ, Decimal, Float, Text, FractionalType, TemporalType, DbPath
 from .base import ConnectError, Database, import_helper, CHECKSUM_MASK, ThreadLocalInterpreter
 
 
@@ -88,6 +89,7 @@ class Snowflake(Database):
     def normalize_number(self, value: str, coltype: FractionalType) -> str:
         return self.to_string(f"cast({value} as decimal(38, {coltype.precision}))")
 
+    @property
     def is_autocommit(self) -> bool:
         return True
 

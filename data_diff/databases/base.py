@@ -8,6 +8,7 @@ import threading
 from abc import abstractmethod
 
 from data_diff.utils import is_uuid, safezip
+from data_diff.queries import Expr, Compiler, table, Select, SKIP, Explain
 from .database_types import (
     AbstractDatabase,
     ColType,
@@ -26,8 +27,6 @@ from .database_types import (
     DbTime,
     DbPath,
 )
-
-from data_diff.queries import Expr, Compiler, table, Select, SKIP, Explain
 
 logger = logging.getLogger("database")
 
@@ -110,6 +109,8 @@ class Database(AbstractDatabase):
     default_schema: str = None
     SUPPORTS_ALPHANUMS = True
 
+    _interactive = False
+
     @property
     def name(self):
         return type(self).__name__
@@ -126,11 +127,14 @@ class Database(AbstractDatabase):
                 return SKIP
 
         logger.debug("Running SQL (%s): %s", type(self).__name__, sql_code)
-        if getattr(self, "_interactive", False) and isinstance(sql_ast, Select):
+        if self._interactive and isinstance(sql_ast, Select):
             explained_sql = compiler.compile(Explain(sql_ast))
             explain = self._query(explained_sql)
-            for (row,) in explain:
-                logger.debug(f"EXPLAIN: {row}")
+            for row in explain:
+                # Most returned a 1-tuple. Presto returns a string
+                if isinstance(row, tuple):
+                    row ,= row
+                logger.debug("EXPLAIN: %s", row)
             answer = input("Continue? [y/n] ")
             if not answer.lower() in ["y", "yes"]:
                 sys.exit(1)

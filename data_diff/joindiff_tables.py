@@ -6,22 +6,22 @@ from contextlib import suppress
 from decimal import Decimal
 from functools import partial
 import logging
-from typing import Dict, List, Optional
+from typing import List
 
 from runtype import dataclass
 
-from data_diff.databases.database_types import DbPath, NumericType, Schema
+from data_diff.databases.database_types import DbPath, NumericType
 from data_diff.databases.base import QueryError
 
 
 from .utils import safezip
 from .databases.base import Database
-from .databases import MySQL, BigQuery, Presto, Oracle, PostgreSQL, Snowflake
+from .databases import MySQL, BigQuery, Presto, Oracle, Snowflake
 from .table_segment import TableSegment
 from .diff_tables import TableDiffer, DiffResult
 from .thread_utils import ThreadedYielder
 
-from .queries import table, sum_, min_, max_, avg, SKIP, commit
+from .queries import table, sum_, min_, max_, avg, commit
 from .queries.api import and_, if_, or_, outerjoin, leftjoin, rightjoin, this, ITable
 from .queries.ast_classes import Concat, Count, Expr, Random, TablePath
 from .queries.compiler import Compiler
@@ -40,29 +40,20 @@ def merge_dicts(dicts):
     return res
 
 
-@dataclass(frozen=False)
-class Stats:
-    exclusive_count: int
-    exclusive_sample: List[tuple]
-    diff_ratio_by_column: Dict[str, float]
-    diff_ratio_total: float
-    metrics: Dict[str, float]
+def sample(table_expr):
+    return table_expr.order_by(Random()).limit(10)
 
 
-def sample(table):
-    return table.order_by(Random()).limit(10)
-
-
-def create_temp_table(c: Compiler, table: TablePath, expr: Expr):
+def create_temp_table(c: Compiler, path: TablePath, expr: Expr):
     db = c.database
     if isinstance(db, BigQuery):
-        return f"create table {c.compile(table)} OPTIONS(expiration_timestamp=TIMESTAMP_ADD(CURRENT_TIMESTAMP(), INTERVAL 1 DAY)) as {c.compile(expr)}"
+        return f"create table {c.compile(path)} OPTIONS(expiration_timestamp=TIMESTAMP_ADD(CURRENT_TIMESTAMP(), INTERVAL 1 DAY)) as {c.compile(expr)}"
     elif isinstance(db, Presto):
-        return f"create table {c.compile(table)} as {c.compile(expr)}"
+        return f"create table {c.compile(path)} as {c.compile(expr)}"
     elif isinstance(db, Oracle):
-        return f"create global temporary table {c.compile(table)} as {c.compile(expr)}"
+        return f"create global temporary table {c.compile(path)} as {c.compile(expr)}"
     else:
-        return f"create temporary table {c.compile(table)} as {c.compile(expr)}"
+        return f"create temporary table {c.compile(path)} as {c.compile(expr)}"
 
 
 def drop_table_oracle(name: DbPath):
@@ -149,7 +140,8 @@ class JoinDiffer(TableDiffer):
 
     Parameters:
         threaded (bool): Enable/disable threaded diffing. Needed to take advantage of database threads.
-        max_threadpool_size (int): Maximum size of each threadpool. ``None`` means auto. Only relevant when `threaded` is ``True``.
+        max_threadpool_size (int): Maximum size of each threadpool. ``None`` means auto.
+                                   Only relevant when `threaded` is ``True``.
                                    There may be many pools, so number of actual threads can be a lot higher.
         validate_unique_key (bool): Enable/disable validating that the key columns are unique.
                                     Single query, and can't be threaded, so it's very slow on non-cloud dbs.
@@ -227,8 +219,8 @@ class JoinDiffer(TableDiffer):
                 if is_xa and is_xb:
                     # Can't both be exclusive, meaning a pk is NULL
                     # This can happen if the explicit null test didn't finish running yet
-                    raise ValueError(f"NULL values in one or more primary keys")
-                is_diff, a_row, b_row = _slice_tuple(x, len(is_diff_cols), len(a_cols), len(b_cols))
+                    raise ValueError("NULL values in one or more primary keys")
+                _is_diff, a_row, b_row = _slice_tuple(x, len(is_diff_cols), len(a_cols), len(b_cols))
                 if not is_xb:
                     yield "-", tuple(a_row)
                 if not is_xa:
@@ -239,7 +231,7 @@ class JoinDiffer(TableDiffer):
 
         # Test duplicate keys
         for ts in [table1, table2]:
-            t = ts._make_select()
+            t = ts.make_select()
             key_columns = ts.key_columns
 
             q = t.select(total=Count(), total_distinct=Count(Concat(this[key_columns]), distinct=True))
@@ -252,17 +244,17 @@ class JoinDiffer(TableDiffer):
 
         # Test null keys
         for ts in [table1, table2]:
-            t = ts._make_select()
+            t = ts.make_select()
             key_columns = ts.key_columns
 
             q = t.select(*this[key_columns]).where(or_(this[k] == None for k in key_columns))
             nulls = ts.database.query(q, list)
             if nulls:
-                raise ValueError(f"NULL values in one or more primary keys")
+                raise ValueError("NULL values in one or more primary keys")
 
-    def _collect_stats(self, i, table):
+    def _collect_stats(self, i, table_seg: TableSegment):
         logger.info(f"Collecting stats for table #{i}")
-        db = table.database
+        db = table_seg.database
 
         # Metrics
         col_exprs = merge_dicts(
@@ -272,21 +264,17 @@ class JoinDiffer(TableDiffer):
                 f"min_{c}": min_(this[c]),
                 f"max_{c}": max_(this[c]),
             }
-            for c in table._relevant_columns
-            if isinstance(table._schema[c], NumericType)
+            for c in table_seg.relevant_columns
+            if isinstance(table_seg._schema[c], NumericType)
         )
         col_exprs["count"] = Count()
 
-        res = db.query(table._make_select().select(**col_exprs), tuple)
+        res = db.query(table_seg.make_select().select(**col_exprs), tuple)
         res = dict(zip([f"table{i}_{n}" for n in col_exprs], map(json_friendly_value, res)))
         for k, v in res.items():
             self.stats[k] = self.stats.get(k, 0) + (v or 0)
-        # self.stats.update(res)
 
-        logger.debug(f"Done collecting stats for table #{i}")
-
-        # stats.diff_ratio_by_column = diff_stats
-        # stats.diff_ratio_total = diff_stats['total_diff']
+        logger.debug("Done collecting stats for table #%s", i)
 
     def _create_outer_join(self, table1, table2):
         db = table1.database
@@ -298,13 +286,13 @@ class JoinDiffer(TableDiffer):
         if len(keys1) != len(keys2):
             raise ValueError("The provided key columns are of a different count")
 
-        cols1 = table1._relevant_columns
-        cols2 = table2._relevant_columns
+        cols1 = table1.relevant_columns
+        cols2 = table2.relevant_columns
         if len(cols1) != len(cols2):
             raise ValueError("The provided columns are of a different count")
 
-        a = table1._make_select()
-        b = table2._make_select()
+        a = table1.make_select()
+        b = table2.make_select()
 
         is_diff_cols = {f"is_diff_{c1}": bool_to_int(a[c1].is_distinct_from(b[c2])) for c1, c2 in safezip(cols1, cols2)}
 
@@ -359,4 +347,4 @@ class JoinDiffer(TableDiffer):
 
         f = append_to_table_oracle if isinstance(db, Oracle) else append_to_table
         db.query(f(self.materialize_to_table, diff_rows.limit(self.write_limit)))
-        logger.info(f"Materialized diff to table '{'.'.join(self.materialize_to_table)}'.")
+        logger.info("Materialized diff to table '%s'.", ".".join(self.materialize_to_table))

@@ -1,4 +1,5 @@
-from .database_types import *
+from typing import Union
+from .database_types import Timestamp, Datetime, Integer, Decimal, Float, Text, DbPath, FractionalType, TemporalType
 from .base import Database, import_helper, parse_table_name, ConnectError, apply_query
 from .base import TIMESTAMP_PRECISION_POS, ThreadLocalInterpreter
 

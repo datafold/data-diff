@@ -1,6 +1,6 @@
 import logging
 import decimal
-from abc import ABC, abstractmethod, abstractproperty
+from abc import ABC, abstractmethod
 from typing import Sequence, Optional, Tuple, Union, Dict, List
 from datetime import datetime
 
@@ -234,30 +234,6 @@ class AbstractDatadiffDialect(ABC):
         """
         ...
 
-    def normalize_value_by_type(self, value: str, coltype: ColType) -> str:
-        """Creates an SQL expression, that converts 'value' to a normalized representation.
-
-        The returned expression must accept any SQL value, and return a string.
-
-        The default implementation dispatches to a method according to `coltype`:
-
-        ::
-
-            TemporalType    -> normalize_timestamp()
-            FractionalType  -> normalize_number()
-            *else*          -> to_string()
-
-            (`Integer` falls in the *else* category)
-
-        """
-        if isinstance(coltype, TemporalType):
-            return self.normalize_timestamp(value, coltype)
-        elif isinstance(coltype, FractionalType):
-            return self.normalize_number(value, coltype)
-        elif isinstance(coltype, ColType_UUID):
-            return self.normalize_uuid(value, coltype)
-        return self.to_string(value)
-
 
 class AbstractDatabase(AbstractDialect, AbstractDatadiffDialect):
     @abstractmethod
@@ -304,9 +280,34 @@ class AbstractDatabase(AbstractDialect, AbstractDatadiffDialect):
     def _normalize_table_path(self, path: DbPath) -> DbPath:
         ...
 
-    @abstractproperty
+    @property
+    @abstractmethod
     def is_autocommit(self) -> bool:
         ...
+
+    def normalize_value_by_type(self, value: str, coltype: ColType) -> str:
+        """Creates an SQL expression, that converts 'value' to a normalized representation.
+
+        The returned expression must accept any SQL value, and return a string.
+
+        The default implementation dispatches to a method according to `coltype`:
+
+        ::
+
+            TemporalType    -> normalize_timestamp()
+            FractionalType  -> normalize_number()
+            *else*          -> to_string()
+
+            (`Integer` falls in the *else* category)
+
+        """
+        if isinstance(coltype, TemporalType):
+            return self.normalize_timestamp(value, coltype)
+        elif isinstance(coltype, FractionalType):
+            return self.normalize_number(value, coltype)
+        elif isinstance(coltype, ColType_UUID):
+            return self.normalize_uuid(value, coltype)
+        return self.to_string(value)
 
 
 Schema = CaseAwareMapping

@@ -131,7 +131,7 @@ class ITable:
         return Select(self, [Count()])
 
     def union(self, other: "ITable"):
-        return Union(self, other)
+        return SetUnion(self, other)
 
 
 @dataclass
@@ -401,7 +401,7 @@ class GroupBy(ITable):
 
 
 @dataclass
-class Union(ExprNode, ITable):
+class SetUnion(ExprNode, ITable):
     table1: ITable
     table2: ITable
 
@@ -422,12 +422,12 @@ class Union(ExprNode, ITable):
 
     def compile(self, parent_c: Compiler) -> str:
         c = parent_c.replace(in_select=False)
-        union_all = f"{c.compile(self.table1)} UNION {c.compile(self.table2)}"
+        union = f"{c.compile(self.table1)} UNION {c.compile(self.table2)}"
         if parent_c.in_select:
-            union_all = f"({union_all}) {c.new_unique_name()}"
+            union = f"({union}) {c.new_unique_name()}"
         elif parent_c.in_join:
-            union_all = f"({union_all})"
-        return union_all
+            union = f"({union})"
+        return union
 
 
 @dataclass
@@ -565,14 +565,6 @@ class This:
         if isinstance(name, (list, tuple)):
             return [_ResolveColumn(n) for n in name]
         return _ResolveColumn(name)
-
-
-@dataclass
-class Explain(ExprNode):
-    sql: Select
-
-    def compile(self, c: Compiler) -> str:
-        return f"EXPLAIN {c.compile(self.sql)}"
 
 
 @dataclass

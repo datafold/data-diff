@@ -149,7 +149,7 @@ class TestQuery(unittest.TestCase):
         q = c.compile(t.order_by(Random()).limit(10))
         assert q == "SELECT * FROM a ORDER BY random() limit 10"
 
-    def test_union_all(self):
+    def test_union(self):
         c = Compiler(MockDialect())
         a = table("a").select("x")
         b = table("b").select("y")

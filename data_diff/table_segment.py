@@ -1,5 +1,5 @@
 import time
-from typing import List, Sequence, Tuple
+from typing import List, Tuple
 import logging
 
 from runtype import dataclass
@@ -12,7 +12,7 @@ from .queries.extras import ApplyFuncAndNormalizeAsString, NormalizeAsString
 
 logger = logging.getLogger("table_segment")
 
-RECOMMENDED_CHECKSUM_DURATION = 10
+RECOMMENDED_CHECKSUM_DURATION = 20
 
 
 @dataclass
@@ -23,8 +23,8 @@ class TableSegment:
         database (Database): Database instance. See :meth:`connect`
         table_path (:data:`DbPath`): Path to table in form of a tuple. e.g. `('my_dataset', 'table_name')`
         key_columns (Tuple[str]): Name of the key column, which uniquely identifies each row (usually id)
-        update_column (str, optional): Name of updated column, which signals that rows changed (usually updated_at or last_update)
-            Used by `min_update` and `max_update`.
+        update_column (str, optional): Name of updated column, which signals that rows changed.
+                                       Usually updated_at or last_update. Used by `min_update` and `max_update`.
         extra_columns (Tuple[str, ...], optional): Extra columns to compare
         min_key (:data:`DbKey`, optional): Lowest key value, used to restrict the segment
         max_key (:data:`DbKey`, optional): Highest key value, used to restrict the segment
@@ -68,7 +68,7 @@ class TableSegment:
             )
 
     def _with_raw_schema(self, raw_schema: dict) -> "TableSegment":
-        schema = self.database._process_table_schema(self.table_path, raw_schema, self._relevant_columns, self.where)
+        schema = self.database._process_table_schema(self.table_path, raw_schema, self.relevant_columns, self.where)
         return self.new(_schema=create_schema(self.database, self.table_path, schema, self.case_sensitive))
 
     def with_schema(self) -> "TableSegment":
@@ -98,12 +98,12 @@ class TableSegment:
     def source_table(self):
         return table(*self.table_path, schema=self._schema)
 
-    def _make_select(self):
+    def make_select(self):
         return self.source_table.where(*self._make_key_range(), *self._make_update_range(), self.where or SKIP)
 
     def get_values(self) -> list:
         "Download all the relevant values of the segment from the database"
-        select = self._make_select().select(*self._relevant_columns_repr)
+        select = self.make_select().select(*self._relevant_columns_repr)
         return self.database.query(select, List[Tuple])
 
     def choose_checkpoints(self, count: int) -> List[DbKey]:
@@ -142,7 +142,7 @@ class TableSegment:
         return self.replace(**kwargs)
 
     @property
-    def _relevant_columns(self) -> List[str]:
+    def relevant_columns(self) -> List[str]:
         extras = list(self.extra_columns)
 
         if self.update_column and self.update_column not in extras:
@@ -152,22 +152,23 @@ class TableSegment:
 
     @property
     def _relevant_columns_repr(self) -> List[Expr]:
-        return [NormalizeAsString(this[c]) for c in self._relevant_columns]
+        return [NormalizeAsString(this[c]) for c in self.relevant_columns]
 
     def count(self) -> Tuple[int, int]:
         """Count how many rows are in the segment, in one pass."""
-        return self.database.query(self._make_select().select(Count()), int)
+        return self.database.query(self.make_select().select(Count()), int)
 
     def count_and_checksum(self) -> Tuple[int, int]:
         """Count and checksum the rows in the segment, in one pass."""
         start = time.monotonic()
-        q = self._make_select().select(Count(), Checksum(self._relevant_columns_repr))
+        q = self.make_select().select(Count(), Checksum(self._relevant_columns_repr))
         count, checksum = self.database.query(q, tuple)
         duration = time.monotonic() - start
         if duration > RECOMMENDED_CHECKSUM_DURATION:
             logger.warning(
-                f"Checksum is taking longer than expected ({duration:.2f}s). "
-                "We recommend increasing --bisection-factor or decreasing --threads."
+                "Checksum is taking longer than expected (%.2f). "
+                "We recommend increasing --bisection-factor or decreasing --threads.",
+                duration,
             )
 
         if count:
@@ -178,7 +179,7 @@ class TableSegment:
         """Query database for minimum and maximum key. This is used for setting the initial bounds."""
         # Normalizes the result (needed for UUIDs) after the min/max computation
         (k,) = self.key_columns
-        select = self._make_select().select(
+        select = self.make_select().select(
             ApplyFuncAndNormalizeAsString(this[k], min_),
             ApplyFuncAndNormalizeAsString(this[k], max_),
         )

@@ -78,6 +78,7 @@ class ThreadBase:
 
 class TableDiffer(ThreadBase, ABC):
     bisection_factor = 32
+    stats: dict = {}
 
     def diff_tables(self, table1: TableSegment, table2: TableSegment) -> DiffResult:
         """Diff the given tables.
@@ -177,7 +178,6 @@ class TableDiffer(ThreadBase, ABC):
         table1, table2 = [t.new(min_key=min_key1, max_key=max_key1) for t in (table1, table2)]
 
         logger.info(
-            # f"Diffing tables | segments: {self.bisection_factor}, bisection threshold: {self.bisection_threshold}. "
             f"Diffing segments at key-range: {table1.min_key}..{table2.max_key}. "
             f"size: table1 <= {table1.approximate_size()}, table2 <= {table2.approximate_size()}"
         )

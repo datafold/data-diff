@@ -1,7 +1,7 @@
 import random
 from abc import ABC, abstractmethod
 from datetime import datetime
-from typing import Any, Dict, Sequence, List, Union
+from typing import Any, Dict, Sequence, List
 
 from runtype import dataclass
 

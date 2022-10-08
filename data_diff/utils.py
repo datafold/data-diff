@@ -192,7 +192,10 @@ def remove_password_from_url(url: str, replace_with: str = "***") -> str:
 
 def join_iter(joiner: Any, iterable: Iterable) -> Iterable:
     it = iter(iterable)
-    yield next(it)
+    try:
+        yield next(it)
+    except StopIteration:
+        return
     for i in it:
         yield joiner
         yield i
@@ -220,6 +223,10 @@ class CaseAwareMapping(ABC, Generic[V]):
 
     def __repr__(self):
         return repr(dict(self.items()))
+
+    @abstractmethod
+    def items(self) -> Iterable[Tuple[str, V]]:
+        ...
 
 
 class CaseInsensitiveDict(CaseAwareMapping):
@@ -302,7 +309,7 @@ def getLogger(name):
 
 
 def eval_name_template(name):
-    def get_timestamp(m):
+    def get_timestamp(_match):
         return datetime.now().isoformat("_", "seconds").replace(":", "_")
 
     return re.sub("%t", get_timestamp, name)

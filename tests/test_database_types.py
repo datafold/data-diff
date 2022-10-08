@@ -418,13 +418,10 @@ TYPE_SAMPLES = {
 type_pairs = []
 for source_db, source_type_categories in DATABASE_TYPES.items():
     for target_db, target_type_categories in DATABASE_TYPES.items():
-        for (
-            type_category,
-            source_types,
-        ) in source_type_categories.items():  # int, datetime, ..
-            for source_type in source_types:
-                for target_type in target_type_categories[type_category]:
-                    if CONN_STRINGS.get(source_db, False) and CONN_STRINGS.get(target_db, False):
+        if CONN_STRINGS.get(source_db, False) and CONN_STRINGS.get(target_db, False):
+            for type_category, source_types in source_type_categories.items():  # int, datetime, ..
+                for source_type in source_types:
+                    for target_type in target_type_categories[type_category]:
                         type_pairs.append(
                             (
                                 source_db,

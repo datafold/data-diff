@@ -9,7 +9,7 @@ from runtype import dataclass
 
 from .utils import safezip
 from .thread_utils import ThreadedYielder
-from .databases.database_types import ColType_UUID, IKey, NumericType, PrecisionType, StringType
+from .databases.database_types import ColType_UUID, NumericType, PrecisionType, StringType
 from .table_segment import TableSegment
 
 from .diff_tables import TableDiffer
@@ -27,7 +27,7 @@ def diff_sets(a: set, b: set) -> Iterator:
     s2 = set(b)
     d = defaultdict(list)
 
-    # The first item is always the key (see TableDiffer._relevant_columns)
+    # The first item is always the key (see TableDiffer.relevant_columns)
     for i in s1 - s2:
         d[i[0]].append(("-", i))
     for i in s2 - s1:
@@ -50,7 +50,8 @@ class HashDiffer(TableDiffer):
         bisection_factor (int): Into how many segments to bisect per iteration.
         bisection_threshold (Number): When should we stop bisecting and compare locally (in row count).
         threaded (bool): Enable/disable threaded diffing. Needed to take advantage of database threads.
-        max_threadpool_size (int): Maximum size of each threadpool. ``None`` means auto. Only relevant when `threaded` is ``True``.
+        max_threadpool_size (int): Maximum size of each threadpool. ``None`` means auto.
+                                   Only relevant when `threaded` is ``True``.
                                    There may be many pools, so number of actual threads can be a lot higher.
     """
 
@@ -67,7 +68,7 @@ class HashDiffer(TableDiffer):
             raise ValueError("Must have at least two segments per iteration (i.e. bisection_factor >= 2)")
 
     def _validate_and_adjust_columns(self, table1, table2):
-        for c1, c2 in safezip(table1._relevant_columns, table2._relevant_columns):
+        for c1, c2 in safezip(table1.relevant_columns, table2.relevant_columns):
             if c1 not in table1._schema:
                 raise ValueError(f"Column '{c1}' not found in schema for table {table1}")
             if c2 not in table2._schema:
@@ -109,7 +110,7 @@ class HashDiffer(TableDiffer):
                     raise TypeError(f"Incompatible types for column '{c1}':  {col1} <-> {col2}")
 
         for t in [table1, table2]:
-            for c in t._relevant_columns:
+            for c in t.relevant_columns:
                 ctype = t._schema[c]
                 if not ctype.supported:
                     logger.warning(
@@ -144,10 +145,12 @@ class HashDiffer(TableDiffer):
         (count1, checksum1), (count2, checksum2) = self._threaded_call("count_and_checksum", [table1, table2])
 
         if count1 == 0 and count2 == 0:
-            # logger.warning(
-            #     f"Uneven distribution of keys detected in segment {table1.min_key}..{table2.max_key}. (big gaps in the key column). "
-            #     "For better performance, we recommend to increase the bisection-threshold."
-            # )
+            logger.debug(
+                "Uneven distribution of keys detected in segment %s..%s (big gaps in the key column). "
+                "For better performance, we recommend to increase the bisection-threshold.",
+                table1.min_key,
+                table1.max_key,
+            )
             assert checksum1 is None and checksum2 is None
             return
 

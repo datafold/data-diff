@@ -1,6 +1,20 @@
+from typing import Dict, List, Optional
+
 from ..utils import match_regexps
 
-from .database_types import *
+from .database_types import (
+    Decimal,
+    Float,
+    Text,
+    DbPath,
+    TemporalType,
+    ColType,
+    DbTime,
+    ColType_UUID,
+    Timestamp,
+    TimestampTZ,
+    FractionalType,
+)
 from .base import ThreadedDatabase, import_helper, ConnectError, QueryError
 from .base import TIMESTAMP_PRECISION_POS
 

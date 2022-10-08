@@ -1,6 +1,18 @@
+from typing import Dict, Sequence
 import logging
 
-from .database_types import *
+from .database_types import (
+    Integer,
+    Float,
+    Decimal,
+    Timestamp,
+    Text,
+    TemporalType,
+    NumericType,
+    DbPath,
+    ColType,
+    UnknownColType,
+)
 from .base import MD5_HEXDIGITS, CHECKSUM_HEXDIGITS, Database, import_helper, parse_table_name
 
 

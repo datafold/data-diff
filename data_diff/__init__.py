@@ -70,24 +70,27 @@ def diff_tables(
 
     Parameters:
         key_columns (Tuple[str, ...]): Name of the key column, which uniquely identifies each row (usually id)
-        update_column (str, optional): Name of updated column, which signals that rows changed (usually updated_at or last_update).
-            Used by `min_update` and `max_update`.
+        update_column (str, optional): Name of updated column, which signals that rows changed.
+                                       Usually updated_at or last_update.  Used by `min_update` and `max_update`.
         extra_columns (Tuple[str, ...], optional): Extra columns to compare
         min_key (:data:`DbKey`, optional): Lowest key value, used to restrict the segment
         max_key (:data:`DbKey`, optional): Highest key value, used to restrict the segment
         min_update (:data:`DbTime`, optional): Lowest update_column value, used to restrict the segment
         max_update (:data:`DbTime`, optional): Highest update_column value, used to restrict the segment
         algorithm (:class:`Algorithm`): Which diffing algorithm to use (`HASHDIFF` or `JOINDIFF`)
-        bisection_factor (int): Into how many segments to bisect per iteration. (when algorithm is `HASHDIFF`)
-        bisection_threshold (Number): When should we stop bisecting and compare locally (when algorithm is `HASHDIFF`; in row count).
+        bisection_factor (int): Into how many segments to bisect per iteration. (Used when algorithm is `HASHDIFF`)
+        bisection_threshold (Number): Minimal row count of segment to bisect, otherwise download
+                                      and compare locally. (Used when algorithm is `HASHDIFF`).
         threaded (bool): Enable/disable threaded diffing. Needed to take advantage of database threads.
-        max_threadpool_size (int): Maximum size of each threadpool. ``None`` means auto. Only relevant when `threaded` is ``True``.
+        max_threadpool_size (int): Maximum size of each threadpool. ``None`` means auto.
+                                   Only relevant when `threaded` is ``True``.
                                    There may be many pools, so number of actual threads can be a lot higher.
 
     Note:
         The following parameters are used to override the corresponding attributes of the given :class:`TableSegment` instances:
-        `key_columns`, `update_column`, `extra_columns`, `min_key`, `max_key`. If different values are needed per table, it's
-        possible to omit them here, and instead set them directly when creating each :class:`TableSegment`.
+        `key_columns`, `update_column`, `extra_columns`, `min_key`, `max_key`.
+        If different values are needed per table, it's possible to omit them here, and instead set
+        them directly when creating each :class:`TableSegment`.
 
     Example:
         >>> table1 = connect_to_table('postgresql:///', 'Rating', 'id')

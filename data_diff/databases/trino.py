@@ -1,4 +1,4 @@
-from .database_types import *
+from .database_types import TemporalType, ColType_UUID
 from .presto import Presto
 from .base import import_helper
 from .base import TIMESTAMP_PRECISION_POS
