@@ -15,6 +15,19 @@ _data-diff is in shape to be run in production, but also under development._
 
 <img width="454" alt="Screen Shot 2022-10-07 at 2 37 48 PM" src="https://user-images.githubusercontent.com/1799931/194626900-81be9980-b81e-47ca-934c-8bcb6262dfae.png">
 
+- [**Install data-diff**](#how-to-install)
+  - [Install drivers](#install-drivers)
+- [**How to use**](#how-to-use)
+  - [How to use from the command-line](#how-to-use-from-the-command-line)
+  - [How to use from Python](#how-to-use-from-python)
+- [**Details**](#details)
+  - [Example Command and Output](#example-command-and-output)
+- [**Technical Explanation**](#technical-explanation)
+  - [Performance Considerations](#performance-considerations)
+- [**Usage Analytics**](#usage-analytics)
+- [**Development Setup**](#development-setup)
+- [**License**](#license)
+
 ## [WIP] Common use-cases
 _This section may be rephrased or relocated._
 
@@ -45,31 +58,17 @@ _This section may be rephrased or relocated._
 * 🔥 Verify 25M+ rows in <10s, and 1B+ rows in ~5min.
 * ♾️  Works for tables with 10s of billions of rows
 
-
-## Getting started
-
-- [**Install data-diff**](#how-to-install)
-  - [Install drivers](#install-drivers)
-- [**How to use**](#how-to-use)
-  - [How to use from the command-line](#how-to-use-from-the-command-line)
-  - [How to use from Python](#how-to-use-from-python)
-- [**Details**](#details)
-  - [Example Command and Output](#example-command-and-output)
-- [**Technical Explanation**](#technical-explanation)
-  - [Performance Considerations](#performance-considerations)
-- [**Usage Analytics**](#usage-analytics)
-- [**Development Setup**](#development-setup)
-- [**License**](#license)
-
 # How to install
 
-Requires Python 3.7+ with pip.
+First, install `data-diff` using `pip`.
+
+**Note:** Throughout this guide, the command `pip` is used. Depending on your computer's setup, you MAY need to use `pip3` in place of `pip`. Once you've installed Python 3.7+, it's most likely that `pip` and `pip3` can be used interchangeably. Please reach out [via slack](https://locallyoptimistic.slack.com/archives/C03HUNGQV0S) if you're stuck.
 
 ```pip3 install data-diff```
 
 ## Install drivers
 
-To connect to a database, you need to have its driver installed. Run one or more of the following commands correspnoding to the database you're using.
+Then, you will need to install one or more driver(s) specific to the database(s) you want to connect to.
 
 - `pip3 install 'data-diff[mysql]'`
 
@@ -89,8 +88,7 @@ To connect to a database, you need to have its driver installed. Run one or more
 
 - For BigQuery, see: https://pypi.org/project/google-cloud-bigquery/
 
-
-Users can also install several drivers at once:
+You can also install several drivers at once:
 
 ```pip3 install 'data-diff[mysql,postgresql,snowflake]'```
 
@@ -152,12 +150,10 @@ Let's break this down. Assume there are two tables stored in two databases, and 
 If a database is not on the list, we'd still love to support it. Open an issue
 to discuss it.
 
-Note: Because URLs allow many special characters, and may collide with the syntax of your command-line,
+Notes: 
+- Because URLs allow many special characters, and may collide with the syntax of your command-line,
 it's recommended to surround them with quotes. Alternatively, you may provide them in a TOML file via the `--config` option.
-
-
-
-Note that for some databases, the arguments that you enter in the command line
+- For some databases, the arguments that you enter in the command line
 may be case-sensitive. This is the case for the Snowflake schema and table names.
 
 ## Options:
