@@ -48,17 +48,16 @@ _This section may be rephrased or relocated._
 
 ## Getting started
 
-- [Install data-diff](#how-to-install)
+- [**Install data-diff**](#how-to-install)
   - [Install drivers](#install-drivers)
 - [**How to use**](#how-to-use)
   - [How to use from the command-line](#how-to-use-from-the-command-line)
   - [How to use from Python](#how-to-use-from-python)
 - [**Details**](#details)
   - [Example Command and Output](#example-command-and-output)
-  - [Supported Databases](#supported-databases)
 - [**Technical Explanation**](#technical-explanation)
   - [Performance Considerations](#performance-considerations)
-- [**Anonymous Tracking**](#anonymous-tracking)
+- [**Usage Analytics**](#usage-analytics)
 - [**Development Setup**](#development-setup)
 - [**License**](#license)
 
@@ -70,9 +69,7 @@ Requires Python 3.7+ with pip.
 
 ## Install drivers
 
-To connect to a database, we need to have its driver installed, in the form of a Python library.
-
-While you may install them manually, we offer an easy way to install them along with data-diff<sup>*</sup>:
+To connect to a database, you need to have its driver installed. Run one or more of the following commands correspnoding to the database you're using.
 
 - `pip3 install 'data-diff[mysql]'`
 
@@ -114,15 +111,56 @@ Which comes with a pre-compiled binary and does not require additonal prerequisi
 
 ## How to use from the command-line
 
-Usage: `data-diff DB1_URI TABLE1_NAME DB2_URI TABLE2_NAME [OPTIONS]`
+To run `data-diff` from the command line, run this command:
 
-See the [example command](#example-command-and-output) and the [sample
-connection strings](#supported-databases).
+`data-diff DB1_URI TABLE1_NAME DB2_URI TABLE2_NAME [OPTIONS]`
+
+Let's break this down. Assume there are two tables stored in two databases, and you want to know the differences between those tables.
+
+- `DB1_URI` will be a string that `data-diff` uses to connect to the database where the first table is stored.
+- `TABLE1_NAME` is the name of the table in that database.
+- `DB2_URI` will be a string that `data-diff` uses to connect to the database where the second table is stored.
+- `TABLE2_NAME` is the name of the second table in that database.
+- `[OPTIONS]` can be replaced with a variety of additional commands, [detailed here](#options).
+
+### `URI` formatting and level of support for databases
+
+| Database      | `DB1_URI` or `DB2_URI`                                                                                                                  | Database support status |
+|---------------|-------------------------------------------------------------------------------------------------------------------------------------|--------|
+| PostgreSQL >=10    | `postgresql://<user>:<password>@<host>:5432/<database>`                                                                             |  💚    |
+| MySQL         | `mysql://<user>:<password>@<hostname>:5432/<database>`                                                                              |  💚    |
+| Snowflake     | `"snowflake://<user>[:<password>]@<account>/<database>/<SCHEMA>?warehouse=<WAREHOUSE>&role=<role>[&authenticator=externalbrowser]"` |  💚    |
+| Oracle        | `oracle://<username>:<password>@<hostname>/database`                                                                                |  💛    |
+| BigQuery      | `bigquery://<project>/<dataset>`                                                                                                    |  💛    |
+| Redshift      | `redshift://<username>:<password>@<hostname>:5439/<database>`                                                                       |  💛    |
+| Presto        | `presto://<username>:<password>@<hostname>:8080/<database>`                                                                         |  💛    |
+| Databricks    | `databricks://<http_path>:<access_token>@<server_hostname>/<catalog>/<schema>`                                                      |  💛    |
+| Trino         | `trino://<username>:<password>@<hostname>:8080/<database>`                                                                          |  💛    |
+| Clickhouse    | `clickhouse://<username>:<password>@<hostname>:9000/<database>`                                                                     |  💛    |
+| Vertica       | `vertica://<username>:<password>@<hostname>:5433/<database>`                                                                        |  💛    |
+| ElasticSearch |                                                                                                                                     |  📝    |
+| Planetscale   |                                                                                                                                     |  📝    |
+| Pinot         |                                                                                                                                     |  📝    |
+| Druid         |                                                                                                                                     |  📝    |
+| Kafka         |                                                                                                                                     |  📝    |
+
+* 💚: Implemented and thoroughly tested.
+* 💛: Implemented, but not thoroughly tested yet.
+* ⏳: Implementation in progress.
+* 📝: Implementation planned. Contributions welcome.
+
+If a database is not on the list, we'd still love to support it. Open an issue
+to discuss it.
+
+Note: Because URLs allow many special characters, and may collide with the syntax of your command-line,
+it's recommended to surround them with quotes. Alternatively, you may provide them in a TOML file via the `--config` option.
+
+
 
 Note that for some databases, the arguments that you enter in the command line
 may be case-sensitive. This is the case for the Snowflake schema and table names.
 
-Options:
+## Options:
 
   - `--help` - Show help message and exit.
   - `-k` or `--key-column` - Name of the primary key column
@@ -268,38 +306,6 @@ $ data-diff \
 [10:15:16] INFO - . Diffing segment 5/6, key-range: 16666729..20833411, size: 4166682
 [10:15:19] INFO - . Diffing segment 6/6, key-range: 20833411..25000096, size: 4166685
 ```
-
-## Supported Databases
-
-| Database      | Connection string                                                                                                                   | Status |
-|---------------|-------------------------------------------------------------------------------------------------------------------------------------|--------|
-| PostgreSQL >=10    | `postgresql://<user>:<password>@<host>:5432/<database>`                                                                             |  💚    |
-| MySQL         | `mysql://<user>:<password>@<hostname>:5432/<database>`                                                                              |  💚    |
-| Snowflake     | `"snowflake://<user>[:<password>]@<account>/<database>/<SCHEMA>?warehouse=<WAREHOUSE>&role=<role>[&authenticator=externalbrowser]"` |  💚    |
-| Oracle        | `oracle://<username>:<password>@<hostname>/database`                                                                                |  💛    |
-| BigQuery      | `bigquery://<project>/<dataset>`                                                                                                    |  💛    |
-| Redshift      | `redshift://<username>:<password>@<hostname>:5439/<database>`                                                                       |  💛    |
-| Presto        | `presto://<username>:<password>@<hostname>:8080/<database>`                                                                         |  💛    |
-| Databricks    | `databricks://<http_path>:<access_token>@<server_hostname>/<catalog>/<schema>`                                                      |  💛    |
-| Trino         | `trino://<username>:<password>@<hostname>:8080/<database>`                                                                          |  💛    |
-| Clickhouse    | `clickhouse://<username>:<password>@<hostname>:9000/<database>`                                                                     |  💛    |
-| Vertica       | `vertica://<username>:<password>@<hostname>:5433/<database>`                                                                        |  💛    |
-| ElasticSearch |                                                                                                                                     |  📝    |
-| Planetscale   |                                                                                                                                     |  📝    |
-| Pinot         |                                                                                                                                     |  📝    |
-| Druid         |                                                                                                                                     |  📝    |
-| Kafka         |                                                                                                                                     |  📝    |
-
-* 💚: Implemented and thoroughly tested.
-* 💛: Implemented, but not thoroughly tested yet.
-* ⏳: Implementation in progress.
-* 📝: Implementation planned. Contributions welcome.
-
-If a database is not on the list, we'd still love to support it. Open an issue
-to discuss it.
-
-Note: Because URLs allow many special characters, and may collide with the syntax of your command-line,
-it's recommended to surround them with quotes. Alternatively, you may provide them in a TOML file via the `--config` option.
 
 # Technical Explanation
 
