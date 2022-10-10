@@ -38,7 +38,7 @@ Formatting option 2:
 - [**License**](#license)
 
 ## [WIP] Common use-cases
-_This section may be rephrased or relocated._
+_This section may be rephrased or relocated. Leo is in progress and may refactor this into something else. Please hold. ☎️_
 
 * **Verify data migrations.** Verify that all data was copied when doing a
   critical data migration. For example, migrating from Heroku PostgreSQL to Amazon RDS.
@@ -58,7 +58,7 @@ _This section may be rephrased or relocated._
   database.
 
 ## [WIP] Features
-_This section may be rephrased or relocated._
+_This section may be rephrased or relocated. Leo is in progress and may refactor this into something else. Please hold. ☎️_
 
 * ⇄  Verifies across [many different databases][dbs] (e.g. PostgreSQL ⇄ Snowflake) or within a database
 * 🔍 Outputs [diff of rows](#example-command-and-output) in detail
