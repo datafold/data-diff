@@ -2,9 +2,9 @@
 _data-diff is in shape to be run in production, but also under development._
 
 Formatting option 1:
-| 🐞Bugs?<br>💡Issues?  | 💬 Prefer to chat live? | 💸💸 **Looking for paid contributors!** 💸💸 |
-| --------  | ------------------- | --------------------- |
-| Please [open an issue](https://github.com/datafold/data-diff/issues/new/choose)! | <ul><li>Find us in [#tools-data-diff](https://locallyoptimistic.slack.com/archives/C03HUNGQV0S) in the [Locally Optimistic Slack][slack]</li> <li>[Reach out to the product team](https://calendly.com/jp-toor/customer-interview-oss) share any product feedback or feature requests!</li></ul>      | We're looking for developers with a deep understanding of databases and solid Python knowledge. [**Apply here!**](https://docs.google.com/forms/d/e/1FAIpQLScEa5tc9CM0uNsb3WigqRFq92OZENkThM04nIs7ZVl_bwsGMw/viewform)                | 
+| <ul><li>🐞Bugs?</li><li>💡Issues?</li></ul> | 💬 Prefer to chat live? | 💸💸 **Looking for paid contributors!** 💸💸 |
+| ---------------- | ----------------------- | ------------------------------------------- |
+| Please [open an issue](https://github.com/datafold/data-diff/issues/new/choose)! | <ul><li>Find us in [#tools-data-diff](https://locallyoptimistic.slack.com/archives/C03HUNGQV0S) in the [Locally Optimistic Slack][slack].</li> <li>[Reach out to the product team](https://calendly.com/jp-toor/customer-interview-oss) share any product feedback or feature requests!</li></ul> | We're looking for developers with a deep understanding of databases and solid Python knowledge. [**Apply here!**](https://docs.google.com/forms/d/e/1FAIpQLScEa5tc9CM0uNsb3WigqRFq92OZENkThM04nIs7ZVl_bwsGMw/viewform) | 
 
 Formatting option 2:
 - 🐞Bugs? 💡Issues? 
@@ -22,7 +22,6 @@ Formatting option 2:
 <img width="454" alt="Screen Shot 2022-10-07 at 2 37 48 PM" src="https://user-images.githubusercontent.com/1799931/194626900-81be9980-b81e-47ca-934c-8bcb6262dfae.png">
 
 - [**Install data-diff**](#how-to-install)
-  - [Install drivers](#install-drivers)
 - [**How to use**](#how-to-use)
   - [How to use from the command-line](#how-to-use-from-the-command-line)
   - [How to use from Python](#how-to-use-from-python)
@@ -68,47 +67,47 @@ _This section may be rephrased or relocated._
 
 First, install `data-diff` using `pip`.
 
-**Note:** Throughout this guide, the command `pip` is used. Depending on your computer's setup, you MAY need to use `pip3` in place of `pip`. Once you've installed Python 3.7+, it's most likely that `pip` and `pip3` can be used interchangeably. Please reach out [via slack](https://locallyoptimistic.slack.com/archives/C03HUNGQV0S) if you're stuck.
+```pip install data-diff```
 
-```pip3 install data-diff```
+**Note:** Throughout this guide, the command `pip` is used. Depending on your computer's setup, you MAY need to use `pip3` in place of `pip`. Once you've installed Python 3.7+, it's most likely that `pip` and `pip3` can be used interchangeably. Please reach out [via slack](https://locallyoptimistic.slack.com/archives/C03HUNGQV0S) if you're stuck.
 
 ## Install drivers
 
 Then, you will need to install one or more driver(s) specific to the database(s) you want to connect to.
 
-- `pip3 install 'data-diff[mysql]'`
+- `pip install 'data-diff[mysql]'`
 
-- `pip3 install 'data-diff[postgresql]'`
+- `pip install 'data-diff[postgresql]'`
 
-- `pip3 install 'data-diff[snowflake]'`
+- `pip install 'data-diff[snowflake]'`
 
-- `pip3 install 'data-diff[presto]'`
+- `pip install 'data-diff[presto]'`
 
-- `pip3 install 'data-diff[oracle]'`
+- `pip install 'data-diff[oracle]'`
 
-- `pip3 install 'data-diff[trino]'`
+- `pip install 'data-diff[trino]'`
 
-- `pip3 install 'data-diff[clickhouse]'`
+- `pip install 'data-diff[clickhouse]'`
 
-- `pip3 install 'data-diff[vertica]'`
+- `pip install 'data-diff[vertica]'`
 
 - For BigQuery, see: https://pypi.org/project/google-cloud-bigquery/
 
 You can also install several drivers at once:
 
-```pip3 install 'data-diff[mysql,postgresql,snowflake]'```
+```pip install 'data-diff[mysql,postgresql,snowflake]'```
 
-_<sup>*</sup> Some drivers have dependencies that cannot be installed using `pip3` and still need to be installed manually._
+_<sup>*</sup> Some drivers have dependencies that cannot be installed using `pip` and still need to be installed manually._
 
 
-### Install Psycopg2
+### Using PostgreSQL? Install Psycopg2
 
-In order to run Postgresql, you'll need `psycopg2`. This Python package requires some additional dependencies described in their [documentation](https://www.psycopg.org/docs/install.html#build-prerequisites).
+In order to run PostgreSQL, you'll need `psycopg2`. This Python package requires some additional dependencies described in their [documentation](https://www.psycopg.org/docs/install.html#build-prerequisites).
 An easy solution is to install [psycopg2-binary](https://www.psycopg.org/docs/install.html#quick-install) by running:
 
-```pip3 install psycopg2-binary```
+```pip install psycopg2-binary```
 
-Which comes with a pre-compiled binary and does not require additonal prerequisites. However, note that for production use it is adviced to use `psycopg2`.
+`psycopg2-binary` comes with a pre-compiled binary and does not require additonal prerequisites. However, note that for production use, it is advised to use `psycopg2`.
 
 
 # How to use
