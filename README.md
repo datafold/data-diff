@@ -97,18 +97,13 @@ You can also install several drivers at once:
 
 ```pip install 'data-diff[mysql,postgresql,snowflake]'```
 
-_<sup>*</sup> Some drivers have dependencies that cannot be installed using `pip` and still need to be installed manually._
-
-
-### Using PostgreSQL? Install Psycopg2
-
-In order to run PostgreSQL, you'll need `psycopg2`. This Python package requires some additional dependencies described in their [documentation](https://www.psycopg.org/docs/install.html#build-prerequisites).
-An easy solution is to install [psycopg2-binary](https://www.psycopg.org/docs/install.html#quick-install) by running:
+If you're using PostgreSQL, you'll need to install `psycopg2`. If you run into issues with `psycopg2` [dependencies](https://www.psycopg.org/docs/install.html#build-prerequisites), an easy solution is to install [psycopg2-binary](https://www.psycopg.org/docs/install.html#quick-install) by running:
 
 ```pip install psycopg2-binary```
 
-`psycopg2-binary` comes with a pre-compiled binary and does not require additonal prerequisites. However, note that for production use, it is advised to use `psycopg2`.
+Note that for production use, it is advised to use `psycopg2`.
 
+_<sup>*</sup> Some drivers have dependencies that cannot be installed using `pip` and still need to be installed manually._
 
 # How to use
 
@@ -264,9 +259,15 @@ Run `help(diff_tables)` or [read the docs](https://data-diff.readthedocs.io/en/l
 
 ## Example Commands and Outputs
 
-### PostgreSQL
+For each of the 💚 implemented and thoroughly tested 💚 databases, we'll provide examples of `data-diff` input code and outputs on various data structures and sizes. 
 
-Two examples are provided below: one on a massive data set with missing row, and another on a smaller data set with several conflicting values.
+### Snowflake
+
+#### Massive Data Set with Missing Row
+
+#### Smaller Data Set with Several Conflicting Values
+
+### PostgreSQL
 
 #### Massive Data Set with Missing Row
 
@@ -317,9 +318,9 @@ $ data-diff \
 #### Smaller Data Set with Conflicting Values
 
 In this example, we use the CLI to compare a smaller data set with one missing row (`where actor_id = 4`) as well as several conflicting values:
-- `Ed` misspelled as `Edd` `where actor_id = 3` (or is `Edd` misspelled as `Ed`? Hard to say!)
-- Conflicting `last_update` values `where actor_id = 3` and `where actor_id = 2'
-- Conflicting spellings of the `first_name` `Penelope`/`Penelop` `where actor_id = 1`
+- `Ed` is misspelled as `Edd`. (Or is `Edd` misspelled as `Ed`? Hard to say!)
+- `Ed`/`Edd` and `Nick` have conflicting `last_update` values.
+- There's one more conlicting `first_name` spelling:  `Penelope` vs `Penelop`.
 
 ```
  $ data-diff \
@@ -336,6 +337,11 @@ In this example, we use the CLI to compare a smaller data set with one missing r
 - 4, 2013-05-26 14:47:57.620000, Jennifer, Davis
 ```
 
+### MySQL
+
+#### Massive Data Set with Missing Row
+
+#### Smaller Data Set with Conflicting Values
 
 # Technical Explanation
 
