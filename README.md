@@ -262,9 +262,15 @@ Run `help(diff_tables)` or [read the docs](https://data-diff.readthedocs.io/en/l
 
 # Details
 
-## Example Command and Output
+## Example Commands and Outputs
 
-Below we run a comparison with the CLI for 25M rows in PostgreSQL where the
+### PostgreSQL
+
+Two examples are provided below: one on a massive data set with missing row, and another on a smaller data set with several conflicting values.
+
+#### Massive Data Set with Missing Row
+
+In this example, we use the CLI to compare 25M rows in PostgreSQL where the
 right-hand table is missing single row with `id=12500048`:
 
 ```
@@ -307,6 +313,29 @@ $ data-diff \
 [10:15:16] INFO - . Diffing segment 5/6, key-range: 16666729..20833411, size: 4166682
 [10:15:19] INFO - . Diffing segment 6/6, key-range: 20833411..25000096, size: 4166685
 ```
+
+#### Smaller Data Set with Conflicting Values
+
+In this example, we use the CLI to compare a smaller data set with one missing row (`where actor_id = 4`) as well as several conflicting values:
+- `Ed` misspelled as `Edd` `where actor_id = 3` (or is `Edd` misspelled as `Ed`? Hard to say!)
+- Conflicting `last_update` values `where actor_id = 3` and `where actor_id = 2'
+- Conflicting spellings of the `first_name` `Penelope`/`Penelop` `where actor_id = 1`
+
+```
+ $ data-diff \
+  postgresql://leoebfolsom:''@localhost/dvdrental actor \
+  postgresql://leoebfolsom:''@localhost/dvdrental actor2 \
+  -k actor_id \
+  -c first_name -c last_name -c last_update
+- 1, 2013-05-26 14:47:57.620000, Penelope, Guiness
++ 1, 2013-05-26 14:47:57.620000, Penelop, Guiness
+- 2, 2013-05-26 14:47:57.620000, Nick, Wahlberg
++ 2, 2022-10-10 13:36:12.435821, Nick, Wahlberg
+- 3, 2013-05-26 14:47:57.620000, Ed, Chase
++ 3, 2022-10-10 13:31:28.214738, Edd, Chase
+- 4, 2013-05-26 14:47:57.620000, Jennifer, Davis
+```
+
 
 # Technical Explanation
 
