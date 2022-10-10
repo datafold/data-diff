@@ -323,8 +323,8 @@ In this example, we use the CLI to compare a smaller data set with one missing r
 
 ```
  $ data-diff \
-  postgresql://leoebfolsom:''@localhost/dvdrental actor \
-  postgresql://leoebfolsom:''@localhost/dvdrental actor2 \
+  postgresql://user:password@localhost/database actor \
+  postgresql://user:password@localhost/database actor2 \
   -k actor_id \
   -c first_name -c last_name -c last_update
 - 1, 2013-05-26 14:47:57.620000, Penelope, Guiness
