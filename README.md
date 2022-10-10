@@ -25,8 +25,12 @@ Formatting option 2:
 - [**How to use**](#how-to-use)
   - [How to use from the command-line](#how-to-use-from-the-command-line)
   - [How to use from Python](#how-to-use-from-python)
-- [**Details**](#details)
-  - [Example Command and Output](#example-command-and-output)
+- [**Examples**](#examples)
+  - [Command Line Examples](#command-line-examples)
+    - [Snowflake](#snowflake)
+    - [PostgreSQL](#postgresql)
+    - [MySQL](#mysql)
+  - [Python Examples](#python-examples)
 - [**Technical Explanation**](#technical-explanation)
   - [Performance Considerations](#performance-considerations)
 - [**Usage Analytics**](#usage-analytics)
@@ -255,10 +259,9 @@ for different_row in diff_tables(table1, table2):
 
 Run `help(diff_tables)` or [read the docs](https://data-diff.readthedocs.io/en/latest/) to learn about the different options.
 
-# Details
+# Examples
 
-## Example Commands and Outputs
-
+## Command Line Examples
 For each of the 💚 implemented and thoroughly tested 💚 databases, we'll provide examples of `data-diff` input code and outputs on various data structures and sizes. 
 
 ### Snowflake
@@ -342,6 +345,16 @@ In this example, we use the CLI to compare a smaller data set with one missing r
 #### Massive Data Set with Missing Row
 
 #### Smaller Data Set with Conflicting Values
+
+
+## Python Examples
+
+### [WIP]Some kind of context
+Note from Leo: I havent' run this from a Python file so I don't have a great idea yet what a Python example should look like.
+
+```
+Placeholder for Python example code
+```
 
 # Technical Explanation
 
