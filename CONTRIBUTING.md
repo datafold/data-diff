@@ -4,7 +4,7 @@ Contributions are very welcome! We'll be happy to help you in the process.
 
 ## What should I know before I get started?
 
-Go through the README and the documentation, and make sure that you understand how data-diff works. 
+Go through the README and the documentation, and make sure that you understand how data-diff works.
 
 ## How to contribute?
 
@@ -13,12 +13,12 @@ Go through the README and the documentation, and make sure that you understand h
 Please report the bug with as many details as you can.
 
 1. Include the exact command that you used. Make sure to run data-diff with the `-d` flag for debug output.
-2. Provide the entire output of the command. (stdout, logs, exception) 
+2. Provide the entire output of the command. (stdout, logs, exception)
 3. If possible, show us how we could reproduce the bug. i.e. how to set up an environment in which it occurs.
 
 (When pasting, always make sure to redact sensitive information, like passwords.)
 
-If data-diff returns incorrect results, i.e. false-positive or false-negative, please also include the original values.  
+If data-diff returns incorrect results, i.e. false-positive or false-negative, please also include the original values.
 
 Before you report a bug, make sure it doesn't already exist.
 
@@ -66,7 +66,7 @@ Make sure to update the appropriate `TEST_*_CONN_STRING`, so that it will be inc
 
 You can run the tests with `unittest`.
 
-When running against multiple databases, the tests can take a long while. 
+When running against multiple databases, the tests can take a long while.
 
 To save time, we recommend running them with `unittest-parallel`.
 
@@ -76,6 +76,6 @@ When debugging, we recommend using the `-f` flag, to stop on error. Also, use th
 
 New databases should be added as a new module in the `data-diff/databases/` folder.
 
-Make sure to update the `DATABASE_TYPES` dictionary in `tests/test_database_types.py`, so that it will be included in the tests.
-
 If possible, please also add the database setup to `docker-compose.yml`, so that we can run and test it for ourselves. If you do, also update the CI (`ci.yml`).
+
+Guide to implementing a new database driver: https://data-diff.readthedocs.io/en/latest/new-database-driver-guide.html
