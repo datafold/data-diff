@@ -17,7 +17,7 @@ Formatting option 2:
 
 ----
 
-**data-diff** enables data professionals to detect data differences between any two tables.
+**data-diff** enables data professionals to detect differences between any two tables.
 
 <img width="454" alt="Screen Shot 2022-10-07 at 2 37 48 PM" src="https://user-images.githubusercontent.com/1799931/194626900-81be9980-b81e-47ca-934c-8bcb6262dfae.png">
 
@@ -45,7 +45,7 @@ Formatting option 2:
 
 # Common use-cases
 
-### Validation of replication, migration, and pipelines
+## Validation of replication, migration, and pipelines
 
 * **Verify data migrations.** Verify that all data was copied when doing a
   critical data migration. For example, migrating from Heroku PostgreSQL to Amazon RDS.
@@ -64,7 +64,7 @@ Formatting option 2:
   self-heal by using the diff output to write/update rows in the target
   database.
 
-### Comparing tables within one database to validate successful transformaitons
+## Comparing tables within one database to validate successful transformaitons
 
 * **Inspect differences between branches**. Make sure your code results in only expected changes.
 * **Validate stability of critical downstream tables.** When refactoring a data pipeline, rest assured
@@ -255,30 +255,6 @@ flag is overwritten to `false`.
 
 Running it with `data-diff --conf myconfig.toml --run test_diff -v` will set verbose back to `true`.
 
-
-## How to use from Python
-
-API reference: [https://data-diff.readthedocs.io/en/latest/](https://data-diff.readthedocs.io/en/latest/)
-
-Example:
-
-```python
-# Optional: Set logging to display the progress of the diff
-import logging
-logging.basicConfig(level=logging.INFO)
-
-from data_diff import connect_to_table, diff_tables
-
-table1 = connect_to_table("postgresql:///", "table_name", "id")
-table2 = connect_to_table("mysql:///", "table_name", "id")
-
-for different_row in diff_tables(table1, table2):
-    plus_or_minus, columns = different_row
-    print(plus_or_minus, columns)
-```
-
-Run `help(diff_tables)` or [read the docs](https://data-diff.readthedocs.io/en/latest/) to learn about the different options.
-
 # Examples
 
 ## Command Line Examples
@@ -404,12 +380,24 @@ In this example, we use the CLI to compare a smaller data set with one missing r
 
 ## Python Examples
 
-### [WIP]Some kind of context
-Note from Leo: I havent' run this from a Python file so I don't have a great idea yet what a Python example should look like.
+API reference: [https://data-diff.readthedocs.io/en/latest/](https://data-diff.readthedocs.io/en/latest/)
 
+```python
+# Optional: Set logging to display the progress of the diff
+import logging
+logging.basicConfig(level=logging.INFO)
+
+from data_diff import connect_to_table, diff_tables
+
+table1 = connect_to_table("postgresql:///", "table_name", "id")
+table2 = connect_to_table("mysql:///", "table_name", "id")
+
+for different_row in diff_tables(table1, table2):
+    plus_or_minus, columns = different_row
+    print(plus_or_minus, columns)
 ```
-Placeholder for Python example code
-```
+
+Run `help(diff_tables)` or [read the docs](https://data-diff.readthedocs.io/en/latest/) to learn about the different options.
 
 # Technical Explanation
 
