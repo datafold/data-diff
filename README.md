@@ -290,6 +290,38 @@ For each of the 💚 implemented and thoroughly tested 💚 databases, we'll pro
 
 #### Smaller Data Set with Several Conflicting Values
 
+In this example, we use the CLI to compare a small data set of organizations (in this case, pharmacies and groceries) that exists as the `COMPANIES` table in two schemas,
+`ANALYTICS` AND `ANALYTICS_DEV`, in the same database, `SNOWFLAKE_DB`. 
+
+All other strings surrounded in `<>` carrots 🥕 should be replaced with your information.
+
+We've used `-k` to specify that the primary key is `org_id`, and `-c` to indicate that we'd also like to surface conflicts in the`amount` and `company_name` columns.
+
+Note that `ANALYTICS` is the first data set in your command (`DB1_URI`), and `ANALYTICS_DEV` is the second data set in your command (`DB2_URI`). This will be important to remember when interpreting the results.
+
+Looking at the results below, we find:
+
+- Walgreens, CVS, DuaneReade, and Albertsons are missing from `ANALYTICS_DEV` (the `-` indicates that the row is _missing_ from `DB2_URI`)
+- Aldi is missing from `ANALYTICS` (the `+` indicates that it _appeared_ in `DB2_URI`)
+- RiteAid is in both data sets, which is why it appears twice. But something else is wrong: the `amount` changed!
+- All rows that match exactly are not printed out.
+
+```
+$ data-diff \
+  "snowflake://YOUR_USERNAME:<your_password>@<YOUR_ACCOUNT>/SNOWFLAKE_DB/ANALYTICS?warehouse=<YOUR_WAREHOUSE>&role=<YOUR_ROLE>" COMPANIES \
+  "snowflake://YOUR_USERNAME:<your_password>@<YOUR_ACCOUNT>/SNOWFLAKE_DB/ANALYTICS_DEV?warehouse=<YOUR_WAREHOUSE>&role=<YOUR_ROLE>" COMPANIES " COMPANIES \
+  -k org_id \
+  -c company_name -c amount
+
+- 1, 5000.00, Walgreens
+- 2, 9000.00, CVS
++ 3, 49900.00 Aldi
+- 4, 710000.00, DuaneReade
+- 5, 21000.00, RiteAid
++ 5, 2000.00, RiteAid
+- 6, 0.00, Albertsons
+```
+
 ### PostgreSQL
 
 #### Massive Data Set with Missing Row
