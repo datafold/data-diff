@@ -15,7 +15,8 @@ from parameterized import parameterized
 from data_diff import databases as db
 from data_diff.databases import postgresql, oracle
 from data_diff.utils import number_to_human, accumulate
-from data_diff.diff_tables import TableDiffer, TableSegment, DEFAULT_BISECTION_THRESHOLD
+from data_diff.hashdiff_tables import HashDiffer, DEFAULT_BISECTION_THRESHOLD
+from data_diff.table_segment import TableSegment
 from .common import (
     CONN_STRINGS,
     N_SAMPLES,
@@ -417,13 +418,10 @@ TYPE_SAMPLES = {
 type_pairs = []
 for source_db, source_type_categories in DATABASE_TYPES.items():
     for target_db, target_type_categories in DATABASE_TYPES.items():
-        for (
-            type_category,
-            source_types,
-        ) in source_type_categories.items():  # int, datetime, ..
-            for source_type in source_types:
-                for target_type in target_type_categories[type_category]:
-                    if CONN_STRINGS.get(source_db, False) and CONN_STRINGS.get(target_db, False):
+        if CONN_STRINGS.get(source_db, False) and CONN_STRINGS.get(target_db, False):
+            for type_category, source_types in source_type_categories.items():  # int, datetime, ..
+                for source_type in source_types:
+                    for target_type in target_type_categories[type_category]:
                         type_pairs.append(
                             (
                                 source_db,
@@ -646,11 +644,11 @@ class TestDiffCrossDatabaseTables(unittest.TestCase):
         insertion_target_duration = time.monotonic() - start
 
         if type_category == "uuid":
-            self.table = TableSegment(self.src_conn, src_table_path, "col", None, ("id",), case_sensitive=False)
-            self.table2 = TableSegment(self.dst_conn, dst_table_path, "col", None, ("id",), case_sensitive=False)
+            self.table = TableSegment(self.src_conn, src_table_path, ("col",), None, ("id",), case_sensitive=False)
+            self.table2 = TableSegment(self.dst_conn, dst_table_path, ("col",), None, ("id",), case_sensitive=False)
         else:
-            self.table = TableSegment(self.src_conn, src_table_path, "id", None, ("col",), case_sensitive=False)
-            self.table2 = TableSegment(self.dst_conn, dst_table_path, "id", None, ("col",), case_sensitive=False)
+            self.table = TableSegment(self.src_conn, src_table_path, ("id",), None, ("col",), case_sensitive=False)
+            self.table2 = TableSegment(self.dst_conn, dst_table_path, ("id",), None, ("col",), case_sensitive=False)
 
         start = time.monotonic()
         self.assertEqual(N_SAMPLES, self.table.count())
@@ -667,7 +665,7 @@ class TestDiffCrossDatabaseTables(unittest.TestCase):
         ch_factor = min(max(int(N_SAMPLES / 250_000), 2), 128) if BENCHMARK else 2
         ch_threshold = min(DEFAULT_BISECTION_THRESHOLD, int(N_SAMPLES / ch_factor)) if BENCHMARK else 3
         ch_threads = N_THREADS
-        differ = TableDiffer(
+        differ = HashDiffer(
             bisection_threshold=ch_threshold,
             bisection_factor=ch_factor,
             max_threadpool_size=ch_threads,
@@ -688,7 +686,7 @@ class TestDiffCrossDatabaseTables(unittest.TestCase):
         dl_factor = max(int(N_SAMPLES / 100_000), 2) if BENCHMARK else 2
         dl_threshold = int(N_SAMPLES / dl_factor) + 1 if BENCHMARK else math.inf
         dl_threads = N_THREADS
-        differ = TableDiffer(
+        differ = HashDiffer(
             bisection_threshold=dl_threshold, bisection_factor=dl_factor, max_threadpool_size=dl_threads
         )
         start = time.monotonic()

@@ -140,17 +140,14 @@ class UnknownColType(ColType):
     supported = False
 
 
-class AbstractDatabase(ABC):
+class AbstractDialect(ABC):
+    """Dialect-dependent query expressions"""
+
     name: str
 
     @abstractmethod
     def quote(self, s: str):
         "Quote SQL name (implementation specific)"
-        ...
-
-    @abstractmethod
-    def to_string(self, s: str) -> str:
-        "Provide SQL for casting a column to string"
         ...
 
     @abstractmethod
@@ -164,14 +161,13 @@ class AbstractDatabase(ABC):
         ...
 
     @abstractmethod
-    def timestamp_value(self, t: DbTime) -> str:
-        "Provide SQL for the given timestamp value"
+    def to_string(self, s: str) -> str:
+        "Provide SQL for casting a column to string"
         ...
 
     @abstractmethod
-    def md5_to_int(self, s: str) -> str:
-        "Provide SQL for computing md5 and returning an int"
-        ...
+    def random(self) -> str:
+        "Provide SQL for generating a random number"
 
     @abstractmethod
     def offset_limit(self, offset: Optional[int] = None, limit: Optional[int] = None):
@@ -179,43 +175,22 @@ class AbstractDatabase(ABC):
         ...
 
     @abstractmethod
-    def _query(self, sql_code: str) -> list:
-        "Send query to database and return result"
+    def explain_as_text(self, query: str) -> str:
+        "Provide SQL for explaining a query, returned in as table(varchar)"
         ...
 
     @abstractmethod
-    def select_table_schema(self, path: DbPath) -> str:
-        "Provide SQL for selecting the table schema as (name, type, date_prec, num_prec)"
+    def timestamp_value(self, t: datetime) -> str:
+        "Provide SQL for the given timestamp value"
         ...
 
-    @abstractmethod
-    def query_table_schema(self, path: DbPath) -> Dict[str, tuple]:
-        """Query the table for its schema for table in 'path', and return {column: tuple}
-        where the tuple is (table_name, col_name, type_repr, datetime_precision?, numeric_precision?, numeric_scale?)
-        """
-        ...
+
+class AbstractDatadiffDialect(ABC):
+    """Dialect-dependent query expressions, that are specific to data-diff"""
 
     @abstractmethod
-    def _process_table_schema(
-        self, path: DbPath, raw_schema: Dict[str, tuple], filter_columns: Sequence[str], where: str = None
-    ):
-        """Process the result of query_table_schema().
-
-        Done in a separate step, to minimize the amount of processed columns.
-        Needed because processing each column may:
-        * throw errors and warnings
-        * query the database to sample values
-
-        """
-
-    @abstractmethod
-    def parse_table_name(self, name: str) -> DbPath:
-        "Parse the given table name into a DbPath"
-        ...
-
-    @abstractmethod
-    def close(self):
-        "Close connection(s) to the database instance. Querying will stop functioning."
+    def md5_to_int(self, s: str) -> str:
+        "Provide SQL for computing md5 and returning an int"
         ...
 
     @abstractmethod
@@ -259,6 +234,57 @@ class AbstractDatabase(ABC):
         """
         ...
 
+
+class AbstractDatabase(AbstractDialect, AbstractDatadiffDialect):
+    @abstractmethod
+    def _query(self, sql_code: str) -> list:
+        "Send query to database and return result"
+        ...
+
+    @abstractmethod
+    def select_table_schema(self, path: DbPath) -> str:
+        "Provide SQL for selecting the table schema as (name, type, date_prec, num_prec)"
+        ...
+
+    @abstractmethod
+    def query_table_schema(self, path: DbPath) -> Dict[str, tuple]:
+        """Query the table for its schema for table in 'path', and return {column: tuple}
+        where the tuple is (table_name, col_name, type_repr, datetime_precision?, numeric_precision?, numeric_scale?)
+        """
+        ...
+
+    @abstractmethod
+    def _process_table_schema(
+        self, path: DbPath, raw_schema: Dict[str, tuple], filter_columns: Sequence[str], where: str = None
+    ):
+        """Process the result of query_table_schema().
+
+        Done in a separate step, to minimize the amount of processed columns.
+        Needed because processing each column may:
+        * throw errors and warnings
+        * query the database to sample values
+
+        """
+
+    @abstractmethod
+    def parse_table_name(self, name: str) -> DbPath:
+        "Parse the given table name into a DbPath"
+        ...
+
+    @abstractmethod
+    def close(self):
+        "Close connection(s) to the database instance. Querying will stop functioning."
+        ...
+
+    @abstractmethod
+    def _normalize_table_path(self, path: DbPath) -> DbPath:
+        ...
+
+    @property
+    @abstractmethod
+    def is_autocommit(self) -> bool:
+        ...
+
     def normalize_value_by_type(self, value: str, coltype: ColType) -> str:
         """Creates an SQL expression, that converts 'value' to a normalized representation.
 
@@ -282,10 +308,6 @@ class AbstractDatabase(ABC):
         elif isinstance(coltype, ColType_UUID):
             return self.normalize_uuid(value, coltype)
         return self.to_string(value)
-
-    @abstractmethod
-    def _normalize_table_path(self, path: DbPath) -> DbPath:
-        ...
 
 
 Schema = CaseAwareMapping

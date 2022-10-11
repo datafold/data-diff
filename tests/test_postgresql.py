@@ -1,7 +1,6 @@
 import unittest
 
-from data_diff.databases.connect import connect
-from data_diff import TableSegment, TableDiffer
+from data_diff import TableSegment, HashDiffer, connect
 from .common import TEST_POSTGRESQL_CONN_STRING, TEST_MYSQL_CONN_STRING, random_table_suffix
 
 
@@ -38,10 +37,10 @@ class TestUUID(unittest.TestCase):
         for query in queries:
             self.connection.query(query, None)
 
-        a = TableSegment(self.connection, (self.table_src,), "id", "comment")
-        b = TableSegment(self.connection, (self.table_dst,), "id", "comment")
+        a = TableSegment(self.connection, (self.table_src,), ("id",), "comment")
+        b = TableSegment(self.connection, (self.table_dst,), ("id",), "comment")
 
-        differ = TableDiffer()
+        differ = HashDiffer()
         diff = list(differ.diff_tables(a, b))
         uuid = diff[0][1][0]
         self.assertEqual(diff, [("-", (uuid, "This one is different"))])
@@ -57,7 +56,7 @@ class TestUUID(unittest.TestCase):
             mysql_conn.query(f"INSERT INTO {self.table_dst}(id, comment) VALUES ('{uuid}', '{comment}')", None)
         mysql_conn.query(f"COMMIT", None)
 
-        c = TableSegment(mysql_conn, (self.table_dst,), "id", "comment")
+        c = TableSegment(mysql_conn, (self.table_dst,), ("id",), "comment")
         diff = list(differ.diff_tables(a, c))
         assert not diff, diff
         diff = list(differ.diff_tables(c, a))

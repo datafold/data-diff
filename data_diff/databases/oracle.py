@@ -1,6 +1,20 @@
+from typing import Dict, List, Optional
+
 from ..utils import match_regexps
 
-from .database_types import *
+from .database_types import (
+    Decimal,
+    Float,
+    Text,
+    DbPath,
+    TemporalType,
+    ColType,
+    DbTime,
+    ColType_UUID,
+    Timestamp,
+    TimestampTZ,
+    FractionalType,
+)
 from .base import ThreadedDatabase, import_helper, ConnectError, QueryError
 from .base import TIMESTAMP_PRECISION_POS
 
@@ -43,9 +57,9 @@ class Oracle(ThreadedDatabase):
         except Exception as e:
             raise ConnectError(*e.args) from e
 
-    def _query(self, sql_code: str):
+    def _query_cursor(self, c, sql_code: str):
         try:
-            return super()._query(sql_code)
+            return super()._query_cursor(c, sql_code)
         except self._oracle.DatabaseError as e:
             raise QueryError(e)
 
@@ -124,3 +138,17 @@ class Oracle(ThreadedDatabase):
     def normalize_uuid(self, value: str, coltype: ColType_UUID) -> str:
         # Cast is necessary for correct MD5 (trimming not enough)
         return f"CAST(TRIM({value}) AS VARCHAR(36))"
+
+    def random(self) -> str:
+        return "dbms_random.value"
+
+    def is_distinct_from(self, a: str, b: str) -> str:
+        return f"DECODE({a}, {b}, 1, 0) = 0"
+
+    def type_repr(self, t) -> str:
+        try:
+            return {
+                str: "VARCHAR(1024)",
+            }[t]
+        except KeyError:
+            return super().type_repr(t)

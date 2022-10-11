@@ -1,9 +1,9 @@
 import itertools
-from concurrent.futures.thread import _WorkItem
 from queue import PriorityQueue
 from collections import deque
 from collections.abc import Iterable
 from concurrent.futures import ThreadPoolExecutor
+from concurrent.futures.thread import _WorkItem
 from time import sleep
 from typing import Callable, Iterator, Optional
 
