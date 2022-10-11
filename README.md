@@ -290,16 +290,19 @@ For each of the 💚 implemented and thoroughly tested 💚 databases, we'll pro
 
 #### Smaller Data Set with Several Conflicting Values
 
-In this example, we use the CLI to compare a small data set of organizations (in this case, pharmacies and groceries) that exists as the `COMPANIES` table in two schemas,
-`ANALYTICS` AND `ANALYTICS_DEV`, in the same database, `SNOWFLAKE_DB`. 
+In this example, we use the CLI to compare a small data set of organizations (in this case, pharmacies and groceries) that exists as the `COMPANIES` table in two schemas, `ANALYTICS` AND `ANALYTICS_DEV`, in the same database, `SNOWFLAKE_DB`. 
 
-All other strings surrounded in `<>` carrots 🥕 should be replaced with your information.
+Recall the basic command line formula mentioned above:
 
-We've used `-k` to specify that the primary key is `org_id`, and `-c` to indicate that we'd also like to surface conflicts in the`amount` and `company_name` columns.
+`data-diff DB1_URI TABLE1_NAME DB2_URI TABLE2_NAME [OPTIONS]`
+
+We'll used `-k` to specify that the primary key is `org_id`, and `-c` to indicate that we'd also like to surface conflicts in the`amount` and `company_name` columns.
 
 Note that `ANALYTICS` is the first data set in your command (`DB1_URI`), and `ANALYTICS_DEV` is the second data set in your command (`DB2_URI`). This will be important to remember when interpreting the results.
 
-Looking at the results below, we find:
+All other strings surrounded in `<>` carrots 🥕 should be replaced with your information.
+
+Looking at the command and the results below, we find:
 
 - Walgreens, CVS, DuaneReade, and Albertsons are missing from `ANALYTICS_DEV` (the `-` indicates that the row is _missing_ from `DB2_URI`)
 - Aldi is missing from `ANALYTICS` (the `+` indicates that it _appeared_ in `DB2_URI`)
