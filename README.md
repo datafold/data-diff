@@ -133,26 +133,26 @@ Let's break this down. Assume there are two tables stored in two databases, and 
 
 ### `URI` formatting and level of support for databases
 
-| Database      | `DB1_URI` or `DB2_URI`                                                                                                                  | Database support status |
-|---------------|-------------------------------------------------------------------------------------------------------------------------------------|--------|
-| PostgreSQL >=10    | `postgresql://<user>:<password>@<host>:5432/<database>`                                                                             |  💚    |
-| MySQL         | `mysql://<user>:<password>@<hostname>:5432/<database>`                                                                              |  💚    |
-| Snowflake     | `"snowflake://<user>[:<password>]@<account>/<database>/<SCHEMA>?warehouse=<WAREHOUSE>&role=<role>[&authenticator=externalbrowser]"` |  💚    |
-| BigQuery      | `bigquery://<project>/<dataset>`                                                                                                    |  💚    |
-| Redshift      | `redshift://<username>:<password>@<hostname>:5439/<database>`                                                                       |  💚    |
-| Oracle        | `oracle://<username>:<password>@<hostname>/database`                                                                                |  💛    |
-| Presto        | `presto://<username>:<password>@<hostname>:8080/<database>`                                                                         |  💛    |
-| Databricks    | `databricks://<http_path>:<access_token>@<server_hostname>/<catalog>/<schema>`                                                      |  💛    |
-| Trino         | `trino://<username>:<password>@<hostname>:8080/<database>`                                                                          |  💛    |
-| Clickhouse    | `clickhouse://<username>:<password>@<hostname>:9000/<database>`                                                                     |  💛    |
-| Vertica       | `vertica://<username>:<password>@<hostname>:5433/<database>`                                                                        |  💛    |
-| ElasticSearch |                                                                                                                                     |  📝    |
-| Planetscale   |                                                                                                                                     |  📝    |
-| Pinot         |                                                                                                                                     |  📝    |
-| Druid         |                                                                                                                                     |  📝    |
-| Kafka         |                                                                                                                                     |  📝    |
-| DuckDB        |                                                                                                                                     |  📝    |
-| SQLite        |                                                                                                                                     |  📝    |
+| Database           | `DB1_URI` or `DB2_URI`                                                                                                              | Database support status |
+|--------------------|-------------------------------------------------------------------------------------------------------------------------------------|-------------------------|
+| PostgreSQL >=10    | `postgresql://<user>:<password>@<host>:5432/<database>`                                                                             |  💚                     |
+| MySQL              | `mysql://<user>:<password>@<hostname>:5432/<database>`                                                                              |  💚                     |
+| Snowflake          | `"snowflake://<user>[:<password>]@<account>/<database>/<SCHEMA>?warehouse=<WAREHOUSE>&role=<role>[&authenticator=externalbrowser]"` |  💚                     |
+| BigQuery           | `bigquery://<project>/<dataset>`                                                                                                    |  💚                     |
+| Redshift           | `redshift://<username>:<password>@<hostname>:5439/<database>`                                                                       |  💚                     |
+| Oracle             | `oracle://<username>:<password>@<hostname>/database`                                                                                |  💛                     |
+| Presto             | `presto://<username>:<password>@<hostname>:8080/<database>`                                                                         |  💛                     |
+| Databricks         | `databricks://<http_path>:<access_token>@<server_hostname>/<catalog>/<schema>`                                                      |  💛                     |
+| Trino              | `trino://<username>:<password>@<hostname>:8080/<database>`                                                                          |  💛                     |
+| Clickhouse         | `clickhouse://<username>:<password>@<hostname>:9000/<database>`                                                                     |  💛                     |
+| Vertica            | `vertica://<username>:<password>@<hostname>:5433/<database>`                                                                        |  💛                     |
+| ElasticSearch      |                                                                                                                                     |  📝                     |
+| Planetscale        |                                                                                                                                     |  📝                     |
+| Pinot              |                                                                                                                                     |  📝                     |
+| Druid              |                                                                                                                                     |  📝                     |
+| Kafka              |                                                                                                                                     |  📝                     |
+| DuckDB             |                                                                                                                                     |  📝                     |
+| SQLite             |                                                                                                                                     |  📝                     |
 
 * 💚: Implemented and thoroughly tested.
 * 💛: Implemented, but not thoroughly tested yet.
