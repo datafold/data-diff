@@ -133,11 +133,11 @@ Let's break this down. Assume there are two tables stored in two databases, and 
 
 ### `URI` formatting and level of support for databases
 
-| Database           | `DB1_URI` or `DB2_URI`                                                                                                              | Database support status |
+| Database           | `DB1_URI`, `DB2_URI`                                                                                                              | Database support status |
 |--------------------|-------------------------------------------------------------------------------------------------------------------------------------|-------------------------|
 | PostgreSQL >=10    | `postgresql://<user>:<password>@<host>:5432/<database>`                                                                             |  💚                     |
 | MySQL              | `mysql://<user>:<password>@<hostname>:5432/<database>`                                                                              |  💚                     |
-| Snowflake          | `"snowflake://<user>[:<password>]@<account>/<database>/<SCHEMA>?warehouse=<WAREHOUSE>&role=<role>[&authenticator=externalbrowser]"` |  💚                     |
+| Snowflake          | With password:`"snowflake://<user>:<password>@<ACCOUNT>/<DATABASE>/<SCHEMA>?warehouse=<WAREHOUSE>&role=<ROLE>"`<br>With SSO: `"snowflake://<user>@<ACCOUNT>/<database>/<SCHEMA>?warehouse=<WAREHOUSE>&role=<ROLE>&authenticator=externalbrowser"` |  💚                     |
 | BigQuery           | `bigquery://<project>/<dataset>`                                                                                                    |  💚                     |
 | Redshift           | `redshift://<username>:<password>@<hostname>:5439/<database>`                                                                       |  💚                     |
 | Oracle             | `oracle://<username>:<password>@<hostname>/database`                                                                                |  💛                     |
