@@ -5,6 +5,8 @@ import unittest
 
 import arrow  # comes with preql
 
+from data_diff.queries import table
+
 from data_diff.hashdiff_tables import HashDiffer
 from data_diff.table_segment import TableSegment, split_space
 from data_diff import databases as db
@@ -38,20 +40,6 @@ def _insert_rows(conn, table, fields, tuple_list):
 def _commit(conn):
     if not isinstance(conn, db.BigQuery):
         conn.query("COMMIT", None)
-
-
-def _get_text_type(conn):
-    if isinstance(conn, db.BigQuery):
-        return "STRING"
-    return "varchar(100)"
-
-
-def _get_float_type(conn):
-    if isinstance(conn, db.BigQuery):
-        return "FLOAT64"
-    elif isinstance(conn, db.Presto):
-        return "REAL"
-    return "float"
 
 
 class TestUtils(unittest.TestCase):
@@ -175,15 +163,22 @@ class TestDiffTables(TestPerDatabase):
     def setUp(self):
         super().setUp()
 
-        float_type = _get_float_type(self.connection)
+        src_table = table(
+            self.table_src_path,
+            schema={"id": int, "userid": int, "movieid": int, "rating": float, "timestamp": datetime.datetime},
+        )
+        dst_table = table(
+            self.table_dst_path,
+            schema={"id": int, "userid": int, "movieid": int, "rating": float, "timestamp": datetime.datetime},
+        )
 
         self.connection.query(
-            f"create table {self.table_src}(id int, userid int, movieid int, rating {float_type}, timestamp timestamp)",
-            None,
+            src_table.create(),
+            # f"create table {self.table_src}(id int, userid int, movieid int, rating {float_type}, timestamp timestamp)",
         )
         self.connection.query(
-            f"create table {self.table_dst}(id int, userid int, movieid int, rating {float_type}, timestamp timestamp)",
-            None,
+            # f"create table {self.table_dst}(id int, userid int, movieid int, rating {float_type}, timestamp timestamp)",
+            dst_table.create()
         )
         _commit(self.connection)
 
@@ -338,16 +333,12 @@ class TestDiffTables(TestPerDatabase):
 @test_each_database
 class TestDiffTables2(TestPerDatabase):
     def test_diff_column_names(self):
-        float_type = _get_float_type(self.connection)
 
-        self.connection.query(
-            f"create table {self.table_src}(id int, rating {float_type}, timestamp timestamp)",
-            None,
-        )
-        self.connection.query(
-            f"create table {self.table_dst}(id2 int, rating2 {float_type}, timestamp2 timestamp)",
-            None,
-        )
+        src_table = table(self.table_src_path, schema={"id": int, "rating": float, "timestamp": datetime.datetime})
+        dst_table = table(self.table_dst_path, schema={"id2": int, "rating2": float, "timestamp2": datetime.datetime})
+
+        self.connection.query(src_table.create())
+        self.connection.query(dst_table.create())
         _commit(self.connection)
 
         time = "2022-01-01 00:00:00"
@@ -394,11 +385,9 @@ class TestUUIDs(TestPerDatabase):
     def setUp(self):
         super().setUp()
 
-        text_type = _get_text_type(self.connection)
+        src_table = table(self.table_src_path, schema={"id": str, "text_comment": str})
 
-        queries = [
-            f"CREATE TABLE {self.table_src}(id {text_type}, text_comment {text_type})",
-        ]
+        queries = [src_table.create()]
         for i in range(100):
             queries.append(f"INSERT INTO {self.table_src} VALUES ('{uuid.uuid1(i)}', '{i}')")
 
@@ -444,11 +433,9 @@ class TestAlphanumericKeys(TestPerDatabase):
     def setUp(self):
         super().setUp()
 
-        text_type = _get_text_type(self.connection)
+        src_table = table(self.table_src_path, schema={"id": str, "text_comment": str})
 
-        queries = [
-            f"CREATE TABLE {self.table_src}(id {text_type}, text_comment {text_type})",
-        ]
+        queries = [src_table.create()]
         for i in range(0, 10000, 1000):
             a = ArithAlphanumeric(numberToAlphanum(i), max_len=10)
             if not a and isinstance(self.connection, db.Oracle):
@@ -494,11 +481,9 @@ class TestVaryingAlphanumericKeys(TestPerDatabase):
     def setUp(self):
         super().setUp()
 
-        text_type = _get_text_type(self.connection)
+        src_table = table(self.table_src_path, schema={"id": str, "text_comment": str})
 
-        queries = [
-            f"CREATE TABLE {self.table_src}(id {text_type}, text_comment {text_type})",
-        ]
+        queries = [src_table.create()]
         for i in range(0, 10000, 1000):
             a = ArithAlphanumeric(numberToAlphanum(i * i))
             if not a and isinstance(self.connection, db.Oracle):
@@ -586,11 +571,9 @@ class TestTableUUID(TestPerDatabase):
     def setUp(self):
         super().setUp()
 
-        text_type = _get_text_type(self.connection)
+        src_table = table(self.table_src_path, schema={"id": str, "text_comment": str})
 
-        queries = [
-            f"CREATE TABLE {self.table_src}(id {text_type}, text_comment {text_type})",
-        ]
+        queries = [src_table.create()]
         for i in range(10):
             uuid_value = uuid.uuid1(i)
             queries.append(f"INSERT INTO {self.table_src} VALUES ('{uuid_value}', '{uuid_value}')")
@@ -620,11 +603,11 @@ class TestTableNullRowChecksum(TestPerDatabase):
     def setUp(self):
         super().setUp()
 
-        text_type = _get_text_type(self.connection)
+        src_table = table(self.table_src_path, schema={"id": str, "text_comment": str})
 
         self.null_uuid = uuid.uuid1(1)
         queries = [
-            f"CREATE TABLE {self.table_src}(id {text_type}, text_comment {text_type})",
+            src_table.create(),
             f"INSERT INTO {self.table_src} VALUES ('{uuid.uuid1(1)}', '1')",
             f"CREATE TABLE {self.table_dst} AS SELECT * FROM {self.table_src}",
             # Add a row where a column has NULL value
@@ -670,12 +653,10 @@ class TestConcatMultipleColumnWithNulls(TestPerDatabase):
     def setUp(self):
         super().setUp()
 
-        text_type = _get_text_type(self.connection)
+        src_table = table(self.table_src_path, schema={"id": str, "c1": str, "c2": str})
+        dst_table = table(self.table_dst_path, schema={"id": str, "c1": str, "c2": str})
 
-        queries = [
-            f"CREATE TABLE {self.table_src}(id {text_type}, c1 {text_type}, c2 {text_type})",
-            f"CREATE TABLE {self.table_dst}(id {text_type}, c1 {text_type}, c2 {text_type})",
-        ]
+        queries = [src_table.create(), dst_table.create()]
 
         self.diffs = []
         for i in range(0, 8):
@@ -734,13 +715,11 @@ class TestTableTableEmpty(TestPerDatabase):
     def setUp(self):
         super().setUp()
 
-        text_type = _get_text_type(self.connection)
+        src_table = table(self.table_src_path, schema={"id": str, "text_comment": str})
+        dst_table = table(self.table_dst_path, schema={"id": str, "text_comment": str})
 
         self.null_uuid = uuid.uuid1(1)
-        queries = [
-            f"CREATE TABLE {self.table_src}(id {text_type}, text_comment {text_type})",
-            f"CREATE TABLE {self.table_dst}(id {text_type}, text_comment {text_type})",
-        ]
+        queries = [src_table.create(), dst_table.create()]
 
         self.diffs = [(uuid.uuid1(i), i) for i in range(100)]
         for pk, value in self.diffs:

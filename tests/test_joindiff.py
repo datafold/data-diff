@@ -1,11 +1,13 @@
 from typing import List
+from datetime import datetime
 
 from data_diff.queries.ast_classes import TablePath
+from data_diff.queries import table
 from data_diff.table_segment import TableSegment
 from data_diff import databases as db
 from data_diff.joindiff_tables import JoinDiffer
 
-from .test_diff_tables import TestPerDatabase, _get_float_type, _commit, _insert_row, _insert_rows
+from .test_diff_tables import TestPerDatabase, _commit, _insert_row, _insert_rows
 
 from .common import (
     random_table_suffix,
@@ -33,14 +35,17 @@ class TestCompositeKey(TestPerDatabase):
     def setUp(self):
         super().setUp()
 
-        float_type = _get_float_type(self.connection)
+        src_table = table(
+            self.table_src_path,
+            schema={"id": int, "userid": int, "movieid": int, "rating": float, "timestamp": datetime},
+        )
+        dst_table = table(
+            self.table_dst_path,
+            schema={"id": int, "userid": int, "movieid": int, "rating": float, "timestamp": datetime},
+        )
 
-        self.connection.query(
-            f"create table {self.table_src}(id int, userid int, movieid int, rating {float_type}, timestamp timestamp)",
-        )
-        self.connection.query(
-            f"create table {self.table_dst}(id int, userid int, movieid int, rating {float_type}, timestamp timestamp)",
-        )
+        self.connection.query(src_table.create())
+        self.connection.query(dst_table.create())
         _commit(self.connection)
 
         self.differ = JoinDiffer()
@@ -78,14 +83,17 @@ class TestJoindiff(TestPerDatabase):
     def setUp(self):
         super().setUp()
 
-        float_type = _get_float_type(self.connection)
+        src_table = table(
+            self.table_src_path,
+            schema={"id": int, "userid": int, "movieid": int, "rating": float, "timestamp": datetime},
+        )
+        dst_table = table(
+            self.table_dst_path,
+            schema={"id": int, "userid": int, "movieid": int, "rating": float, "timestamp": datetime},
+        )
 
-        self.connection.query(
-            f"create table {self.table_src}(id int, userid int, movieid int, rating {float_type}, timestamp timestamp)",
-        )
-        self.connection.query(
-            f"create table {self.table_dst}(id int, userid int, movieid int, rating {float_type}, timestamp timestamp)",
-        )
+        self.connection.query(src_table.create())
+        self.connection.query(dst_table.create())
         _commit(self.connection)
 
         self.table = TableSegment(self.connection, self.table_src_path, ("id",), "timestamp", case_sensitive=False)

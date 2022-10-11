@@ -1,3 +1,4 @@
+from datetime import datetime
 import math
 import sys
 import logging
@@ -329,6 +330,7 @@ class Database(AbstractDatabase):
             str: "VARCHAR",
             bool: "BOOLEAN",
             float: "FLOAT",
+            datetime: "TIMESTAMP",
         }[t]
 
     def _query_cursor(self, c, sql_code: str):
