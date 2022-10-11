@@ -1,14 +1,36 @@
+from functools import partial
 import re
 
-from ..utils import match_regexps
+from data_diff.utils import match_regexps
 
-from .database_types import *
-from .base import Database, import_helper
+from .database_types import (
+    Timestamp,
+    TimestampTZ,
+    Integer,
+    Float,
+    Text,
+    FractionalType,
+    DbPath,
+    Decimal,
+    ColType,
+    ColType_UUID,
+    TemporalType,
+)
+from .base import Database, import_helper, ThreadLocalInterpreter
 from .base import (
     MD5_HEXDIGITS,
     CHECKSUM_HEXDIGITS,
     TIMESTAMP_PRECISION_POS,
 )
+
+
+def query_cursor(c, sql_code):
+    c.execute(sql_code)
+    if sql_code.lower().startswith("select"):
+        return c.fetchall()
+    # Required for the query to actually run 🤯
+    if re.match(r"(insert|create|truncate|drop|explain)", sql_code, re.IGNORECASE):
+        return c.fetchone()
 
 
 @import_helper("presto")
@@ -63,18 +85,17 @@ class Presto(Database):
     def _query(self, sql_code: str) -> list:
         "Uses the standard SQL cursor interface"
         c = self._conn.cursor()
-        c.execute(sql_code)
-        if sql_code.lower().startswith("select"):
-            return c.fetchall()
-        # Required for the query to actually run 🤯
-        if re.match(r"(insert|create|truncate|drop)", sql_code, re.IGNORECASE):
-            return c.fetchone()
+
+        if isinstance(sql_code, ThreadLocalInterpreter):
+            return sql_code.apply_queries(partial(query_cursor, c))
+
+        return query_cursor(c, sql_code)
 
     def close(self):
         self._conn.close()
 
     def normalize_timestamp(self, value: str, coltype: TemporalType) -> str:
-        # TODO
+        # TODO rounds
         if coltype.rounds:
             s = f"date_format(cast({value} as timestamp(6)), '%Y-%m-%d %H:%i:%S.%f')"
         else:
@@ -89,7 +110,7 @@ class Presto(Database):
         schema, table = self._normalize_table_path(path)
 
         return (
-            "SELECT column_name, data_type, 3 as datetime_precision, 3 as numeric_precision "
+            "SELECT column_name, data_type, 3 as datetime_precision, 3 as numeric_precision, NULL as numeric_scale "
             "FROM INFORMATION_SCHEMA.COLUMNS "
             f"WHERE table_name = '{table}' AND table_schema = '{schema}'"
         )
@@ -101,6 +122,7 @@ class Presto(Database):
         type_repr: str,
         datetime_precision: int = None,
         numeric_precision: int = None,
+        numeric_scale: int = None,
     ) -> ColType:
         timestamp_regexps = {
             r"timestamp\((\d)\)": Timestamp,
@@ -124,3 +146,10 @@ class Presto(Database):
     def normalize_uuid(self, value: str, coltype: ColType_UUID) -> str:
         # Trim doesn't work on CHAR type
         return f"TRIM(CAST({value} AS VARCHAR))"
+
+    @property
+    def is_autocommit(self) -> bool:
+        return False
+
+    def explain_as_text(self, query: str) -> str:
+        return f"EXPLAIN (FORMAT TEXT) {query}"

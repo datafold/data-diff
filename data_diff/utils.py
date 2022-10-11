@@ -1,3 +1,4 @@
+import logging
 import re
 import math
 from typing import Iterable, Tuple, Union, Any, Sequence, Dict
@@ -8,13 +9,16 @@ from uuid import UUID
 import operator
 import string
 import threading
+from datetime import datetime
 
 alphanums = " -" + string.digits + string.ascii_uppercase + "_" + string.ascii_lowercase
 
 
 def safezip(*args):
     "zip but makes sure all sequences are the same length"
-    assert len(set(map(len, args))) == 1
+    lens = list(map(len, args))
+    if len(set(lens)) != 1:
+        raise ValueError(f"Mismatching lengths in arguments to safezip: {lens}")
     return zip(*args)
 
 
@@ -188,7 +192,10 @@ def remove_password_from_url(url: str, replace_with: str = "***") -> str:
 
 def join_iter(joiner: Any, iterable: Iterable) -> Iterable:
     it = iter(iterable)
-    yield next(it)
+    try:
+        yield next(it)
+    except StopIteration:
+        return
     for i in it:
         yield joiner
         yield i
@@ -212,6 +219,13 @@ class CaseAwareMapping(ABC, Generic[V]):
 
     @abstractmethod
     def __contains__(self, key: str) -> bool:
+        ...
+
+    def __repr__(self):
+        return repr(dict(self.items()))
+
+    @abstractmethod
+    def items(self) -> Iterable[Tuple[str, V]]:
         ...
 
 
@@ -239,6 +253,9 @@ class CaseInsensitiveDict(CaseAwareMapping):
 
     def items(self) -> Iterable[Tuple[str, V]]:
         return ((k, v[1]) for k, v in self._dict.items())
+
+    def __len__(self):
+        return len(self._dict)
 
 
 class CaseSensitiveDict(dict, CaseAwareMapping):
@@ -285,3 +302,14 @@ def run_as_daemon(threadfunc, *args):
     th.daemon = True
     th.start()
     return th
+
+
+def getLogger(name):
+    return logging.getLogger(name.rsplit(".", 1)[-1])
+
+
+def eval_name_template(name):
+    def get_timestamp(_match):
+        return datetime.now().isoformat("_", "seconds").replace(":", "_")
+
+    return re.sub("%t", get_timestamp, name)

@@ -1,4 +1,5 @@
-from .database_types import *
+from typing import List
+from .database_types import Float, TemporalType, FractionalType, DbPath
 from .postgresql import PostgreSQL, MD5_HEXDIGITS, CHECKSUM_HEXDIGITS, TIMESTAMP_PRECISION_POS
 
 
@@ -46,3 +47,6 @@ class Redshift(PostgreSQL):
             "SELECT column_name, data_type, datetime_precision, numeric_precision, numeric_scale FROM information_schema.columns "
             f"WHERE table_name = '{table.lower()}' AND table_schema = '{schema.lower()}'"
         )
+
+    def is_distinct_from(self, a: str, b: str) -> str:
+        return f"{a} IS NULL AND NOT {b} IS NULL OR {b} IS NULL OR {a}!={b}"

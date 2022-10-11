@@ -1,4 +1,14 @@
-from .database_types import *
+from .database_types import (
+    Datetime,
+    Timestamp,
+    Float,
+    Decimal,
+    Integer,
+    Text,
+    TemporalType,
+    FractionalType,
+    ColType_UUID,
+)
 from .base import ThreadedDatabase, import_helper, ConnectError
 from .base import MD5_HEXDIGITS, CHECKSUM_HEXDIGITS, TIMESTAMP_PRECISION_POS
 
@@ -73,3 +83,17 @@ class MySQL(ThreadedDatabase):
 
     def is_distinct_from(self, a: str, b: str) -> str:
         return f"not ({a} <=> {b})"
+
+    def random(self) -> str:
+        return "RAND()"
+
+    def type_repr(self, t) -> str:
+        try:
+            return {
+                str: "VARCHAR(1024)",
+            }[t]
+        except KeyError:
+            return super().type_repr(t)
+
+    def explain_as_text(self, query: str) -> str:
+        return f"EXPLAIN FORMAT=TREE {query}"

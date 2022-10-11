@@ -132,9 +132,9 @@ Let's break this down. Assume there are two tables stored in two databases, and 
 | PostgreSQL >=10    | `postgresql://<user>:<password>@<host>:5432/<database>`                                                                             |  💚    |
 | MySQL         | `mysql://<user>:<password>@<hostname>:5432/<database>`                                                                              |  💚    |
 | Snowflake     | `"snowflake://<user>[:<password>]@<account>/<database>/<SCHEMA>?warehouse=<WAREHOUSE>&role=<role>[&authenticator=externalbrowser]"` |  💚    |
+| BigQuery      | `bigquery://<project>/<dataset>`                                                                                                    |  💚    |
+| Redshift      | `redshift://<username>:<password>@<hostname>:5439/<database>`                                                                       |  💚    |
 | Oracle        | `oracle://<username>:<password>@<hostname>/database`                                                                                |  💛    |
-| BigQuery      | `bigquery://<project>/<dataset>`                                                                                                    |  💛    |
-| Redshift      | `redshift://<username>:<password>@<hostname>:5439/<database>`                                                                       |  💛    |
 | Presto        | `presto://<username>:<password>@<hostname>:8080/<database>`                                                                         |  💛    |
 | Databricks    | `databricks://<http_path>:<access_token>@<server_hostname>/<catalog>/<schema>`                                                      |  💛    |
 | Trino         | `trino://<username>:<password>@<hostname>:8080/<database>`                                                                          |  💛    |
@@ -145,6 +145,8 @@ Let's break this down. Assume there are two tables stored in two databases, and 
 | Pinot         |                                                                                                                                     |  📝    |
 | Druid         |                                                                                                                                     |  📝    |
 | Kafka         |                                                                                                                                     |  📝    |
+| DuckDB        |                                                                                                                                     |  📝    |
+| SQLite        |                                                                                                                                     |  📝    |
 
 * 💚: Implemented and thoroughly tested.
 * 💛: Implemented, but not thoroughly tested yet.
@@ -163,7 +165,7 @@ may be case-sensitive. This is the case for the Snowflake schema and table names
 ## Options:
 
   - `--help` - Show help message and exit.
-  - `-k` or `--key-column` - Name of the primary key column
+  - `-k` or `--key-columns` - Name of the primary key column. If none provided, default is 'id'.
   - `-t` or `--update-column` - Name of updated_at/last_updated column
   - `-c` or `--columns` - Names of extra columns to compare.  Can be used more than once in the same command.
                           Accepts a name or a pattern like in SQL.
@@ -178,12 +180,24 @@ may be case-sensitive. This is the case for the Snowflake schema and table names
                   Example: `--min-age=5min` ignores rows from the last 5 minutes.
                   Valid units: `d, days, h, hours, min, minutes, mon, months, s, seconds, w, weeks, y, years`
   - `--max-age` - Considers only rows younger than specified. See `--min-age`.
-  - `--bisection-factor` - Segments per iteration. When set to 2, it performs binary search.
-  - `--bisection-threshold` - Minimal bisection threshold. i.e. maximum size of pages to diff locally.
   - `-j` or `--threads` - Number of worker threads to use per database. Default=1.
   - `-w`, `--where` - An additional 'where' expression to restrict the search space.
   - `--conf`, `--run` - Specify the run and configuration from a TOML file. (see below)
   - `--no-tracking` - data-diff sends home anonymous usage data. Use this to disable it.
+  - `-a`, `--algorithm` `[auto|joindiff|hashdiff]` - Force algorithm choice
+
+Same-DB diff only:
+  - `-m`, `--materialize` - Materialize the diff results into a new table in the database.
+                            If a table exists by that name, it will be replaced.
+                            Use `%t` in the name to place a timestamp.
+                            Example: `-m test_mat_%t`
+  - `--assume-unique-key` - Skip validating the uniqueness of the key column during joindiff, which is costly in non-cloud dbs.
+  - `--sample-exclusive-rows` - Sample several rows that only appear in one of the tables, but not the other. Use with `-s`.
+
+Cross-DB diff only:
+  - `--bisection-threshold` - Minimal size of segment to be split. Smaller segments will be downloaded and compared locally.
+  - `--bisection-factor` - Segments per iteration. When set to 2, it performs binary search.
+
 
 
 ### How to use with a configuration file

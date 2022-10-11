@@ -41,6 +41,7 @@ extensions = [
     "recommonmark",
     "sphinx_markdown_tables",
     "sphinx_copybutton",
+    "enum_tools.autoenum",
     # 'sphinx_gallery.gen_gallery'
 ]
 

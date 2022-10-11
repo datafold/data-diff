@@ -1,7 +1,8 @@
+from typing import Union
 import logging
 
-from .database_types import *
-from .base import ConnectError, Database, import_helper, _query_conn, CHECKSUM_MASK
+from .database_types import Timestamp, TimestampTZ, Decimal, Float, Text, FractionalType, TemporalType, DbPath
+from .base import ConnectError, Database, import_helper, CHECKSUM_MASK, ThreadLocalInterpreter
 
 
 @import_helper("snowflake")
@@ -60,9 +61,9 @@ class Snowflake(Database):
     def close(self):
         self._conn.close()
 
-    def _query(self, sql_code: str) -> list:
+    def _query(self, sql_code: Union[str, ThreadLocalInterpreter]):
         "Uses the standard SQL cursor interface"
-        return _query_conn(self._conn, sql_code)
+        return self._query_conn(self._conn, sql_code)
 
     def quote(self, s: str):
         return f'"{s}"'
@@ -87,3 +88,10 @@ class Snowflake(Database):
 
     def normalize_number(self, value: str, coltype: FractionalType) -> str:
         return self.to_string(f"cast({value} as decimal(38, {coltype.precision}))")
+
+    @property
+    def is_autocommit(self) -> bool:
+        return True
+
+    def explain_as_text(self, query: str) -> str:
+        return f"EXPLAIN USING TEXT {query}"
