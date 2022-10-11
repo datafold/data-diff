@@ -23,6 +23,7 @@ from .common import (
     N_THREADS,
     BENCHMARK,
     GIT_REVISION,
+    get_conn,
     random_table_suffix,
     _drop_table_if_exists,
 )
@@ -35,8 +36,8 @@ def init_conns():
     if CONNS is not None:
         return
 
-    CONNS = {k: db.connect.connect(v, N_THREADS) for k, v in CONN_STRINGS.items()}
-    CONNS[db.MySQL].query("SET @@session.time_zone='+00:00'", None)
+    CONNS = {cls: get_conn(cls) for cls in CONN_STRINGS}
+    CONNS[db.MySQL].query("SET @@session.time_zone='+00:00'")
     oracle.SESSION_TIME_ZONE = postgresql.SESSION_TIME_ZONE = "UTC"
 
 

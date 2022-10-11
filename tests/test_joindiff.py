@@ -1,35 +1,19 @@
-from functools import wraps
 from typing import List
-from parameterized import parameterized_class
 
-from data_diff.databases.connect import connect
 from data_diff.queries.ast_classes import TablePath
-from data_diff.table_segment import TableSegment, split_space
+from data_diff.table_segment import TableSegment
 from data_diff import databases as db
 from data_diff.joindiff_tables import JoinDiffer
 
-from .test_diff_tables import TestPerDatabase, _get_float_type, _get_text_type, _commit, _insert_row, _insert_rows
+from .test_diff_tables import TestPerDatabase, _get_float_type, _commit, _insert_row, _insert_rows
 
 from .common import (
     random_table_suffix,
-    str_to_checksum,
-    CONN_STRINGS,
-    N_THREADS,
+    test_each_database_in_list,
 )
 
-DATABASE_INSTANCES = None
-DATABASE_URIS = {k.__name__: v for k, v in CONN_STRINGS.items()}
 
-
-def init_instances():
-    global DATABASE_INSTANCES
-    if DATABASE_INSTANCES is not None:
-        return
-
-    DATABASE_INSTANCES = {k.__name__: connect(v, N_THREADS) for k, v in CONN_STRINGS.items()}
-
-
-TEST_DATABASES = (
+TEST_DATABASES = {
     db.PostgreSQL,
     db.Snowflake,
     db.MySQL,
@@ -39,26 +23,12 @@ TEST_DATABASES = (
     db.Trino,
     db.Oracle,
     db.Redshift,
-)
+}
+
+test_each_database = test_each_database_in_list(TEST_DATABASES)
 
 
-def test_per_database(cls, dbs=TEST_DATABASES):
-    dbs = {db.__name__ for db in dbs}
-    _class_per_db_dec = parameterized_class(
-        ("name", "db_name"), [(name, name) for name in DATABASE_URIS if name in dbs]
-    )
-    return _class_per_db_dec(cls)
-
-
-def test_per_database2(*dbs):
-    @wraps(test_per_database)
-    def dec(cls):
-        return test_per_database(cls, dbs)
-
-    return dec
-
-
-@test_per_database2(db.Snowflake, db.BigQuery)
+@test_each_database_in_list({db.Snowflake, db.BigQuery})
 class TestCompositeKey(TestPerDatabase):
     def setUp(self):
         super().setUp()
@@ -103,7 +73,7 @@ class TestCompositeKey(TestPerDatabase):
         assert self.differ.stats["exclusive_count"] == 2
 
 
-@test_per_database
+@test_each_database
 class TestJoindiff(TestPerDatabase):
     def setUp(self):
         super().setUp()

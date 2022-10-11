@@ -3,11 +3,16 @@ import hashlib
 import os
 import string
 import random
+from typing import Callable
+import unittest
+import logging
+import subprocess
+
+from parameterized import parameterized_class
 
 from data_diff import databases as db
 from data_diff import tracking
-import logging
-import subprocess
+from data_diff import connect
 
 tracking.disable_tracking()
 
@@ -72,6 +77,14 @@ CONN_STRINGS = {
     db.Vertica: TEST_VERTICA_CONN_STRING,
 }
 
+_database_instances = {}
+
+
+def get_conn(cls: type):
+    if cls not in _database_instances:
+        _database_instances[cls] = connect(CONN_STRINGS[cls], N_THREADS)
+    return _database_instances[cls]
+
 
 def _print_used_dbs():
     used = {k.__name__ for k, v in CONN_STRINGS.items() if v is not None}
@@ -115,3 +128,54 @@ def _drop_table_if_exists(conn, table):
             conn.query(f"DROP TABLE IF EXISTS {table}", None)
             if not isinstance(conn, (db.BigQuery, db.Databricks, db.Clickhouse)):
                 conn.query("COMMIT", None)
+
+
+class TestPerDatabase(unittest.TestCase):
+    db_cls = None
+    with_preql = False
+
+    preql = None
+
+    def setUp(self):
+        assert self.db_cls, self.db_cls
+
+        self.connection = get_conn(self.db_cls)
+        if self.with_preql:
+            import preql
+
+            self.preql = preql.Preql(CONN_STRINGS[self.db_cls])
+
+        table_suffix = random_table_suffix()
+        self.table_src_name = f"src{table_suffix}"
+        self.table_dst_name = f"dst{table_suffix}"
+
+        self.table_src_path = self.connection.parse_table_name(self.table_src_name)
+        self.table_dst_path = self.connection.parse_table_name(self.table_dst_name)
+
+        self.table_src = ".".join(map(self.connection.quote, self.table_src_path))
+        self.table_dst = ".".join(map(self.connection.quote, self.table_dst_path))
+
+        _drop_table_if_exists(self.connection, self.table_src)
+        _drop_table_if_exists(self.connection, self.table_dst)
+
+        return super().setUp()
+
+    def tearDown(self):
+        if self.preql:
+            self.preql._interp.state.db.rollback()
+            self.preql.close()
+
+        _drop_table_if_exists(self.connection, self.table_src)
+        _drop_table_if_exists(self.connection, self.table_dst)
+
+
+def _parameterized_class_per_conn(test_databases):
+    names = [(cls.__name__, cls) for cls in CONN_STRINGS if cls in test_databases]
+    return parameterized_class(("name", "db_cls"), names)
+
+
+def test_each_database_in_list(databases) -> Callable:
+    def _test_per_database(cls):
+        return _parameterized_class_per_conn(databases)(cls)
+
+    return _test_per_database

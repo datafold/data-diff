@@ -1,65 +1,27 @@
 import datetime
-import unittest
+from typing import Callable
 import uuid
+import unittest
 
-from parameterized import parameterized_class
-import preql
 import arrow  # comes with preql
 
-from data_diff.databases.connect import connect
 from data_diff.hashdiff_tables import HashDiffer
 from data_diff.table_segment import TableSegment, split_space
 from data_diff import databases as db
 from data_diff.utils import ArithAlphanumeric, numberToAlphanum
 
-from .common import (
-    TEST_MYSQL_CONN_STRING,
-    str_to_checksum,
-    random_table_suffix,
-    _drop_table_if_exists,
-    CONN_STRINGS,
-    N_THREADS,
-)
-
-DATABASE_INSTANCES = None
-DATABASE_URIS = {k.__name__: v for k, v in CONN_STRINGS.items()}
+from .common import str_to_checksum, test_each_database_in_list, TestPerDatabase
 
 
-def init_instances():
-    global DATABASE_INSTANCES
-    if DATABASE_INSTANCES is not None:
-        return
+TEST_DATABASES = {db.MySQL, db.PostgreSQL, db.Oracle, db.Redshift, db.Snowflake, db.BigQuery}
 
-    DATABASE_INSTANCES = {k.__name__: connect(v, N_THREADS) for k, v in CONN_STRINGS.items()}
-
-
-TEST_DATABASES = {x.__name__ for x in (db.MySQL, db.PostgreSQL, db.Oracle, db.Redshift, db.Snowflake, db.BigQuery)}
-
-
-def _class_per_db_dec(filter_name=None):
-    names = [
-        (name, name)
-        for name in DATABASE_URIS
-        if (name in TEST_DATABASES) and (filter_name is None or filter_name(name))
-    ]
-    return parameterized_class(("name", "db_name"), names)
+test_each_database: Callable = test_each_database_in_list(TEST_DATABASES)
 
 
 def _table_segment(database, table_path, key_columns, *args, **kw):
     if isinstance(key_columns, str):
         key_columns = (key_columns,)
     return TableSegment(database, table_path, key_columns, *args, **kw)
-
-
-def test_per_database(cls):
-    return _class_per_db_dec()(cls)
-
-
-def test_per_database__filter_name(filter_name):
-    def _test_per_database(cls):
-        return _class_per_db_dec(filter_name=filter_name)(cls)
-
-    return _test_per_database
 
 
 def _insert_row(conn, table, fields, values):
@@ -101,45 +63,7 @@ class TestUtils(unittest.TestCase):
                     assert len(r) == n, f"split_space({i}, {j+n}, {n}) = {(r)}"
 
 
-class TestPerDatabase(unittest.TestCase):
-    db_name = None
-    with_preql = False
-
-    preql = None
-
-    def setUp(self):
-        assert self.db_name, self.db_name
-        init_instances()
-
-        self.connection = DATABASE_INSTANCES[self.db_name]
-        if self.with_preql:
-            self.preql = preql.Preql(DATABASE_URIS[self.db_name])
-
-        table_suffix = random_table_suffix()
-        self.table_src_name = f"src{table_suffix}"
-        self.table_dst_name = f"dst{table_suffix}"
-
-        self.table_src_path = self.connection.parse_table_name(self.table_src_name)
-        self.table_dst_path = self.connection.parse_table_name(self.table_dst_name)
-
-        self.table_src = ".".join(map(self.connection.quote, self.table_src_path))
-        self.table_dst = ".".join(map(self.connection.quote, self.table_dst_path))
-
-        _drop_table_if_exists(self.connection, self.table_src)
-        _drop_table_if_exists(self.connection, self.table_dst)
-
-        return super().setUp()
-
-    def tearDown(self):
-        if self.preql:
-            self.preql._interp.state.db.rollback()
-            self.preql.close()
-
-        _drop_table_if_exists(self.connection, self.table_src)
-        _drop_table_if_exists(self.connection, self.table_dst)
-
-
-@test_per_database
+@test_each_database
 class TestDates(TestPerDatabase):
     with_preql = True
 
@@ -244,7 +168,7 @@ class TestDates(TestPerDatabase):
         self.assertEqual(len(list(differ.diff_tables(a, b))), 1)
 
 
-@test_per_database
+@test_each_database
 class TestDiffTables(TestPerDatabase):
     with_preql = True
 
@@ -411,7 +335,7 @@ class TestDiffTables(TestPerDatabase):
         self.assertEqual(expected, diff)
 
 
-@test_per_database
+@test_each_database
 class TestDiffTables2(TestPerDatabase):
     def test_diff_column_names(self):
         float_type = _get_float_type(self.connection)
@@ -465,7 +389,7 @@ class TestDiffTables2(TestPerDatabase):
         assert diff == []
 
 
-@test_per_database
+@test_each_database
 class TestUUIDs(TestPerDatabase):
     def setUp(self):
         super().setUp()
@@ -515,7 +439,7 @@ class TestUUIDs(TestPerDatabase):
         self.assertRaises(ValueError, list, differ.diff_tables(a_empty, self.b))
 
 
-@test_per_database__filter_name(lambda n: n != "MySQL")
+@test_each_database_in_list(TEST_DATABASES - {db.MySQL})
 class TestAlphanumericKeys(TestPerDatabase):
     def setUp(self):
         super().setUp()
@@ -565,7 +489,7 @@ class TestAlphanumericKeys(TestPerDatabase):
         self.assertRaises(NotImplementedError, list, differ.diff_tables(self.a, self.b))
 
 
-@test_per_database__filter_name(lambda n: n != "MySQL")
+@test_each_database_in_list(TEST_DATABASES - {db.MySQL})
 class TestVaryingAlphanumericKeys(TestPerDatabase):
     def setUp(self):
         super().setUp()
@@ -623,7 +547,7 @@ class TestVaryingAlphanumericKeys(TestPerDatabase):
         self.assertRaises(NotImplementedError, list, differ.diff_tables(self.a, self.b))
 
 
-@test_per_database
+@test_each_database
 class TestTableSegment(TestPerDatabase):
     def setUp(self) -> None:
         super().setUp()
@@ -657,7 +581,7 @@ class TestTableSegment(TestPerDatabase):
         )
 
 
-@test_per_database
+@test_each_database
 class TestTableUUID(TestPerDatabase):
     def setUp(self):
         super().setUp()
@@ -691,7 +615,7 @@ class TestTableUUID(TestPerDatabase):
         self.assertEqual(diff, [("-", (str(self.null_uuid), None))])
 
 
-@test_per_database
+@test_each_database
 class TestTableNullRowChecksum(TestPerDatabase):
     def setUp(self):
         super().setUp()
@@ -741,7 +665,7 @@ class TestTableNullRowChecksum(TestPerDatabase):
         self.assertEqual(diff, [("-", (str(self.null_uuid), None))])
 
 
-@test_per_database
+@test_each_database
 class TestConcatMultipleColumnWithNulls(TestPerDatabase):
     def setUp(self):
         super().setUp()
@@ -805,7 +729,7 @@ class TestConcatMultipleColumnWithNulls(TestPerDatabase):
         self.assertEqual(diff, self.diffs)
 
 
-@test_per_database
+@test_each_database
 class TestTableTableEmpty(TestPerDatabase):
     def setUp(self):
         super().setUp()
