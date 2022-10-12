@@ -1,26 +1,30 @@
 # **data-diff**
 
-_data-diff is in shape to be run in production, but it is also under development._
-
-----
-
-- 🐞Bugs? 💡Issues? 
-  - Please [open an issue](https://github.com/datafold/data-diff/issues/new/choose)!
-- 💬 Prefer to chat live? 
-  - Find us in [#tools-data-diff](https://locallyoptimistic.slack.com/archives/C03HUNGQV0S) in the [Locally Optimistic Slack][slack] or
-  - [Please reach out to the product team](https://calendly.com/jp-toor/customer-interview-oss) share any product feedback or feature requests!
-- 💸💸 **Looking for paid contributors!** 💸💸
-  - We're looking for developers with a deep understanding of databases and solid Python knowledge. [**Apply here!**](https://docs.google.com/forms/d/e/1FAIpQLScEa5tc9CM0uNsb3WigqRFq92OZENkThM04nIs7ZVl_bwsGMw/viewform)
-
-----
-
 **data-diff** enables data professionals to detect differences in values between any two tables. It's fast, easy to use, and reliable--even at massive scale.
 
 <img width="454" alt="visual represntation of a diff" src="https://user-images.githubusercontent.com/1799931/194626900-81be9980-b81e-47ca-934c-8bcb6262dfae.png">
 
-# Getting started
+----
 
-## Install `data-diff` and database-specific drivers
+&nbsp;
+&nbsp;
+
+- 🐞Bugs? 💡Issues? 
+  - Please [open an issue](https://github.com/datafold/data-diff/issues/new/choose)!
+- 💬 Prefer to chat live? 
+  - Find us in [#tools-data-diff](https://locallyoptimistic.slack.com/archives/C03HUNGQV0S) in the Locally Optimistic Slack or
+  - [Please reach out to the product team](https://calendly.com/jp-toor/customer-interview-oss) share any product feedback or feature requests!
+- 💸💸 **Looking for paid contributors!** 💸💸
+  - We're looking for developers with a deep understanding of databases and solid Python knowledge. [**Apply here!**](https://docs.google.com/forms/d/e/1FAIpQLScEa5tc9CM0uNsb3WigqRFq92OZENkThM04nIs7ZVl_bwsGMw/viewform)
+
+&nbsp;
+&nbsp;
+
+----
+
+## Getting started
+
+### Install `data-diff` and database-specific drivers
 
 First, install `data-diff` using `pip`.
 
@@ -48,7 +52,7 @@ Then, install one or more driver(s) specific to the database(s) you want to conn
 
 - For BigQuery, see: https://pypi.org/project/google-cloud-bigquery/
 
-## Run your first diff
+### Run your first diff
 
 Once you've installed `data-diff`, you can run it from the command line:
 
@@ -56,7 +60,7 @@ Once you've installed `data-diff`, you can run it from the command line:
 
 We've included examples here for PostgreSQL and Snowflake. Additional database configurations and examples are available in the (docs TODO.)[link]
 
-### Comparing the same table in Snowflake vs Postgres
+#### Comparing the same table in Snowflake vs Postgres
 
 Here's an example comparing two versions of a large table in two different databases. The code here has `<>` carrot 🥕 around variables in place of content that you will replace with your own information.
 
@@ -80,8 +84,7 @@ $ data-diff \
 [TODO run the code ]
 ```
 
-
-### Comparing tables within a database
+#### Comparing tables within a database
 
 In this example, we'll run a similar command comparing two tables within Snowflake. This could help you out when reviewing a PR and comparing the development vs production version of a table.
 
@@ -97,12 +100,23 @@ $ data-diff \
 
 [TODO want to learn more? Dive into the Datafold Documentation (link).]
 
-# Usage Analytics & Data Privacy
+&nbsp;
+&nbsp;
+
+## Usage Analytics & Data Privacy
 
 data-diff collects anonymous usage data to help our team improve the tool and to apply development efforts to where our users need them most. 
 [TODO Read more about this and how to opt out in the documentation (link).]
 
-# Details for Developers and Contributors
+&nbsp;
+&nbsp;
+
+----
+
+&nbsp;
+&nbsp;
+
+## Details for Developers and Contributors
 
 The development setup centers around using `docker-compose` to boot up various
 databases, and then inserting data into them.
@@ -189,6 +203,6 @@ $ N_SAMPLES=100000000 dev/benchmark.sh #  100m which is our canonical target
 ```
 
 
-# License
+## License
 
 [MIT License](https://github.com/datafold/data-diff/blob/master/LICENSE)
