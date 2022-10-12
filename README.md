@@ -4,8 +4,6 @@
 
 <img width="454" alt="visual represntation of a diff" src="https://user-images.githubusercontent.com/1799931/194626900-81be9980-b81e-47ca-934c-8bcb6262dfae.png">
 
-----
-
 &nbsp;
 &nbsp;
 
@@ -19,8 +17,6 @@
 
 &nbsp;
 &nbsp;
-
-----
 
 ## Getting started
 
@@ -62,7 +58,7 @@ We've included examples here for PostgreSQL and Snowflake. Additional database c
 
 #### Comparing the same table in Snowflake vs Postgres
 
-Here's an example comparing two versions of a large table in two different databases. The code here has `<>` carrot 🥕 around variables in place of content that you will replace with your own information.
+Here's an example comparing two versions of a large table in two different databases. The code here has `<>` carrots 🥕 around variables in place of content that you will replace with your own information.
 
 ```
 $ data-diff \
@@ -107,11 +103,6 @@ $ data-diff \
 
 data-diff collects anonymous usage data to help our team improve the tool and to apply development efforts to where our users need them most. 
 [TODO Read more about this and how to opt out in the documentation (link).]
-
-&nbsp;
-&nbsp;
-
-----
 
 &nbsp;
 &nbsp;
