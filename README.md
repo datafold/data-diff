@@ -2,7 +2,7 @@
 
 **data-diff** enables data professionals to detect differences in values between any two tables. It's fast, easy to use, and reliable--even at massive scale.
 
-<img width="454" alt="visual represntation of a diff" src="https://user-images.githubusercontent.com/1799931/194626900-81be9980-b81e-47ca-934c-8bcb6262dfae.png">
+<img width="610" alt="Screen Shot 2022-10-12 at 4 09 04 PM" src="https://user-images.githubusercontent.com/1799931/195464655-19806dda-48d3-401b-a285-ffb5eb853f6b.png">
 
 &nbsp;
 &nbsp;
