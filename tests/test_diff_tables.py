@@ -1,4 +1,4 @@
-import datetime
+from datetime import datetime
 from typing import Callable
 import uuid
 import unittest
@@ -53,39 +53,29 @@ class TestUtils(unittest.TestCase):
 
 @test_each_database
 class TestDates(TestPerDatabase):
-    with_preql = True
-
     def setUp(self):
         super().setUp()
-        self.preql(
-            f"""
-            table {self.table_src_name} {{
-                datetime: timestamp
-                text_comment: string
-            }}
-            commit()
 
-            func add(date, text_comment) {{
-                new {self.table_src_name}(date, text_comment)
-            }}
-        """
-        )
-        self.now = now = arrow.get(self.preql.now())
-        self.preql.add(now.shift(days=-50), "50 days ago")
-        self.preql.add(now.shift(hours=-3), "3 hours ago")
-        self.preql.add(now.shift(minutes=-10), "10 mins ago")
-        self.preql.add(now.shift(seconds=-1), "1 second ago")
-        self.preql.add(now, "now")
+        src_table = table(self.table_src_path, schema={"id": int, "datetime": datetime, "text_comment": str})
+        self.connection.query(src_table.create())
+        self.now = now = arrow.get()
 
-        self.preql(
-            f"""
-            const table {self.table_dst_name} = {self.table_src_name}
-            commit()
-        """
-        )
+        rows = [
+            (now.shift(days=-50), "50 days ago"),
+            (now.shift(hours=-3), "3 hours ago"),
+            (now.shift(minutes=-10), "10 mins ago"),
+            (now.shift(seconds=-1), "1 second ago"),
+            (now, "now"),
+        ]
 
-        self.preql.add(self.now.shift(seconds=-3), "2 seconds ago")
-        self.preql.commit()
+        self.connection.query(src_table.insert_rows((i, ts.datetime, s) for i, (ts, s) in enumerate(rows)))
+        _commit(self.connection)
+
+        self.connection.query(f"CREATE TABLE {self.table_dst_name} AS SELECT * FROM {self.table_src_name}")
+        _commit(self.connection)
+
+        self.connection.query(src_table.insert_row(len(rows), self.now.shift(seconds=-3).datetime, "3 seconds ago"))
+        _commit(self.connection)
 
     def test_init(self):
         a = _table_segment(
@@ -107,14 +97,14 @@ class TestDates(TestPerDatabase):
 
     def test_offset(self):
         differ = HashDiffer(bisection_factor=2, bisection_threshold=10)
-        sec1 = self.now.shift(seconds=-1).datetime
+        sec1 = self.now.shift(seconds=-2).datetime
         a = _table_segment(
             self.connection, self.table_src_path, "id", "datetime", max_update=sec1, case_sensitive=False
         )
         b = _table_segment(
             self.connection, self.table_dst_path, "id", "datetime", max_update=sec1, case_sensitive=False
         )
-        assert a.count() == 4
+        assert a.count() == 4, a.count()
         assert b.count() == 3
 
         assert not list(differ.diff_tables(a, a))
@@ -158,28 +148,22 @@ class TestDates(TestPerDatabase):
 
 @test_each_database
 class TestDiffTables(TestPerDatabase):
-    with_preql = True
-
     def setUp(self):
         super().setUp()
 
         src_table = table(
             self.table_src_path,
-            schema={"id": int, "userid": int, "movieid": int, "rating": float, "timestamp": datetime.datetime},
+            schema={"id": int, "userid": int, "movieid": int, "rating": float, "timestamp": datetime},
         )
         dst_table = table(
             self.table_dst_path,
-            schema={"id": int, "userid": int, "movieid": int, "rating": float, "timestamp": datetime.datetime},
+            schema={"id": int, "userid": int, "movieid": int, "rating": float, "timestamp": datetime},
         )
 
         self.connection.query(
             src_table.create(),
-            # f"create table {self.table_src}(id int, userid int, movieid int, rating {float_type}, timestamp timestamp)",
         )
-        self.connection.query(
-            # f"create table {self.table_dst}(id int, userid int, movieid int, rating {float_type}, timestamp timestamp)",
-            dst_table.create()
-        )
+        self.connection.query(dst_table.create())
         _commit(self.connection)
 
         self.table = _table_segment(self.connection, self.table_src_path, "id", "timestamp", case_sensitive=False)
@@ -279,7 +263,7 @@ class TestDiffTables(TestPerDatabase):
         _insert_row(self.connection, self.table_src, cols, [1, 1, 1, 9, time_str])
         _insert_row(self.connection, self.table_dst, cols, [1, 1, 1, 9, time_str])
 
-        self.preql.commit()
+        _commit(self.connection)
         diff = list(self.differ.diff_tables(self.table, self.table2))
         self.assertEqual([], diff)
 
@@ -334,8 +318,8 @@ class TestDiffTables(TestPerDatabase):
 class TestDiffTables2(TestPerDatabase):
     def test_diff_column_names(self):
 
-        src_table = table(self.table_src_path, schema={"id": int, "rating": float, "timestamp": datetime.datetime})
-        dst_table = table(self.table_dst_path, schema={"id2": int, "rating2": float, "timestamp2": datetime.datetime})
+        src_table = table(self.table_src_path, schema={"id": int, "rating": float, "timestamp": datetime})
+        dst_table = table(self.table_dst_path, schema={"id2": int, "rating2": float, "timestamp2": datetime})
 
         self.connection.query(src_table.create())
         self.connection.query(dst_table.create())
@@ -540,8 +524,8 @@ class TestTableSegment(TestPerDatabase):
         self.table2 = _table_segment(self.connection, self.table_dst_path, "id", "timestamp", case_sensitive=False)
 
     def test_table_segment(self):
-        early = datetime.datetime(2021, 1, 1, 0, 0)
-        late = datetime.datetime(2022, 1, 1, 0, 0)
+        early = datetime(2021, 1, 1, 0, 0)
+        late = datetime(2022, 1, 1, 0, 0)
         self.assertRaises(ValueError, self.table.replace, min_update=late, max_update=early)
 
         self.assertRaises(ValueError, self.table.replace, min_key=10, max_key=0)

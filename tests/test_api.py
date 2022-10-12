@@ -1,49 +1,50 @@
 import unittest
-import preql
 import arrow
+from datetime import datetime
 
 from data_diff import diff_tables, connect_to_table
+from data_diff.databases import MySQL
+from data_diff.queries.api import table
 
-from .common import TEST_MYSQL_CONN_STRING
+from .common import TEST_MYSQL_CONN_STRING, get_conn
+
+
+def _commit(conn):
+    conn.query("COMMIT", None)
 
 
 class TestApi(unittest.TestCase):
     def setUp(self) -> None:
-        self.preql = preql.Preql(TEST_MYSQL_CONN_STRING)
-        self.preql(
-            r"""
-            table test_api {
-                datetime: datetime
-                comment: string
-            }
-            commit()
+        self.conn = get_conn(MySQL)
+        table_src_name = "test_api"
+        table_dst_name = "test_api_2"
+        self.conn.query(f"drop table if exists {table_src_name}")
+        self.conn.query(f"drop table if exists {table_dst_name}")
 
-            func add(date, comment) {
-                new test_api(date, comment)
-            }
-        """
-        )
-        self.now = now = arrow.get(self.preql.now())
-        self.preql.add(now, "now")
-        self.preql.add(now, self.now.shift(seconds=-10))
-        self.preql.add(now, self.now.shift(seconds=-7))
-        self.preql.add(now, self.now.shift(seconds=-6))
+        src_table = table(table_src_name, schema={"id": int, "datetime": datetime, "text_comment": str})
+        self.conn.query(src_table.create())
+        self.now = now = arrow.get()
 
-        self.preql(
-            r"""
-            const table test_api_2 = test_api
-            commit()
-        """
-        )
+        rows = [
+            (now, "now"),
+            (self.now.shift(seconds=-10), "a"),
+            (self.now.shift(seconds=-7), "b"),
+            (self.now.shift(seconds=-6), "c"),
+        ]
 
-        self.preql.add(self.now.shift(seconds=-3), "3 seconds ago")
-        self.preql.commit()
+        self.conn.query(src_table.insert_rows((i, ts.datetime, s) for i, (ts, s) in enumerate(rows)))
+        _commit(self.conn)
+
+        self.conn.query(f"CREATE TABLE {table_dst_name} AS SELECT * FROM {table_src_name}")
+        _commit(self.conn)
+
+        self.conn.query(src_table.insert_row(len(rows), self.now.shift(seconds=-3).datetime, "3 seconds ago"))
+        _commit(self.conn)
 
     def tearDown(self) -> None:
-        self.preql.run_statement("drop table if exists test_api")
-        self.preql.run_statement("drop table if exists test_api_2")
-        self.preql.commit()
-        self.preql.close()
+        self.conn.query("drop table if exists test_api")
+        self.conn.query("drop table if exists test_api_2")
+        _commit(self.conn)
 
         return super().tearDown()
 

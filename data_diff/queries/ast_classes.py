@@ -1,6 +1,6 @@
 from dataclasses import field
 from datetime import datetime
-from typing import Any, Generator, Optional, Sequence, Tuple, Union
+from typing import Any, Generator, List, Optional, Sequence, Tuple, Union
 
 from runtype import dataclass
 
@@ -306,8 +306,12 @@ class TablePath(ExprNode, ITable):
     def drop(self, if_exists=False):
         return DropTable(self, if_exists=if_exists)
 
-    def insert_values(self, rows):
-        raise NotImplementedError()
+    def insert_rows(self, rows):
+        rows = list(rows)
+        return InsertToTable(self, ConstantTable(rows))
+
+    def insert_row(self, *values):
+        return InsertToTable(self, ConstantTable([values]))
 
     def insert_expr(self, expr: Expr):
         return InsertToTable(self, expr)
@@ -593,6 +597,25 @@ class Random(ExprNode):
 
 
 @dataclass
+class ConstantTable(ExprNode):
+    rows: List[Tuple]
+
+    def compile(self, c: Compiler) -> str:
+        raise NotImplementedError()
+
+    def _value(self, v):
+        if isinstance(v, str):
+            return f"'{v}'"
+        elif isinstance(v, datetime):
+            return f"timestamp '{v}'"
+        return str(v)
+
+    def compile_for_insert(self, c: Compiler):
+        values = ", ".join("(%s)" % ", ".join(self._value(v) for v in row) for row in self.rows)
+        return f"VALUES {values}"
+
+
+@dataclass
 class Explain(ExprNode):
     select: Select
 
@@ -635,7 +658,12 @@ class InsertToTable(Statement):
     expr: Expr
 
     def compile(self, c: Compiler) -> str:
-        return f"INSERT INTO {c.compile(self.path)} {c.compile(self.expr)}"
+        if isinstance(self.expr, ConstantTable):
+            expr = self.expr.compile_for_insert(c)
+        else:
+            expr = c.compile(self.expr)
+
+        return f"INSERT INTO {c.compile(self.path)} {expr}"
 
 
 @dataclass

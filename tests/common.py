@@ -132,18 +132,11 @@ def _drop_table_if_exists(conn, table):
 
 class TestPerDatabase(unittest.TestCase):
     db_cls = None
-    with_preql = False
-
-    preql = None
 
     def setUp(self):
         assert self.db_cls, self.db_cls
 
         self.connection = get_conn(self.db_cls)
-        if self.with_preql:
-            import preql
-
-            self.preql = preql.Preql(CONN_STRINGS[self.db_cls])
 
         table_suffix = random_table_suffix()
         self.table_src_name = f"src{table_suffix}"
@@ -161,10 +154,6 @@ class TestPerDatabase(unittest.TestCase):
         return super().setUp()
 
     def tearDown(self):
-        if self.preql:
-            self.preql._interp.state.db.rollback()
-            self.preql.close()
-
         _drop_table_if_exists(self.connection, self.table_src)
         _drop_table_if_exists(self.connection, self.table_dst)
 
