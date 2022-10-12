@@ -1,6 +1,6 @@
 # **data-diff**
 
-_data-diff is in shape to be run in production, but also under development._
+_data-diff is in shape to be run in production, but it is also under development._
 
 ----
 
@@ -48,37 +48,27 @@ Then, install one or more driver(s) specific to the database(s) you want to conn
 
 - For BigQuery, see: https://pypi.org/project/google-cloud-bigquery/
 
-You can also install several drivers at once:
-
-```pip install 'data-diff[mysql,postgresql,snowflake]'```
-
-If you're using PostgreSQL, you'll need to install `psycopg2`. If you run into issues with `psycopg2` [dependencies](https://www.psycopg.org/docs/install.html#build-prerequisites), an easy solution is to install [psycopg2-binary](https://www.psycopg.org/docs/install.html#quick-install) by running:
-
-```pip install psycopg2-binary```
-
-Note that for production use, it is advised to use `psycopg2`.
-
-_<sup>*</sup> Some drivers have dependencies that cannot be installed using `pip` and still need to be installed manually._
-
 ## Run your first diff
 
 Once you've installed `data-diff`, you can run it from the command line:
 
 `data-diff DB1_URI TABLE1_NAME DB2_URI TABLE2_NAME [OPTIONS]`
 
-### Example: Comparing the same table in Snowflake vs Postgres
+We've included examples here for PostgreSQL and Snowflake. Additional database configurations and examples are available in the (docs TODO.)[link]
+
+### Comparing the same table in Snowflake vs Postgres
 
 Here's an example comparing two versions of a large table in two different databases. The code here has `<>` carrot 🥕 around variables in place of content that you will replace with your own information.
 
 ```
 $ data-diff \
-  "snowflake://<YOUR_USERNAME>:<your_snowflake_password>@<YOUR_ACCONUT>/SNOWFLAKE_DB/<YOUR_DATABASE>?warehouse=<YOUR_WAREHOUSE>&role=<YOUR_ROLE>" <TABLE_1_NAME> \
+  "snowflake://<YOUR_USERNAME>:<your_snowflake_password>@<YOUR_ACCOUNT>/SNOWFLAKE_DB/<YOUR_DATABASE>?warehouse=<YOUR_WAREHOUSE>&role=<YOUR_ROLE>" <TABLE_1_NAME> \
   postgresql://<YOUR_USERNAME>:<your_postgres_password>@<your_hostname>:5432/<your_database_name> <table_2_name>  \
   -k <the_primary_key> \
-  -c <column_of_interest_1> -c <column_of_interest_2> -c <column_of_interest_x>
+  -c <column_to_compare_1> -c <column_to_compare_2> -c <column_to_compare_x>
 ```
 
-And here's what it looks like when you add real values and see the results:
+And here's what the command looks like when you replace the carrots with real values and see the results:
 
 ```
 $ data-diff \
@@ -91,9 +81,9 @@ $ data-diff \
 ```
 
 
-### Example: Comparing the same table in two different Snowflake schemas
+### Comparing tables within a database
 
-You can also run a similar command comparing two tables in the same database. This could help you out when reviewing a PR and comparing the development vs production version of a table.
+In this example, we'll run a similar command comparing two tables within Snowflake. This could help you out when reviewing a PR and comparing the development vs production version of a table.
 
 ```
 $ data-diff \
@@ -107,42 +97,12 @@ $ data-diff \
 
 [TODO want to learn more? Dive into the Datafold Documentation (link).]
 
-# Data Privacy
+# Usage Analytics & Data Privacy
 
-## Usage Analytics
+data-diff collects anonymous usage data to help our team improve the tool and to apply development efforts to where our users need them most. 
+[TODO Read more about this and how to opt out in the documentation (link).]
 
-data-diff collects anonymous usage data to help our team improve the tool and to apply development efforts to where our users need them most.
-
-We capture two events, one when the data-diff run starts and one when it is finished. No user data or potentially sensitive information is or ever will be collected. The captured data is limited to:
-
-- Operating System and Python version
-
-- Types of databases used (postgresql, mysql, etc.)
-
-- Sizes of tables diffed, run time, and diff row count (numbers only)
-
-- Error message, if any, truncated to the first 20 characters.
-
-- A persistent UUID to indentify the session, stored in `~/.datadiff.toml`
-
-If you do not wish to participate, the tracking can be easily disabled with one of the following methods:
-
-* In the CLI, use the `--no-tracking` flag.
-
-* In the config file, set `no_tracking = true` (for example, under `[run.default]`)
-
-* If you're using the Python API:
-
-```python
-import data_diff
-data_diff.disable_tracking()    # Call this first, before making any API calls
-
-# Connect and diff your tables without any tracking
-```
-
-# Developer Details
-
-## Development Setup
+# Details for Developers and Contributors
 
 The development setup centers around using `docker-compose` to boot up various
 databases, and then inserting data into them.
