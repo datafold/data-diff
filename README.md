@@ -2,6 +2,8 @@
 
 _data-diff is in shape to be run in production, but also under development._
 
+----
+
 - 🐞Bugs? 💡Issues? 
   - Please [open an issue](https://github.com/datafold/data-diff/issues/new/choose)!
 - 💬 Prefer to chat live? 
@@ -9,6 +11,8 @@ _data-diff is in shape to be run in production, but also under development._
   - [Please reach out to the product team](https://calendly.com/jp-toor/customer-interview-oss) share any product feedback or feature requests!
 - 💸💸 **Looking for paid contributors!** 💸💸
   - We're looking for developers with a deep understanding of databases and solid Python knowledge. [**Apply here!**](https://docs.google.com/forms/d/e/1FAIpQLScEa5tc9CM0uNsb3WigqRFq92OZENkThM04nIs7ZVl_bwsGMw/viewform)
+
+----
 
 **data-diff** enables data professionals to detect differences in values between any two tables. It's fast, easy to use, and reliable--even at massive scale.
 
@@ -22,7 +26,7 @@ First, install `data-diff` using `pip`.
 
 ```pip install data-diff```
 
-**Note:** Once you've installed Python 3.7+, it's most likely that `pip` and `pip3` can be used interchangeably. Please reach out [via slack](https://locallyoptimistic.slack.com/archives/C03HUNGQV0S) if you're stuck.
+**Note:** Once you've installed Python 3.7+, it's most likely that `pip` and `pip3` can be used interchangeably.
 
 Then, install one or more driver(s) specific to the database(s) you want to connect to.
 
@@ -62,11 +66,9 @@ Once you've installed `data-diff`, you can run it from the command line:
 
 `data-diff DB1_URI TABLE1_NAME DB2_URI TABLE2_NAME [OPTIONS]`
 
-Here's an example comparing two versions of a large table. You can try it with a table of any size.
+### Example: Comparing the same table in Snowflake vs Postgres
 
-[Compare 15M-row table in Snowflake vs PostgreSQL]
-
-Here's a version of the code with `<>` carrots 🥕 and variables in place of content that you will replace with your own infomration.
+Here's an example comparing two versions of a large table in two different databases. The code here has `<>` carrot 🥕 around variables in place of content that you will replace with your own information.
 
 ```
 $ data-diff \
@@ -88,7 +90,10 @@ $ data-diff \
 [TODO run the code ]
 ```
 
-You can also run a similar command comparing two tables in the same database:
+
+### Example: Comparing the same table in two different Snowflake schemas
+
+You can also run a similar command comparing two tables in the same database. This could help you out when reviewing a PR and comparing the development vs production version of a table.
 
 ```
 $ data-diff \
@@ -99,6 +104,8 @@ $ data-diff \
 
 [TODO run the code ]
 ```
+
+[TODO want to learn more? Dive into the Datafold Documentation (link).]
 
 # Data Privacy
 
