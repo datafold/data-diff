@@ -1,12 +1,5 @@
 # **data-diff**
 
-**data-diff** enables data professionals to detect differences in values between any two tables. It's fast, easy to use, and reliable--even at massive scale.
-
-<img width="610" alt="Screen Shot 2022-10-12 at 4 09 04 PM" src="https://user-images.githubusercontent.com/1799931/195464655-19806dda-48d3-401b-a285-ffb5eb853f6b.png">
-
-&nbsp;
-&nbsp;
-
 - 🐞Bugs? 💡Issues? 
   - Please [open an issue](https://github.com/datafold/data-diff/issues/new/choose)!
 - 💬 Prefer to chat live? 
@@ -14,6 +7,36 @@
   - [Please reach out to the product team](https://calendly.com/jp-toor/customer-interview-oss) share any product feedback or feature requests!
 - 💸💸 **Looking for paid contributors!** 💸💸
   - We're looking for developers with a deep understanding of databases and solid Python knowledge. [**Apply here!**](https://docs.google.com/forms/d/e/1FAIpQLScEa5tc9CM0uNsb3WigqRFq92OZENkThM04nIs7ZVl_bwsGMw/viewform)
+
+----
+
+**data-diff** enables data professionals to detect differences in values between any two tables. It's fast, easy to use, and reliable. Even at massive scale.
+
+### But first, what's a diff?
+
+Diffing compare two files and tells you how they're different. It's there for you when your test suite doesn't cover every edge case.
+
+You already know about `git diff`, which helps code reviewers see what's changed. A `data-diff` does the same thing, but between two data tables.
+
+### Cool, but I already have a test suite.
+
+You sure do! And that will catch any errors that you've written a test for. `data-diff` is different because it will alert you to _any_ changes in the data.
+
+For example, if you write a test to check if a primary key is `unique` and `not_null`, that won't catch if your code change or data migration has caused certain primary keys to disappear💨, or to be slightly altered😱. That's where `data-diff` comes in.
+
+### In summary, you can use `data-diff` for:
+
+* Validation of replication, migration, and pipelines
+* Comparing tables within one database to validate successful transformations
+* Searching for changes between two data sets in any context
+
+### Oh, you were interested in a list of amazing things `data-diff` can do?
+* ⇄  Verifies across many different databases (e.g. PostgreSQL ⇄ Snowflake) or within a database
+* 🔍 Outputs diff of rows in detail
+* 🚨 Simple CLI/API to create monitoring and alerts
+* 🔁 Bridges column types of different formats and levels of precision (e.g. Double ⇆ Float ⇆ Decimal)
+* 🔥 Verify 25M+ rows in <10s, and 1B+ rows in ~5min
+* ♾️  Works for tables with 10s of billions of rows
 
 &nbsp;
 &nbsp;
@@ -58,20 +81,46 @@ We've included examples here for PostgreSQL and Snowflake. Additional database c
 
 #### Comparing the same table in Snowflake vs Postgres
 
-Here's an example comparing two versions of a large table in two different databases. The code here has `<>` carrots 🥕 around variables in place of content that you will replace with your own information.
+Here's an example comparing two versions of a table with 829,615 rows in two different databases. The code here has `<>` carrots 🥕 around variables in place of content that you will replace with your own information.
+
+The `-k` flag is used to specify a primary key. Otherwise, `data-diff` will assume the primary key is named `id`.
 
 ```
 $ data-diff \
+  postgresql://<YOUR_USERNAME>:<your_postgres_password>@<your_hostname>:5432/<your_database_name> <table_2_name> \
   "snowflake://<YOUR_USERNAME>:<your_snowflake_password>@<YOUR_ACCOUNT>/SNOWFLAKE_DB/<YOUR_DATABASE>?warehouse=<YOUR_WAREHOUSE>&role=<YOUR_ROLE>" <TABLE_1_NAME> \
-  postgresql://<YOUR_USERNAME>:<your_postgres_password>@<your_hostname>:5432/<your_database_name> <table_2_name>  \
-  -k <the_primary_key>
+  -k <primary_key>
 ```
 
-And here's what the command looks like when you replace the carrots with real values and see the results:
+Here's what the command looks like when you replace the carrots with real values and see the results:
+
+<img width="1375" alt="Screen Shot 2022-10-13 at 3 09 53 PM" src="https://user-images.githubusercontent.com/1799931/195721144-789a0692-a1c6-45da-bf0d-fea354b72830.png">
+
+We see that is one primary key that exists in the origin Postgres database, but is missing from the destination Snowflake warehouse.
+
+If you want to see a summary of the results, you can use the `-s` flag. Here's what that looks like:
 
 ```
+$ data-diff \
+  postgresql://<YOUR_USERNAME>:<your_postgres_password>@<your_hostname>:5432/<your_database_name> <table_2_name> \
+  "snowflake://<YOUR_USERNAME>:<your_snowflake_password>@<YOUR_ACCOUNT>/SNOWFLAKE_DB/<YOUR_DATABASE>?warehouse=<YOUR_WAREHOUSE>&role=<YOUR_ROLE>" <TABLE_1_NAME> \
+  -k <primary_key> -s
+```
+
+<img width="1381" alt="Screen Shot 2022-10-13 at 3 15 17 PM" src="https://user-images.githubusercontent.com/1799931/195721371-ec67cee3-274d-48e9-90ff-7ca530ca8892.png">
+
+With the `-c` flag, you can specify additional columns to analyze for differences between the two tables.
 
 ```
+$ data-diff \
+  postgresql://<YOUR_USERNAME>:<your_postgres_password>@<your_hostname>:5432/<your_database_name> <table_2_name> \
+  "snowflake://<YOUR_USERNAME>:<your_snowflake_password>@<YOUR_ACCOUNT>/SNOWFLAKE_DB/<YOUR_DATABASE>?warehouse=<YOUR_WAREHOUSE>&role=<YOUR_ROLE>" <TABLE_1_NAME> \
+  -k <primary_key>  -c activity
+```
+
+<img width="1368" alt="Screen Shot 2022-10-13 at 3 20 40 PM" src="https://user-images.githubusercontent.com/1799931/195721680-86decf73-59d4-4c9f-b9d8-9c3933f2b4d8.png">
+
+We see that one row has a conflicting value in the activity column. Further investigation of this row revealed that there is extra trailing whitespace in the origin Postgres database.
 
 #### Comparing tables within a database
 
@@ -79,13 +128,15 @@ In this example, we'll run a similar command comparing two tables within Snowfla
 
 ```
 $ data-diff \
-  "snowflake://gleb:very_secr3t_one@fold83729/SNOWFLAKE_DB/ANALYTICS?warehouse=OUR_SMALL_WAREHOUSE&role=ANALYST" WEBSITE_EVENTS \
-  "snowflake://gleb:very_secr3t_one@fold83729/SNOWFLAKE_DB/ANALYTICS_DEV?warehouse=OUR_SMALL_WAREHOUSE&role=ANALYST" WEBSITE_EVENTS \
-  -k event_id \
-  -c company_name -c amount
-
-[TODO run the code ]
+  "snowflake://<YOUR_USERNAME>:<your_snowflake_password>@<YOUR_ACCOUNT>/SNOWFLAKE_DB/<YOUR_DATABASE>?warehouse=<YOUR_WAREHOUSE>&role=<YOUR_ROLE>" <TABLE_1_NAME> \
+  "snowflake://<YOUR_USERNAME>:<your_snowflake_password>@<YOUR_ACCOUNT>/SNOWFLAKE_DB/<YOUR_DATABASE>?warehouse=<YOUR_WAREHOUSE>&role=<YOUR_ROLE>" <TABLE_2_NAME> \
+  -k <primary_key> \
+  -s
 ```
+
+<img width="1311" alt="Screen Shot 2022-10-13 at 3 39 57 PM" src="https://user-images.githubusercontent.com/1799931/195723817-d20e718e-56e6-4de6-af2e-138f4f775fab.png">
+
+We see that 7 primary keys exist only in the `ANALYTICS_DEV` schema, and 23 primary keys exist only in the `ANALYTICS` schema. Depending on the nature of the PR, this could be expected, or it could be a red flag indicating there's something wrong with the updated code.
 
 [TODO want to learn more? Dive into the Datafold Documentation (link).]
 
