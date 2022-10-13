@@ -2,12 +2,12 @@ from typing import List
 from datetime import datetime
 
 from data_diff.queries.ast_classes import TablePath
-from data_diff.queries import table
+from data_diff.queries import table, commit
 from data_diff.table_segment import TableSegment
 from data_diff import databases as db
 from data_diff.joindiff_tables import JoinDiffer
 
-from .test_diff_tables import TestPerDatabase, _commit, _insert_row, _insert_rows
+from .test_diff_tables import TestPerDatabase
 
 from .common import (
     random_table_suffix,
@@ -35,29 +35,32 @@ class TestCompositeKey(TestPerDatabase):
     def setUp(self):
         super().setUp()
 
-        src_table = table(
+        self.src_table = table(
             self.table_src_path,
             schema={"id": int, "userid": int, "movieid": int, "rating": float, "timestamp": datetime},
         )
-        dst_table = table(
+        self.dst_table = table(
             self.table_dst_path,
             schema={"id": int, "userid": int, "movieid": int, "rating": float, "timestamp": datetime},
         )
 
-        self.connection.query(src_table.create())
-        self.connection.query(dst_table.create())
-        _commit(self.connection)
+        self.connection.query([self.src_table.create(), self.dst_table.create(), commit])
 
         self.differ = JoinDiffer()
 
     def test_composite_key(self):
         time = "2022-01-01 00:00:00"
-        time_str = f"timestamp '{time}'"
+        time_obj = datetime.fromisoformat(time)
 
         cols = "id userid movieid rating timestamp".split()
-        _insert_rows(self.connection, self.table_src, cols, [[1, 1, 1, 9, time_str], [2, 2, 2, 9, time_str]])
-        _insert_rows(self.connection, self.table_dst, cols, [[1, 1, 1, 9, time_str], [2, 3, 2, 9, time_str]])
-        _commit(self.connection)
+
+        self.connection.query(
+            [
+                self.src_table.insert_rows([[1, 1, 1, 9, time_obj], [2, 2, 2, 9, time_obj]], columns=cols),
+                self.dst_table.insert_rows([[1, 1, 1, 9, time_obj], [2, 3, 2, 9, time_obj]], columns=cols),
+                commit,
+            ]
+        )
 
         # Sanity
         table1 = TableSegment(
@@ -83,18 +86,16 @@ class TestJoindiff(TestPerDatabase):
     def setUp(self):
         super().setUp()
 
-        src_table = table(
+        self.src_table = table(
             self.table_src_path,
             schema={"id": int, "userid": int, "movieid": int, "rating": float, "timestamp": datetime},
         )
-        dst_table = table(
+        self.dst_table = table(
             self.table_dst_path,
             schema={"id": int, "userid": int, "movieid": int, "rating": float, "timestamp": datetime},
         )
 
-        self.connection.query(src_table.create())
-        self.connection.query(dst_table.create())
-        _commit(self.connection)
+        self.connection.query([self.src_table.create(), self.dst_table.create(), commit])
 
         self.table = TableSegment(self.connection, self.table_src_path, ("id",), "timestamp", case_sensitive=False)
         self.table2 = TableSegment(self.connection, self.table_dst_path, ("id",), "timestamp", case_sensitive=False)
@@ -103,12 +104,18 @@ class TestJoindiff(TestPerDatabase):
 
     def test_diff_small_tables(self):
         time = "2022-01-01 00:00:00"
-        time_str = f"timestamp '{time}'"
+        time_obj = datetime.fromisoformat(time)
 
         cols = "id userid movieid rating timestamp".split()
-        _insert_rows(self.connection, self.table_src, cols, [[1, 1, 1, 9, time_str], [2, 2, 2, 9, time_str]])
-        _insert_rows(self.connection, self.table_dst, cols, [[1, 1, 1, 9, time_str]])
-        _commit(self.connection)
+
+        self.connection.query(
+            [
+                self.src_table.insert_rows([[1, 1, 1, 9, time_obj], [2, 2, 2, 9, time_obj]], columns=cols),
+                self.dst_table.insert_rows([[1, 1, 1, 9, time_obj]], columns=cols),
+                commit,
+            ]
+        )
+
         diff = list(self.differ.diff_tables(self.table, self.table2))
         expected_row = ("2", time + ".000000")
         expected = [("-", expected_row)]
@@ -132,34 +139,34 @@ class TestJoindiff(TestPerDatabase):
 
     def test_diff_table_above_bisection_threshold(self):
         time = "2022-01-01 00:00:00"
-        time_str = f"timestamp '{time}'"
+        time_obj = datetime.fromisoformat(time)
 
         cols = "id userid movieid rating timestamp".split()
-        _insert_rows(
-            self.connection,
-            self.table_src,
-            cols,
-            [
-                [1, 1, 1, 9, time_str],
-                [2, 2, 2, 9, time_str],
-                [3, 3, 3, 9, time_str],
-                [4, 4, 4, 9, time_str],
-                [5, 5, 5, 9, time_str],
-            ],
-        )
 
-        _insert_rows(
-            self.connection,
-            self.table_dst,
-            cols,
+        self.connection.query(
             [
-                [1, 1, 1, 9, time_str],
-                [2, 2, 2, 9, time_str],
-                [3, 3, 3, 9, time_str],
-                [4, 4, 4, 9, time_str],
-            ],
+                self.src_table.insert_rows(
+                    [
+                        [1, 1, 1, 9, time_obj],
+                        [2, 2, 2, 9, time_obj],
+                        [3, 3, 3, 9, time_obj],
+                        [4, 4, 4, 9, time_obj],
+                        [5, 5, 5, 9, time_obj],
+                    ],
+                    columns=cols,
+                ),
+                self.dst_table.insert_rows(
+                    [
+                        [1, 1, 1, 9, time_obj],
+                        [2, 2, 2, 9, time_obj],
+                        [3, 3, 3, 9, time_obj],
+                        [4, 4, 4, 9, time_obj],
+                    ],
+                    columns=cols,
+                ),
+                commit,
+            ]
         )
-        _commit(self.connection)
 
         diff = list(self.differ.diff_tables(self.table, self.table2))
         expected = [("-", ("5", time + ".000000"))]
@@ -169,12 +176,16 @@ class TestJoindiff(TestPerDatabase):
 
     def test_return_empty_array_when_same(self):
         time = "2022-01-01 00:00:00"
-        time_str = f"timestamp '{time}'"
+        time_obj = datetime.fromisoformat(time)
 
         cols = "id userid movieid rating timestamp".split()
 
-        _insert_row(self.connection, self.table_src, cols, [1, 1, 1, 9, time_str])
-        _insert_row(self.connection, self.table_dst, cols, [1, 1, 1, 9, time_str])
+        self.connection.query(
+            [
+                self.src_table.insert_row(1, 1, 1, 9, time_obj, columns=cols),
+                self.dst_table.insert_row(1, 1, 1, 9, time_obj, columns=cols),
+            ]
+        )
 
         diff = list(self.differ.diff_tables(self.table, self.table2))
         self.assertEqual([], diff)
@@ -183,37 +194,36 @@ class TestJoindiff(TestPerDatabase):
         time = "2022-01-01 00:00:00"
         time2 = "2021-01-01 00:00:00"
 
-        time_str = f"timestamp '{time}'"
-        time_str2 = f"timestamp '{time2}'"
+        time_obj = datetime.fromisoformat(time)
+        time_obj2 = datetime.fromisoformat(time2)
 
         cols = "id userid movieid rating timestamp".split()
 
-        _insert_rows(
-            self.connection,
-            self.table_src,
-            cols,
+        self.connection.query(
             [
-                [1, 1, 1, 9, time_str],
-                [2, 2, 2, 9, time_str2],
-                [3, 3, 3, 9, time_str],
-                [4, 4, 4, 9, time_str2],
-                [5, 5, 5, 9, time_str],
-            ],
+                self.src_table.insert_rows(
+                    [
+                        [1, 1, 1, 9, time_obj],
+                        [2, 2, 2, 9, time_obj2],
+                        [3, 3, 3, 9, time_obj],
+                        [4, 4, 4, 9, time_obj2],
+                        [5, 5, 5, 9, time_obj],
+                    ],
+                    columns=cols,
+                ),
+                self.dst_table.insert_rows(
+                    [
+                        [1, 1, 1, 9, time_obj],
+                        [2, 2, 2, 9, time_obj],
+                        [3, 3, 3, 9, time_obj],
+                        [4, 4, 4, 9, time_obj],
+                        [5, 5, 5, 9, time_obj],
+                    ],
+                    columns=cols,
+                ),
+                commit,
+            ]
         )
-
-        _insert_rows(
-            self.connection,
-            self.table_dst,
-            cols,
-            [
-                [1, 1, 1, 9, time_str],
-                [2, 2, 2, 9, time_str],
-                [3, 3, 3, 9, time_str],
-                [4, 4, 4, 9, time_str],
-                [5, 5, 5, 9, time_str],
-            ],
-        )
-        _commit(self.connection)
 
         diff = list(self.differ.diff_tables(self.table, self.table2))
         expected = [
@@ -226,25 +236,32 @@ class TestJoindiff(TestPerDatabase):
 
     def test_dup_pks(self):
         time = "2022-01-01 00:00:00"
-        time_str = f"timestamp '{time}'"
+        time_obj = datetime.fromisoformat(time)
 
         cols = "id rating timestamp".split()
 
-        _insert_row(self.connection, self.table_src, cols, [1, 9, time_str])
-        _insert_row(self.connection, self.table_src, cols, [1, 10, time_str])
-        _insert_row(self.connection, self.table_dst, cols, [1, 9, time_str])
+        self.connection.query(
+            [
+                self.src_table.insert_rows([[1, 9, time_obj], [1, 10, time_obj]], columns=cols),
+                self.dst_table.insert_row(1, 9, time_obj, columns=cols),
+            ]
+        )
 
         x = self.differ.diff_tables(self.table, self.table2)
         self.assertRaises(ValueError, list, x)
 
     def test_null_pks(self):
         time = "2022-01-01 00:00:00"
-        time_str = f"timestamp '{time}'"
+        time_obj = datetime.fromisoformat(time)
 
         cols = "id rating timestamp".split()
 
-        _insert_row(self.connection, self.table_src, cols, ["null", 9, time_str])
-        _insert_row(self.connection, self.table_dst, cols, [1, 9, time_str])
+        self.connection.query(
+            [
+                self.src_table.insert_row(None, 9, time_obj, columns=cols),
+                self.dst_table.insert_row(1, 9, time_obj, columns=cols),
+            ]
+        )
 
         x = self.differ.diff_tables(self.table, self.table2)
         self.assertRaises(ValueError, list, x)

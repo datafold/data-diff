@@ -121,6 +121,10 @@ class Database(AbstractDatabase):
         compiler = Compiler(self)
         if isinstance(sql_ast, Generator):
             sql_code = ThreadLocalInterpreter(compiler, sql_ast)
+        elif isinstance(sql_ast, list):
+            for i in sql_ast[:-1]:
+                self.query(i)
+            return self.query(sql_ast[-1], res_type)
         else:
             sql_code = compiler.compile(sql_ast)
             if sql_code is SKIP:
@@ -250,7 +254,7 @@ class Database(AbstractDatabase):
         if not text_columns:
             return
 
-        fields = [self.normalize_uuid(c, String_UUID()) for c in text_columns]
+        fields = [self.normalize_uuid(self.quote(c), String_UUID()) for c in text_columns]
         samples_by_row = self.query(table(*table_path).select(*fields).where(where or SKIP).limit(sample_size), list)
         if not samples_by_row:
             raise ValueError(f"Table {table_path} is empty.")
