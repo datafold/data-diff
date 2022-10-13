@@ -19,7 +19,6 @@ from .database_types import (
     Native_UUID,
     String_UUID,
     String_Alphanum,
-    String_FixedAlphanum,
     String_VaryingAlphanum,
     TemporalType,
     UnknownColType,
@@ -133,7 +132,7 @@ class Database(AbstractDatabase):
             for row in explain:
                 # Most returned a 1-tuple. Presto returns a string
                 if isinstance(row, tuple):
-                    row ,= row
+                    (row,) = row
                 logger.debug("EXPLAIN: %s", row)
             answer = input("Continue? [y/n] ")
             if not answer.lower() in ["y", "yes"]:
@@ -240,7 +239,7 @@ class Database(AbstractDatabase):
         # Return a dict of form {name: type} after normalization
         return col_dict
 
-    def _refine_coltypes(self, table_path: DbPath, col_dict: Dict[str, ColType], where: str = None):
+    def _refine_coltypes(self, table_path: DbPath, col_dict: Dict[str, ColType], where: str = None, sample_size=32):
         """Refine the types in the column dict, by querying the database for a sample of their values
 
         'where' restricts the rows to be sampled.
@@ -251,7 +250,7 @@ class Database(AbstractDatabase):
             return
 
         fields = [self.normalize_uuid(c, String_UUID()) for c in text_columns]
-        samples_by_row = self.query(table(*table_path).select(*fields).where(where or SKIP).limit(16), list)
+        samples_by_row = self.query(table(*table_path).select(*fields).where(where or SKIP).limit(sample_size), list)
         if not samples_by_row:
             raise ValueError(f"Table {table_path} is empty.")
 
@@ -279,13 +278,7 @@ class Database(AbstractDatabase):
                         )
                     else:
                         assert col_name in col_dict
-                        lens = set(map(len, alphanum_samples))
-                        if len(lens) > 1:
-                            col_dict[col_name] = String_VaryingAlphanum()
-                        else:
-                            (length,) = lens
-                            col_dict[col_name] = String_FixedAlphanum(length=length)
-                            continue
+                        col_dict[col_name] = String_VaryingAlphanum()
 
     # @lru_cache()
     # def get_table_schema(self, path: DbPath) -> Dict[str, ColType]:
