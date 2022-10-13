@@ -34,7 +34,11 @@ WRITE_LIMIT = 1000
 
 def merge_dicts(dicts):
     i = iter(dicts)
-    res = next(i)
+    try:
+        res = next(i)
+    except StopIteration:
+        return {}
+
     for d in i:
         res.update(d)
     return res
