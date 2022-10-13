@@ -18,6 +18,13 @@ Diffing compares two files and tells you how they're different. It's there for y
 
 You already know about `git diff`, which helps code reviewers see what's changed. A `data-diff` does the same thing, but between two data tables.
 
+#### This is a `git diff`, as you know.
+<img width="1076" alt="Screen Shot 2022-10-13 at 4 35 44 PM" src="https://user-images.githubusercontent.com/1799931/195730205-1d8423fd-0e5f-467d-b35d-bdd2a8346cdd.png">
+
+#### This is a `data-diff`! Real code and output examples [below](#comparing-the-same-table-in-snowflake-vs-postgres).
+![diff](https://user-images.githubusercontent.com/1799931/195729508-a4528bd9-83e9-4695-93d7-ed701822b8d0.png) 
+
+
 ### Cool, but I already have a test suite.
 
 You sure do! And that will catch any errors that you've written a test for. `data-diff` is different because it will alert you to _any_ changes in the data.
