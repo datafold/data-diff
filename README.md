@@ -14,7 +14,7 @@
 
 ### But first, what's a diff?
 
-Diffing compare two files and tells you how they're different. It's there for you when your test suite doesn't cover every edge case.
+Diffing compares two files and tells you how they're different. It's there for you when your test suite doesn't cover every edge case.
 
 You already know about `git diff`, which helps code reviewers see what's changed. A `data-diff` does the same thing, but between two data tables.
 
