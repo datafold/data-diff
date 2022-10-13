@@ -10,8 +10,8 @@ from typing import List
 
 from runtype import dataclass
 
-from data_diff.databases.database_types import DbPath, NumericType
-from data_diff.databases.base import QueryError
+from .databases.database_types import DbPath, NumericType
+from .query_utils import append_to_table, drop_table
 
 
 from .utils import safezip
@@ -48,7 +48,7 @@ def sample(table_expr):
     return table_expr.order_by(Random()).limit(10)
 
 
-def create_temp_table(c: Compiler, path: TablePath, expr: Expr):
+def create_temp_table(c: Compiler, path: TablePath, expr: Expr) -> str:
     db = c.database
     if isinstance(db, BigQuery):
         return f"create table {c.compile(path)} OPTIONS(expiration_timestamp=TIMESTAMP_ADD(CURRENT_TIMESTAMP(), INTERVAL 1 DAY)) as {c.compile(expr)}"
@@ -58,42 +58,6 @@ def create_temp_table(c: Compiler, path: TablePath, expr: Expr):
         return f"create global temporary table {c.compile(path)} as {c.compile(expr)}"
     else:
         return f"create temporary table {c.compile(path)} as {c.compile(expr)}"
-
-
-def drop_table_oracle(name: DbPath):
-    t = table(name)
-    # Experience shows double drop is necessary
-    with suppress(QueryError):
-        yield t.drop()
-        yield t.drop()
-    yield commit
-
-
-def drop_table(name: DbPath):
-    t = table(name)
-    yield t.drop(if_exists=True)
-    yield commit
-
-
-def append_to_table_oracle(path: DbPath, expr: Expr):
-    """See append_to_table"""
-    assert expr.schema, expr
-    t = table(path, schema=expr.schema)
-    with suppress(QueryError):
-        yield t.create()  # uses expr.schema
-        yield commit
-    yield t.insert_expr(expr)
-    yield commit
-
-
-def append_to_table(path: DbPath, expr: Expr):
-    """Append to table"""
-    assert expr.schema, expr
-    t = table(path, schema=expr.schema)
-    yield t.create(if_not_exists=True)  # uses expr.schema
-    yield commit
-    yield t.insert_expr(expr)
-    yield commit
 
 
 def bool_to_int(x):
@@ -170,10 +134,7 @@ class JoinDiffer(TableDiffer):
 
         bg_funcs = [partial(self._test_duplicate_keys, table1, table2)] if self.validate_unique_key else []
         if self.materialize_to_table:
-            if isinstance(db, Oracle):
-                db.query(drop_table_oracle(self.materialize_to_table))
-            else:
-                db.query(drop_table(self.materialize_to_table))
+            drop_table(db, self.materialize_to_table)
 
         with self._run_in_background(*bg_funcs):
 
@@ -348,6 +309,5 @@ class JoinDiffer(TableDiffer):
     def _materialize_diff(self, db, diff_rows, segment_index=None):
         assert self.materialize_to_table
 
-        f = append_to_table_oracle if isinstance(db, Oracle) else append_to_table
-        db.query(f(self.materialize_to_table, diff_rows.limit(self.write_limit)))
+        append_to_table(db, self.materialize_to_table, diff_rows.limit(self.write_limit))
         logger.info("Materialized diff to table '%s'.", ".".join(self.materialize_to_table))

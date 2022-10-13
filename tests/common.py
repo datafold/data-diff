@@ -1,4 +1,3 @@
-from contextlib import suppress
 import hashlib
 import os
 import string
@@ -13,6 +12,8 @@ from parameterized import parameterized_class
 from data_diff import databases as db
 from data_diff import tracking
 from data_diff import connect
+from data_diff.queries.api import table
+from data_diff.query_utils import drop_table
 
 tracking.disable_tracking()
 
@@ -119,16 +120,6 @@ def str_to_checksum(str: str):
     return int(md5[half_pos:], 16)
 
 
-def _drop_table_if_exists(conn, table):
-    with suppress(db.QueryError):
-        if isinstance(conn, db.Oracle):
-            conn.query(f"DROP TABLE {table}", None)
-            conn.query(f"DROP TABLE {table}", None)
-        else:
-            conn.query(f"DROP TABLE IF EXISTS {table}", None)
-            if not isinstance(conn, (db.BigQuery, db.Databricks, db.Clickhouse)):
-                conn.query("COMMIT", None)
-
 
 class TestPerDatabase(unittest.TestCase):
     db_cls = None
@@ -148,14 +139,14 @@ class TestPerDatabase(unittest.TestCase):
         self.table_src = ".".join(map(self.connection.quote, self.table_src_path))
         self.table_dst = ".".join(map(self.connection.quote, self.table_dst_path))
 
-        _drop_table_if_exists(self.connection, self.table_src)
-        _drop_table_if_exists(self.connection, self.table_dst)
+        drop_table(self.connection, self.table_src_path)
+        drop_table(self.connection, self.table_dst_path)
 
         return super().setUp()
 
     def tearDown(self):
-        _drop_table_if_exists(self.connection, self.table_src)
-        _drop_table_if_exists(self.connection, self.table_dst)
+        drop_table(self.connection, self.table_src_path)
+        drop_table(self.connection, self.table_dst_path)
 
 
 def _parameterized_class_per_conn(test_databases):
