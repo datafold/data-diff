@@ -24,9 +24,9 @@ You sure do! And that will catch any errors that you've written a test for. `dat
 
 For example, if you write a test to check if a primary key is `unique` and `not_null`, that won't catch if your code change or data migration has caused certain primary keys to disappear💨, or to be slightly altered😱. That's where `data-diff` comes in.
 
-### In summary, you can use `data-diff` for:
+### `data-diff` is useful for:
 
-* Validation of replication, migration, and pipelines
+* Validation of data integrity in replication, migration, and pipelines
 * Comparing tables within one database to validate successful transformations
 * Searching for changes between two data sets in any context
 
@@ -85,6 +85,9 @@ Here's an example comparing two versions of a table with 829,615 rows in two dif
 
 The `-k` flag is used to specify a primary key. Otherwise, `data-diff` will assume the primary key is named `id`.
 
+&nbsp;
+&nbsp;
+
 ```
 $ data-diff \
   postgresql://<YOUR_USERNAME>:<your_postgres_password>@<your_hostname>:5432/<your_database_name> <table_2_name> \
@@ -92,13 +95,25 @@ $ data-diff \
   -k <primary_key>
 ```
 
+&nbsp;
+&nbsp;
+
 Here's what the command looks like when you replace the carrots with real values and see the results:
 
+&nbsp;
+&nbsp;
+
 <img width="1375" alt="Screen Shot 2022-10-13 at 3 09 53 PM" src="https://user-images.githubusercontent.com/1799931/195721144-789a0692-a1c6-45da-bf0d-fea354b72830.png">
+
+&nbsp;
+&nbsp;
 
 We see that is one primary key that exists in the origin Postgres database, but is missing from the destination Snowflake warehouse.
 
 If you want to see a summary of the results, you can use the `-s` flag. Here's what that looks like:
+
+&nbsp;
+&nbsp;
 
 ```
 $ data-diff \
@@ -109,7 +124,13 @@ $ data-diff \
 
 <img width="1381" alt="Screen Shot 2022-10-13 at 3 15 17 PM" src="https://user-images.githubusercontent.com/1799931/195721371-ec67cee3-274d-48e9-90ff-7ca530ca8892.png">
 
+&nbsp;
+&nbsp;
+
 With the `-c` flag, you can specify additional columns to analyze for differences between the two tables.
+
+&nbsp;
+&nbsp;
 
 ```
 $ data-diff \
@@ -120,11 +141,17 @@ $ data-diff \
 
 <img width="1368" alt="Screen Shot 2022-10-13 at 3 20 40 PM" src="https://user-images.githubusercontent.com/1799931/195721680-86decf73-59d4-4c9f-b9d8-9c3933f2b4d8.png">
 
+&nbsp;
+&nbsp;
+
 We see that one row has a conflicting value in the activity column. Further investigation of this row revealed that there is extra trailing whitespace in the origin Postgres database.
 
 #### Comparing tables within a database
 
 In this example, we'll run a similar command comparing two tables within Snowflake. This could help you out when reviewing a PR and comparing the development vs production version of a table.
+
+&nbsp;
+&nbsp;
 
 ```
 $ data-diff \
@@ -135,6 +162,9 @@ $ data-diff \
 ```
 
 <img width="1311" alt="Screen Shot 2022-10-13 at 3 39 57 PM" src="https://user-images.githubusercontent.com/1799931/195723817-d20e718e-56e6-4de6-af2e-138f4f775fab.png">
+
+&nbsp;
+&nbsp;
 
 We see that 7 primary keys exist only in the `ANALYTICS_DEV` schema, and 23 primary keys exist only in the `ANALYTICS` schema. Depending on the nature of the PR, this could be expected, or it could be a red flag indicating there's something wrong with the updated code.
 
