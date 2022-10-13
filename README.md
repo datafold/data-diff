@@ -37,7 +37,7 @@ For example, if you write a test to check if a primary key is `unique` and `not_
 * Comparing tables within one database to validate successful transformations
 * Searching for changes between two data sets in any context
 
-### Oh, you were interested in a list of amazing things `data-diff` can do?
+### Oh, you'd like a list of amazing things `data-diff` can do?
 * ⇄  Verifies across many different databases (e.g. PostgreSQL ⇄ Snowflake) or within a database
 * 🔍 Outputs diff of rows in detail
 * 🚨 Simple CLI/API to create monitoring and alerts
