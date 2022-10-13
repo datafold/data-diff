@@ -64,20 +64,13 @@ Here's an example comparing two versions of a large table in two different datab
 $ data-diff \
   "snowflake://<YOUR_USERNAME>:<your_snowflake_password>@<YOUR_ACCOUNT>/SNOWFLAKE_DB/<YOUR_DATABASE>?warehouse=<YOUR_WAREHOUSE>&role=<YOUR_ROLE>" <TABLE_1_NAME> \
   postgresql://<YOUR_USERNAME>:<your_postgres_password>@<your_hostname>:5432/<your_database_name> <table_2_name>  \
-  -k <the_primary_key> \
-  -c <column_to_compare_1> -c <column_to_compare_2> -c <column_to_compare_x>
+  -k <the_primary_key>
 ```
 
 And here's what the command looks like when you replace the carrots with real values and see the results:
 
 ```
-$ data-diff \
-  "snowflake://gleb:very_secr3t_one@fold83729/SNOWFLAKE_DB/ANALYTICS?warehouse=OUR_SMALL_WAREHOUSE&role=ANALYST" WEBSITE_EVENTS \
-  postgresql://gleb:floatingdoorknobs@localhost:5432/ANALYTICS website_events  \
-  -k event_id \
-  -c company_name -c amount
 
-[TODO run the code ]
 ```
 
 #### Comparing tables within a database
