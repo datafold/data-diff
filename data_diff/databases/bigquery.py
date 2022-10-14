@@ -1,4 +1,4 @@
-from typing import Union
+from typing import List, Union
 from .database_types import Timestamp, Datetime, Integer, Decimal, Float, Text, DbPath, FractionalType, TemporalType
 from .base import Database, import_helper, parse_table_name, ConnectError, apply_query
 from .base import TIMESTAMP_PRECISION_POS, ThreadLocalInterpreter
@@ -77,6 +77,9 @@ class BigQuery(Database):
             f"SELECT column_name, data_type, 6 as datetime_precision, 38 as numeric_precision, 9 as numeric_scale FROM {schema}.INFORMATION_SCHEMA.COLUMNS "
             f"WHERE table_name = '{table}' AND table_schema = '{schema}'"
         )
+
+    def query_table_unique_columns(self, path: DbPath) -> List[str]:
+        return []
 
     def normalize_timestamp(self, value: str, coltype: TemporalType) -> str:
         if coltype.rounds:

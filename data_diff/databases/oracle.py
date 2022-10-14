@@ -38,6 +38,7 @@ class Oracle(ThreadedDatabase):
         "VARCHAR2": Text,
     }
     ROUNDS_ON_PREC_LOSS = True
+    SUPPORTS_PRIMARY_KEY = True
 
     def __init__(self, *, host, database, thread_count, **kw):
         self.kwargs = dict(dsn=f"{host}/{database}" if database else host, **kw)

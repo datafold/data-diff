@@ -39,6 +39,7 @@ class MySQL(ThreadedDatabase):
     }
     ROUNDS_ON_PREC_LOSS = True
     SUPPORTS_ALPHANUMS = False
+    SUPPORTS_PRIMARY_KEY = True
 
     def __init__(self, *, thread_count, **kw):
         self._args = kw

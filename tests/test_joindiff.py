@@ -273,3 +273,52 @@ class TestJoindiff(TestPerDatabase):
 
         x = self.differ.diff_tables(self.table, self.table2)
         self.assertRaises(ValueError, list, x)
+
+
+@test_each_database_in_list(d for d in TEST_DATABASES if d.SUPPORTS_PRIMARY_KEY)
+class TestPrimaryKeys(TestPerDatabase):
+    def setUp(self):
+        super().setUp()
+
+        self.src_table = table(
+            self.table_src_path,
+            schema={"id": int, "userid": int, "movieid": int, "rating": float},
+        )
+        self.dst_table = table(
+            self.table_dst_path,
+            schema={"id": int, "userid": int, "movieid": int, "rating": float},
+        )
+
+        self.connection.query([
+            self.src_table.create(primary_keys=['id']),
+            self.dst_table.create(primary_keys=['id', 'userid']),
+            commit
+            ]
+        )
+
+        self.differ = JoinDiffer()
+
+    def test_unique_constraint(self):
+        self.connection.query(
+            [
+                self.src_table.insert_rows([[1, 1, 1, 9], [2, 2, 2, 9]]),
+                self.dst_table.insert_rows([[1, 1, 1, 9], [2, 2, 2, 9]]),
+                commit,
+            ]
+        )
+
+        # Test no active validation
+        table = TableSegment(self.connection, self.table_src_path, ("id",), case_sensitive=False)
+        table2 = TableSegment(self.connection, self.table_dst_path, ("id",), case_sensitive=False)
+
+        res = list(self.differ.diff_tables(table, table2))
+        assert not res
+        assert 'validated_unique_keys' not in self.differ.stats
+
+        # Test active validation
+        table = TableSegment(self.connection, self.table_src_path, ("userid",), case_sensitive=False)
+        table2 = TableSegment(self.connection, self.table_dst_path, ("userid",), case_sensitive=False)
+
+        res = list(self.differ.diff_tables(table, table2))
+        assert not res
+        self.assertEqual( self.differ.stats['validated_unique_keys'], [['userid']] )

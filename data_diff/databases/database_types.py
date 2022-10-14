@@ -254,6 +254,17 @@ class AbstractDatabase(AbstractDialect, AbstractDatadiffDialect):
         ...
 
     @abstractmethod
+    def select_table_unique_columns(self, path: DbPath) -> str:
+        "Provide SQL for selecting the names of unique columns in the table"
+        ...
+
+    @abstractmethod
+    def query_table_unique_columns(self, path: DbPath) -> List[str]:
+        """Query the table for its unique columns for table in 'path', and return {column}
+        """
+        ...
+
+    @abstractmethod
     def _process_table_schema(
         self, path: DbPath, raw_schema: Dict[str, tuple], filter_columns: Sequence[str], where: str = None
     ):
