@@ -96,6 +96,7 @@ class TableDiffer(ThreadBase, ABC):
 
         if is_tracking_enabled():
             options = dict(self)
+            options["differ_name"] = type(self).__name__
             event_json = create_start_event_json(options)
             run_as_daemon(send_event_json, event_json)
 
