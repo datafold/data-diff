@@ -1,6 +1,7 @@
 from dataclasses import field
 from datetime import datetime
-from typing import Any, Generator, Optional, Sequence, Tuple, Union
+from typing import Any, Generator, List, Optional, Sequence, Tuple, Union
+from uuid import UUID
 
 from runtype import dataclass
 
@@ -298,18 +299,29 @@ class TablePath(ExprNode, ITable):
     path: DbPath
     schema: Optional[Schema] = field(default=None, repr=False)
 
-    def create(self, if_not_exists=False):
-        if not self.schema:
-            raise ValueError("Schema must have a value to create table")
-        return CreateTable(self, if_not_exists=if_not_exists)
+    def create(self, source_table: ITable = None, *, if_not_exists=False):
+        if source_table is None and not self.schema:
+            raise ValueError("Either schema or source table needed to create table")
+        if isinstance(source_table, TablePath):
+            source_table = source_table.select()
+        return CreateTable(self, source_table, if_not_exists=if_not_exists)
 
     def drop(self, if_exists=False):
         return DropTable(self, if_exists=if_exists)
 
-    def insert_values(self, rows):
-        raise NotImplementedError()
+    def truncate(self):
+        return TruncateTable(self)
+
+    def insert_rows(self, rows, *, columns=None):
+        rows = list(rows)
+        return InsertToTable(self, ConstantTable(rows), columns=columns)
+
+    def insert_row(self, *values, columns=None):
+        return InsertToTable(self, ConstantTable([values]), columns=columns)
 
     def insert_expr(self, expr: Expr):
+        if isinstance(expr, TablePath):
+            expr = expr.select()
         return InsertToTable(self, expr)
 
     @property
@@ -593,6 +605,29 @@ class Random(ExprNode):
 
 
 @dataclass
+class ConstantTable(ExprNode):
+    rows: Sequence[Sequence]
+
+    def compile(self, c: Compiler) -> str:
+        raise NotImplementedError()
+
+    def _value(self, v):
+        if v is None:
+            return "NULL"
+        elif isinstance(v, str):
+            return f"'{v}'"
+        elif isinstance(v, datetime):
+            return f"timestamp '{v}'"
+        elif isinstance(v, UUID):
+            return f"'{v}'"
+        return repr(v)
+
+    def compile_for_insert(self, c: Compiler):
+        values = ", ".join("(%s)" % ", ".join(self._value(v) for v in row) for row in self.rows)
+        return f"VALUES {values}"
+
+
+@dataclass
 class Explain(ExprNode):
     select: Select
 
@@ -610,11 +645,15 @@ class Statement(Compilable):
 @dataclass
 class CreateTable(Statement):
     path: TablePath
+    source_table: Expr = None
     if_not_exists: bool = False
 
     def compile(self, c: Compiler) -> str:
-        schema = ", ".join(f"{k} {c.database.type_repr(v)}" for k, v in self.path.schema.items())
         ne = "IF NOT EXISTS " if self.if_not_exists else ""
+        if self.source_table:
+            return f"CREATE TABLE {ne}{c.compile(self.path)} AS {c.compile(self.source_table)}"
+
+        schema = ", ".join(f"{c.database.quote(k)} {c.database.type_repr(v)}" for k, v in self.path.schema.items())
         return f"CREATE TABLE {ne}{c.compile(self.path)}({schema})"
 
 
@@ -629,13 +668,29 @@ class DropTable(Statement):
 
 
 @dataclass
+class TruncateTable(Statement):
+    path: TablePath
+
+    def compile(self, c: Compiler) -> str:
+        return f"TRUNCATE TABLE {c.compile(self.path)}"
+
+
+@dataclass
 class InsertToTable(Statement):
     # TODO Support insert for only some columns
     path: TablePath
     expr: Expr
+    columns: List[str] = None
 
     def compile(self, c: Compiler) -> str:
-        return f"INSERT INTO {c.compile(self.path)} {c.compile(self.expr)}"
+        if isinstance(self.expr, ConstantTable):
+            expr = self.expr.compile_for_insert(c)
+        else:
+            expr = c.compile(self.expr)
+
+        columns = f"(%s)" % ", ".join(map(c.quote, self.columns)) if self.columns is not None else ""
+
+        return f"INSERT INTO {c.compile(self.path)}{columns} {expr}"
 
 
 @dataclass

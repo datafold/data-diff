@@ -1,95 +1,29 @@
-import datetime
-import unittest
+from datetime import datetime
+from typing import Callable
 import uuid
+import unittest
 
-from parameterized import parameterized_class
-import preql
 import arrow  # comes with preql
 
-from data_diff.databases.connect import connect
+from data_diff.queries import table, this, commit
+
 from data_diff.hashdiff_tables import HashDiffer
 from data_diff.table_segment import TableSegment, split_space
 from data_diff import databases as db
 from data_diff.utils import ArithAlphanumeric, numberToAlphanum
 
-from .common import (
-    TEST_MYSQL_CONN_STRING,
-    str_to_checksum,
-    random_table_suffix,
-    _drop_table_if_exists,
-    CONN_STRINGS,
-    N_THREADS,
-)
-
-DATABASE_INSTANCES = None
-DATABASE_URIS = {k.__name__: v for k, v in CONN_STRINGS.items()}
+from .common import str_to_checksum, test_each_database_in_list, TestPerDatabase
 
 
-def init_instances():
-    global DATABASE_INSTANCES
-    if DATABASE_INSTANCES is not None:
-        return
+TEST_DATABASES = {db.MySQL, db.PostgreSQL, db.Oracle, db.Redshift, db.Snowflake, db.BigQuery}
 
-    DATABASE_INSTANCES = {k.__name__: connect(v, N_THREADS) for k, v in CONN_STRINGS.items()}
-
-
-TEST_DATABASES = {x.__name__ for x in (db.MySQL, db.PostgreSQL, db.Oracle, db.Redshift, db.Snowflake, db.BigQuery)}
-
-
-def _class_per_db_dec(filter_name=None):
-    names = [
-        (name, name)
-        for name in DATABASE_URIS
-        if (name in TEST_DATABASES) and (filter_name is None or filter_name(name))
-    ]
-    return parameterized_class(("name", "db_name"), names)
+test_each_database: Callable = test_each_database_in_list(TEST_DATABASES)
 
 
 def _table_segment(database, table_path, key_columns, *args, **kw):
     if isinstance(key_columns, str):
         key_columns = (key_columns,)
     return TableSegment(database, table_path, key_columns, *args, **kw)
-
-
-def test_per_database(cls):
-    return _class_per_db_dec()(cls)
-
-
-def test_per_database__filter_name(filter_name):
-    def _test_per_database(cls):
-        return _class_per_db_dec(filter_name=filter_name)(cls)
-
-    return _test_per_database
-
-
-def _insert_row(conn, table, fields, values):
-    fields = ", ".join(map(str, fields))
-    values = ", ".join(map(str, values))
-    conn.query(f"INSERT INTO {table}({fields}) VALUES ({values})", None)
-
-
-def _insert_rows(conn, table, fields, tuple_list):
-    for t in tuple_list:
-        _insert_row(conn, table, fields, t)
-
-
-def _commit(conn):
-    if not isinstance(conn, db.BigQuery):
-        conn.query("COMMIT", None)
-
-
-def _get_text_type(conn):
-    if isinstance(conn, db.BigQuery):
-        return "STRING"
-    return "varchar(100)"
-
-
-def _get_float_type(conn):
-    if isinstance(conn, db.BigQuery):
-        return "FLOAT64"
-    elif isinstance(conn, db.Presto):
-        return "REAL"
-    return "float"
 
 
 class TestUtils(unittest.TestCase):
@@ -101,79 +35,32 @@ class TestUtils(unittest.TestCase):
                     assert len(r) == n, f"split_space({i}, {j+n}, {n}) = {(r)}"
 
 
-class TestPerDatabase(unittest.TestCase):
-    db_name = None
-    with_preql = False
-
-    preql = None
-
-    def setUp(self):
-        assert self.db_name, self.db_name
-        init_instances()
-
-        self.connection = DATABASE_INSTANCES[self.db_name]
-        if self.with_preql:
-            self.preql = preql.Preql(DATABASE_URIS[self.db_name])
-
-        table_suffix = random_table_suffix()
-        self.table_src_name = f"src{table_suffix}"
-        self.table_dst_name = f"dst{table_suffix}"
-
-        self.table_src_path = self.connection.parse_table_name(self.table_src_name)
-        self.table_dst_path = self.connection.parse_table_name(self.table_dst_name)
-
-        self.table_src = ".".join(map(self.connection.quote, self.table_src_path))
-        self.table_dst = ".".join(map(self.connection.quote, self.table_dst_path))
-
-        _drop_table_if_exists(self.connection, self.table_src)
-        _drop_table_if_exists(self.connection, self.table_dst)
-
-        return super().setUp()
-
-    def tearDown(self):
-        if self.preql:
-            self.preql._interp.state.db.rollback()
-            self.preql.close()
-
-        _drop_table_if_exists(self.connection, self.table_src)
-        _drop_table_if_exists(self.connection, self.table_dst)
-
-
-@test_per_database
+@test_each_database
 class TestDates(TestPerDatabase):
-    with_preql = True
-
     def setUp(self):
         super().setUp()
-        self.preql(
-            f"""
-            table {self.table_src_name} {{
-                datetime: timestamp
-                text_comment: string
-            }}
-            commit()
 
-            func add(date, text_comment) {{
-                new {self.table_src_name}(date, text_comment)
-            }}
-        """
+        src_table = table(self.table_src_path, schema={"id": int, "datetime": datetime, "text_comment": str})
+        self.connection.query(src_table.create())
+        self.now = now = arrow.get()
+
+        rows = [
+            (now.shift(days=-50), "50 days ago"),
+            (now.shift(hours=-3), "3 hours ago"),
+            (now.shift(minutes=-10), "10 mins ago"),
+            (now.shift(seconds=-1), "1 second ago"),
+            (now, "now"),
+        ]
+
+        self.connection.query(
+            [
+                src_table.insert_rows((i, ts.datetime, s) for i, (ts, s) in enumerate(rows)),
+                table(self.table_dst_path).create(src_table),
+                commit,
+                src_table.insert_row(len(rows), self.now.shift(seconds=-3).datetime, "3 seconds ago"),
+                commit,
+            ]
         )
-        self.now = now = arrow.get(self.preql.now())
-        self.preql.add(now.shift(days=-50), "50 days ago")
-        self.preql.add(now.shift(hours=-3), "3 hours ago")
-        self.preql.add(now.shift(minutes=-10), "10 mins ago")
-        self.preql.add(now.shift(seconds=-1), "1 second ago")
-        self.preql.add(now, "now")
-
-        self.preql(
-            f"""
-            const table {self.table_dst_name} = {self.table_src_name}
-            commit()
-        """
-        )
-
-        self.preql.add(self.now.shift(seconds=-3), "2 seconds ago")
-        self.preql.commit()
 
     def test_init(self):
         a = _table_segment(
@@ -195,14 +82,14 @@ class TestDates(TestPerDatabase):
 
     def test_offset(self):
         differ = HashDiffer(bisection_factor=2, bisection_threshold=10)
-        sec1 = self.now.shift(seconds=-1).datetime
+        sec1 = self.now.shift(seconds=-2).datetime
         a = _table_segment(
             self.connection, self.table_src_path, "id", "datetime", max_update=sec1, case_sensitive=False
         )
         b = _table_segment(
             self.connection, self.table_dst_path, "id", "datetime", max_update=sec1, case_sensitive=False
         )
-        assert a.count() == 4
+        assert a.count() == 4, a.count()
         assert b.count() == 3
 
         assert not list(differ.diff_tables(a, a))
@@ -244,24 +131,21 @@ class TestDates(TestPerDatabase):
         self.assertEqual(len(list(differ.diff_tables(a, b))), 1)
 
 
-@test_per_database
+@test_each_database
 class TestDiffTables(TestPerDatabase):
-    with_preql = True
-
     def setUp(self):
         super().setUp()
 
-        float_type = _get_float_type(self.connection)
+        self.src_table = table(
+            self.table_src_path,
+            schema={"id": int, "userid": int, "movieid": int, "rating": float, "timestamp": datetime},
+        )
+        self.dst_table = table(
+            self.table_dst_path,
+            schema={"id": int, "userid": int, "movieid": int, "rating": float, "timestamp": datetime},
+        )
 
-        self.connection.query(
-            f"create table {self.table_src}(id int, userid int, movieid int, rating {float_type}, timestamp timestamp)",
-            None,
-        )
-        self.connection.query(
-            f"create table {self.table_dst}(id int, userid int, movieid int, rating {float_type}, timestamp timestamp)",
-            None,
-        )
-        _commit(self.connection)
+        self.connection.query([self.src_table.create(), self.dst_table.create(), commit])
 
         self.table = _table_segment(self.connection, self.table_src_path, "id", "timestamp", case_sensitive=False)
         self.table2 = _table_segment(self.connection, self.table_dst_path, "id", "timestamp", case_sensitive=False)
@@ -275,12 +159,12 @@ class TestDiffTables(TestPerDatabase):
 
     def test_get_values(self):
         time = "2022-01-01 00:00:00.000000"
-        time_str = f"timestamp '{time}'"
+        time_obj = datetime.fromisoformat(time)
 
         cols = "id userid movieid rating timestamp".split()
-        _insert_row(self.connection, self.table_src, cols, [1, 1, 1, 9, time_str])
-        _commit(self.connection)
-        id_ = self.connection.query(f"select id from {self.table_src}", int)
+        id_ = self.connection.query(
+            [self.src_table.insert_row(1, 1, 1, 9, time_obj, columns=cols), commit, self.src_table.select(this.id)], int
+        )
 
         table = self.table.with_schema()
 
@@ -290,12 +174,17 @@ class TestDiffTables(TestPerDatabase):
 
     def test_diff_small_tables(self):
         time = "2022-01-01 00:00:00"
-        time_str = f"timestamp '{time}'"
+        time_obj = datetime.fromisoformat(time)
 
         cols = "id userid movieid rating timestamp".split()
-        _insert_rows(self.connection, self.table_src, cols, [[1, 1, 1, 9, time_str], [2, 2, 2, 9, time_str]])
-        _insert_rows(self.connection, self.table_dst, cols, [[1, 1, 1, 9, time_str]])
-        _commit(self.connection)
+        self.connection.query(
+            [
+                self.src_table.insert_rows([[1, 1, 1, 9, time_obj], [2, 2, 2, 9, time_obj]], columns=cols),
+                self.dst_table.insert_rows([[1, 1, 1, 9, time_obj]], columns=cols),
+                commit,
+            ]
+        )
+
         diff = list(self.differ.diff_tables(self.table, self.table2))
         expected = [("-", ("2", time + ".000000"))]
         self.assertEqual(expected, diff)
@@ -306,44 +195,49 @@ class TestDiffTables(TestPerDatabase):
         differ = HashDiffer(bisection_factor=3, bisection_threshold=4, threaded=False)
 
         time = "2022-01-01 00:00:00"
-        time_str = f"timestamp '{time}'"
+        time_obj = datetime.fromisoformat(time)
         cols = "id userid movieid rating timestamp".split()
-        _insert_row(self.connection, self.table_src, cols, [1, 1, 1, 9, time_str])
-        _insert_rows(self.connection, self.table_dst, cols, [[1, 1, 1, 9, time_str]])
-        _commit(self.connection)
+        self.connection.query(
+            [
+                self.src_table.insert_row(1, 1, 1, 9, time_obj, columns=cols),
+                self.dst_table.insert_row(1, 1, 1, 9, time_obj, columns=cols),
+                commit,
+            ]
+        )
+
         diff = list(differ.diff_tables(self.table, self.table2))
         self.assertEqual(diff, [])
 
     def test_diff_table_above_bisection_threshold(self):
         time = "2022-01-01 00:00:00"
-        time_str = f"timestamp '{time}'"
+        time_obj = datetime.fromisoformat(time)
 
         cols = "id userid movieid rating timestamp".split()
-        _insert_rows(
-            self.connection,
-            self.table_src,
-            cols,
-            [
-                [1, 1, 1, 9, time_str],
-                [2, 2, 2, 9, time_str],
-                [3, 3, 3, 9, time_str],
-                [4, 4, 4, 9, time_str],
-                [5, 5, 5, 9, time_str],
-            ],
-        )
 
-        _insert_rows(
-            self.connection,
-            self.table_dst,
-            cols,
+        self.connection.query(
             [
-                [1, 1, 1, 9, time_str],
-                [2, 2, 2, 9, time_str],
-                [3, 3, 3, 9, time_str],
-                [4, 4, 4, 9, time_str],
-            ],
+                self.src_table.insert_rows(
+                    [
+                        [1, 1, 1, 9, time_obj],
+                        [2, 2, 2, 9, time_obj],
+                        [3, 3, 3, 9, time_obj],
+                        [4, 4, 4, 9, time_obj],
+                        [5, 5, 5, 9, time_obj],
+                    ],
+                    columns=cols,
+                ),
+                self.dst_table.insert_rows(
+                    [
+                        [1, 1, 1, 9, time_obj],
+                        [2, 2, 2, 9, time_obj],
+                        [3, 3, 3, 9, time_obj],
+                        [4, 4, 4, 9, time_obj],
+                    ],
+                    columns=cols,
+                ),
+                commit,
+            ]
         )
-        _commit(self.connection)
 
         diff = list(self.differ.diff_tables(self.table, self.table2))
         expected = [("-", ("5", time + ".000000"))]
@@ -353,14 +247,18 @@ class TestDiffTables(TestPerDatabase):
 
     def test_return_empty_array_when_same(self):
         time = "2022-01-01 00:00:00"
-        time_str = f"timestamp '{time}'"
+        time_obj = datetime.fromisoformat(time)
 
         cols = "id userid movieid rating timestamp".split()
 
-        _insert_row(self.connection, self.table_src, cols, [1, 1, 1, 9, time_str])
-        _insert_row(self.connection, self.table_dst, cols, [1, 1, 1, 9, time_str])
+        self.connection.query(
+            [
+                self.src_table.insert_row(1, 1, 1, 9, time_obj, columns=cols),
+                self.dst_table.insert_row(1, 1, 1, 9, time_obj, columns=cols),
+                commit,
+            ]
+        )
 
-        self.preql.commit()
         diff = list(self.differ.diff_tables(self.table, self.table2))
         self.assertEqual([], diff)
 
@@ -368,37 +266,36 @@ class TestDiffTables(TestPerDatabase):
         time = "2022-01-01 00:00:00"
         time2 = "2021-01-01 00:00:00"
 
-        time_str = f"timestamp '{time}'"
-        time_str2 = f"timestamp '{time2}'"
+        time_obj = datetime.fromisoformat(time)
+        time_obj2 = datetime.fromisoformat(time2)
 
         cols = "id userid movieid rating timestamp".split()
 
-        _insert_rows(
-            self.connection,
-            self.table_src,
-            cols,
+        self.connection.query(
             [
-                [1, 1, 1, 9, time_str],
-                [2, 2, 2, 9, time_str2],
-                [3, 3, 3, 9, time_str],
-                [4, 4, 4, 9, time_str2],
-                [5, 5, 5, 9, time_str],
-            ],
+                self.src_table.insert_rows(
+                    [
+                        [1, 1, 1, 9, time_obj],
+                        [2, 2, 2, 9, time_obj2],
+                        [3, 3, 3, 9, time_obj],
+                        [4, 4, 4, 9, time_obj2],
+                        [5, 5, 5, 9, time_obj],
+                    ],
+                    columns=cols,
+                ),
+                self.dst_table.insert_rows(
+                    [
+                        [1, 1, 1, 9, time_obj],
+                        [2, 2, 2, 9, time_obj],
+                        [3, 3, 3, 9, time_obj],
+                        [4, 4, 4, 9, time_obj],
+                        [5, 5, 5, 9, time_obj],
+                    ],
+                    columns=cols,
+                ),
+                commit,
+            ]
         )
-
-        _insert_rows(
-            self.connection,
-            self.table_dst,
-            cols,
-            [
-                [1, 1, 1, 9, time_str],
-                [2, 2, 2, 9, time_str],
-                [3, 3, 3, 9, time_str],
-                [4, 4, 4, 9, time_str],
-                [5, 5, 5, 9, time_str],
-            ],
-        )
-        _commit(self.connection)
 
         differ = HashDiffer()
         diff = list(differ.diff_tables(self.table, self.table2))
@@ -411,50 +308,44 @@ class TestDiffTables(TestPerDatabase):
         self.assertEqual(expected, diff)
 
 
-@test_per_database
+@test_each_database
 class TestDiffTables2(TestPerDatabase):
     def test_diff_column_names(self):
-        float_type = _get_float_type(self.connection)
 
-        self.connection.query(
-            f"create table {self.table_src}(id int, rating {float_type}, timestamp timestamp)",
-            None,
-        )
-        self.connection.query(
-            f"create table {self.table_dst}(id2 int, rating2 {float_type}, timestamp2 timestamp)",
-            None,
-        )
-        _commit(self.connection)
+        self.src_table = table(self.table_src_path, schema={"id": int, "rating": float, "timestamp": datetime})
+        self.dst_table = table(self.table_dst_path, schema={"id2": int, "rating2": float, "timestamp2": datetime})
+
+        self.connection.query([self.src_table.create(), self.dst_table.create(), commit])
 
         time = "2022-01-01 00:00:00"
         time2 = "2021-01-01 00:00:00"
 
-        time_str = f"timestamp '{time}'"
-        time_str2 = f"timestamp '{time2}'"
-        _insert_rows(
-            self.connection,
-            self.table_src,
-            ["id", "rating", "timestamp"],
-            [
-                [1, 9, time_str],
-                [2, 9, time_str2],
-                [3, 9, time_str],
-                [4, 9, time_str2],
-                [5, 9, time_str],
-            ],
-        )
+        time_obj = datetime.fromisoformat(time)
+        time_obj2 = datetime.fromisoformat(time2)
 
-        _insert_rows(
-            self.connection,
-            self.table_dst,
-            ["id2", "rating2", "timestamp2"],
+        self.connection.query(
             [
-                [1, 9, time_str],
-                [2, 9, time_str2],
-                [3, 9, time_str],
-                [4, 9, time_str2],
-                [5, 9, time_str],
-            ],
+                self.src_table.insert_rows(
+                    [
+                        [1, 9, time_obj],
+                        [2, 9, time_obj2],
+                        [3, 9, time_obj],
+                        [4, 9, time_obj2],
+                        [5, 9, time_obj],
+                    ],
+                    columns=["id", "rating", "timestamp"],
+                ),
+                self.dst_table.insert_rows(
+                    [
+                        [1, 9, time_obj],
+                        [2, 9, time_obj2],
+                        [3, 9, time_obj],
+                        [4, 9, time_obj2],
+                        [5, 9, time_obj],
+                    ],
+                    columns=["id2", "rating2", "timestamp2"],
+                ),
+            ]
         )
 
         table1 = _table_segment(self.connection, self.table_src_path, "id", "timestamp", case_sensitive=False)
@@ -465,30 +356,24 @@ class TestDiffTables2(TestPerDatabase):
         assert diff == []
 
 
-@test_per_database
+@test_each_database
 class TestUUIDs(TestPerDatabase):
     def setUp(self):
         super().setUp()
 
-        text_type = _get_text_type(self.connection)
-
-        queries = [
-            f"CREATE TABLE {self.table_src}(id {text_type}, text_comment {text_type})",
-        ]
-        for i in range(100):
-            queries.append(f"INSERT INTO {self.table_src} VALUES ('{uuid.uuid1(i)}', '{i}')")
-
-        queries += [
-            f"CREATE TABLE {self.table_dst} AS SELECT * FROM {self.table_src}",
-        ]
+        self.src_table = src_table = table(self.table_src_path, schema={"id": str, "text_comment": str})
 
         self.new_uuid = uuid.uuid1(32132131)
-        queries.append(f"INSERT INTO {self.table_src} VALUES ('{self.new_uuid}', 'This one is different')")
 
-        for query in queries:
-            self.connection.query(query, None)
-
-        _commit(self.connection)
+        self.connection.query(
+            [
+                src_table.create(),
+                src_table.insert_rows((uuid.uuid1(i), str(i)) for i in range(100)),
+                table(self.table_dst_path).create(src_table),
+                src_table.insert_row(self.new_uuid, "This one is different"),
+                commit,
+            ]
+        )
 
         self.a = _table_segment(self.connection, self.table_src_path, "id", "text_comment", case_sensitive=False)
         self.b = _table_segment(self.connection, self.table_dst_path, "id", "text_comment", case_sensitive=False)
@@ -499,7 +384,7 @@ class TestUUIDs(TestPerDatabase):
         self.assertEqual(diff, [("-", (str(self.new_uuid), "This one is different"))])
 
         self.connection.query(
-            f"INSERT INTO {self.table_src} VALUES ('unexpected', '<-- this bad value should not break us')", None
+            self.src_table.insert_row('unexpected', '<-- this bad value should not break us')
         )
 
         self.assertRaises(ValueError, list, differ.diff_tables(self.a, self.b))
@@ -515,35 +400,33 @@ class TestUUIDs(TestPerDatabase):
         self.assertRaises(ValueError, list, differ.diff_tables(a_empty, self.b))
 
 
-@test_per_database__filter_name(lambda n: n != "MySQL")
+@test_each_database_in_list(TEST_DATABASES - {db.MySQL})
 class TestAlphanumericKeys(TestPerDatabase):
     def setUp(self):
         super().setUp()
 
-        text_type = _get_text_type(self.connection)
+        self.src_table = src_table = table(self.table_src_path, schema={"id": str, "text_comment": str})
+        self.new_alphanum = "aBcDeFgHiJ"
 
-        queries = [
-            f"CREATE TABLE {self.table_src}(id {text_type}, text_comment {text_type})",
-        ]
+        values = []
         for i in range(0, 10000, 1000):
             a = ArithAlphanumeric(numberToAlphanum(i), max_len=10)
             if not a and isinstance(self.connection, db.Oracle):
                 # Skip empty string, because Oracle treats it as NULL ..
                 continue
 
-            queries.append(f"INSERT INTO {self.table_src} VALUES ('{a}', '{i}')")
+            values.append((str(a), str(i)))
 
-        queries += [
-            f"CREATE TABLE {self.table_dst} AS SELECT * FROM {self.table_src}",
+        queries = [
+            src_table.create(),
+            src_table.insert_rows(values),
+            table(self.table_dst_path).create(src_table),
+            src_table.insert_row(self.new_alphanum, 'This one is different'),
+            commit,
         ]
-
-        self.new_alphanum = "aBcDeFgHiJ"
-        queries.append(f"INSERT INTO {self.table_src} VALUES ('{self.new_alphanum}', 'This one is different')")
 
         for query in queries:
             self.connection.query(query, None)
-
-        _commit(self.connection)
 
         self.a = _table_segment(self.connection, self.table_src_path, "id", "text_comment", case_sensitive=False)
         self.b = _table_segment(self.connection, self.table_dst_path, "id", "text_comment", case_sensitive=False)
@@ -554,10 +437,7 @@ class TestAlphanumericKeys(TestPerDatabase):
         diff = list(differ.diff_tables(self.a, self.b))
         self.assertEqual(diff, [("-", (str(self.new_alphanum), "This one is different"))])
 
-        self.connection.query(
-            f"INSERT INTO {self.table_src} VALUES ('@@@', '<-- this bad value should not break us')", None
-        )
-        _commit(self.connection)
+        self.connection.query([self.src_table.insert_row("@@@", "<-- this bad value should not break us"), commit])
 
         self.a = _table_segment(self.connection, self.table_src_path, "id", "text_comment", case_sensitive=False)
         self.b = _table_segment(self.connection, self.table_dst_path, "id", "text_comment", case_sensitive=False)
@@ -565,35 +445,33 @@ class TestAlphanumericKeys(TestPerDatabase):
         self.assertRaises(NotImplementedError, list, differ.diff_tables(self.a, self.b))
 
 
-@test_per_database__filter_name(lambda n: n != "MySQL")
+@test_each_database_in_list(TEST_DATABASES - {db.MySQL})
 class TestVaryingAlphanumericKeys(TestPerDatabase):
     def setUp(self):
         super().setUp()
 
-        text_type = _get_text_type(self.connection)
+        self.src_table = src_table = table(self.table_src_path, schema={"id": str, "text_comment": str})
 
-        queries = [
-            f"CREATE TABLE {self.table_src}(id {text_type}, text_comment {text_type})",
-        ]
+        values = []
         for i in range(0, 10000, 1000):
             a = ArithAlphanumeric(numberToAlphanum(i * i))
             if not a and isinstance(self.connection, db.Oracle):
                 # Skip empty string, because Oracle treats it as NULL ..
                 continue
 
-            queries.append(f"INSERT INTO {self.table_src} VALUES ('{a}', '{i}')")
-
-        queries += [
-            f"CREATE TABLE {self.table_dst} AS SELECT * FROM {self.table_src}",
-        ]
+            values.append((str(a), str(i)))
 
         self.new_alphanum = "aBcDeFgHiJ"
-        queries.append(f"INSERT INTO {self.table_src} VALUES ('{self.new_alphanum}', 'This one is different')")
 
-        for query in queries:
-            self.connection.query(query, None)
+        queries = [
+            src_table.create(),
+            src_table.insert_rows(values),
+            table(self.table_dst_path).create(src_table),
+            src_table.insert_row(self.new_alphanum, "This one is different"),
+            commit,
+        ]
 
-        _commit(self.connection)
+        self.connection.query(queries)
 
         self.a = _table_segment(self.connection, self.table_src_path, "id", "text_comment", case_sensitive=False)
         self.b = _table_segment(self.connection, self.table_dst_path, "id", "text_comment", case_sensitive=False)
@@ -613,9 +491,9 @@ class TestVaryingAlphanumericKeys(TestPerDatabase):
         self.assertEqual(diff, [("-", (str(self.new_alphanum), "This one is different"))])
 
         self.connection.query(
-            f"INSERT INTO {self.table_src} VALUES ('@@@', '<-- this bad value should not break us')", None
+            self.src_table.insert_row('@@@', '<-- this bad value should not break us'),
+            commit,
         )
-        _commit(self.connection)
 
         self.a = _table_segment(self.connection, self.table_src_path, "id", "text_comment", case_sensitive=False)
         self.b = _table_segment(self.connection, self.table_dst_path, "id", "text_comment", case_sensitive=False)
@@ -623,7 +501,7 @@ class TestVaryingAlphanumericKeys(TestPerDatabase):
         self.assertRaises(NotImplementedError, list, differ.diff_tables(self.a, self.b))
 
 
-@test_per_database
+@test_each_database
 class TestTableSegment(TestPerDatabase):
     def setUp(self) -> None:
         super().setUp()
@@ -631,23 +509,22 @@ class TestTableSegment(TestPerDatabase):
         self.table2 = _table_segment(self.connection, self.table_dst_path, "id", "timestamp", case_sensitive=False)
 
     def test_table_segment(self):
-        early = datetime.datetime(2021, 1, 1, 0, 0)
-        late = datetime.datetime(2022, 1, 1, 0, 0)
+        early = datetime(2021, 1, 1, 0, 0)
+        late = datetime(2022, 1, 1, 0, 0)
         self.assertRaises(ValueError, self.table.replace, min_update=late, max_update=early)
 
         self.assertRaises(ValueError, self.table.replace, min_key=10, max_key=0)
 
     def test_case_awareness(self):
-        # create table
-        self.connection.query(f"create table {self.table_src}(id int, userid int, timestamp timestamp)", None)
-        _commit(self.connection)
+        src_table = table(self.table_src_path, schema={"id": int, "userid": int, "timestamp": datetime})
 
-        # insert rows
         cols = "id userid timestamp".split()
         time = "2022-01-01 00:00:00.000000"
-        time_str = f"timestamp '{time}'"
-        _insert_rows(self.connection, self.table_src, cols, [[1, 9, time_str], [2, 2, time_str]])
-        _commit(self.connection)
+        time_obj = datetime.fromisoformat(time)
+
+        self.connection.query(
+            [src_table.create(), src_table.insert_rows([[1, 9, time_obj], [2, 2, time_obj]], columns=cols), commit]
+        )
 
         res = tuple(self.table.replace(key_columns=("Id",), case_sensitive=False).with_schema().query_key_range())
         assert res == ("1", "2")
@@ -657,30 +534,27 @@ class TestTableSegment(TestPerDatabase):
         )
 
 
-@test_per_database
+@test_each_database
 class TestTableUUID(TestPerDatabase):
     def setUp(self):
         super().setUp()
 
-        text_type = _get_text_type(self.connection)
+        src_table = table(self.table_src_path, schema={"id": str, "text_comment": str})
 
-        queries = [
-            f"CREATE TABLE {self.table_src}(id {text_type}, text_comment {text_type})",
-        ]
+        values = []
         for i in range(10):
             uuid_value = uuid.uuid1(i)
-            queries.append(f"INSERT INTO {self.table_src} VALUES ('{uuid_value}', '{uuid_value}')")
+            values.append((uuid_value, uuid_value))
 
         self.null_uuid = uuid.uuid1(32132131)
-        queries += [
-            f"CREATE TABLE {self.table_dst} AS SELECT * FROM {self.table_src}",
-            f"INSERT INTO {self.table_src} VALUES ('{self.null_uuid}', NULL)",
-        ]
 
-        for query in queries:
-            self.connection.query(query, None)
-
-        _commit(self.connection)
+        self.connection.query([
+            src_table.create(),
+            src_table.insert_rows(values),
+            table(self.table_dst_path).create(src_table),
+            src_table.insert_row(self.null_uuid, None),
+            commit,
+        ])
 
         self.a = _table_segment(self.connection, self.table_src_path, "id", "text_comment", case_sensitive=False)
         self.b = _table_segment(self.connection, self.table_dst_path, "id", "text_comment", case_sensitive=False)
@@ -691,26 +565,23 @@ class TestTableUUID(TestPerDatabase):
         self.assertEqual(diff, [("-", (str(self.null_uuid), None))])
 
 
-@test_per_database
+@test_each_database
 class TestTableNullRowChecksum(TestPerDatabase):
     def setUp(self):
         super().setUp()
 
-        text_type = _get_text_type(self.connection)
+        src_table = table(self.table_src_path, schema={"id": str, "text_comment": str})
 
         self.null_uuid = uuid.uuid1(1)
-        queries = [
-            f"CREATE TABLE {self.table_src}(id {text_type}, text_comment {text_type})",
-            f"INSERT INTO {self.table_src} VALUES ('{uuid.uuid1(1)}', '1')",
-            f"CREATE TABLE {self.table_dst} AS SELECT * FROM {self.table_src}",
-            # Add a row where a column has NULL value
-            f"INSERT INTO {self.table_src} VALUES ('{self.null_uuid}', NULL)",
-        ]
-
-        for query in queries:
-            self.connection.query(query, None)
-
-        _commit(self.connection)
+        self.connection.query(
+            [
+                src_table.create(),
+                src_table.insert_row(uuid.uuid1(1), '1'),
+                table(self.table_dst_path).create(src_table),
+                src_table.insert_row(self.null_uuid, None),       # Add a row where a column has NULL value
+                commit,
+            ]
+        )
 
         self.a = _table_segment(self.connection, self.table_src_path, "id", "text_comment", case_sensitive=False)
         self.b = _table_segment(self.connection, self.table_dst_path, "id", "text_comment", case_sensitive=False)
@@ -741,34 +612,38 @@ class TestTableNullRowChecksum(TestPerDatabase):
         self.assertEqual(diff, [("-", (str(self.null_uuid), None))])
 
 
-@test_per_database
+@test_each_database
 class TestConcatMultipleColumnWithNulls(TestPerDatabase):
     def setUp(self):
         super().setUp()
 
-        text_type = _get_text_type(self.connection)
+        src_table = table(self.table_src_path, schema={"id": str, "c1": str, "c2": str})
+        dst_table = table(self.table_dst_path, schema={"id": str, "c1": str, "c2": str})
 
-        queries = [
-            f"CREATE TABLE {self.table_src}(id {text_type}, c1 {text_type}, c2 {text_type})",
-            f"CREATE TABLE {self.table_dst}(id {text_type}, c1 {text_type}, c2 {text_type})",
-        ]
+        src_values = []
+        dst_values = []
 
         self.diffs = []
         for i in range(0, 8):
             pk = uuid.uuid1(i)
-            table_src_c1_val = str(i)
-            table_dst_c1_val = str(i) + "-different"
+            src_row = (str(pk), str(i), None)
+            dst_row = (str(pk), str(i) + "-different", None)
 
-            queries.append(f"INSERT INTO {self.table_src} VALUES ('{pk}', '{table_src_c1_val}', NULL)")
-            queries.append(f"INSERT INTO {self.table_dst} VALUES ('{pk}', '{table_dst_c1_val}', NULL)")
+            src_values.append(src_row)
+            dst_values.append(dst_row)
 
-            self.diffs.append(("-", (str(pk), table_src_c1_val, None)))
-            self.diffs.append(("+", (str(pk), table_dst_c1_val, None)))
+            self.diffs.append(("-", src_row))
+            self.diffs.append(("+", dst_row))
 
-        for query in queries:
-            self.connection.query(query, None)
-
-        _commit(self.connection)
+        self.connection.query(
+            [
+                src_table.create(),
+                dst_table.create(),
+                src_table.insert_rows(src_values),
+                dst_table.insert_rows(dst_values),
+                commit,
+            ]
+        )
 
         self.a = _table_segment(
             self.connection, self.table_src_path, "id", extra_columns=("c1", "c2"), case_sensitive=False
@@ -805,27 +680,19 @@ class TestConcatMultipleColumnWithNulls(TestPerDatabase):
         self.assertEqual(diff, self.diffs)
 
 
-@test_per_database
+@test_each_database
 class TestTableTableEmpty(TestPerDatabase):
     def setUp(self):
         super().setUp()
 
-        text_type = _get_text_type(self.connection)
+        self.src_table = src_table = table(self.table_src_path, schema={"id": str, "text_comment": str})
+        self.dst_table = dst_table = table(self.table_dst_path, schema={"id": str, "text_comment": str})
 
         self.null_uuid = uuid.uuid1(1)
-        queries = [
-            f"CREATE TABLE {self.table_src}(id {text_type}, text_comment {text_type})",
-            f"CREATE TABLE {self.table_dst}(id {text_type}, text_comment {text_type})",
-        ]
 
-        self.diffs = [(uuid.uuid1(i), i) for i in range(100)]
-        for pk, value in self.diffs:
-            queries.append(f"INSERT INTO {self.table_src} VALUES ('{pk}', '{value}')")
+        self.diffs = [(uuid.uuid1(i), str(i)) for i in range(100)]
 
-        for query in queries:
-            self.connection.query(query, None)
-
-        _commit(self.connection)
+        self.connection.query([src_table.create(), dst_table.create(), src_table.insert_rows(self.diffs), commit])
 
         self.a = _table_segment(self.connection, self.table_src_path, "id", "text_comment", case_sensitive=False)
         self.b = _table_segment(self.connection, self.table_dst_path, "id", "text_comment", case_sensitive=False)
@@ -835,14 +702,7 @@ class TestTableTableEmpty(TestPerDatabase):
         self.assertRaises(ValueError, list, differ.diff_tables(self.a, self.b))
 
     def test_left_table_empty(self):
-        queries = [
-            f"INSERT INTO {self.table_dst} SELECT id, text_comment FROM {self.table_src}",
-            f"TRUNCATE TABLE {self.table_src}",
-        ]
-        for query in queries:
-            self.connection.query(query, None)
-
-        _commit(self.connection)
+        self.connection.query([self.dst_table.insert_expr(self.src_table), self.src_table.truncate(), commit])
 
         differ = HashDiffer()
         self.assertRaises(ValueError, list, differ.diff_tables(self.a, self.b))

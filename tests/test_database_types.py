@@ -1,3 +1,4 @@
+from contextlib import suppress
 import unittest
 import time
 import json
@@ -14,6 +15,7 @@ from parameterized import parameterized
 
 from data_diff import databases as db
 from data_diff.databases import postgresql, oracle
+from data_diff.query_utils import drop_table
 from data_diff.utils import number_to_human, accumulate
 from data_diff.hashdiff_tables import HashDiffer, DEFAULT_BISECTION_THRESHOLD
 from data_diff.table_segment import TableSegment
@@ -23,8 +25,8 @@ from .common import (
     N_THREADS,
     BENCHMARK,
     GIT_REVISION,
+    get_conn,
     random_table_suffix,
-    _drop_table_if_exists,
 )
 
 CONNS = None
@@ -35,8 +37,8 @@ def init_conns():
     if CONNS is not None:
         return
 
-    CONNS = {k: db.connect.connect(v, N_THREADS) for k, v in CONN_STRINGS.items()}
-    CONNS[db.MySQL].query("SET @@session.time_zone='+00:00'", None)
+    CONNS = {cls: get_conn(cls) for cls in CONN_STRINGS}
+    CONNS[db.MySQL].query("SET @@session.time_zone='+00:00'")
     oracle.SESSION_TIME_ZONE = postgresql.SESSION_TIME_ZONE = "UTC"
 
 
@@ -464,6 +466,17 @@ def expand_params(testcase_func, param_num, param):
     return name
 
 
+def _drop_table_if_exists(conn, tbl):
+    if isinstance(conn, db.Oracle):
+        with suppress(db.QueryError):
+            conn.query(f"DROP TABLE {tbl}", None)
+            conn.query(f"DROP TABLE {tbl}", None)
+    else:
+        conn.query(f"DROP TABLE IF EXISTS {tbl}", None)
+        if not isinstance(conn, (db.BigQuery, db.Databricks, db.Clickhouse)):
+            conn.query("COMMIT", None)
+
+
 def _insert_to_table(conn, table, values, type):
     current_n_rows = conn.query(f"SELECT COUNT(*) FROM {table}", int)
     if current_n_rows == N_SAMPLES:
@@ -592,8 +605,8 @@ class TestDiffCrossDatabaseTables(unittest.TestCase):
 
     def tearDown(self) -> None:
         if not BENCHMARK:
-            _drop_table_if_exists(self.src_conn, self.src_table)
-            _drop_table_if_exists(self.dst_conn, self.dst_table)
+            drop_table(self.src_conn, self.src_table_path)
+            drop_table(self.dst_conn, self.dst_table_path)
 
         return super().tearDown()
 
@@ -617,14 +630,14 @@ class TestDiffCrossDatabaseTables(unittest.TestCase):
         src_table_name = f"src_{self._testMethodName[11:]}{table_suffix}"
         dst_table_name = f"dst_{self._testMethodName[11:]}{table_suffix}"
 
-        src_table_path = src_conn.parse_table_name(src_table_name)
-        dst_table_path = dst_conn.parse_table_name(dst_table_name)
+        self.src_table_path = src_table_path = src_conn.parse_table_name(src_table_name)
+        self.dst_table_path = dst_table_path = dst_conn.parse_table_name(dst_table_name)
         self.src_table = src_table = ".".join(map(src_conn.quote, src_table_path))
         self.dst_table = dst_table = ".".join(map(dst_conn.quote, dst_table_path))
 
         start = time.monotonic()
         if not BENCHMARK:
-            _drop_table_if_exists(src_conn, src_table)
+            drop_table(src_conn, src_table_path)
         _create_table_with_indexes(src_conn, src_table, source_type)
         _insert_to_table(src_conn, src_table, enumerate(sample_values, 1), source_type)
         insertion_source_duration = time.monotonic() - start
@@ -638,7 +651,7 @@ class TestDiffCrossDatabaseTables(unittest.TestCase):
 
         start = time.monotonic()
         if not BENCHMARK:
-            _drop_table_if_exists(dst_conn, dst_table)
+            drop_table(dst_conn, dst_table_path)
         _create_table_with_indexes(dst_conn, dst_table, target_type)
         _insert_to_table(dst_conn, dst_table, values_in_source, target_type)
         insertion_target_duration = time.monotonic() - start
