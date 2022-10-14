@@ -260,8 +260,7 @@ class AbstractDatabase(AbstractDialect, AbstractDatadiffDialect):
 
     @abstractmethod
     def query_table_unique_columns(self, path: DbPath) -> List[str]:
-        """Query the table for its unique columns for table in 'path', and return {column}
-        """
+        """Query the table for its unique columns for table in 'path', and return {column}"""
         ...
 
     @abstractmethod

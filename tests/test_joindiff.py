@@ -289,11 +289,8 @@ class TestPrimaryKeys(TestPerDatabase):
             schema={"id": int, "userid": int, "movieid": int, "rating": float},
         )
 
-        self.connection.query([
-            self.src_table.create(primary_keys=['id']),
-            self.dst_table.create(primary_keys=['id', 'userid']),
-            commit
-            ]
+        self.connection.query(
+            [self.src_table.create(primary_keys=["id"]), self.dst_table.create(primary_keys=["id", "userid"]), commit]
         )
 
         self.differ = JoinDiffer()
@@ -313,7 +310,7 @@ class TestPrimaryKeys(TestPerDatabase):
 
         res = list(self.differ.diff_tables(table, table2))
         assert not res
-        assert 'validated_unique_keys' not in self.differ.stats
+        assert "validated_unique_keys" not in self.differ.stats
 
         # Test active validation
         table = TableSegment(self.connection, self.table_src_path, ("userid",), case_sensitive=False)
@@ -321,4 +318,4 @@ class TestPrimaryKeys(TestPerDatabase):
 
         res = list(self.differ.diff_tables(table, table2))
         assert not res
-        self.assertEqual( self.differ.stats['validated_unique_keys'], [['userid']] )
+        self.assertEqual(self.differ.stats["validated_unique_keys"], [["userid"]])

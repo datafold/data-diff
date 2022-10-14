@@ -642,7 +642,11 @@ class CreateTable(Statement):
             return f"CREATE TABLE {ne}{c.compile(self.path)} AS {c.compile(self.source_table)}"
 
         schema = ", ".join(f"{c.database.quote(k)} {c.database.type_repr(v)}" for k, v in self.path.schema.items())
-        pks = ", PRIMARY KEY (%s)" % ', '.join(self.primary_keys) if self.primary_keys and c.database.SUPPORTS_PRIMARY_KEY else ""
+        pks = (
+            ", PRIMARY KEY (%s)" % ", ".join(self.primary_keys)
+            if self.primary_keys and c.database.SUPPORTS_PRIMARY_KEY
+            else ""
+        )
         return f"CREATE TABLE {ne}{c.compile(self.path)}({schema}{pks})"
 
 

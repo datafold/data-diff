@@ -236,7 +236,6 @@ class Database(AbstractDatabase):
         assert len(d) == len(rows)
         return d
 
-
     def select_table_unique_columns(self, path: DbPath) -> str:
         schema, table = self._normalize_table_path(path)
 

@@ -209,7 +209,7 @@ class JoinDiffer(TableDiffer):
             unvalidated = list(set(key_columns) - set(unique))
             if unvalidated:
                 # Validate that there are no duplicate keys
-                self.stats['validated_unique_keys'] = self.stats.get('validated_unique_keys', []) + [unvalidated]
+                self.stats["validated_unique_keys"] = self.stats.get("validated_unique_keys", []) + [unvalidated]
                 q = t.select(total=Count(), total_distinct=Count(Concat(this[unvalidated]), distinct=True))
                 total, total_distinct = ts.database.query(q, tuple)
                 if total != total_distinct:
