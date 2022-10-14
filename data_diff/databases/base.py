@@ -79,6 +79,7 @@ class ThreadLocalInterpreter:
         q: Expr = next(self.gen)
         while True:
             sql = self.compiler.compile(q)
+            logger.debug("Running SQL (%s-TL): %s", self.compiler.database.name, sql)
             try:
                 try:
                     res = callback(sql) if sql is not SKIP else SKIP
@@ -130,7 +131,8 @@ class Database(AbstractDatabase):
             if sql_code is SKIP:
                 return SKIP
 
-        logger.debug("Running SQL (%s): %s", type(self).__name__, sql_code)
+            logger.debug("Running SQL (%s): %s", self.name, sql_code)
+
         if self._interactive and isinstance(sql_ast, Select):
             explained_sql = compiler.compile(Explain(sql_ast))
             explain = self._query(explained_sql)
