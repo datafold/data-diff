@@ -120,7 +120,6 @@ def str_to_checksum(str: str):
     return int(md5[half_pos:], 16)
 
 
-
 class TestPerDatabase(unittest.TestCase):
     db_cls = None
 

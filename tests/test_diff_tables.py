@@ -15,7 +15,17 @@ from data_diff.utils import ArithAlphanumeric, numberToAlphanum
 from .common import str_to_checksum, test_each_database_in_list, TestPerDatabase
 
 
-TEST_DATABASES = {db.MySQL, db.PostgreSQL, db.Oracle, db.Redshift, db.Snowflake, db.BigQuery}
+TEST_DATABASES = {
+    db.MySQL,
+    db.PostgreSQL,
+    db.Oracle,
+    db.Redshift,
+    db.Snowflake,
+    db.BigQuery,
+    db.Presto,
+    db.Trino,
+    db.Vertica,
+}
 
 test_each_database: Callable = test_each_database_in_list(TEST_DATABASES)
 
@@ -383,9 +393,7 @@ class TestUUIDs(TestPerDatabase):
         diff = list(differ.diff_tables(self.a, self.b))
         self.assertEqual(diff, [("-", (str(self.new_uuid), "This one is different"))])
 
-        self.connection.query(
-            self.src_table.insert_row('unexpected', '<-- this bad value should not break us')
-        )
+        self.connection.query(self.src_table.insert_row("unexpected", "<-- this bad value should not break us"))
 
         self.assertRaises(ValueError, list, differ.diff_tables(self.a, self.b))
 
@@ -421,7 +429,7 @@ class TestAlphanumericKeys(TestPerDatabase):
             src_table.create(),
             src_table.insert_rows(values),
             table(self.table_dst_path).create(src_table),
-            src_table.insert_row(self.new_alphanum, 'This one is different'),
+            src_table.insert_row(self.new_alphanum, "This one is different"),
             commit,
         ]
 
@@ -491,7 +499,7 @@ class TestVaryingAlphanumericKeys(TestPerDatabase):
         self.assertEqual(diff, [("-", (str(self.new_alphanum), "This one is different"))])
 
         self.connection.query(
-            self.src_table.insert_row('@@@', '<-- this bad value should not break us'),
+            self.src_table.insert_row("@@@", "<-- this bad value should not break us"),
             commit,
         )
 
@@ -548,13 +556,15 @@ class TestTableUUID(TestPerDatabase):
 
         self.null_uuid = uuid.uuid1(32132131)
 
-        self.connection.query([
-            src_table.create(),
-            src_table.insert_rows(values),
-            table(self.table_dst_path).create(src_table),
-            src_table.insert_row(self.null_uuid, None),
-            commit,
-        ])
+        self.connection.query(
+            [
+                src_table.create(),
+                src_table.insert_rows(values),
+                table(self.table_dst_path).create(src_table),
+                src_table.insert_row(self.null_uuid, None),
+                commit,
+            ]
+        )
 
         self.a = _table_segment(self.connection, self.table_src_path, "id", "text_comment", case_sensitive=False)
         self.b = _table_segment(self.connection, self.table_dst_path, "id", "text_comment", case_sensitive=False)
@@ -576,9 +586,9 @@ class TestTableNullRowChecksum(TestPerDatabase):
         self.connection.query(
             [
                 src_table.create(),
-                src_table.insert_row(uuid.uuid1(1), '1'),
+                src_table.insert_row(uuid.uuid1(1), "1"),
                 table(self.table_dst_path).create(src_table),
-                src_table.insert_row(self.null_uuid, None),       # Add a row where a column has NULL value
+                src_table.insert_row(self.null_uuid, None),  # Add a row where a column has NULL value
                 commit,
             ]
         )
@@ -685,24 +695,28 @@ class TestTableTableEmpty(TestPerDatabase):
     def setUp(self):
         super().setUp()
 
-        self.src_table = src_table = table(self.table_src_path, schema={"id": str, "text_comment": str})
-        self.dst_table = dst_table = table(self.table_dst_path, schema={"id": str, "text_comment": str})
+        self.src_table = table(self.table_src_path, schema={"id": str, "text_comment": str})
+        self.dst_table = table(self.table_dst_path, schema={"id": str, "text_comment": str})
 
         self.null_uuid = uuid.uuid1(1)
 
         self.diffs = [(uuid.uuid1(i), str(i)) for i in range(100)]
 
-        self.connection.query([src_table.create(), dst_table.create(), src_table.insert_rows(self.diffs), commit])
-
         self.a = _table_segment(self.connection, self.table_src_path, "id", "text_comment", case_sensitive=False)
         self.b = _table_segment(self.connection, self.table_dst_path, "id", "text_comment", case_sensitive=False)
 
     def test_right_table_empty(self):
+        self.connection.query(
+            [self.src_table.create(), self.dst_table.create(), self.src_table.insert_rows(self.diffs), commit]
+        )
+
         differ = HashDiffer()
         self.assertRaises(ValueError, list, differ.diff_tables(self.a, self.b))
 
     def test_left_table_empty(self):
-        self.connection.query([self.dst_table.insert_expr(self.src_table), self.src_table.truncate(), commit])
+        self.connection.query(
+            [self.src_table.create(), self.dst_table.create(), self.dst_table.insert_rows(self.diffs), commit]
+        )
 
         differ = HashDiffer()
         self.assertRaises(ValueError, list, differ.diff_tables(self.a, self.b))

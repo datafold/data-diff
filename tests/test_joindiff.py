@@ -17,14 +17,14 @@ from .common import (
 
 TEST_DATABASES = {
     db.PostgreSQL,
-    db.Snowflake,
     db.MySQL,
+    db.Snowflake,
     db.BigQuery,
-    db.Presto,
-    db.Vertica,
-    db.Trino,
     db.Oracle,
     db.Redshift,
+    db.Presto,
+    db.Trino,
+    db.Vertica,
 }
 
 test_each_database = test_each_database_in_list(TEST_DATABASES)

@@ -8,6 +8,7 @@ from data_diff.databases.base import QueryError
 from .databases import Oracle
 from .queries import table, commit, Expr
 
+
 def _drop_table_oracle(name: DbPath):
     t = table(name)
     # Experience shows double drop is necessary
@@ -49,6 +50,7 @@ def _append_to_table(path: DbPath, expr: Expr):
     yield commit
     yield t.insert_expr(expr)
     yield commit
+
 
 def append_to_table(db, path, expr):
     f = _append_to_table_oracle if isinstance(db, Oracle) else _append_to_table

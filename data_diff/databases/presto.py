@@ -11,6 +11,7 @@ from .database_types import (
     Text,
     FractionalType,
     DbPath,
+    DbTime,
     Decimal,
     ColType,
     ColType_UUID,
@@ -159,3 +160,6 @@ class Presto(Database):
             return {float: "REAL"}[t]
         except KeyError:
             return super().type_repr(t)
+
+    def timestamp_value(self, t: DbTime) -> str:
+        return f"timestamp '{t.isoformat(' ')}'"
