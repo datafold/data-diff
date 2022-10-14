@@ -32,23 +32,11 @@ We're looking for developers with a deep understanding of databases and solid Py
 
 #### Then, install one or more driver(s) specific to the database(s) you want to connect to.
 
-- `pip install 'data-diff[mysql]'`
-
 - `pip install 'data-diff[postgresql]'`
 
 - `pip install 'data-diff[snowflake]'`
 
-- `pip install 'data-diff[presto]'`
-
-- `pip install 'data-diff[oracle]'`
-
-- `pip install 'data-diff[trino]'`
-
-- `pip install 'data-diff[clickhouse]'`
-
-- `pip install 'data-diff[vertica]'`
-
-- For BigQuery, see: https://pypi.org/project/google-cloud-bigquery/
+- TODO We support 10+ other databases. Check out [TODO link to documentation] for specifics.
 
 ### Run your first diff
 
