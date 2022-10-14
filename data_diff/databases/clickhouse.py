@@ -150,3 +150,7 @@ class Clickhouse(ThreadedDatabase):
             )
         """
         return value
+
+    @property
+    def is_autocommit(self) -> bool:
+        return True

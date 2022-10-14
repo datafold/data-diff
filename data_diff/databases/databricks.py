@@ -151,3 +151,7 @@ class Databricks(Database):
 
     def close(self):
         self._conn.close()
+
+    @property
+    def is_autocommit(self) -> bool:
+        return True
