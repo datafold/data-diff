@@ -103,12 +103,11 @@ def bool_to_int(x):
 def _outerjoin(db: Database, a: ITable, b: ITable, keys1: List[str], keys2: List[str], select_fields: dict) -> ITable:
     on = [a[k1] == b[k2] for k1, k2 in safezip(keys1, keys2)]
 
+    is_exclusive_a = and_(b[k] == None for k in keys2)
+    is_exclusive_b = and_(a[k] == None for k in keys1)
     if isinstance(db, Oracle):
-        is_exclusive_a = and_(bool_to_int(b[k] == None) for k in keys2)
-        is_exclusive_b = and_(bool_to_int(a[k] == None) for k in keys1)
-    else:
-        is_exclusive_a = and_(b[k] == None for k in keys2)
-        is_exclusive_b = and_(a[k] == None for k in keys1)
+        is_exclusive_a = bool_to_int(is_exclusive_a)
+        is_exclusive_b = bool_to_int(is_exclusive_b)
 
     if isinstance(db, MySQL):
         # No outer join
