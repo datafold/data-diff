@@ -20,7 +20,7 @@ We're looking for developers with a deep understanding of databases and solid Py
 ### Improve code reviews by identifying data probelems you don't have tests for (i'm not sure this text is quite right)
 (video is rough draft, screenshot should be replaced with something better)
 <p align="center">
-  <a href="https://www.loom.com/share/4ddda4625ae14abfae5d6f264412e50a">
+  <a href="https://www.loom.com/share/4ddda4625ae14abfae5d6f264412e50a" target="_blank">
     <img alt="Why Cypress Video" src="https://user-images.githubusercontent.com/1799931/196011700-5ad867bb-2236-42f4-8462-34169164ce35.png" width="50%" height="50%" />
   </a>
 </p>
