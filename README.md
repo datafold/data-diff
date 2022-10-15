@@ -14,10 +14,16 @@ We're looking for developers with a deep understanding of databases and solid Py
 
 ## How to use
 
+### Quickly identify issues when migrating data between databases
 <img width="1044" alt="Screen Shot 2022-10-14 at 3 15 31 PM" src="https://user-images.githubusercontent.com/1799931/195951813-85e55304-b857-40e1-bd3c-2a12d4ae87c5.png">
 
-[Example #1]
-[Example #2]
+### Improve code reviews by identifying data probelems you don't have tests for (i'm not sure this text is quite right)
+(video is rough draft, screenshot should be replaced with something better)
+<p align="center">
+  <a href="https://www.loom.com/share/4ddda4625ae14abfae5d6f264412e50a">
+    <img alt="Why Cypress Video" src="https://user-images.githubusercontent.com/1799931/196011700-5ad867bb-2236-42f4-8462-34169164ce35.png" width="50%" height="50%" />
+  </a>
+</p>
 
 &nbsp;
 &nbsp;
