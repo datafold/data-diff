@@ -14,6 +14,8 @@ We're looking for developers with a deep understanding of databases and solid Py
 
 ## How to use
 
+<img width="1044" alt="Screen Shot 2022-10-14 at 3 15 31 PM" src="https://user-images.githubusercontent.com/1799931/195951813-85e55304-b857-40e1-bd3c-2a12d4ae87c5.png">
+
 [Example #1]
 [Example #2]
 
