@@ -121,6 +121,7 @@ class JoinDiffer(TableDiffer):
     validate_unique_key: bool = True
     sample_exclusive_rows: bool = True
     materialize_to_table: DbPath = None
+    materialize_all_rows: bool = False
     write_limit: int = WRITE_LIMIT
     stats: dict = {}
 
@@ -165,7 +166,7 @@ class JoinDiffer(TableDiffer):
             )
 
         db = table1.database
-        diff_rows, a_cols, b_cols, is_diff_cols = self._create_outer_join(table1, table2)
+        diff_rows, a_cols, b_cols, is_diff_cols, all_rows = self._create_outer_join(table1, table2)
 
         with self._run_in_background(
             partial(self._collect_stats, 1, table1),
@@ -173,7 +174,12 @@ class JoinDiffer(TableDiffer):
             partial(self._test_null_keys, table1, table2),
             partial(self._sample_and_count_exclusive, db, diff_rows, a_cols, b_cols),
             partial(self._count_diff_per_column, db, diff_rows, list(a_cols), is_diff_cols),
-            partial(self._materialize_diff, db, diff_rows, segment_index=segment_index)
+            partial(
+                self._materialize_diff,
+                db,
+                all_rows if self.materialize_all_rows else diff_rows,
+                segment_index=segment_index,
+            )
             if self.materialize_to_table
             else None,
         ):
@@ -263,10 +269,9 @@ class JoinDiffer(TableDiffer):
         a_cols = {f"table1_{c}": NormalizeAsString(a[c]) for c in cols1}
         b_cols = {f"table2_{c}": NormalizeAsString(b[c]) for c in cols2}
 
-        diff_rows = _outerjoin(db, a, b, keys1, keys2, {**is_diff_cols, **a_cols, **b_cols}).where(
-            or_(this[c] == 1 for c in is_diff_cols)
-        )
-        return diff_rows, a_cols, b_cols, is_diff_cols
+        all_rows = _outerjoin(db, a, b, keys1, keys2, {**is_diff_cols, **a_cols, **b_cols})
+        diff_rows = all_rows.where(or_(this[c] == 1 for c in is_diff_cols))
+        return diff_rows, a_cols, b_cols, is_diff_cols, all_rows
 
     def _count_diff_per_column(self, db, diff_rows, cols, is_diff_cols):
         logger.info("Counting differences per column")
