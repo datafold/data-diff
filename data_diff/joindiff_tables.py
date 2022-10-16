@@ -29,7 +29,7 @@ from .queries.extras import NormalizeAsString
 
 logger = logging.getLogger("joindiff_tables")
 
-WRITE_LIMIT = 1000
+TABLE_WRITE_LIMIT = 1000
 
 
 def merge_dicts(dicts):
@@ -115,14 +115,14 @@ class JoinDiffer(TableDiffer):
                                     Future versions will detect UNIQUE constraints in the schema.
         sample_exclusive_rows (bool): Enable/disable sampling of exclusive rows. Creates a temporary table.
         materialize_to_table (DbPath, optional): Path of new table to write diff results to. Disabled if not provided.
-        write_limit (int): Maximum number of rows to write when materializing, per thread.
+        table_write_limit (int): Maximum number of rows to write when materializing, per thread.
     """
 
     validate_unique_key: bool = True
     sample_exclusive_rows: bool = True
     materialize_to_table: DbPath = None
     materialize_all_rows: bool = False
-    write_limit: int = WRITE_LIMIT
+    table_write_limit: int = TABLE_WRITE_LIMIT
     stats: dict = {}
 
     def _diff_tables(self, table1: TableSegment, table2: TableSegment) -> DiffResult:
@@ -298,7 +298,7 @@ class JoinDiffer(TableDiffer):
             c = Compiler(db)
             name = c.new_unique_table_name("temp_table")
             exclusive_rows = table(name, schema=expr.source_table.schema)
-            yield create_temp_table(c, exclusive_rows, expr.limit(self.write_limit))
+            yield create_temp_table(c, exclusive_rows, expr.limit(self.table_write_limit))
 
             count = yield exclusive_rows.count()
             self.stats["exclusive_count"] = self.stats.get("exclusive_count", 0) + count[0][0]
@@ -314,5 +314,5 @@ class JoinDiffer(TableDiffer):
     def _materialize_diff(self, db, diff_rows, segment_index=None):
         assert self.materialize_to_table
 
-        append_to_table(db, self.materialize_to_table, diff_rows.limit(self.write_limit))
+        append_to_table(db, self.materialize_to_table, diff_rows.limit(self.table_write_limit))
         logger.info("Materialized diff to table '%s'.", ".".join(self.materialize_to_table))
