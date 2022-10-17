@@ -12,7 +12,7 @@ import click
 from .utils import eval_name_template, remove_password_from_url, safezip, match_like
 from .diff_tables import Algorithm
 from .hashdiff_tables import HashDiffer, DEFAULT_BISECTION_THRESHOLD, DEFAULT_BISECTION_FACTOR
-from .joindiff_tables import JoinDiffer
+from .joindiff_tables import TABLE_WRITE_LIMIT, JoinDiffer
 from .table_segment import TableSegment
 from .databases.database_types import create_schema
 from .databases.connect import connect
@@ -144,7 +144,18 @@ click.Context.formatter_class = MyHelpFormatter
 @click.option(
     "--sample-exclusive-rows",
     is_flag=True,
-    help="Sample several rows that only appear in one of the tables, but not the other.",
+    help="Sample several rows that only appear in one of the tables, but not the other. (joindiff only)",
+)
+@click.option(
+    "--materialize-all-rows",
+    is_flag=True,
+    help="Materialize every row, even if they are the same, instead of just the differing rows. (joindiff only)",
+)
+@click.option(
+    "--table-write-limit",
+    default=TABLE_WRITE_LIMIT,
+    help=f"Maximum number of rows to write when creating materialized or sample tables, per thread. Default={TABLE_WRITE_LIMIT}",
+    metavar="COUNT",
 )
 @click.option(
     "-j",
@@ -214,6 +225,8 @@ def _main(
     where,
     assume_unique_key,
     sample_exclusive_rows,
+    materialize_all_rows,
+    table_write_limit,
     materialize,
     threads1=None,
     threads2=None,
@@ -303,6 +316,8 @@ def _main(
             max_threadpool_size=threads and threads * 2,
             validate_unique_key=not assume_unique_key,
             sample_exclusive_rows=sample_exclusive_rows,
+            materialize_all_rows=materialize_all_rows,
+            table_write_limit=table_write_limit,
             materialize_to_table=materialize and db1.parse_table_name(eval_name_template(materialize)),
         )
     else:

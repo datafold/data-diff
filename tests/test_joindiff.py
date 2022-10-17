@@ -133,9 +133,18 @@ class TestJoindiff(TestPerDatabase):
 
         t = TablePath(materialize_path)
         rows = self.connection.query(t.select(), List[tuple])
-        self.connection.query(t.drop())
         # is_xa, is_xb, is_diff1, is_diff2, row1, row2
         assert rows == [(1, 0, 1, 1) + expected_row + (None, None)], rows
+        self.connection.query(t.drop())
+
+        # Test materialize all rows
+        mdiffer = mdiffer.replace(materialize_all_rows=True)
+        diff = list(mdiffer.diff_tables(self.table, self.table2))
+        self.assertEqual(expected, diff)
+        rows = self.connection.query(t.select(), List[tuple])
+        assert len(rows) == 2, len(rows)
+        self.connection.query(t.drop())
+
 
     def test_diff_table_above_bisection_threshold(self):
         time = "2022-01-01 00:00:00"
