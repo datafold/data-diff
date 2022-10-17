@@ -18,8 +18,10 @@ We're looking for developers with a deep understanding of databases and solid Py
 
 <p align="center">
   <img alt="diff1" src="https://user-images.githubusercontent.com/1799931/196233051-ed216b2c-164a-4041-ab8d-5205e03d5be1.png" />
-  <img alt="diff2" src="https://user-images.githubusercontent.com/1799931/196233059-9522e1f1-ded2-49dd-9336-ef05654235cc.png" />
+  <img alt="diff2" src="https://user-images.githubusercontent.com/1799931/196264192-4e3e79ae-4906-44ae-98a9-e4e51544bb85.png" />
 </p>
+
+
 
 ### Improve code reviews by identifying data problems you don't have tests for
 (video is rough draft, screenshot will be replaced with something better)
