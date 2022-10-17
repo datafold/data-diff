@@ -15,7 +15,11 @@ We're looking for developers with a deep understanding of databases and solid Py
 ## How to use
 
 ### Quickly identify issues when migrating data between databases
-<img width="1044" alt="Screen Shot 2022-10-14 at 3 15 31 PM" src="https://user-images.githubusercontent.com/1799931/195951813-85e55304-b857-40e1-bd3c-2a12d4ae87c5.png">
+
+<p align="center">
+  <img alt="diff1" src="https://user-images.githubusercontent.com/1799931/196233051-ed216b2c-164a-4041-ab8d-5205e03d5be1.png" />
+  <img alt="diff2" src="https://user-images.githubusercontent.com/1799931/196233059-9522e1f1-ded2-49dd-9336-ef05654235cc.png" />
+</p>
 
 ### Improve code reviews by identifying data problems you don't have tests for
 (video is rough draft, screenshot will be replaced with something better)
