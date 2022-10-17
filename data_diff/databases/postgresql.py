@@ -47,6 +47,7 @@ class PostgreSQL(ThreadedDatabase):
     }
     ROUNDS_ON_PREC_LOSS = True
     SUPPORTS_PRIMARY_KEY = True
+    SUPPORTS_UNIQUE_CONSTAINT = True
 
     default_schema = "public"
 

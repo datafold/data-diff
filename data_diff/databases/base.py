@@ -111,6 +111,7 @@ class Database(AbstractDatabase):
     default_schema: str = None
     SUPPORTS_ALPHANUMS = True
     SUPPORTS_PRIMARY_KEY = False
+    SUPPORTS_UNIQUE_CONSTAINT = False
 
     _interactive = False
 
@@ -246,6 +247,8 @@ class Database(AbstractDatabase):
         )
 
     def query_table_unique_columns(self, path: DbPath) -> List[str]:
+        if not self.SUPPORTS_UNIQUE_CONSTAINT:
+            raise NotImplementedError("This database doesn't support 'unique' constraints")
         res = self.query(self.select_table_unique_columns(path), List[str])
         return list(res)
 
