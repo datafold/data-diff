@@ -11,6 +11,7 @@ from .database_types import (
     Text,
     FractionalType,
     DbPath,
+    DbTime,
     Decimal,
     ColType,
     ColType_UUID,
@@ -153,3 +154,12 @@ class Presto(Database):
 
     def explain_as_text(self, query: str) -> str:
         return f"EXPLAIN (FORMAT TEXT) {query}"
+
+    def type_repr(self, t) -> str:
+        try:
+            return {float: "REAL"}[t]
+        except KeyError:
+            return super().type_repr(t)
+
+    def timestamp_value(self, t: DbTime) -> str:
+        return f"timestamp '{t.isoformat(' ')}'"

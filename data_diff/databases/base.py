@@ -1,3 +1,4 @@
+from datetime import datetime
 import math
 import sys
 import logging
@@ -19,7 +20,6 @@ from .database_types import (
     Native_UUID,
     String_UUID,
     String_Alphanum,
-    String_FixedAlphanum,
     String_VaryingAlphanum,
     TemporalType,
     UnknownColType,
@@ -79,6 +79,7 @@ class ThreadLocalInterpreter:
         q: Expr = next(self.gen)
         while True:
             sql = self.compiler.compile(q)
+            logger.debug("Running SQL (%s-TL): %s", self.compiler.database.name, sql)
             try:
                 try:
                     res = callback(sql) if sql is not SKIP else SKIP
@@ -121,19 +122,24 @@ class Database(AbstractDatabase):
         compiler = Compiler(self)
         if isinstance(sql_ast, Generator):
             sql_code = ThreadLocalInterpreter(compiler, sql_ast)
+        elif isinstance(sql_ast, list):
+            for i in sql_ast[:-1]:
+                self.query(i)
+            return self.query(sql_ast[-1], res_type)
         else:
             sql_code = compiler.compile(sql_ast)
             if sql_code is SKIP:
                 return SKIP
 
-        logger.debug("Running SQL (%s): %s", type(self).__name__, sql_code)
+            logger.debug("Running SQL (%s): %s", self.name, sql_code)
+
         if self._interactive and isinstance(sql_ast, Select):
             explained_sql = compiler.compile(Explain(sql_ast))
             explain = self._query(explained_sql)
             for row in explain:
                 # Most returned a 1-tuple. Presto returns a string
                 if isinstance(row, tuple):
-                    row ,= row
+                    (row,) = row
                 logger.debug("EXPLAIN: %s", row)
             answer = input("Continue? [y/n] ")
             if not answer.lower() in ["y", "yes"]:
@@ -240,7 +246,7 @@ class Database(AbstractDatabase):
         # Return a dict of form {name: type} after normalization
         return col_dict
 
-    def _refine_coltypes(self, table_path: DbPath, col_dict: Dict[str, ColType], where: str = None):
+    def _refine_coltypes(self, table_path: DbPath, col_dict: Dict[str, ColType], where: str = None, sample_size=32):
         """Refine the types in the column dict, by querying the database for a sample of their values
 
         'where' restricts the rows to be sampled.
@@ -250,8 +256,8 @@ class Database(AbstractDatabase):
         if not text_columns:
             return
 
-        fields = [self.normalize_uuid(c, String_UUID()) for c in text_columns]
-        samples_by_row = self.query(table(*table_path).select(*fields).where(where or SKIP).limit(16), list)
+        fields = [self.normalize_uuid(self.quote(c), String_UUID()) for c in text_columns]
+        samples_by_row = self.query(table(*table_path).select(*fields).where(where or SKIP).limit(sample_size), list)
         if not samples_by_row:
             raise ValueError(f"Table {table_path} is empty.")
 
@@ -279,13 +285,7 @@ class Database(AbstractDatabase):
                         )
                     else:
                         assert col_name in col_dict
-                        lens = set(map(len, alphanum_samples))
-                        if len(lens) > 1:
-                            col_dict[col_name] = String_VaryingAlphanum()
-                        else:
-                            (length,) = lens
-                            col_dict[col_name] = String_FixedAlphanum(length=length)
-                            continue
+                        col_dict[col_name] = String_VaryingAlphanum()
 
     # @lru_cache()
     # def get_table_schema(self, path: DbPath) -> Dict[str, ColType]:
@@ -336,6 +336,7 @@ class Database(AbstractDatabase):
             str: "VARCHAR",
             bool: "BOOLEAN",
             float: "FLOAT",
+            datetime: "TIMESTAMP",
         }[t]
 
     def _query_cursor(self, c, sql_code: str):

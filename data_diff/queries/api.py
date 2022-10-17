@@ -1,4 +1,6 @@
 from typing import Optional
+
+from data_diff.utils import CaseAwareMapping, CaseSensitiveDict
 from .ast_classes import *
 from .base import args_as_tuple
 
@@ -30,11 +32,14 @@ def cte(expr: Expr, *, name: Optional[str] = None, params: Sequence[str] = None)
     return Cte(expr, name, params)
 
 
-def table(*path: str, schema: Schema = None) -> TablePath:
+def table(*path: str, schema: Union[dict, CaseAwareMapping] = None) -> TablePath:
     if len(path) == 1 and isinstance(path[0], tuple):
         (path,) = path
     if not all(isinstance(i, str) for i in path):
         raise TypeError(f"All elements of table path must be of type 'str'. Got: {path}")
+    if schema and not isinstance(schema, CaseAwareMapping):
+        assert isinstance(schema, dict)
+        schema = CaseSensitiveDict(schema)
     return TablePath(path, schema)
 
 

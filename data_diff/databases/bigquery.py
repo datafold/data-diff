@@ -109,8 +109,6 @@ class BigQuery(Database):
 
     def type_repr(self, t) -> str:
         try:
-            return {
-                str: "STRING",
-            }[t]
+            return {str: "STRING", float: "FLOAT64"}[t]
         except KeyError:
             return super().type_repr(t)

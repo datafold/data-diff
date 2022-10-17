@@ -1,12 +1,13 @@
 import unittest
 
-from data_diff import TableSegment, HashDiffer, connect
-from .common import TEST_POSTGRESQL_CONN_STRING, TEST_MYSQL_CONN_STRING, random_table_suffix
+from data_diff import TableSegment, HashDiffer
+from data_diff import databases as db
+from .common import get_conn, random_table_suffix
 
 
 class TestUUID(unittest.TestCase):
     def setUp(self) -> None:
-        self.connection = connect(TEST_POSTGRESQL_CONN_STRING)
+        self.connection = get_conn(db.PostgreSQL)
 
         table_suffix = random_table_suffix()
 
@@ -46,7 +47,7 @@ class TestUUID(unittest.TestCase):
         self.assertEqual(diff, [("-", (uuid, "This one is different"))])
 
         # Compare with MySql
-        mysql_conn = connect(TEST_MYSQL_CONN_STRING)
+        mysql_conn = get_conn(db.MySQL)
 
         rows = self.connection.query(f"SELECT * FROM {self.table_src}", list)
 
