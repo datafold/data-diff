@@ -1,4 +1,6 @@
-![datafold](https://user-images.githubusercontent.com/1799931/196497110-d3de1113-a97f-4322-b531-026d859b867a.png)
+<p align="center">
+    <img alt="Datafold" src="https://user-images.githubusercontent.com/1799931/196497110-d3de1113-a97f-4322-b531-026d859b867a.png" width="50%" />
+</p>
 
 # **data-diff**
 
@@ -26,7 +28,7 @@ Check out [our detailed documentation](https://www.datafold.com/docs) for instru
 (video is rough draft, screenshot will be replaced with something better)
 <p align="center">
   <a href="https://www.loom.com/share/4ddda4625ae14abfae5d6f264412e50a" target="_blank">
-    <img alt="Why Cypress Video" src="https://user-images.githubusercontent.com/1799931/196011700-5ad867bb-2236-42f4-8462-34169164ce35.png" width="50%" height="50%" />
+    <img alt="Intro to Diff" src="https://user-images.githubusercontent.com/1799931/196011700-5ad867bb-2236-42f4-8462-34169164ce35.png" width="50%" height="50%" />
   </a>
 </p>
 
