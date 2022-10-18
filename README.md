@@ -4,7 +4,7 @@
 
 - 🐍 Python developers and open source contributors, please skip straight to [this section](#details-for-python-developers-and-open-source-contributors). 
   - By the way, if you've got a deep understanding of databases and solid Python knowledge, [we're hiring](https://www.datafold.com/careers)! 
-- 📈 Data practitioners, please read on, and check out [our detailed documentation](https://www.datafold.com/docs) for more.
+- 📈 Data practitioners, please read on, and check out [our detailed documentation](https://www.datafold.com/docs/diff_core) for more.
 
 # **data-diff**
 
@@ -51,7 +51,7 @@ pip install data-diff
 
 - `pip install 'data-diff[snowflake]'`
 
-- TODO We support 10+ other databases. Check out [our detailed documentation](https://www.datafold.com/docs) for specifics.
+- We support 10+ other databases. Check out [our detailed documentation](https://www.datafold.com/docs/diff_core/how_to_use) for specifics.
 
 ### Run your first diff
 
