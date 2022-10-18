@@ -1,16 +1,15 @@
-<img width="207" alt="datafold" src="https://user-images.githubusercontent.com/1799931/195919667-b2b037a1-34d5-4bf3-a32f-0ac357b5a7da.png">
+![datafold](https://user-images.githubusercontent.com/1799931/196497110-d3de1113-a97f-4322-b531-026d859b867a.png)
 
 # **data-diff**
 
-[TODO Link to documentation!]
-
-#### 💸💸 **We're hiring!** 💸💸
-We're looking for developers with a deep understanding of databases and solid Python knowledge. [**Apply here!**](https://www.datafold.com/careers)
-
-----
-
 ## What is `data-diff`?
 data-diff is a **free, open-source tool** that enables data professionals to detect differences in values between any two tables. It's fast, easy to use, and reliable. Even at massive scale.
+
+#### 💸 Join our team 
+We're looking for developers with a deep understanding of databases and solid Python knowledge. [**Apply here!**](https://www.datafold.com/careers)
+
+#### 📖 Documentation
+Check out [our detailed documentation](https://www.datafold.com/docs) for instructions on how to use, common use cases, features, and technical details.
 
 ## How to use
 
@@ -66,6 +65,7 @@ Check out the [Documentation TODO add link](#) for all the options and database-
 
 - [Open an issue](https://github.com/datafold/data-diff/issues/new/choose) or chat with us [on slack](https://locallyoptimistic.slack.com/archives/C03HUNGQV0S).
 - Interested in contributing to this open source project? Please see our [Contributing Guideline](https://github.com/datafold/data-diff/blob/master/CONTRIBUTING.md)!
+- Did we mention [we're hiring](https://www.datafold.com/careers)?
 
 ## License
 
