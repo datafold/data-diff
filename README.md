@@ -13,10 +13,8 @@ data-diff is a **free, open-source tool** that enables data professionals to det
 
 <p align="center">
   <img alt="diff1" src="https://user-images.githubusercontent.com/1799931/196479137-2b4744ea-464f-489e-8d01-6e8e54d62fba.png" />
-  <img alt="diff2" src="https://user-images.githubusercontent.com/1799931/196264192-4e3e79ae-4906-44ae-98a9-e4e51544bb85.png" width="50%" />
+  <img alt="diff2" src="https://user-images.githubusercontent.com/1799931/196565574-2a7f0efa-4820-4b1b-b010-62ed35fb105a.png" width="30%" />
 </p>
-
-
 
 ### Within a Database: Improve code reviews by identifying data problems you don't have tests for
 (video is rough draft, screenshot will be replaced)
