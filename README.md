@@ -76,12 +76,12 @@ data-diff \
   -w "event_timestamp < '2022-10-10'"
 ```
 
-That's just an example, but sure to check out the documentation for more details about [the options](https://www.datafold.com/docs/diff_core/how_to_use) you can a command that's useful to you.
+That's just an example, but sure to check out the documentation for more details about [the options](https://www.datafold.com/docs/diff_core/how_to_use) you can use to create a command that's useful to you.
 
 
 ### We're here to help
 
-We know, that's a lot of text! And maybe you're new to the command line. We're here to help [on slack](https://locallyoptimistic.slack.com/archives/C03HUNGQV0S) if you have ANY questions as you use `data-diff` in your workflow.
+We know, that `data-diff DB1_URI TABLE1_NAME DB2_URI TABLE2_NAME [OPTIONS]` command can become long! And maybe you're new to the command line. We're here to help [on slack](https://locallyoptimistic.slack.com/archives/C03HUNGQV0S) if you have ANY questions as you use `data-diff` in your workflow.
 
 ## Reporting bugs and contributing
 
