@@ -59,6 +59,8 @@ Once you've installed `data-diff`, you can run it from the command line:
 
 `data-diff DB1_URI TABLE1_NAME DB2_URI TABLE2_NAME [OPTIONS]`
 
+[TODO here's one example of code that you can copy and paste, just like from the screenshot]
+
 Check out the [Documentation TODO add link](#) for all the options and database-specific configurations.
 
 ## Reporting bugs and contributing
