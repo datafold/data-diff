@@ -17,7 +17,7 @@ We're looking for developers with a deep understanding of databases and solid Py
 ### Quickly identify issues when migrating data between databases
 
 <p align="center">
-  <img alt="diff1" src="https://user-images.githubusercontent.com/1799931/196233051-ed216b2c-164a-4041-ab8d-5205e03d5be1.png" />
+  <img alt="diff1" src="https://user-images.githubusercontent.com/1799931/196479137-2b4744ea-464f-489e-8d01-6e8e54d62fba.png" />
   <img alt="diff2" src="https://user-images.githubusercontent.com/1799931/196264192-4e3e79ae-4906-44ae-98a9-e4e51544bb85.png" />
 </p>
 
