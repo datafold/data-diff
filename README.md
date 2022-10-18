@@ -76,7 +76,12 @@ data-diff \
   -w "event_timestamp < '2022-10-10'"
 ```
 
-The command line can be scary, but we're here to help [on slack](https://locallyoptimistic.slack.com/archives/C03HUNGQV0S) if you have any questions as you use `data-diff` in your workflow.
+That's just an example, but sure to check out the documentation for more details about [the options](https://www.datafold.com/docs/diff_core/how_to_use) you can a command that's useful to you.
+
+
+### We're here to help
+
+We know, that's a lot of text! And maybe you're new to the command line. We're here to help [on slack](https://locallyoptimistic.slack.com/archives/C03HUNGQV0S) if you have ANY questions as you use `data-diff` in your workflow.
 
 ## Reporting bugs and contributing
 
