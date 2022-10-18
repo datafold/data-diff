@@ -9,16 +9,16 @@ data-diff is a **free, open-source tool** that enables data professionals to det
 
 ## Use cases
 
-### Quickly identify issues when migrating data between databases
+### Between Databases: Quickly identify issues when moving data between databases
 
 <p align="center">
   <img alt="diff1" src="https://user-images.githubusercontent.com/1799931/196479137-2b4744ea-464f-489e-8d01-6e8e54d62fba.png" />
-  <img alt="diff2" src="https://user-images.githubusercontent.com/1799931/196264192-4e3e79ae-4906-44ae-98a9-e4e51544bb85.png" />
+  <img alt="diff2" src="https://user-images.githubusercontent.com/1799931/196264192-4e3e79ae-4906-44ae-98a9-e4e51544bb85.png" width="50%" />
 </p>
 
 
 
-### Improve code reviews by identifying data problems you don't have tests for
+### Within a Database: Improve code reviews by identifying data problems you don't have tests for
 (video is rough draft, screenshot will be replaced)
 <p align="center">
   <a href="https://www.loom.com/share/4ddda4625ae14abfae5d6f264412e50a" target="_blank">
