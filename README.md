@@ -2,9 +2,10 @@
 
 # **data-diff**
 
-[Link to documentation!]
+[TODO Link to documentation!]
 
 #### 💸💸 **Looking for paid contributors!** 💸💸
+[TODO a) update to say "we are hiring!" b) link to datafold.com/hiring]
 We're looking for developers with a deep understanding of databases and solid Python knowledge. [**Apply here!**]
 
 ----
