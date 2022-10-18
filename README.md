@@ -16,6 +16,8 @@ data-diff is a **free, open-source tool** that enables data professionals to det
   <img alt="diff2" src="https://user-images.githubusercontent.com/1799931/196565574-2a7f0efa-4820-4b1b-b010-62ed35fb105a.png" width="30%" />
 </p>
 
+
+
 ### Within a Database: Improve code reviews by identifying data problems you don't have tests for
 (video is rough draft, screenshot will be replaced)
 <p align="center">
@@ -45,7 +47,7 @@ pip install data-diff
 
 - `pip install 'data-diff[snowflake]'`
 
-- We support 10+ other databases. Check out [our detailed documentation](https://www.datafold.com/docs/diff_core/how_to_use) for specifics.
+- We support 10+ other databases. Check out [our detailed documentation](https://www.datafold.com/docs/os_diff/how_to_use) for specifics.
 
 ### Run your first diff
 
@@ -55,7 +57,7 @@ Once you've installed `data-diff`, you can run it from the command line:
 data-diff DB1_URI TABLE1_NAME DB2_URI TABLE2_NAME [OPTIONS]
 ```
 
-You can find all the correct syntax for your database setup in [our documentation](https://www.datafold.com/docs/diff_core/how_to_use).
+You can find all the correct syntax for your database setup in [our documentation](https://www.datafold.com/docs/os_diff/how_to_use).
 
 Here's an example command for your copy/pasting, taken from the screenshot above:
 
@@ -70,7 +72,7 @@ data-diff \
   -w "event_timestamp < '2022-10-10'"
 ```
 
-That's just an example, but sure to check out the documentation for more details about [the options](https://www.datafold.com/docs/diff_core/how_to_use) you can use to create a command that's useful to you.
+That's just an example, but sure to check out the documentation for more details about [the options](https://www.datafold.com/docs/os_diff/how_to_use) you can use to create a command that's useful to you.
 
 
 ### We're here to help
