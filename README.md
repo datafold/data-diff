@@ -26,6 +26,9 @@ data-diff is a **free, open-source tool** that enables data professionals to det
   </a>
 </p>
 
+
+<iframe width="640" height="414" src="https://www.loom.com/embed/682e4b7d74e84eb4824b983311f0a3b2" frameborder="0" webkitallowfullscreen mozallowfullscreen allowfullscreen></iframe>
+
 &nbsp;
 &nbsp;
 
