@@ -18,7 +18,7 @@ _Are you a developer with a deep understanding of databases and solid Python kno
   <img alt="diff2" src="https://user-images.githubusercontent.com/1799931/196754998-a88c0a52-8751-443d-b052-26c03d99d9e5.png" />
 </p>
 
-### Within a Database
+### Within a Database (available in beta)
 #### Improve code reviews by identifying data problems you don't have tests for
 <p align="center">
   <a href=https://www.loom.com/share/682e4b7d74e84eb4824b983311f0a3b2 target="_blank">
@@ -37,6 +37,12 @@ _Are you a developer with a deep understanding of databases and solid Python kno
 
 ```
 pip install data-diff
+```
+
+To try out bleeding-edge features including materialization of results in your data warehouse:
+
+```
+pip install data-diff@beta [TODO correct this with exact command]
 ```
 
 #### Then, install one or more driver(s) specific to the database(s) you want to connect to.
@@ -85,9 +91,9 @@ data-diff \
   -w "event_timestamp < '2022-10-10'"
 ```
 
-#### Code Example: Diff Within a Database
+#### Code Example: Diff Within a Database (available in beta)
 
-And here's a code example from [the video](https://www.loom.com/share/682e4b7d74e84eb4824b983311f0a3b2), where we compare data between two Snowflake tables within one database.
+Here's a code example from [the video](https://www.loom.com/share/682e4b7d74e84eb4824b983311f0a3b2), where we compare data between two Snowflake tables within one database.
 
 ```
 data-diff \
