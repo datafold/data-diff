@@ -29,7 +29,7 @@ from .queries.extras import NormalizeAsString
 
 logger = logging.getLogger("joindiff_tables")
 
-WRITE_LIMIT = 1000
+TABLE_WRITE_LIMIT = 1000
 
 
 def merge_dicts(dicts):
@@ -115,13 +115,14 @@ class JoinDiffer(TableDiffer):
                                     Future versions will detect UNIQUE constraints in the schema.
         sample_exclusive_rows (bool): Enable/disable sampling of exclusive rows. Creates a temporary table.
         materialize_to_table (DbPath, optional): Path of new table to write diff results to. Disabled if not provided.
-        write_limit (int): Maximum number of rows to write when materializing, per thread.
+        table_write_limit (int): Maximum number of rows to write when materializing, per thread.
     """
 
     validate_unique_key: bool = True
     sample_exclusive_rows: bool = True
     materialize_to_table: DbPath = None
-    write_limit: int = WRITE_LIMIT
+    materialize_all_rows: bool = False
+    table_write_limit: int = TABLE_WRITE_LIMIT
     stats: dict = {}
 
     def _diff_tables(self, table1: TableSegment, table2: TableSegment) -> DiffResult:
@@ -165,7 +166,7 @@ class JoinDiffer(TableDiffer):
             )
 
         db = table1.database
-        diff_rows, a_cols, b_cols, is_diff_cols = self._create_outer_join(table1, table2)
+        diff_rows, a_cols, b_cols, is_diff_cols, all_rows = self._create_outer_join(table1, table2)
 
         with self._run_in_background(
             partial(self._collect_stats, 1, table1),
@@ -173,7 +174,12 @@ class JoinDiffer(TableDiffer):
             partial(self._test_null_keys, table1, table2),
             partial(self._sample_and_count_exclusive, db, diff_rows, a_cols, b_cols),
             partial(self._count_diff_per_column, db, diff_rows, list(a_cols), is_diff_cols),
-            partial(self._materialize_diff, db, diff_rows, segment_index=segment_index)
+            partial(
+                self._materialize_diff,
+                db,
+                all_rows if self.materialize_all_rows else diff_rows,
+                segment_index=segment_index,
+            )
             if self.materialize_to_table
             else None,
         ):
@@ -263,10 +269,9 @@ class JoinDiffer(TableDiffer):
         a_cols = {f"table1_{c}": NormalizeAsString(a[c]) for c in cols1}
         b_cols = {f"table2_{c}": NormalizeAsString(b[c]) for c in cols2}
 
-        diff_rows = _outerjoin(db, a, b, keys1, keys2, {**is_diff_cols, **a_cols, **b_cols}).where(
-            or_(this[c] == 1 for c in is_diff_cols)
-        )
-        return diff_rows, a_cols, b_cols, is_diff_cols
+        all_rows = _outerjoin(db, a, b, keys1, keys2, {**is_diff_cols, **a_cols, **b_cols})
+        diff_rows = all_rows.where(or_(this[c] == 1 for c in is_diff_cols))
+        return diff_rows, a_cols, b_cols, is_diff_cols, all_rows
 
     def _count_diff_per_column(self, db, diff_rows, cols, is_diff_cols):
         logger.info("Counting differences per column")
@@ -293,7 +298,7 @@ class JoinDiffer(TableDiffer):
             c = Compiler(db)
             name = c.new_unique_table_name("temp_table")
             exclusive_rows = table(name, schema=expr.source_table.schema)
-            yield create_temp_table(c, exclusive_rows, expr.limit(self.write_limit))
+            yield create_temp_table(c, exclusive_rows, expr.limit(self.table_write_limit))
 
             count = yield exclusive_rows.count()
             self.stats["exclusive_count"] = self.stats.get("exclusive_count", 0) + count[0][0]
@@ -309,5 +314,5 @@ class JoinDiffer(TableDiffer):
     def _materialize_diff(self, db, diff_rows, segment_index=None):
         assert self.materialize_to_table
 
-        append_to_table(db, self.materialize_to_table, diff_rows.limit(self.write_limit))
+        append_to_table(db, self.materialize_to_table, diff_rows.limit(self.table_write_limit))
         logger.info("Materialized diff to table '%s'.", ".".join(self.materialize_to_table))
