@@ -7,7 +7,7 @@
 ## What is `data-diff`?
 data-diff is a **free, open-source tool** that enables data professionals to detect differences in values between any two tables. It's fast, easy to use, and reliable. Even at massive scale.
 
-[We're hiring!](https://www.datafold.com/careers)
+_Are you a developer with a deep understanding of databases and solid Python knowledge? [We're hiring!](https://www.datafold.com/careers)_
 
 ## Use cases
 
@@ -15,10 +15,8 @@ data-diff is a **free, open-source tool** that enables data professionals to det
 #### Quickly identify issues when moving data between databases
 
 <p align="center">
-  <img alt="diff1" src="https://user-images.githubusercontent.com/1799931/196479137-2b4744ea-464f-489e-8d01-6e8e54d62fba.png" />
-  <img alt="diff2" src="https://user-images.githubusercontent.com/1799931/196565574-2a7f0efa-4820-4b1b-b010-62ed35fb105a.png" width="30%" />
+  <img alt="diff2" src="https://user-images.githubusercontent.com/1799931/196754998-a88c0a52-8751-443d-b052-26c03d99d9e5.png" />
 </p>
-
 
 ### Within a Database
 #### Improve code reviews by identifying data problems you don't have tests for
@@ -112,8 +110,13 @@ We know, that `data-diff DB1_URI TABLE1_NAME DB2_URI TABLE2_NAME [OPTIONS]` comm
 We're here to help [on slack](https://locallyoptimistic.slack.com/archives/C03HUNGQV0S) if you have ANY questions as you use `data-diff` in your workflow.
 
 ## How to Use
+This section gets into more details, including:
+- [database-specific syntax](#how-to-use-from-the-command-line)
+- [the many options (flags) you can use beyond the examples presented above](#options)
+- [how to run `data-diff` using a TOML configuration file](#how-to-use-with-a-configuration-file)
+- [how to run`data-diff` from Python](#how-to-use-from-python)
 
-### How to use from the command-line
+### How to use from the command line
 
 To run `data-diff` from the command line, run this command:
 
