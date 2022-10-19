@@ -322,7 +322,7 @@ data-diff splits the table into smaller segments, then checksums each segment in
 
 This approach has performance within an order of magnitude of count(*) when there are few/no changes, but is able to output each differing row! By pushing the compute into the databases, it's much faster than querying for and comparing every row.
 
-
+![Performance for 100M rows](https://user-images.githubusercontent.com/97400/175182987-a3900d4e-c097-4732-a4e9-19a40fac8cdc.png)
 
 **†:** The implementation for downloading all rows that `data-diff` and
 `count(*)` is compared to is not optimal. It is a single Python multi-threaded
