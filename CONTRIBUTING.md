@@ -4,7 +4,7 @@ Contributions are very welcome! We'll be happy to help you in the process.
 
 ## What should I know before I get started?
 
-Go through the [documentation](https://www.datafold.com/docs/os_diff/) and make sure that you understand how `data-diff` works.
+Go through the README and make sure that you understand how `data-diff` works.
 
 ## How to contribute?
 
