@@ -411,7 +411,7 @@ def _main(
                 jsonl = json.dumps([op, list(values)])
                 rich.print(f"[{color}]{jsonl}[/{color}]")
             else:
-                text = f"{op} {', '.join(values)}"
+                text = f"{op} {', '.join(map(str, values))}"
                 rich.print(f"[{color}]{text}[/{color}]")
 
             sys.stdout.flush()

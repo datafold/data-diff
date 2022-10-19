@@ -145,7 +145,6 @@ class TestJoindiff(TestPerDatabase):
         assert len(rows) == 2, len(rows)
         self.connection.query(t.drop())
 
-
     def test_diff_table_above_bisection_threshold(self):
         time = "2022-01-01 00:00:00"
         time_obj = datetime.fromisoformat(time)
