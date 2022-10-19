@@ -1,7 +1,6 @@
 from dataclasses import field
 from datetime import datetime
 from typing import Any, Generator, List, Optional, Sequence, Tuple, Union
-from uuid import UUID
 
 from runtype import dataclass
 
@@ -611,20 +610,8 @@ class ConstantTable(ExprNode):
     def compile(self, c: Compiler) -> str:
         raise NotImplementedError()
 
-    def _value(self, v):
-        if v is None:
-            return "NULL"
-        elif isinstance(v, str):
-            return f"'{v}'"
-        elif isinstance(v, datetime):
-            return f"timestamp '{v}'"
-        elif isinstance(v, UUID):
-            return f"'{v}'"
-        return repr(v)
-
     def compile_for_insert(self, c: Compiler):
-        values = ", ".join("(%s)" % ", ".join(self._value(v) for v in row) for row in self.rows)
-        return f"VALUES {values}"
+        return c.database.constant_values(self.rows)
 
 
 @dataclass

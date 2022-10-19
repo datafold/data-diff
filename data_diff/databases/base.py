@@ -7,6 +7,7 @@ from functools import partial, wraps
 from concurrent.futures import ThreadPoolExecutor
 import threading
 from abc import abstractmethod
+from uuid import UUID
 
 from data_diff.utils import is_uuid, safezip
 from data_diff.queries import Expr, Compiler, table, Select, SKIP, Explain
@@ -327,6 +328,21 @@ class Database(AbstractDatabase):
 
     def random(self) -> str:
         return "RANDOM()"
+
+    def _constant_value(self, v):
+        if v is None:
+            return "NULL"
+        elif isinstance(v, str):
+            return f"'{v}'"
+        elif isinstance(v, datetime):
+            return f"timestamp '{v}'"
+        elif isinstance(v, UUID):
+            return f"'{v}'"
+        return repr(v)
+
+    def constant_values(self, rows) -> str:
+        values = ", ".join("(%s)" % ", ".join(self._constant_value(v) for v in row) for row in rows)
+        return f"VALUES {values}"
 
     def type_repr(self, t) -> str:
         if isinstance(t, str):
