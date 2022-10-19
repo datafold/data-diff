@@ -9,7 +9,8 @@ data-diff is a **free, open-source tool** that enables data professionals to det
 
 ## Use cases
 
-### Between Databases: Quickly identify issues when moving data between databases
+### Between Databases
+#### Quickly identify issues when moving data between databases
 
 <p align="center">
   <img alt="diff1" src="https://user-images.githubusercontent.com/1799931/196479137-2b4744ea-464f-489e-8d01-6e8e54d62fba.png" />
@@ -17,17 +18,13 @@ data-diff is a **free, open-source tool** that enables data professionals to det
 </p>
 
 
-
-### Within a Database: Improve code reviews by identifying data problems you don't have tests for
-(video is rough draft, screenshot will be replaced)
+### Within a Database
+#### Improve code reviews by identifying data problems you don't have tests for
 <p align="center">
-  <a href="https://www.loom.com/share/4ddda4625ae14abfae5d6f264412e50a" target="_blank">
-    <img alt="Intro to Diff" src="https://user-images.githubusercontent.com/1799931/196011700-5ad867bb-2236-42f4-8462-34169164ce35.png" width="50%" height="50%" />
+  <a href=https://www.loom.com/share/682e4b7d74e84eb4824b983311f0a3b2 target="_blank">
+    <img alt="Intro to Diff" src="https://user-images.githubusercontent.com/1799931/196576582-d3535395-12ef-40fd-bbbb-e205ccae1159.png" width="50%" height="50%" />
   </a>
 </p>
-
-
-<iframe width="640" height="414" src="https://www.loom.com/embed/682e4b7d74e84eb4824b983311f0a3b2" frameborder="0" webkitallowfullscreen mozallowfullscreen allowfullscreen></iframe>
 
 &nbsp;
 &nbsp;
