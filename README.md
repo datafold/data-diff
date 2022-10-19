@@ -77,7 +77,7 @@ data-diff DB1_URI TABLE1_NAME DB2_URI TABLE2_NAME [OPTIONS]
 
 Be sure to read [the How to Use section below](#how-to-use) which gets into specific details about how to build one of these commands depending on your database setup.
 
-#### Code Example: Diff Between Databases
+#### Code Example: Diff Tables Between Databases
 Here's an example command for your copy/pasting, taken from the screenshot above when we diffed data between Snowflake and Postgres.
 
 ```
@@ -91,7 +91,7 @@ data-diff \
   -w "event_timestamp < '2022-10-10'"
 ```
 
-#### Code Example: Diff Within a Database (available in pre release)
+#### Code Example: Diff Tables Within a Database (available in pre release)
 
 Here's a code example from [the video](https://www.loom.com/share/682e4b7d74e84eb4824b983311f0a3b2), where we compare data between two Snowflake tables within one database.
 
