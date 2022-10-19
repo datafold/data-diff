@@ -275,8 +275,8 @@ class TestJoindiff(TestPerDatabase):
         self.assertRaises(ValueError, list, x)
 
 
-@test_each_database_in_list(d for d in TEST_DATABASES if d.SUPPORTS_PRIMARY_KEY)
-class TestPrimaryKeys(TestPerDatabase):
+@test_each_database_in_list(d for d in TEST_DATABASES if d.SUPPORTS_PRIMARY_KEY and d.SUPPORTS_UNIQUE_CONSTAINT)
+class TestUniqueConstraint(TestPerDatabase):
     def setUp(self):
         super().setUp()
 

@@ -39,7 +39,6 @@ class Oracle(ThreadedDatabase):
     }
     ROUNDS_ON_PREC_LOSS = True
     SUPPORTS_PRIMARY_KEY = True
-    SUPPORTS_UNIQUE_CONSTAINT = True
 
     def __init__(self, *, host, database, thread_count, **kw):
         self.kwargs = dict(dsn=f"{host}/{database}" if database else host, **kw)
