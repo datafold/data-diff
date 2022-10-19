@@ -7,6 +7,8 @@
 ## What is `data-diff`?
 data-diff is a **free, open-source tool** that enables data professionals to detect differences in values between any two tables. It's fast, easy to use, and reliable. Even at massive scale.
 
+[We're hiring!](https://www.datafold.com/careers)
+
 ## Use cases
 
 ### Between Databases
@@ -39,8 +41,6 @@ data-diff is a **free, open-source tool** that enables data professionals to det
 pip install data-diff
 ```
 
-**Note:** Once you've installed Python 3.7+, it's most likely that `pip` and `pip3` can be used interchangeably.
-
 #### Then, install one or more driver(s) specific to the database(s) you want to connect to.
 
 - `pip install 'data-diff[mysql]'`
@@ -65,31 +65,51 @@ _Some drivers have dependencies that cannot be installed using `pip` and still n
 
 ### Run your first diff
 
-Once you've installed `data-diff`, you can run it from the command line:
+Once you've installed `data-diff`, you can run it from the command line.
 
 ```
 data-diff DB1_URI TABLE1_NAME DB2_URI TABLE2_NAME [OPTIONS]
 ```
 
-Here's an example command for your copy/pasting, taken from the screenshot above:
+Be sure to read [the How to Use section below](#how-to-use) which gets into specific details about how to build one of these commands depending on your database setup.
+
+#### Code Example: Diff Between Databases
+Here's an example command for your copy/pasting, taken from the screenshot above when we diffed data between Snowflake and Postgres.
 
 ```
 data-diff \
-  postgresql://leoebfolsom:'$PW_POSTGRES'@localhost:5432/diff_test \
-  org_activity_stream \
-  "snowflake://leo:$PW_SNOWFLAKE@BYA42734/analytics/ANALYTICS?warehouse=ANALYTICS&role=DATAFOLDROLE" \
-  ORG_ACTIVITY_STREAM \
+  postgresql://<username>:'<password>'@localhost:5432/<database> \
+  <table> \
+  "snowflake://<username>:<password>@<password>/<DATABASE>/<SCHEMA>?warehouse=<WAREHOUSE>&role=<ROLE>" \
+  <TABLE> \
   -k activity_id \
   -c activity \
   -w "event_timestamp < '2022-10-10'"
 ```
 
-Be sure to read [the detailed instructions](#how-to-use) for further explanation.
+#### Code Example: Diff Within a Database
 
+And here's a code example from [the video](https://www.loom.com/share/682e4b7d74e84eb4824b983311f0a3b2), where we compare data between two Snowflake tables within one database.
 
-### We're here to help
+```
+data-diff \
+  "snowflake://<username>:<password>@<password>/<DATABASE>/<SCHEMA_1>?warehouse=<WAREHOUSE>&role=<ROLE>" <TABLE_1> \
+  <SCHEMA_2>.<TABLE_2> \
+  -k org_id \
+  -c created_at -c is_internal \
+  -w "org_id != 1 and org_id < 2000" \
+  -m test_results_%t \
+  --materialize-all-rows \
+  --table-write-limit 10000
+```
 
-We know, that `data-diff DB1_URI TABLE1_NAME DB2_URI TABLE2_NAME [OPTIONS]` command can become long! And maybe you're new to the command line. We're here to help [on slack](https://locallyoptimistic.slack.com/archives/C03HUNGQV0S) if you have ANY questions as you use `data-diff` in your workflow.
+In both code examples, I've used `<>` carrots to represent values that **should be replaced with your values** in the database connection strings. For the flags (`-k`, `-c`, etc.), I opted for "real" values (`org_id`, `is_internal`) to give you a more realistic view of what your command will look like.
+
+### We're here to help!
+
+We know, that `data-diff DB1_URI TABLE1_NAME DB2_URI TABLE2_NAME [OPTIONS]` command can become long and dense. And maybe you're new to the command line.
+
+We're here to help [on slack](https://locallyoptimistic.slack.com/archives/C03HUNGQV0S) if you have ANY questions as you use `data-diff` in your workflow.
 
 ## How to Use
 
@@ -138,11 +158,10 @@ Let's break this down. Assume there are two tables stored in two databases, and 
 If a database is not on the list, we'd still love to support it. Open an issue
 to discuss it.
 
-Notes: 
-- Because URLs allow many special characters, and may collide with the syntax of your command-line,
-it's recommended to surround them with quotes. Alternatively, you may provide them in a TOML file via the `--config` option.
+Note: Because URLs allow many special characters, and may collide with the syntax of your command-line,
+it's recommended to surround them with quotes. Alternatively, you may [provide them in a TOML file](#how-to-use-with-a-configuration-file) via the `--config` option.
 
-#### Options:
+#### Options
 
   - `--help` - Show help message and exit.
   - `-k` or `--key-columns` - Name of the primary key column. If none provided, default is 'id'.
@@ -164,21 +183,24 @@ it's recommended to surround them with quotes. Alternatively, you may provide th
   - `-w`, `--where` - An additional 'where' expression to restrict the search space.
   - `--conf`, `--run` - Specify the run and configuration from a TOML file. (see below)
   - `--no-tracking` - data-diff sends home anonymous usage data. Use this to disable it.
-  - `-a`, `--algorithm` `[auto|joindiff|hashdiff]` - Force algorithm choice
 
-**Same-DB diff only:**
+  **The following two options are not available when using the beta release In-DB feature:**
+
+  - `--bisection-threshold` - Minimal size of segment to be split. Smaller segments will be downloaded and compared locally.
+  - `--bisection-factor` - Segments per iteration. When set to 2, it performs binary search.
+
+**In-DB commands, available in beta release only:**
   - `-m`, `--materialize` - Materialize the diff results into a new table in the database.
                             If a table exists by that name, it will be replaced.
                             Use `%t` in the name to place a timestamp.
                             Example: `-m test_mat_%t`
   - `--assume-unique-key` - Skip validating the uniqueness of the key column during joindiff, which is costly in non-cloud dbs.
   - `--sample-exclusive-rows` - Sample several rows that only appear in one of the tables, but not the other. Use with `-s`.
-  - `--materialize-all-rows` - Materialize every row, even if they are the same, instead of just the differing rows.
+  - `--materialize-all-rows` -  Materialize every row, even if they are the same, instead of just the differing rows.
   - `--table-write-limit` - Maximum number of rows to write when creating materialized or sample tables, per thread. Default=1000.
+  - `-a`, `--algorithm` `[auto|joindiff|hashdiff]` - Force algorithm choice
 
-**Cross-DB diff only:**
-  - `--bisection-threshold` - Minimal size of segment to be split. Smaller segments will be downloaded and compared locally.
-  - `--bisection-factor` - Segments per iteration. When set to 2, it performs binary search.
+
 
 
 
@@ -188,9 +210,9 @@ Data-diff lets you load the configuration for a run from a TOML file.
 
 **Reasons to use a configuration file:**
 
-- Convenience - Set-up the parameters for diffs that need to run often
+- Convenience: Set-up the parameters for diffs that need to run often
 
-- Easier and more readable - you can define the database connection settings as config values, instead of in a URI.
+- Easier and more readable: You can define the database connection settings as config values, instead of in a URI.
 
 - Gives you fine-grained control over the settings switches, without requiring any Python code.
 
@@ -259,6 +281,29 @@ Run `help(diff_tables)` or [read the docs](https://data-diff.readthedocs.io/en/l
 - [Open an issue](https://github.com/datafold/data-diff/issues/new/choose) or chat with us [on slack](https://locallyoptimistic.slack.com/archives/C03HUNGQV0S).
 - Interested in contributing to this open source project? Please see our [Contributing Guideline](https://github.com/datafold/data-diff/blob/master/CONTRIBUTING.md)!
 - Did we mention [we're hiring](https://www.datafold.com/careers)?
+
+## Usage Analytics & Data Privacy
+
+data-diff collects anonymous usage data to help our team improve the tool and to apply development efforts to where our users need them most.
+
+We capture two events: one when the data-diff run starts, and one when it is finished. No user data or potentially sensitive information is or ever will be collected. The captured data is limited to:
+
+- Operating System and Python version
+- Types of databases used (postgresql, mysql, etc.)
+- Sizes of tables diffed, run time, and diff row count (numbers only)
+- Error message, if any, truncated to the first 20 characters.
+- A persistent UUID to indentify the session, stored in `~/.datadiff.toml`
+
+If you do not wish to participate, the tracking can be easily disabled with one of the following methods:
+
+* In the CLI, use the `--no-tracking` flag.
+* In the config file, set `no_tracking = true` (for example, under `[run.default]`)
+* If you're using the Python API:
+```python
+import data_diff
+data_diff.disable_tracking()    # Call this first, before making any API calls
+# Connect and diff your tables without any tracking
+```
 
 ## License
 
