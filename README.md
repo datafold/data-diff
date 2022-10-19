@@ -213,7 +213,7 @@ it's recommended to surround them with quotes. Alternatively, you may [provide t
 
 
 
-#### How to use with a configuration file
+### How to use with a configuration file
 
 Data-diff lets you load the configuration for a run from a TOML file.
 
