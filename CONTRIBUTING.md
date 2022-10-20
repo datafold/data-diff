@@ -79,3 +79,86 @@ New databases should be added as a new module in the `data-diff/databases/` fold
 If possible, please also add the database setup to `docker-compose.yml`, so that we can run and test it for ourselves. If you do, also update the CI (`ci.yml`).
 
 Guide to implementing a new database driver: https://data-diff.readthedocs.io/en/latest/new-database-driver-guide.html
+
+## Development Setup
+
+The development setup centers around using `docker-compose` to boot up various
+databases, and then inserting data into them.
+
+For Mac for performance of Docker, we suggest enabling in the UI:
+
+* Use new Virtualization Framework
+* Enable VirtioFS accelerated directory sharing
+
+**1. Install Data Diff**
+
+When developing/debugging, it's recommended to install dependencies and run it
+directly with `poetry` rather than go through the package.
+
+```
+$ brew install mysql postgresql # MacOS dependencies for C bindings
+$ apt-get install libpq-dev libmysqlclient-dev # Debian dependencies
+$ pip install poetry # Python dependency isolation tool
+$ poetry install # Install dependencies
+```
+**2. Start Databases**
+
+[Install **docker-compose**][docker-compose] if you haven't already.
+
+```shell-session
+$ docker-compose up -d mysql postgres # run mysql and postgres dbs in background
+```
+
+[docker-compose]: https://docs.docker.com/compose/install/
+
+**3. Run Unit Tests**
+
+There are more than 1000 tests for all the different type and database
+combinations, so we recommend using `unittest-parallel` that's installed as a
+development dependency.
+
+```shell-session
+$ poetry run unittest-parallel -j 16 #  run all tests
+$ poetry run python -m unittest -k <test> #  run individual test
+```
+
+**4. Seed the Database(s) (optional)**
+
+First, download the CSVs of seeding data:
+
+```shell-session
+$ curl https://datafold-public.s3.us-west-2.amazonaws.com/1m.csv -o dev/ratings.csv
+# For a larger data-set (but takes 25x longer to import):
+# - curl https://datafold-public.s3.us-west-2.amazonaws.com/25m.csv -o dev/ratings.csv
+```
+
+Now you can insert it into the testing database(s):
+
+```shell-session
+# It's optional to seed more than one to run data-diff(1) against.
+$ poetry run preql -f dev/prepare_db.pql mysql://mysql:Password1@127.0.0.1:3306/mysql
+$ poetry run preql -f dev/prepare_db.pql postgresql://postgres:Password1@127.0.0.1:5432/postgres
+# Cloud databases
+$ poetry run preql -f dev/prepare_db.pql snowflake://<uri>
+$ poetry run preql -f dev/prepare_db.pql mssql://<uri>
+$ poetry run preql -f dev/prepare_db.pql bigquery:///<project>
+```
+
+**5. Run **data-diff** against seeded database (optional)**
+
+```bash
+poetry run python3 -m data_diff postgresql://postgres:Password1@localhost/postgres rating postgresql://postgres:Password1@localhost/postgres rating_del1 --verbose
+```
+
+**6. Run benchmarks (optional)**
+
+```shell-session
+$ dev/benchmark.sh #  runs benchmarks and puts results in benchmark_<sha>.csv
+$ poetry run python3 dev/graph.py #  create graphs from benchmark_*.csv files
+```
+
+You can adjust how many rows we benchmark with by passing `N_SAMPLES` to `dev/benchmark.sh`:
+
+```shell-session
+$ N_SAMPLES=100000000 dev/benchmark.sh #  100m which is our canonical target
+```
