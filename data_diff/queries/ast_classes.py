@@ -38,7 +38,6 @@ def _expr_type(e: Expr) -> type:
     return type(e)
 
 
-
 @dataclass
 class Alias(ExprNode):
     expr: Expr
@@ -175,7 +174,6 @@ class Func(ExprNode):
     def compile(self, c: Compiler) -> str:
         args = ", ".join(c.compile(e) for e in self.args)
         return f"{self.name}({args})"
-
 
 
 @dataclass
