@@ -335,6 +335,7 @@ class Database(AbstractDatabase):
         elif isinstance(v, str):
             return f"'{v}'"
         elif isinstance(v, datetime):
+            # TODO use self.timestamp_value
             return f"timestamp '{v}'"
         elif isinstance(v, UUID):
             return f"'{v}'"

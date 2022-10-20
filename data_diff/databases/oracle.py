@@ -153,4 +153,6 @@ class Oracle(ThreadedDatabase):
             return super().type_repr(t)
 
     def constant_values(self, rows) -> str:
-        return " UNION ALL ".join("SELECT %s FROM DUAL" % ", ".join(self._constant_value(v) for v in row) for row in rows)
+        return " UNION ALL ".join(
+            "SELECT %s FROM DUAL" % ", ".join(self._constant_value(v) for v in row) for row in rows
+        )

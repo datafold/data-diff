@@ -47,14 +47,14 @@ def or_(*exprs: Expr):
     exprs = args_as_tuple(exprs)
     if len(exprs) == 1:
         return exprs[0]
-    return BinOp("OR", exprs)
+    return BinBoolOp("OR", exprs)
 
 
 def and_(*exprs: Expr):
     exprs = args_as_tuple(exprs)
     if len(exprs) == 1:
         return exprs[0]
-    return BinOp("AND", exprs)
+    return BinBoolOp("AND", exprs)
 
 
 def sum_(expr: Expr):

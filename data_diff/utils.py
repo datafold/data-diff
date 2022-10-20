@@ -1,8 +1,8 @@
 import logging
 import re
 import math
-from typing import Iterable, Tuple, Union, Any, Sequence, Dict
-from typing import TypeVar, Generic
+from typing import Iterable, Iterator, MutableMapping, Union, Any, Sequence, Dict
+from typing import TypeVar
 from abc import ABC, abstractmethod
 from urllib.parse import urlparse
 from uuid import UUID
@@ -204,28 +204,9 @@ def join_iter(joiner: Any, iterable: Iterable) -> Iterable:
 V = TypeVar("V")
 
 
-class CaseAwareMapping(ABC, Generic[V]):
+class CaseAwareMapping(MutableMapping[str, V]):
     @abstractmethod
     def get_key(self, key: str) -> str:
-        ...
-
-    @abstractmethod
-    def __getitem__(self, key: str) -> V:
-        ...
-
-    @abstractmethod
-    def __setitem__(self, key: str, value: V):
-        ...
-
-    @abstractmethod
-    def __contains__(self, key: str) -> bool:
-        ...
-
-    def __repr__(self):
-        return repr(dict(self.items()))
-
-    @abstractmethod
-    def items(self) -> Iterable[Tuple[str, V]]:
         ...
 
 
@@ -233,11 +214,14 @@ class CaseInsensitiveDict(CaseAwareMapping):
     def __init__(self, initial):
         self._dict = {k.lower(): (k, v) for k, v in dict(initial).items()}
 
-    def get_key(self, key: str) -> str:
-        return self._dict[key.lower()][0]
-
     def __getitem__(self, key: str) -> V:
         return self._dict[key.lower()][1]
+
+    def __iter__(self) -> Iterator[V]:
+        return iter(self._dict)
+
+    def __len__(self) -> int:
+        return len(self._dict)
 
     def __setitem__(self, key: str, value):
         k = key.lower()
@@ -245,17 +229,14 @@ class CaseInsensitiveDict(CaseAwareMapping):
             key = self._dict[k][0]
         self._dict[k] = key, value
 
-    def __contains__(self, key):
-        return key.lower() in self._dict
+    def __delitem__(self, key: str):
+        del self._dict[key.lower()]
 
-    def keys(self) -> Iterable[str]:
-        return self._dict.keys()
+    def get_key(self, key: str) -> str:
+        return self._dict[key.lower()][0]
 
-    def items(self) -> Iterable[Tuple[str, V]]:
-        return ((k, v[1]) for k, v in self._dict.items())
-
-    def __len__(self):
-        return len(self._dict)
+    def __repr__(self) -> str:
+        return repr(dict(self.items()))
 
 
 class CaseSensitiveDict(dict, CaseAwareMapping):
