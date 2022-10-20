@@ -224,7 +224,10 @@ class CaseInsensitiveDict(CaseAwareMapping):
         return len(self._dict)
 
     def __setitem__(self, key: str, value):
-        self._dict[key.lower()] = key, value
+        k = key.lower()
+        if k in self._dict:
+            key = self._dict[k][0]
+        self._dict[k] = key, value
 
     def __delitem__(self, key: str):
         del self._dict[key.lower()]
