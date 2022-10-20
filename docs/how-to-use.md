@@ -16,6 +16,11 @@ Where DB is either a database URL that's compatible with SQLAlchemy, or the name
 
 We recommend using a configuration file, with the ``--conf`` switch, to keep the command simple and managable.
 
+For a list of example URLs, see [list of supported databases](supported-databases.md).
+
+Note: Because URLs allow many special characters, and may collide with the syntax of your command-line,
+it's recommended to surround them with quotes.
+
 ### Options
 
   - `--help` - Show help message and exit.
