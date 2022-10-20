@@ -147,12 +147,12 @@ class AbstractDialect(ABC):
 
     @abstractmethod
     def quote(self, s: str):
-        "Quote SQL name (implementation specific)"
+        "Quote SQL name"
         ...
 
     @abstractmethod
     def concat(self, l: List[str]) -> str:
-        "Provide SQL for concatenating a bunch of column into a string"
+        "Provide SQL for concatenating a bunch of columns into a string"
         ...
 
     @abstractmethod
@@ -162,12 +162,13 @@ class AbstractDialect(ABC):
 
     @abstractmethod
     def to_string(self, s: str) -> str:
+        # TODO rewrite using cast_to(x, str)
         "Provide SQL for casting a column to string"
         ...
 
     @abstractmethod
     def random(self) -> str:
-        "Provide SQL for generating a random number"
+        "Provide SQL for generating a random number betweein 0..1"
 
     @abstractmethod
     def offset_limit(self, offset: Optional[int] = None, limit: Optional[int] = None):
@@ -176,7 +177,7 @@ class AbstractDialect(ABC):
 
     @abstractmethod
     def explain_as_text(self, query: str) -> str:
-        "Provide SQL for explaining a query, returned in as table(varchar)"
+        "Provide SQL for explaining a query, returned as table(varchar)"
         ...
 
     @abstractmethod
