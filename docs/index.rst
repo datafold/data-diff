@@ -4,7 +4,9 @@
    :hidden:
 
    supported-databases
+   how-to-use
    python-api
+   technical-explanation
    new-database-driver-guide
 
 Introduction
@@ -55,42 +57,6 @@ Supported connectors:
 - vertica
 
 
-How to use from the shell
--------------------------
-
-.. code-block:: bash
-
-    # Same-DB diff, using outer join
-    $ data-diff  DB  TABLE1  TABLE2  [options]
-
-    # Cross-DB diff, using hashes
-    $ data-diff  DB1  TABLE1  DB2  TABLE2  [options]
-
-We recommend using a configuration file, with the ``--conf`` switch, to keep the command simple and managable.
-
-
-How to use from Python
-----------------------
-
-.. code-block:: python
-
-    # Optional: Set logging to display the progress of the diff
-    import logging
-    logging.basicConfig(level=logging.INFO)
-
-    from data_diff import connect_to_table, diff_tables
-
-    table1 = connect_to_table("postgresql:///", "table_name", "id")
-    table2 = connect_to_table("mysql:///", "table_name", "id")
-
-    for sign, columns in diff_tables(table1, table2):
-        print(sign, columns)
-
-    # Example output:
-    + ('4775622148347', '2022-06-05 16:57:32.000000')
-    - ('4775622312187', '2022-06-05 16:57:32.000000')
-    - ('4777375432955', '2022-06-07 16:57:36.000000')
-
 
 Resources
 ---------
@@ -98,6 +64,8 @@ Resources
 - Users
     - Source code (git): `<https://github.com/datafold/data-diff>`_
     - :doc:`supported-databases`
+    - :doc:`how-to-use`
     - :doc:`python-api`
+    - :doc:`technical-explanation`
 - Contributors
    - :doc:`new-database-driver-guide`
