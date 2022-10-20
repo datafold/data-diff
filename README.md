@@ -9,7 +9,7 @@ data-diff is a **free, open-source tool** that enables data professionals to det
 
 _Are you a developer with a deep understanding of databases and solid Python knowledge? [We're hiring!](https://www.datafold.com/careers)_
 
-[**Documentation**](https://data-diff.readthedocs.io/en/latest/)
+[**Documentation on readthedocs.io**](https://data-diff.readthedocs.io/en/latest/)
 
 ## Use cases
 
