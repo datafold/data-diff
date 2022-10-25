@@ -141,6 +141,16 @@ class TableDiffer(ThreadBase, ABC):
     def _diff_tables(self, table1: TableSegment, table2: TableSegment) -> DiffResult:
         return self._bisect_and_diff_tables(table1, table2)
 
+    def _get_key_type(self, table):
+        if len(table.key_columns) > 1:
+            raise NotImplementedError("Composite key not supported yet!")
+        (k,) = table.key_columns
+
+        key_type = table._schema[k]
+        if not isinstance(key_type, IKey):
+            raise NotImplementedError(f"Cannot use column of type {key_type} as a key")
+        return key_type
+
     @abstractmethod
     def _diff_segments(
         self,
@@ -155,19 +165,8 @@ class TableDiffer(ThreadBase, ABC):
         ...
 
     def _bisect_and_diff_tables(self, table1, table2):
-        if len(table1.key_columns) > 1:
-            raise NotImplementedError("Composite key not supported yet!")
-        if len(table2.key_columns) > 1:
-            raise NotImplementedError("Composite key not supported yet!")
-        (key1,) = table1.key_columns
-        (key2,) = table2.key_columns
-
-        key_type = table1._schema[key1]
-        key_type2 = table2._schema[key2]
-        if not isinstance(key_type, IKey):
-            raise NotImplementedError(f"Cannot use column of type {key_type} as a key")
-        if not isinstance(key_type2, IKey):
-            raise NotImplementedError(f"Cannot use column of type {key_type2} as a key")
+        key_type = self._get_key_type(table1)
+        key_type2 = self._get_key_type(table2)
         assert key_type.python_type is key_type2.python_type
 
         # Query min/max values
@@ -194,7 +193,7 @@ class TableDiffer(ThreadBase, ABC):
             pre_tables = [t.new(min_key=min_key2, max_key=min_key1) for t in (table1, table2)]
             ti.submit(self._bisect_and_diff_segments, ti, *pre_tables)
 
-        if max_key2 > max_key1:
+        if max_key1 < max_key2:
             post_tables = [t.new(min_key=max_key1, max_key=max_key2) for t in (table1, table2)]
             ti.submit(self._bisect_and_diff_segments, ti, *post_tables)
 
@@ -223,5 +222,5 @@ class TableDiffer(ThreadBase, ABC):
         segmented2 = table2.segment_by_checkpoints(checkpoints)
 
         # Recursively compare each pair of corresponding segments between table1 and table2
-        for i, (t1, t2) in enumerate(safezip(segmented1, segmented2)):
-            ti.submit(self._diff_segments, ti, t1, t2, max_rows, level + 1, i + 1, len(segmented1), priority=level)
+        for i, (t1, t2) in enumerate(safezip(segmented1, segmented2), 1):
+            ti.submit(self._diff_segments, ti, t1, t2, max_rows, level + 1, i, len(segmented1), priority=level)
