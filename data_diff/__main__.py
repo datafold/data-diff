@@ -83,6 +83,9 @@ click.Context.formatter_class = MyHelpFormatter
 @click.option(
     "-k", "--key-columns", default=[], multiple=True, help="Names of primary key columns. Default='id'.", metavar="NAME"
 )
+@click.option(
+    "--key-column", default=[], multiple=True, help="Deprecated! Use --key-columns.", metavar="NAME"
+)
 @click.option("-t", "--update-column", default=None, help="Name of updated_at/last_updated column", metavar="NAME")
 @click.option(
     "-c",
@@ -206,6 +209,7 @@ def _main(
     database2,
     table2,
     key_columns,
+    key_column,
     update_column,
     columns,
     limit,
@@ -252,6 +256,10 @@ def _main(
 
     if limit and stats:
         logging.error("Cannot specify a limit when using the -s/--stats switch")
+        return
+
+    if key_column:
+        logging.error("--key-column is deprecated. Please use --key-columns.")
         return
 
     key_columns = key_columns or ("id",)
