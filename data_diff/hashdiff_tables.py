@@ -7,6 +7,8 @@ from operator import attrgetter
 
 from runtype import dataclass
 
+from data_diff.info_tree import InfoTree
+
 from .utils import safezip
 from .thread_utils import ThreadedYielder
 from .sqeleton.databases import ColType_UUID, NumericType, PrecisionType, StringType
@@ -123,6 +125,7 @@ class HashDiffer(TableDiffer):
         ti: ThreadedYielder,
         table1: TableSegment,
         table2: TableSegment,
+        info_tree: InfoTree,
         max_rows: int,
         level=0,
         segment_index=None,
@@ -140,9 +143,12 @@ class HashDiffer(TableDiffer):
         # the threshold) and _then_ download it.
         if BENCHMARK:
             if max_rows < self.bisection_threshold:
-                return self._bisect_and_diff_segments(ti, table1, table2, level=level, max_rows=max_rows)
+                return self._bisect_and_diff_segments(ti, table1, table2, info_tree, level=level, max_rows=max_rows)
 
         (count1, checksum1), (count2, checksum2) = self._threaded_call("count_and_checksum", [table1, table2])
+
+        assert not info_tree.info.rowcounts
+        info_tree.info.rowcounts = {1: count1, 2: count2}
 
         if count1 == 0 and count2 == 0:
             logger.debug(
@@ -152,17 +158,24 @@ class HashDiffer(TableDiffer):
                 table1.max_key,
             )
             assert checksum1 is None and checksum2 is None
+            info_tree.info.is_diff = False
             return
 
-        if level == 1:
-            self.stats["table1_count"] = self.stats.get("table1_count", 0) + count1
-            self.stats["table2_count"] = self.stats.get("table2_count", 0) + count2
+        if checksum1 == checksum2:
+            info_tree.info.is_diff = False
+            return
 
-        if checksum1 != checksum2:
-            return self._bisect_and_diff_segments(ti, table1, table2, level=level, max_rows=max(count1, count2))
+        info_tree.info.is_diff = True
+        return self._bisect_and_diff_segments(ti, table1, table2, info_tree, level=level, max_rows=max(count1, count2))
 
     def _bisect_and_diff_segments(
-        self, ti: ThreadedYielder, table1: TableSegment, table2: TableSegment, level=0, max_rows=None
+        self,
+        ti: ThreadedYielder,
+        table1: TableSegment,
+        table2: TableSegment,
+        info_tree: InfoTree,
+        level=0,
+        max_rows=None,
     ):
         assert table1.is_bounded and table2.is_bounded
 
@@ -170,6 +183,7 @@ class HashDiffer(TableDiffer):
         if max_rows is None:
             # We can be sure that row_count <= max_rows iff the table key is unique
             max_rows = max_space_size
+            info_tree.info.max_rows = max_rows
 
         # If count is below the threshold, just download and compare the columns locally
         # This saves time, as bisection speed is limited by ping and query performance.
@@ -177,17 +191,11 @@ class HashDiffer(TableDiffer):
             rows1, rows2 = self._threaded_call("get_values", [table1, table2])
             diff = list(diff_sets(rows1, rows2))
 
-            # Initial bisection_threshold larger than count. Normally we always
-            # checksum and count segments, even if we get the values. At the
-            # first level, however, that won't be true.
-            if level == 0:
-                self.stats["table1_count"] = len(rows1)
-                self.stats["table2_count"] = len(rows2)
-
-            self.stats["diff_count"] += len(diff)
+            info_tree.info.set_diff(diff)
+            info_tree.info.rowcounts = {1: len(rows1), 2: len(rows2)}
 
             logger.info(". " * level + f"Diff found {len(diff)} different rows.")
             self.stats["rows_downloaded"] = self.stats.get("rows_downloaded", 0) + max(len(rows1), len(rows2))
             return diff
 
-        return super()._bisect_and_diff_segments(ti, table1, table2, level, max_rows)
+        return super()._bisect_and_diff_segments(ti, table1, table2, info_tree, level, max_rows)

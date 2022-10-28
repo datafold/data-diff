@@ -17,6 +17,8 @@ from .sqeleton.queries.ast_classes import Concat, Count, Expr, Random, TablePath
 from .sqeleton.queries.compiler import Compiler
 from .sqeleton.queries.extras import NormalizeAsString
 
+from .info_tree import InfoTree, SegmentInfo
+
 from .query_utils import append_to_table, drop_table
 from .utils import safezip
 from .table_segment import TableSegment
@@ -120,9 +122,10 @@ class JoinDiffer(TableDiffer):
     materialize_to_table: DbPath = None
     materialize_all_rows: bool = False
     table_write_limit: int = TABLE_WRITE_LIMIT
+
     stats: dict = {}
 
-    def _diff_tables(self, table1: TableSegment, table2: TableSegment) -> DiffResult:
+    def _diff_tables_root(self, table1: TableSegment, table2: TableSegment, info_tree: InfoTree) -> DiffResult:
         db = table1.database
 
         if table1.database is not table2.database:
@@ -135,12 +138,11 @@ class JoinDiffer(TableDiffer):
             drop_table(db, self.materialize_to_table)
 
         with self._run_in_background(*bg_funcs):
-
             if isinstance(db, (Snowflake, BigQuery)):
                 # Don't segment the table; let the database handling parallelization
-                yield from self._diff_segments(None, table1, table2, None)
+                yield from self._diff_segments(None, table1, table2, info_tree, None)
             else:
-                yield from self._bisect_and_diff_tables(table1, table2)
+                yield from self._bisect_and_diff_tables(table1, table2, info_tree)
             logger.info("Diffing complete")
 
     def _diff_segments(
@@ -148,6 +150,7 @@ class JoinDiffer(TableDiffer):
         ti: ThreadedYielder,
         table1: TableSegment,
         table2: TableSegment,
+        info_tree: InfoTree,
         max_rows: int,
         level=0,
         segment_index=None,
@@ -166,8 +169,8 @@ class JoinDiffer(TableDiffer):
         diff_rows, a_cols, b_cols, is_diff_cols, all_rows = self._create_outer_join(table1, table2)
 
         with self._run_in_background(
-            partial(self._collect_stats, 1, table1),
-            partial(self._collect_stats, 2, table2),
+            partial(self._collect_stats, 1, table1, info_tree),
+            partial(self._collect_stats, 2, table2, info_tree),
             partial(self._test_null_keys, table1, table2),
             partial(self._sample_and_count_exclusive, db, diff_rows, a_cols, b_cols),
             partial(self._count_diff_per_column, db, diff_rows, list(a_cols), is_diff_cols),
@@ -183,7 +186,9 @@ class JoinDiffer(TableDiffer):
 
             assert len(a_cols) == len(b_cols)
             logger.debug("Querying for different rows")
-            for is_xa, is_xb, *x in db.query(diff_rows, list):
+            diff = db.query(diff_rows, list)
+            info_tree.info.set_diff(diff)
+            for is_xa, is_xb, *x in diff:
                 if is_xa and is_xb:
                     # Can't both be exclusive, meaning a pk is NULL
                     # This can happen if the explicit null test didn't finish running yet
@@ -231,7 +236,7 @@ class JoinDiffer(TableDiffer):
             if nulls:
                 raise ValueError("NULL values in one or more primary keys")
 
-    def _collect_stats(self, i, table_seg: TableSegment):
+    def _collect_stats(self, i, table_seg: TableSegment, info_tree: InfoTree):
         logger.info(f"Collecting stats for table #{i}")
         db = table_seg.database
 
@@ -259,6 +264,9 @@ class JoinDiffer(TableDiffer):
             if value is not None:
                 value = json_friendly_value(value)
                 stat_name = f"table{i}_{col_name}"
+
+                if col_name == "count":
+                    info_tree.info.rowcounts[i] = value
 
                 if stat_name in self.stats:
                     self.stats[stat_name] += value
