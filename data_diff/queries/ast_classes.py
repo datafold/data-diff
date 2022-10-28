@@ -6,7 +6,7 @@ from runtype import dataclass
 
 from data_diff.utils import ArithString, join_iter
 
-from .compiler import Compilable, Compiler
+from .compiler import Compilable, Compiler, cv_params
 from .base import SKIP, CompileError, DbPath, Schema, args_as_tuple
 
 
@@ -691,3 +691,18 @@ class InsertToTable(Statement):
 class Commit(Statement):
     def compile(self, c: Compiler) -> str:
         return "COMMIT" if not c.database.is_autocommit else SKIP
+
+@dataclass
+class Param(ExprNode, ITable):
+    """A value placeholder, to be specified at compilation time using the `cv_params` context variable."""
+
+    name: str
+
+    @property
+    def source_table(self):
+        return self
+
+    def compile(self, c: Compiler) -> str:
+        params = cv_params.get()
+        return c._compile(params[self.name])
+
