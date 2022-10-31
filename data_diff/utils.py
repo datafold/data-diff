@@ -3,7 +3,7 @@ import re
 import math
 from typing import Iterable, Iterator, MutableMapping, Union, Any, Sequence, Dict
 from typing import TypeVar
-from abc import ABC, abstractmethod
+from abc import abstractmethod
 from urllib.parse import urlparse
 from uuid import UUID
 import operator
