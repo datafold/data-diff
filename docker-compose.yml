@@ -2,7 +2,7 @@ version: "3.8"
 
 services:
     postgres:
-      container_name: postgresql
+      container_name: dd-postgresql
       image: postgres:14.1-alpine
       # work_mem: less tmp files
       # maintenance_work_mem: improve table-level op perf
@@ -25,7 +25,7 @@ services:
         - local
 
     mysql:
-      container_name: mysql
+      container_name: dd-mysql
       image: mysql:oracle
       # fsync less aggressively for insertion perf for test setup
       command: >
@@ -52,7 +52,7 @@ services:
         - local
 
     clickhouse:
-      container_name: clickhouse
+      container_name: dd-clickhouse
       image: clickhouse/clickhouse-server:21.12.3.32
       restart: always
       volumes:
@@ -76,6 +76,7 @@ services:
 
     # prestodb.dbapi.connect(host="127.0.0.1", user="presto").cursor().execute('SELECT * FROM system.runtime.nodes')
     presto:
+        container_name: dd-presto
         build:
             context: ./dev
             dockerfile: ./Dockerfile.prestosql.340
@@ -88,6 +89,7 @@ services:
             - local
 
     trino:
+        container_name: dd-trino
         image: 'trinodb/trino:389'
         hostname: trino
         ports:
@@ -98,7 +100,7 @@ services:
             - local
 
     vertica:
-      container_name: vertica
+      container_name: dd-vertica
       image: vertica/vertica-ce:12.0.0-0
       restart: always
       volumes:
