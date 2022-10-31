@@ -9,7 +9,9 @@ data-diff is a **free, open-source tool** that enables data professionals to det
 
 _Are you a developer with a deep understanding of databases and solid Python knowledge? [We're hiring!](https://www.datafold.com/careers)_
 
-[**Check out our documentation!**](https://docs.datafold.com/os_diff/about)
+## Documentation
+
+[**Our detailed documentation**](https://docs.datafold.com/os_diff/about) has everything you need to start diffing.
 
 ## Use cases
 
@@ -20,7 +22,7 @@ _Are you a developer with a deep understanding of databases and solid Python kno
   <img alt="diff2" src="https://user-images.githubusercontent.com/1799931/196754998-a88c0a52-8751-443d-b052-26c03d99d9e5.png" />
 </p>
 
-### Diff Tables Within a Database (available in pre release)
+### Diff Tables Within a Database (available in pre-release)
 #### Improve code reviews by identifying data problems you don't have tests for
 <p align="center">
   <a href=https://www.loom.com/share/682e4b7d74e84eb4824b983311f0a3b2 target="_blank">
@@ -77,7 +79,7 @@ Once you've installed `data-diff`, you can run it from the command line.
 data-diff DB1_URI TABLE1_NAME DB2_URI TABLE2_NAME [OPTIONS]
 ```
 
-Be sure to read [the How to Use section below](#how-to-use) which gets into specific details about how to build one of these commands depending on your database setup.
+Be sure to read [the docs](https://docs.datafold.com/os_diff/how_to_use) for detailed instructions how to build one of these commands depending on your database setup.
 
 #### Code Example: Diff Tables Between Databases
 Here's an example command for your copy/pasting, taken from the screenshot above when we diffed data between Snowflake and Postgres.
@@ -113,24 +115,28 @@ In both code examples, I've used `<>` carrots to represent values that **should 
 
 ### We're here to help!
 
-We know, that in some cases, the data-diff command can become long and dense. And maybe you're new to the command line.
+We know that in some cases, the data-diff command can become long and dense. And maybe you're new to the command line.
 
-We're here to help [on slack](https://locallyoptimistic.slack.com/archives/C03HUNGQV0S) if you have ANY questions as you use `data-diff` in your workflow.
+* We're here to help [on slack](https://locallyoptimistic.slack.com/archives/C03HUNGQV0S) if you have ANY questions as you use `data-diff` in your workflow.
+* You can also post a question in [GitHub Discussions](https://github.com/datafold/data-diff/discussions).
+
 
 To get a Slack invite - [click here](https://locallyoptimistic.com/community/)
 
 ## How to Use
 
-[How to use from the shell (or: command-line)](https://data-diff.readthedocs.io/en/latest/how-to-use.html#how-to-use-from-the-shell-or-command-line)
+* [How to use from the shell (or: command-line)](https://docs.datafold.com/os_diff/how_to_use#how-to-use-from-the-command-line)
+* [How to use from Python](https://docs.datafold.com/os_diff/how_to_use#how-to-use-from-python)
+* [Usage Analytics & Data Privacy](https://docs.datafold.com/os_diff/usage_analytics_data_privacy)
 
-[How to use from Python](https://data-diff.readthedocs.io/en/latest/how-to-use.html#how-to-use-from-python)
-
-[Usage Analytics & Data Privacy](https://data-diff.readthedocs.io/en/latest/how-to-use.html#usage-analytics-data-privacy)
+## How to Contribute
+* Feel free to open an issue or contribute to the project by working on an existing issue.
+* Please read the [contributing guidelines](https://github.com/leoebfolsom/data-diff/blob/master/CONTRIBUTING.md) to get started.
 
 
 ## Technical Explanation
 
-See here: https://data-diff.readthedocs.io/en/latest/technical-explanation.html
+Check out this [technical explanation](https://docs.datafold.com/os_diff/technical_explanation) of how data-diff works.
 
 ## License
 
