@@ -143,7 +143,7 @@ class Database(AbstractDatabase):
                     (row,) = row
                 logger.debug("EXPLAIN: %s", row)
             answer = input("Continue? [y/n] ")
-            if not answer.lower() in ["y", "yes"]:
+            if answer.lower() not in ["y", "yes"]:
                 sys.exit(1)
 
         res = self._query(sql_code)
@@ -310,9 +310,9 @@ class Database(AbstractDatabase):
 
         return f"LIMIT {limit}"
 
-    def concat(self, l: List[str]) -> str:
-        assert len(l) > 1
-        joined_exprs = ", ".join(l)
+    def concat(self, items: List[str]) -> str:
+        assert len(items) > 1
+        joined_exprs = ", ".join(items)
         return f"concat({joined_exprs})"
 
     def is_distinct_from(self, a: str, b: str) -> str:

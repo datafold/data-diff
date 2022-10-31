@@ -99,8 +99,8 @@ class Vertica(ThreadedDatabase):
     def quote(self, s: str):
         return f'"{s}"'
 
-    def concat(self, l: List[str]) -> str:
-        return " || ".join(l)
+    def concat(self, items: List[str]) -> str:
+        return " || ".join(items)
 
     def md5_to_int(self, s: str) -> str:
         return f"CAST(HEX_TO_INTEGER(SUBSTRING(MD5({s}), {1 + MD5_HEXDIGITS - CHECKSUM_HEXDIGITS})) AS NUMERIC(38, 0))"

@@ -151,7 +151,7 @@ class AbstractDialect(ABC):
         ...
 
     @abstractmethod
-    def concat(self, l: List[str]) -> str:
+    def concat(self, items: List[str]) -> str:
         "Provide SQL for concatenating a bunch of columns into a string"
         ...
 
