@@ -117,6 +117,8 @@ We know, that in some cases, the data-diff command can become long and dense. An
 
 We're here to help [on slack](https://locallyoptimistic.slack.com/archives/C03HUNGQV0S) if you have ANY questions as you use `data-diff` in your workflow.
 
+To get a Slack invite - [click here](https://locallyoptimistic.com/community/)
+
 ## How to Use
 
 [How to use from the shell (or: command-line)](https://data-diff.readthedocs.io/en/latest/how-to-use.html#how-to-use-from-the-shell-or-command-line)
