@@ -36,7 +36,10 @@ def _apply_config(config: Dict[str, Any], run_name: str, kw: Dict[str, Any]):
 
     # Process databases + tables
     for index in "12":
-        args = run_args.pop(index, {})
+        try:
+            args = run_args.pop(index)
+        except KeyError:
+            raise ConfigParseError(f"Could not find source #{index}: Expecting a key of '{index}' containing '.database' and '.table'.")
         for attr in ("database", "table"):
             if attr not in args:
                 raise ConfigParseError(f"Running 'run.{run_name}': Connection #{index} is missing attribute '{attr}'.")
