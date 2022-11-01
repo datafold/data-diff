@@ -108,7 +108,7 @@ class Databricks(Database):
             if not rows:
                 raise RuntimeError(f"{self.name}: Table '{'.'.join(path)}' does not exist, or has no columns")
 
-            d = {r.COLUMN_NAME: r for r in rows}
+            d = {r.COLUMN_NAME: (r.COLUMN_NAME, r.TYPE_NAME, r.DECIMAL_DIGITS, None, None) for r in rows}
             assert len(d) == len(rows)
             return d
 
@@ -120,27 +120,26 @@ class Databricks(Database):
 
         resulted_rows = []
         for row in rows:
-            row_type = "DECIMAL" if row.DATA_TYPE == 3 else row.TYPE_NAME
+            row_type = "DECIMAL" if row[1].startswith("DECIMAL") else row[1]
             type_cls = self.TYPE_CLASSES.get(row_type, UnknownColType)
 
             if issubclass(type_cls, Integer):
-                row = (row.COLUMN_NAME, row_type, None, None, 0)
+                row = (row[0], row_type, None, None, 0)
 
             elif issubclass(type_cls, Float):
-                numeric_precision = self._convert_db_precision_to_digits(row.DECIMAL_DIGITS)
-                row = (row.COLUMN_NAME, row_type, None, numeric_precision, None)
+                numeric_precision = self._convert_db_precision_to_digits(row[2])
+                row = (row[0], row_type, None, numeric_precision, None)
 
             elif issubclass(type_cls, Decimal):
-                # TYPE_NAME has a format DECIMAL(x,y)
-                items = row.TYPE_NAME[8:].rstrip(")").split(",")
+                items = row[1][8:].rstrip(")").split(",")
                 numeric_precision, numeric_scale = int(items[0]), int(items[1])
-                row = (row.COLUMN_NAME, row_type, None, numeric_precision, numeric_scale)
+                row = (row[0], row_type, None, numeric_precision, numeric_scale)
 
             elif issubclass(type_cls, Timestamp):
-                row = (row.COLUMN_NAME, row_type, row.DECIMAL_DIGITS, None, None)
+                row = (row[0], row_type, row[2], None, None)
 
             else:
-                row = (row.COLUMN_NAME, row_type, None, None, None)
+                row = (row[0], row_type, None, None, None)
 
             resulted_rows.append(row)
 
