@@ -43,6 +43,20 @@ def import_presto():
 
 class Dialect(BaseDialect):
     name = "Presto"
+    ROUNDS_ON_PREC_LOSS = True
+    TYPE_CLASSES = {
+        # Timestamps
+        "timestamp with time zone": TimestampTZ,
+        "timestamp without time zone": Timestamp,
+        "timestamp": Timestamp,
+        # Numbers
+        "integer": Integer,
+        "bigint": Integer,
+        "real": Float,
+        "double": Float,
+        # Text
+        "varchar": Text,
+    }
 
     def explain_as_text(self, query: str) -> str:
         return f"EXPLAIN (FORMAT TEXT) {query}"
@@ -81,24 +95,38 @@ class Dialect(BaseDialect):
     def normalize_number(self, value: str, coltype: FractionalType) -> str:
         return self.to_string(f"cast({value} as decimal(38,{coltype.precision}))")
 
+    def parse_type(
+        self,
+        table_path: DbPath,
+        col_name: str,
+        type_repr: str,
+        datetime_precision: int = None,
+        numeric_precision: int = None,
+        numeric_scale: int = None,
+    ) -> ColType:
+        timestamp_regexps = {
+            r"timestamp\((\d)\)": Timestamp,
+            r"timestamp\((\d)\) with time zone": TimestampTZ,
+        }
+        for m, t_cls in match_regexps(timestamp_regexps, type_repr):
+            precision = int(m.group(1))
+            return t_cls(precision=precision, rounds=self.ROUNDS_ON_PREC_LOSS)
+
+        number_regexps = {r"decimal\((\d+),(\d+)\)": Decimal}
+        for m, n_cls in match_regexps(number_regexps, type_repr):
+            _prec, scale = map(int, m.groups())
+            return n_cls(scale)
+
+        string_regexps = {r"varchar\((\d+)\)": Text, r"char\((\d+)\)": Text}
+        for m, n_cls in match_regexps(string_regexps, type_repr):
+            return n_cls()
+
+        return super().parse_type(table_path, col_name, type_repr, datetime_precision, numeric_precision)
+
 
 class Presto(Database):
     dialect = Dialect()
     default_schema = "public"
-    TYPE_CLASSES = {
-        # Timestamps
-        "timestamp with time zone": TimestampTZ,
-        "timestamp without time zone": Timestamp,
-        "timestamp": Timestamp,
-        # Numbers
-        "integer": Integer,
-        "bigint": Integer,
-        "real": Float,
-        "double": Float,
-        # Text
-        "varchar": Text,
-    }
-    ROUNDS_ON_PREC_LOSS = True
 
     def __init__(self, **kw):
         prestodb = import_presto()
@@ -136,34 +164,6 @@ class Presto(Database):
             "FROM INFORMATION_SCHEMA.COLUMNS "
             f"WHERE table_name = '{table}' AND table_schema = '{schema}'"
         )
-
-    def _parse_type(
-        self,
-        table_path: DbPath,
-        col_name: str,
-        type_repr: str,
-        datetime_precision: int = None,
-        numeric_precision: int = None,
-        numeric_scale: int = None,
-    ) -> ColType:
-        timestamp_regexps = {
-            r"timestamp\((\d)\)": Timestamp,
-            r"timestamp\((\d)\) with time zone": TimestampTZ,
-        }
-        for m, t_cls in match_regexps(timestamp_regexps, type_repr):
-            precision = int(m.group(1))
-            return t_cls(precision=precision, rounds=self.ROUNDS_ON_PREC_LOSS)
-
-        number_regexps = {r"decimal\((\d+),(\d+)\)": Decimal}
-        for m, n_cls in match_regexps(number_regexps, type_repr):
-            _prec, scale = map(int, m.groups())
-            return n_cls(scale)
-
-        string_regexps = {r"varchar\((\d+)\)": Text, r"char\((\d+)\)": Text}
-        for m, n_cls in match_regexps(string_regexps, type_repr):
-            return n_cls()
-
-        return super()._parse_type(table_path, col_name, type_repr, datetime_precision, numeric_precision)
 
     @property
     def is_autocommit(self) -> bool:

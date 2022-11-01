@@ -145,6 +145,16 @@ class AbstractDialect(ABC):
 
     name: str
 
+    @property
+    @abstractmethod
+    def name(self) -> str:
+        "Name of the dialect"
+
+    @property
+    @abstractmethod
+    def ROUNDS_ON_PREC_LOSS(self) -> bool:
+        "True if db rounds real values when losing precision, False if it truncates."
+
     @abstractmethod
     def quote(self, s: str):
         "Quote SQL name"
@@ -184,6 +194,18 @@ class AbstractDialect(ABC):
     def timestamp_value(self, t: datetime) -> str:
         "Provide SQL for the given timestamp value"
         ...
+
+    @abstractmethod
+    def parse_type(
+        self,
+        table_path: DbPath,
+        col_name: str,
+        type_repr: str,
+        datetime_precision: int = None,
+        numeric_precision: int = None,
+        numeric_scale: int = None,
+    ) -> ColType:
+        "Parse type info as returned by the database"
 
 
 class AbstractMixin_NormalizeValue(ABC):

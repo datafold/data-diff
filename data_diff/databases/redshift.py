@@ -1,10 +1,15 @@
 from typing import List
 from .database_types import Float, TemporalType, FractionalType, DbPath
-from .postgresql import PostgreSQL, MD5_HEXDIGITS, CHECKSUM_HEXDIGITS, TIMESTAMP_PRECISION_POS, Dialect
+from .postgresql import PostgreSQL, MD5_HEXDIGITS, CHECKSUM_HEXDIGITS, TIMESTAMP_PRECISION_POS, PostgresqlDialect
 
 
-class Dialect(Dialect):
+class Dialect(PostgresqlDialect):
     name = "Redshift"
+    TYPE_CLASSES = {
+        **PostgresqlDialect.TYPE_CLASSES,
+        "double": Float,
+        "real": Float,
+    }
 
     def md5_as_int(self, s: str) -> str:
         return f"strtol(substring(md5({s}), {1+MD5_HEXDIGITS-CHECKSUM_HEXDIGITS}), 16)::decimal(38)"
@@ -42,11 +47,6 @@ class Dialect(Dialect):
 
 class Redshift(PostgreSQL):
     dialect = Dialect()
-    TYPE_CLASSES = {
-        **PostgreSQL.TYPE_CLASSES,
-        "double": Float,
-        "real": Float,
-    }
 
     def select_table_schema(self, path: DbPath) -> str:
         schema, table = self._normalize_table_path(path)

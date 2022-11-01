@@ -25,6 +25,21 @@ def import_databricks():
 
 class Dialect(BaseDialect):
     name = "Databricks"
+    ROUNDS_ON_PREC_LOSS = True
+    TYPE_CLASSES = {
+        # Numbers
+        "INT": Integer,
+        "SMALLINT": Integer,
+        "TINYINT": Integer,
+        "BIGINT": Integer,
+        "FLOAT": Float,
+        "DOUBLE": Float,
+        "DECIMAL": Decimal,
+        # Timestamps
+        "TIMESTAMP": Timestamp,
+        # Text
+        "STRING": Text,
+    }
 
     def quote(self, s: str):
         return f"`{s}`"
@@ -48,25 +63,13 @@ class Dialect(BaseDialect):
     def normalize_number(self, value: str, coltype: NumericType) -> str:
         return self.to_string(f"cast({value} as decimal(38, {coltype.precision}))")
 
+    def _convert_db_precision_to_digits(self, p: int) -> int:
+        # Subtracting 1 due to wierd precision issues
+        return max(super()._convert_db_precision_to_digits(p) - 1, 0)
+
 
 class Databricks(Database):
     dialect = Dialect()
-    TYPE_CLASSES = {
-        # Numbers
-        "INT": Integer,
-        "SMALLINT": Integer,
-        "TINYINT": Integer,
-        "BIGINT": Integer,
-        "FLOAT": Float,
-        "DOUBLE": Float,
-        "DECIMAL": Decimal,
-        # Timestamps
-        "TIMESTAMP": Timestamp,
-        # Text
-        "STRING": Text,
-    }
-
-    ROUNDS_ON_PREC_LOSS = True
 
     def __init__(
         self,
@@ -92,10 +95,6 @@ class Databricks(Database):
     def _query(self, sql_code: str) -> list:
         "Uses the standard SQL cursor interface"
         return self._query_conn(self._conn, sql_code)
-
-    def _convert_db_precision_to_digits(self, p: int) -> int:
-        # Subtracting 1 due to wierd precision issues
-        return max(super()._convert_db_precision_to_digits(p) - 1, 0)
 
     def query_table_schema(self, path: DbPath) -> Dict[str, tuple]:
         # Databricks has INFORMATION_SCHEMA only for Databricks Runtime, not for Databricks SQL.
@@ -145,7 +144,7 @@ class Databricks(Database):
 
             resulted_rows.append(row)
 
-        col_dict: Dict[str, ColType] = {row[0]: self._parse_type(path, *row) for row in resulted_rows}
+        col_dict: Dict[str, ColType] = {row[0]: self.dialect.parse_type(path, *row) for row in resulted_rows}
 
         self._refine_coltypes(path, col_dict, where)
         return col_dict

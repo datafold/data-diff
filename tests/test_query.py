@@ -14,6 +14,8 @@ def normalize_spaces(s: str):
 class MockDialect(AbstractDialect):
     name = "MockDialect"
 
+    ROUNDS_ON_PREC_LOSS = False
+
     def quote(self, s: str) -> str:
         return s
 
@@ -39,6 +41,8 @@ class MockDialect(AbstractDialect):
 
     def timestamp_value(self, t: datetime) -> str:
         return f"timestamp '{t}'"
+
+    parse_type = NotImplemented
 
 
 class MockDatabase(AbstractDatabase):

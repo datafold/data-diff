@@ -104,6 +104,7 @@ def apply_query(callback: Callable[[str], Any], sql_code: Union[str, ThreadLocal
 
 class BaseDialect(AbstractDialect, AbstractMixin_MD5, AbstractMixin_NormalizeValue):
     SUPPORTS_PRIMARY_KEY = False
+    TYPE_CLASSES: Dict[str, type] = {}
 
     def offset_limit(self, offset: Optional[int] = None, limit: Optional[int] = None):
         if offset:
@@ -160,6 +161,56 @@ class BaseDialect(AbstractDialect, AbstractMixin_MD5, AbstractMixin_NormalizeVal
             datetime: "TIMESTAMP",
         }[t]
 
+    def _parse_type_repr(self, type_repr: str) -> Optional[Type[ColType]]:
+        return self.TYPE_CLASSES.get(type_repr)
+
+    def parse_type(
+        self,
+        table_path: DbPath,
+        col_name: str,
+        type_repr: str,
+        datetime_precision: int = None,
+        numeric_precision: int = None,
+        numeric_scale: int = None,
+    ) -> ColType:
+        """ """
+
+        cls = self._parse_type_repr(type_repr)
+        if not cls:
+            return UnknownColType(type_repr)
+
+        if issubclass(cls, TemporalType):
+            return cls(
+                precision=datetime_precision if datetime_precision is not None else DEFAULT_DATETIME_PRECISION,
+                rounds=self.ROUNDS_ON_PREC_LOSS,
+            )
+
+        elif issubclass(cls, Integer):
+            return cls()
+
+        elif issubclass(cls, Decimal):
+            if numeric_scale is None:
+                numeric_scale = 0  # Needed for Oracle.
+            return cls(precision=numeric_scale)
+
+        elif issubclass(cls, Float):
+            # assert numeric_scale is None
+            return cls(
+                precision=self._convert_db_precision_to_digits(
+                    numeric_precision if numeric_precision is not None else DEFAULT_NUMERIC_PRECISION
+                )
+            )
+
+        elif issubclass(cls, (Text, Native_UUID)):
+            return cls()
+
+        raise TypeError(f"Parsing {type_repr} returned an unknown type '{cls}'.")
+
+    def _convert_db_precision_to_digits(self, p: int) -> int:
+        """Convert from binary precision, used by floats, to decimal precision."""
+        # See: https://en.wikipedia.org/wiki/Single-precision_floating-point_format
+        return math.floor(math.log(2**p, 10))
+
 
 class Database(AbstractDatabase):
     """Base abstract class for databases.
@@ -169,7 +220,6 @@ class Database(AbstractDatabase):
     Instanciated using :meth:`~data_diff.connect`
     """
 
-    TYPE_CLASSES: Dict[str, type] = {}
     default_schema: str = None
     dialect: AbstractDialect = None
 
@@ -232,56 +282,6 @@ class Database(AbstractDatabase):
     def enable_interactive(self):
         self._interactive = True
 
-    def _convert_db_precision_to_digits(self, p: int) -> int:
-        """Convert from binary precision, used by floats, to decimal precision."""
-        # See: https://en.wikipedia.org/wiki/Single-precision_floating-point_format
-        return math.floor(math.log(2**p, 10))
-
-    def _parse_type_repr(self, type_repr: str) -> Optional[Type[ColType]]:
-        return self.TYPE_CLASSES.get(type_repr)
-
-    def _parse_type(
-        self,
-        table_path: DbPath,
-        col_name: str,
-        type_repr: str,
-        datetime_precision: int = None,
-        numeric_precision: int = None,
-        numeric_scale: int = None,
-    ) -> ColType:
-        """ """
-
-        cls = self._parse_type_repr(type_repr)
-        if not cls:
-            return UnknownColType(type_repr)
-
-        if issubclass(cls, TemporalType):
-            return cls(
-                precision=datetime_precision if datetime_precision is not None else DEFAULT_DATETIME_PRECISION,
-                rounds=self.ROUNDS_ON_PREC_LOSS,
-            )
-
-        elif issubclass(cls, Integer):
-            return cls()
-
-        elif issubclass(cls, Decimal):
-            if numeric_scale is None:
-                numeric_scale = 0  # Needed for Oracle.
-            return cls(precision=numeric_scale)
-
-        elif issubclass(cls, Float):
-            # assert numeric_scale is None
-            return cls(
-                precision=self._convert_db_precision_to_digits(
-                    numeric_precision if numeric_precision is not None else DEFAULT_NUMERIC_PRECISION
-                )
-            )
-
-        elif issubclass(cls, (Text, Native_UUID)):
-            return cls()
-
-        raise TypeError(f"Parsing {type_repr} returned an unknown type '{cls}'.")
-
     def select_table_schema(self, path: DbPath) -> str:
         schema, table = self._normalize_table_path(path)
 
@@ -320,7 +320,9 @@ class Database(AbstractDatabase):
     ):
         accept = {i.lower() for i in filter_columns}
 
-        col_dict = {row[0]: self._parse_type(path, *row) for name, row in raw_schema.items() if name.lower() in accept}
+        col_dict = {
+            row[0]: self.dialect.parse_type(path, *row) for name, row in raw_schema.items() if name.lower() in accept
+        }
 
         self._refine_coltypes(path, col_dict, where)
 

@@ -31,6 +31,7 @@ def import_clickhouse():
 
 class Dialect(BaseDialect):
     name = "Clickhouse"
+    ROUNDS_ON_PREC_LOSS = False
 
     def normalize_number(self, value: str, coltype: FractionalType) -> str:
         # If a decimal value has trailing zeros in a fractional part, when casting to string they are dropped.
@@ -98,6 +99,25 @@ class Dialect(BaseDialect):
         value = f"formatDateTime({value}, '%Y-%m-%d %H:%M:%S') || '.' || {self.to_string(fractional)}"
         return f"rpad({value}, {TIMESTAMP_PRECISION_POS + 6}, '0')"
 
+    def _convert_db_precision_to_digits(self, p: int) -> int:
+        # Done the same as for PostgreSQL but need to rewrite in another way
+        # because it does not help for float with a big integer part.
+        return super()._convert_db_precision_to_digits(p) - 2
+
+    def _parse_type_repr(self, type_repr: str) -> Optional[Type[ColType]]:
+        nullable_prefix = "Nullable("
+        if type_repr.startswith(nullable_prefix):
+            type_repr = type_repr[len(nullable_prefix) :].rstrip(")")
+
+        if type_repr.startswith("Decimal"):
+            type_repr = "Decimal"
+        elif type_repr.startswith("FixedString"):
+            type_repr = "FixedString"
+        elif type_repr.startswith("DateTime64"):
+            type_repr = "DateTime64"
+
+        return self.TYPE_CLASSES.get(type_repr)
+
 
 class Clickhouse(ThreadedDatabase):
     dialect = Dialect()
@@ -123,7 +143,6 @@ class Clickhouse(ThreadedDatabase):
         "DateTime": Timestamp,
         "DateTime64": Timestamp,
     }
-    ROUNDS_ON_PREC_LOSS = False
 
     def __init__(self, *, thread_count: int, **kw):
         super().__init__(thread_count=thread_count)
@@ -148,25 +167,6 @@ class Clickhouse(ThreadedDatabase):
         except clickhouse.OperationError as e:
             raise ConnectError(*e.args) from e
 
-    def _parse_type_repr(self, type_repr: str) -> Optional[Type[ColType]]:
-        nullable_prefix = "Nullable("
-        if type_repr.startswith(nullable_prefix):
-            type_repr = type_repr[len(nullable_prefix) :].rstrip(")")
-
-        if type_repr.startswith("Decimal"):
-            type_repr = "Decimal"
-        elif type_repr.startswith("FixedString"):
-            type_repr = "FixedString"
-        elif type_repr.startswith("DateTime64"):
-            type_repr = "DateTime64"
-
-        return self.TYPE_CLASSES.get(type_repr)
-
     @property
     def is_autocommit(self) -> bool:
         return True
-
-    def _convert_db_precision_to_digits(self, p: int) -> int:
-        # Done the same as for PostgreSQL but need to rewrite in another way
-        # because it does not help for float with a big integer part.
-        return super()._convert_db_precision_to_digits(p) - 2

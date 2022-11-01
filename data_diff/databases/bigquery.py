@@ -13,6 +13,21 @@ def import_bigquery():
 
 class Dialect(BaseDialect):
     name = "BigQuery"
+    ROUNDS_ON_PREC_LOSS = False  # Technically BigQuery doesn't allow implicit rounding or truncation
+    TYPE_CLASSES = {
+        # Dates
+        "TIMESTAMP": Timestamp,
+        "DATETIME": Datetime,
+        # Numbers
+        "INT64": Integer,
+        "INT32": Integer,
+        "NUMERIC": Decimal,
+        "BIGNUMERIC": Decimal,
+        "FLOAT64": Float,
+        "FLOAT32": Float,
+        # Text
+        "STRING": Text,
+    }
 
     def random(self) -> str:
         return "RAND()"
@@ -53,21 +68,6 @@ class Dialect(BaseDialect):
 
 class BigQuery(Database):
     dialect = Dialect()
-    TYPE_CLASSES = {
-        # Dates
-        "TIMESTAMP": Timestamp,
-        "DATETIME": Datetime,
-        # Numbers
-        "INT64": Integer,
-        "INT32": Integer,
-        "NUMERIC": Decimal,
-        "BIGNUMERIC": Decimal,
-        "FLOAT64": Float,
-        "FLOAT32": Float,
-        # Text
-        "STRING": Text,
-    }
-    ROUNDS_ON_PREC_LOSS = False  # Technically BigQuery doesn't allow implicit rounding or truncation
 
     def __init__(self, project, *, dataset, **kw):
         bigquery = import_bigquery()

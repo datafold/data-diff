@@ -30,6 +30,16 @@ def import_oracle():
 class Dialect(BaseDialect):
     name = "Oracle"
     SUPPORTS_PRIMARY_KEY = True
+    TYPE_CLASSES: Dict[str, type] = {
+        "NUMBER": Decimal,
+        "FLOAT": Float,
+        # Text
+        "CHAR": Text,
+        "NCHAR": Text,
+        "NVARCHAR2": Text,
+        "VARCHAR2": Text,
+    }
+    ROUNDS_ON_PREC_LOSS = True
 
     def md5_as_int(self, s: str) -> str:
         # standard_hash is faster than DBMS_CRYPTO.Hash
@@ -98,19 +108,32 @@ class Dialect(BaseDialect):
     def explain_as_text(self, query: str) -> str:
         raise NotImplementedError("Explain not yet implemented in Oracle")
 
+    def parse_type(
+        self,
+        table_path: DbPath,
+        col_name: str,
+        type_repr: str,
+        datetime_precision: int = None,
+        numeric_precision: int = None,
+        numeric_scale: int = None,
+    ) -> ColType:
+        regexps = {
+            r"TIMESTAMP\((\d)\) WITH LOCAL TIME ZONE": Timestamp,
+            r"TIMESTAMP\((\d)\) WITH TIME ZONE": TimestampTZ,
+            r"TIMESTAMP\((\d)\)": Timestamp,
+        }
+
+        for m, t_cls in match_regexps(regexps, type_repr):
+            precision = int(m.group(1))
+            return t_cls(precision=precision, rounds=self.ROUNDS_ON_PREC_LOSS)
+
+        return super()._parse_type(
+            table_path, col_name, type_repr, datetime_precision, numeric_precision, numeric_scale
+        )
+
 
 class Oracle(ThreadedDatabase):
     dialect = Dialect()
-    TYPE_CLASSES: Dict[str, type] = {
-        "NUMBER": Decimal,
-        "FLOAT": Float,
-        # Text
-        "CHAR": Text,
-        "NCHAR": Text,
-        "NVARCHAR2": Text,
-        "VARCHAR2": Text,
-    }
-    ROUNDS_ON_PREC_LOSS = True
 
     def __init__(self, *, host, database, thread_count, **kw):
         self.kwargs = dict(dsn=f"{host}/{database}" if database else host, **kw)
@@ -141,27 +164,4 @@ class Oracle(ThreadedDatabase):
         return (
             f"SELECT column_name, data_type, 6 as datetime_precision, data_precision as numeric_precision, data_scale as numeric_scale"
             f" FROM ALL_TAB_COLUMNS WHERE table_name = '{table.upper()}' AND owner = '{schema.upper()}'"
-        )
-
-    def _parse_type(
-        self,
-        table_path: DbPath,
-        col_name: str,
-        type_repr: str,
-        datetime_precision: int = None,
-        numeric_precision: int = None,
-        numeric_scale: int = None,
-    ) -> ColType:
-        regexps = {
-            r"TIMESTAMP\((\d)\) WITH LOCAL TIME ZONE": Timestamp,
-            r"TIMESTAMP\((\d)\) WITH TIME ZONE": TimestampTZ,
-            r"TIMESTAMP\((\d)\)": Timestamp,
-        }
-
-        for m, t_cls in match_regexps(regexps, type_repr):
-            precision = int(m.group(1))
-            return t_cls(precision=precision, rounds=self.ROUNDS_ON_PREC_LOSS)
-
-        return super()._parse_type(
-            table_path, col_name, type_repr, datetime_precision, numeric_precision, numeric_scale
         )

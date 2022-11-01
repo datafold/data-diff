@@ -24,9 +24,31 @@ def import_postgresql():
     return psycopg2
 
 
-class Dialect(BaseDialect):
+class PostgresqlDialect(BaseDialect):
     name = "PostgreSQL"
+    ROUNDS_ON_PREC_LOSS = True
     SUPPORTS_PRIMARY_KEY = True
+
+    TYPE_CLASSES = {
+        # Timestamps
+        "timestamp with time zone": TimestampTZ,
+        "timestamp without time zone": Timestamp,
+        "timestamp": Timestamp,
+        # Numbers
+        "double precision": Float,
+        "real": Float,
+        "decimal": Decimal,
+        "integer": Integer,
+        "numeric": Decimal,
+        "bigint": Integer,
+        # Text
+        "character": Text,
+        "character varying": Text,
+        "varchar": Text,
+        "text": Text,
+        # UUID
+        "uuid": Native_UUID,
+    }
 
     def quote(self, s: str):
         return f'"{s}"'
@@ -49,30 +71,13 @@ class Dialect(BaseDialect):
     def normalize_number(self, value: str, coltype: FractionalType) -> str:
         return self.to_string(f"{value}::decimal(38, {coltype.precision})")
 
+    def _convert_db_precision_to_digits(self, p: int) -> int:
+        # Subtracting 2 due to wierd precision issues in PostgreSQL
+        return super()._convert_db_precision_to_digits(p) - 2
+
 
 class PostgreSQL(ThreadedDatabase):
-    dialect = Dialect()
-    TYPE_CLASSES = {
-        # Timestamps
-        "timestamp with time zone": TimestampTZ,
-        "timestamp without time zone": Timestamp,
-        "timestamp": Timestamp,
-        # Numbers
-        "double precision": Float,
-        "real": Float,
-        "decimal": Decimal,
-        "integer": Integer,
-        "numeric": Decimal,
-        "bigint": Integer,
-        # Text
-        "character": Text,
-        "character varying": Text,
-        "varchar": Text,
-        "text": Text,
-        # UUID
-        "uuid": Native_UUID,
-    }
-    ROUNDS_ON_PREC_LOSS = True
+    dialect = PostgresqlDialect()
     SUPPORTS_UNIQUE_CONSTAINT = True
 
     default_schema = "public"
@@ -94,7 +99,3 @@ class PostgreSQL(ThreadedDatabase):
             return c
         except pg.OperationalError as e:
             raise ConnectError(*e.args) from e
-
-    def _convert_db_precision_to_digits(self, p: int) -> int:
-        # Subtracting 2 due to wierd precision issues in PostgreSQL
-        return super()._convert_db_precision_to_digits(p) - 2

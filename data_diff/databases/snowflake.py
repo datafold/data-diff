@@ -16,6 +16,18 @@ def import_snowflake():
 
 class Dialect(BaseDialect):
     name = "Snowflake"
+    ROUNDS_ON_PREC_LOSS = False
+    TYPE_CLASSES = {
+        # Timestamps
+        "TIMESTAMP_NTZ": Timestamp,
+        "TIMESTAMP_LTZ": Timestamp,
+        "TIMESTAMP_TZ": TimestampTZ,
+        # Numbers
+        "NUMBER": Decimal,
+        "FLOAT": Float,
+        # Text
+        "TEXT": Text,
+    }
 
     def explain_as_text(self, query: str) -> str:
         return f"EXPLAIN USING TEXT {query}"
@@ -43,18 +55,6 @@ class Dialect(BaseDialect):
 
 class Snowflake(Database):
     dialect = Dialect()
-    TYPE_CLASSES = {
-        # Timestamps
-        "TIMESTAMP_NTZ": Timestamp,
-        "TIMESTAMP_LTZ": Timestamp,
-        "TIMESTAMP_TZ": TimestampTZ,
-        # Numbers
-        "NUMBER": Decimal,
-        "FLOAT": Float,
-        # Text
-        "TEXT": Text,
-    }
-    ROUNDS_ON_PREC_LOSS = False
 
     def __init__(self, *, schema: str, **kw):
         snowflake, serialization, default_backend = import_snowflake()

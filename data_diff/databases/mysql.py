@@ -22,7 +22,24 @@ def import_mysql():
 
 class Dialect(BaseDialect):
     name = "MySQL"
+    ROUNDS_ON_PREC_LOSS = True
     SUPPORTS_PRIMARY_KEY = True
+    TYPE_CLASSES = {
+        # Dates
+        "datetime": Datetime,
+        "timestamp": Timestamp,
+        # Numbers
+        "double": Float,
+        "float": Float,
+        "decimal": Decimal,
+        "int": Integer,
+        "bigint": Integer,
+        # Text
+        "varchar": Text,
+        "char": Text,
+        "varbinary": Text,
+        "binary": Text,
+    }
 
     def quote(self, s: str):
         return f"`{s}`"
@@ -66,23 +83,6 @@ class Dialect(BaseDialect):
 
 class MySQL(ThreadedDatabase):
     dialect = Dialect()
-    TYPE_CLASSES = {
-        # Dates
-        "datetime": Datetime,
-        "timestamp": Timestamp,
-        # Numbers
-        "double": Float,
-        "float": Float,
-        "decimal": Decimal,
-        "int": Integer,
-        "bigint": Integer,
-        # Text
-        "varchar": Text,
-        "char": Text,
-        "varbinary": Text,
-        "binary": Text,
-    }
-    ROUNDS_ON_PREC_LOSS = True
     SUPPORTS_ALPHANUMS = False
     SUPPORTS_UNIQUE_CONSTAINT = True
 

@@ -34,6 +34,20 @@ def import_vertica():
 
 class Dialect(BaseDialect):
     name = "Vertica"
+    ROUNDS_ON_PREC_LOSS = True
+
+    TYPE_CLASSES = {
+        # Timestamps
+        "timestamp": Timestamp,
+        "timestamptz": TimestampTZ,
+        # Numbers
+        "numeric": Decimal,
+        "int": Integer,
+        "float": Float,
+        # Text
+        "char": Text,
+        "varchar": Text,
+    }
 
     def quote(self, s: str):
         return f'"{s}"'
@@ -66,41 +80,7 @@ class Dialect(BaseDialect):
     def is_distinct_from(self, a: str, b: str) -> str:
         return f"not ({a} <=> {b})"
 
-
-class Vertica(ThreadedDatabase):
-    dialect = Dialect()
-    default_schema = "public"
-
-    TYPE_CLASSES = {
-        # Timestamps
-        "timestamp": Timestamp,
-        "timestamptz": TimestampTZ,
-        # Numbers
-        "numeric": Decimal,
-        "int": Integer,
-        "float": Float,
-        # Text
-        "char": Text,
-        "varchar": Text,
-    }
-
-    ROUNDS_ON_PREC_LOSS = True
-
-    def __init__(self, *, thread_count, **kw):
-        self._args = kw
-        self._args["AUTOCOMMIT"] = False
-
-        super().__init__(thread_count=thread_count)
-
-    def create_connection(self):
-        vertica = import_vertica()
-        try:
-            c = vertica.connect(**self._args)
-            return c
-        except vertica.errors.ConnectionError as e:
-            raise ConnectError(*e.args) from e
-
-    def _parse_type(
+    def parse_type(
         self,
         table_path: DbPath,
         col_name: str,
@@ -131,7 +111,26 @@ class Vertica(ThreadedDatabase):
         for m, n_cls in match_regexps(string_regexps, type_repr):
             return n_cls()
 
-        return super()._parse_type(table_path, col_name, type_repr, datetime_precision, numeric_precision)
+        return super().parse_type(table_path, col_name, type_repr, datetime_precision, numeric_precision)
+
+
+class Vertica(ThreadedDatabase):
+    dialect = Dialect()
+    default_schema = "public"
+
+    def __init__(self, *, thread_count, **kw):
+        self._args = kw
+        self._args["AUTOCOMMIT"] = False
+
+        super().__init__(thread_count=thread_count)
+
+    def create_connection(self):
+        vertica = import_vertica()
+        try:
+            c = vertica.connect(**self._args)
+            return c
+        except vertica.errors.ConnectionError as e:
+            raise ConnectError(*e.args) from e
 
     def select_table_schema(self, path: DbPath) -> str:
         schema, table = self._normalize_table_path(path)
