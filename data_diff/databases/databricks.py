@@ -83,7 +83,7 @@ class Databricks(Database):
         databricks = import_databricks()
 
         self._conn = databricks.sql.connect(
-            server_hostname=server_hostname, http_path=http_path, access_token=access_token
+            server_hostname=server_hostname, http_path=http_path, access_token=access_token, catalog=catalog
         )
 
         logging.getLogger("databricks.sql").setLevel(logging.WARNING)
