@@ -26,7 +26,7 @@ def _apply_config(config: Dict[str, Any], run_name: str, kw: Dict[str, Any]):
     else:
         run_name = "default"
 
-    if "database1" in kw:
+    if kw.get("database1") is not None:
         for attr in ("table1", "database2", "table2"):
             if kw[attr] is None:
                 raise ValueError(f"Specified database1 but not {attr}. Must specify all 4 arguments, or niether.")
@@ -36,7 +36,8 @@ def _apply_config(config: Dict[str, Any], run_name: str, kw: Dict[str, Any]):
 
     # Process databases + tables
     for index in "12":
-        args = run_args.pop(index, {})
+        args_with_db_num = {k: run_args.get(k,None) for k in (f"database{index}", f"table{index}", f"threads{index}")}
+        args = {k.replace(index,''):v for k,v in args_with_db_num.items()}
         for attr in ("database", "table"):
             if attr not in args:
                 raise ConfigParseError(f"Running 'run.{run_name}': Connection #{index} is missing attribute '{attr}'.")
