@@ -149,6 +149,7 @@ class TestPerDatabase(unittest.TestCase):
 
 
 def _parameterized_class_per_conn(test_databases):
+    test_databases = set(test_databases)
     names = [(cls.__name__, cls) for cls in CONN_STRINGS if cls in test_databases]
     return parameterized_class(("name", "db_cls"), names)
 

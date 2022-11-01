@@ -195,18 +195,24 @@ class JoinDiffer(TableDiffer):
                 if not is_xa:
                     yield "+", tuple(b_row)
 
-    def _test_duplicate_keys(self, table1, table2):
+    def _test_duplicate_keys(self, table1: TableSegment, table2: TableSegment):
         logger.debug("Testing for duplicate keys")
 
         # Test duplicate keys
         for ts in [table1, table2]:
+            unique = ts.database.query_table_unique_columns(ts.table_path) if ts.database.SUPPORTS_UNIQUE_CONSTAINT else []
+
             t = ts.make_select()
             key_columns = ts.key_columns
 
-            q = t.select(total=Count(), total_distinct=Count(Concat(this[key_columns]), distinct=True))
-            total, total_distinct = ts.database.query(q, tuple)
-            if total != total_distinct:
-                raise ValueError("Duplicate primary keys")
+            unvalidated = list(set(key_columns) - set(unique))
+            if unvalidated:
+                # Validate that there are no duplicate keys
+                self.stats["validated_unique_keys"] = self.stats.get("validated_unique_keys", []) + [unvalidated]
+                q = t.select(total=Count(), total_distinct=Count(Concat(this[unvalidated]), distinct=True))
+                total, total_distinct = ts.database.query(q, tuple)
+                if total != total_distinct:
+                    raise ValueError("Duplicate primary keys")
 
     def _test_null_keys(self, table1, table2):
         logger.debug("Testing for null keys")

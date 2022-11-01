@@ -1,4 +1,4 @@
-from typing import Union
+from typing import Union, List
 import logging
 
 from .database_types import Timestamp, TimestampTZ, Decimal, Float, Text, FractionalType, TemporalType, DbPath
@@ -95,3 +95,6 @@ class Snowflake(Database):
 
     def explain_as_text(self, query: str) -> str:
         return f"EXPLAIN USING TEXT {query}"
+
+    def query_table_unique_columns(self, path: DbPath) -> List[str]:
+        return []

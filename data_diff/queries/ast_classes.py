@@ -306,13 +306,13 @@ class TablePath(ExprNode, ITable):
         return ".".join(map(c.quote, path))
 
     # Statement shorthands
+    def create(self, source_table: ITable = None, *, if_not_exists=False, primary_keys=None):
 
-    def create(self, source_table: ITable = None, *, if_not_exists=False):
         if source_table is None and not self.schema:
             raise ValueError("Either schema or source table needed to create table")
         if isinstance(source_table, TablePath):
             source_table = source_table.select()
-        return CreateTable(self, source_table, if_not_exists=if_not_exists)
+        return CreateTable(self, source_table, if_not_exists=if_not_exists, primary_keys=primary_keys)
 
     def drop(self, if_exists=False):
         return DropTable(self, if_exists=if_exists)
@@ -641,14 +641,20 @@ class CreateTable(Statement):
     path: TablePath
     source_table: Expr = None
     if_not_exists: bool = False
+    primary_keys: List[str] = None
 
     def compile(self, c: Compiler) -> str:
         ne = "IF NOT EXISTS " if self.if_not_exists else ""
         if self.source_table:
             return f"CREATE TABLE {ne}{c.compile(self.path)} AS {c.compile(self.source_table)}"
 
-        schema = ", ".join(f"{c.quote(k)} {c.database.type_repr(v)}" for k, v in self.path.schema.items())
-        return f"CREATE TABLE {ne}{c.compile(self.path)}({schema})"
+        schema = ", ".join(f"{c.database.quote(k)} {c.database.type_repr(v)}" for k, v in self.path.schema.items())
+        pks = (
+            ", PRIMARY KEY (%s)" % ", ".join(self.primary_keys)
+            if self.primary_keys and c.database.SUPPORTS_PRIMARY_KEY
+            else ""
+        )
+        return f"CREATE TABLE {ne}{c.compile(self.path)}({schema}{pks})"
 
 
 @dataclass

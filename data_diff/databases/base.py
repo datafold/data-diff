@@ -110,6 +110,8 @@ class Database(AbstractDatabase):
     TYPE_CLASSES: Dict[str, type] = {}
     default_schema: str = None
     SUPPORTS_ALPHANUMS = True
+    SUPPORTS_PRIMARY_KEY = False
+    SUPPORTS_UNIQUE_CONSTAINT = False
 
     _interactive = False
 
@@ -234,6 +236,21 @@ class Database(AbstractDatabase):
         d = {r[0]: r for r in rows}
         assert len(d) == len(rows)
         return d
+
+    def select_table_unique_columns(self, path: DbPath) -> str:
+        schema, table = self._normalize_table_path(path)
+
+        return (
+            "SELECT column_name "
+            "FROM information_schema.key_column_usage "
+            f"WHERE table_name = '{table}' AND table_schema = '{schema}'"
+        )
+
+    def query_table_unique_columns(self, path: DbPath) -> List[str]:
+        if not self.SUPPORTS_UNIQUE_CONSTAINT:
+            raise NotImplementedError("This database doesn't support 'unique' constraints")
+        res = self.query(self.select_table_unique_columns(path), List[str])
+        return list(res)
 
     def _process_table_schema(
         self, path: DbPath, raw_schema: Dict[str, tuple], filter_columns: Sequence[str], where: str = None
