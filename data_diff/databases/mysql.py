@@ -9,7 +9,7 @@ from .database_types import (
     FractionalType,
     ColType_UUID,
 )
-from .base import ThreadedDatabase, import_helper, ConnectError
+from .base import ThreadedDatabase, import_helper, ConnectError, BaseDialect
 from .base import MD5_HEXDIGITS, CHECKSUM_HEXDIGITS, TIMESTAMP_PRECISION_POS
 
 
@@ -20,51 +20,14 @@ def import_mysql():
     return mysql.connector
 
 
-class MySQL(ThreadedDatabase):
-    TYPE_CLASSES = {
-        # Dates
-        "datetime": Datetime,
-        "timestamp": Timestamp,
-        # Numbers
-        "double": Float,
-        "float": Float,
-        "decimal": Decimal,
-        "int": Integer,
-        "bigint": Integer,
-        # Text
-        "varchar": Text,
-        "char": Text,
-        "varbinary": Text,
-        "binary": Text,
-    }
-    ROUNDS_ON_PREC_LOSS = True
-    SUPPORTS_ALPHANUMS = False
+class Dialect(BaseDialect):
+    name = "MySQL"
     SUPPORTS_PRIMARY_KEY = True
-    SUPPORTS_UNIQUE_CONSTAINT = True
-
-    def __init__(self, *, thread_count, **kw):
-        self._args = kw
-
-        super().__init__(thread_count=thread_count)
-
-        # In MySQL schema and database are synonymous
-        self.default_schema = kw["database"]
-
-    def create_connection(self):
-        mysql = import_mysql()
-        try:
-            return mysql.connect(charset="utf8", use_unicode=True, **self._args)
-        except mysql.Error as e:
-            if e.errno == mysql.errorcode.ER_ACCESS_DENIED_ERROR:
-                raise ConnectError("Bad user name or password") from e
-            elif e.errno == mysql.errorcode.ER_BAD_DB_ERROR:
-                raise ConnectError("Database does not exist") from e
-            raise ConnectError(*e.args) from e
 
     def quote(self, s: str):
         return f"`{s}`"
 
-    def md5_to_int(self, s: str) -> str:
+    def md5_as_int(self, s: str) -> str:
         return f"cast(conv(substring(md5({s}), {1+MD5_HEXDIGITS-CHECKSUM_HEXDIGITS}), 16, 10) as unsigned)"
 
     def to_string(self, s: str):
@@ -99,3 +62,45 @@ class MySQL(ThreadedDatabase):
 
     def explain_as_text(self, query: str) -> str:
         return f"EXPLAIN FORMAT=TREE {query}"
+
+
+class MySQL(ThreadedDatabase):
+    dialect = Dialect()
+    TYPE_CLASSES = {
+        # Dates
+        "datetime": Datetime,
+        "timestamp": Timestamp,
+        # Numbers
+        "double": Float,
+        "float": Float,
+        "decimal": Decimal,
+        "int": Integer,
+        "bigint": Integer,
+        # Text
+        "varchar": Text,
+        "char": Text,
+        "varbinary": Text,
+        "binary": Text,
+    }
+    ROUNDS_ON_PREC_LOSS = True
+    SUPPORTS_ALPHANUMS = False
+    SUPPORTS_UNIQUE_CONSTAINT = True
+
+    def __init__(self, *, thread_count, **kw):
+        self._args = kw
+
+        super().__init__(thread_count=thread_count)
+
+        # In MySQL schema and database are synonymous
+        self.default_schema = kw["database"]
+
+    def create_connection(self):
+        mysql = import_mysql()
+        try:
+            return mysql.connect(charset="utf8", use_unicode=True, **self._args)
+        except mysql.Error as e:
+            if e.errno == mysql.errorcode.ER_ACCESS_DENIED_ERROR:
+                raise ConnectError("Bad user name or password") from e
+            elif e.errno == mysql.errorcode.ER_BAD_DB_ERROR:
+                raise ConnectError("Database does not exist") from e
+            raise ConnectError(*e.args) from e

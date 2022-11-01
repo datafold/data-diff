@@ -17,7 +17,7 @@ class NormalizeAsString(ExprNode):
 
     def compile(self, c: Compiler) -> str:
         expr = c.compile(self.expr)
-        return c.database.normalize_value_by_type(expr, self.expr_type or self.expr.type)
+        return c.dialect.normalize_value_by_type(expr, self.expr_type or self.expr.type)
 
 
 @dataclass
@@ -58,5 +58,5 @@ class Checksum(ExprNode):
             # No need to coalesce - safe to assume that key cannot be null
             (expr,) = self.exprs
         expr = c.compile(expr)
-        md5 = c.database.md5_to_int(expr)
+        md5 = c.dialect.md5_as_int(expr)
         return f"sum({md5})"

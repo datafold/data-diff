@@ -13,6 +13,9 @@ from data_diff.utils import is_uuid, safezip
 from data_diff.queries import Expr, Compiler, table, Select, SKIP, Explain
 from .database_types import (
     AbstractDatabase,
+    AbstractDialect,
+    AbstractMixin_MD5,
+    AbstractMixin_NormalizeValue,
     ColType,
     Integer,
     Decimal,
@@ -99,6 +102,65 @@ def apply_query(callback: Callable[[str], Any], sql_code: Union[str, ThreadLocal
         return callback(sql_code)
 
 
+class BaseDialect(AbstractDialect, AbstractMixin_MD5, AbstractMixin_NormalizeValue):
+    SUPPORTS_PRIMARY_KEY = False
+
+    def offset_limit(self, offset: Optional[int] = None, limit: Optional[int] = None):
+        if offset:
+            raise NotImplementedError("No support for OFFSET in query")
+
+        return f"LIMIT {limit}"
+
+    def concat(self, items: List[str]) -> str:
+        assert len(items) > 1
+        joined_exprs = ", ".join(items)
+        return f"concat({joined_exprs})"
+
+    def is_distinct_from(self, a: str, b: str) -> str:
+        return f"{a} is distinct from {b}"
+
+    def timestamp_value(self, t: DbTime) -> str:
+        return f"'{t.isoformat()}'"
+
+    def normalize_uuid(self, value: str, coltype: ColType_UUID) -> str:
+        if isinstance(coltype, String_UUID):
+            return f"TRIM({value})"
+        return self.to_string(value)
+
+    def random(self) -> str:
+        return "RANDOM()"
+
+    def explain_as_text(self, query: str) -> str:
+        return f"EXPLAIN {query}"
+
+    def _constant_value(self, v):
+        if v is None:
+            return "NULL"
+        elif isinstance(v, str):
+            return f"'{v}'"
+        elif isinstance(v, datetime):
+            # TODO use self.timestamp_value
+            return f"timestamp '{v}'"
+        elif isinstance(v, UUID):
+            return f"'{v}'"
+        return repr(v)
+
+    def constant_values(self, rows) -> str:
+        values = ", ".join("(%s)" % ", ".join(self._constant_value(v) for v in row) for row in rows)
+        return f"VALUES {values}"
+
+    def type_repr(self, t) -> str:
+        if isinstance(t, str):
+            return t
+        return {
+            int: "INT",
+            str: "VARCHAR",
+            bool: "BOOLEAN",
+            float: "FLOAT",
+            datetime: "TIMESTAMP",
+        }[t]
+
+
 class Database(AbstractDatabase):
     """Base abstract class for databases.
 
@@ -109,8 +171,9 @@ class Database(AbstractDatabase):
 
     TYPE_CLASSES: Dict[str, type] = {}
     default_schema: str = None
+    dialect: AbstractDialect = None
+
     SUPPORTS_ALPHANUMS = True
-    SUPPORTS_PRIMARY_KEY = False
     SUPPORTS_UNIQUE_CONSTAINT = False
 
     _interactive = False
@@ -274,7 +337,7 @@ class Database(AbstractDatabase):
         if not text_columns:
             return
 
-        fields = [self.normalize_uuid(self.quote(c), String_UUID()) for c in text_columns]
+        fields = [self.dialect.normalize_uuid(self.dialect.quote(c), String_UUID()) for c in text_columns]
         samples_by_row = self.query(table(*table_path).select(*fields).where(where or SKIP).limit(sample_size), list)
         if not samples_by_row:
             raise ValueError(f"Table {table_path} is empty.")
@@ -321,58 +384,6 @@ class Database(AbstractDatabase):
     def parse_table_name(self, name: str) -> DbPath:
         return parse_table_name(name)
 
-    def offset_limit(self, offset: Optional[int] = None, limit: Optional[int] = None):
-        if offset:
-            raise NotImplementedError("No support for OFFSET in query")
-
-        return f"LIMIT {limit}"
-
-    def concat(self, items: List[str]) -> str:
-        assert len(items) > 1
-        joined_exprs = ", ".join(items)
-        return f"concat({joined_exprs})"
-
-    def is_distinct_from(self, a: str, b: str) -> str:
-        return f"{a} is distinct from {b}"
-
-    def timestamp_value(self, t: DbTime) -> str:
-        return f"'{t.isoformat()}'"
-
-    def normalize_uuid(self, value: str, coltype: ColType_UUID) -> str:
-        if isinstance(coltype, String_UUID):
-            return f"TRIM({value})"
-        return self.to_string(value)
-
-    def random(self) -> str:
-        return "RANDOM()"
-
-    def _constant_value(self, v):
-        if v is None:
-            return "NULL"
-        elif isinstance(v, str):
-            return f"'{v}'"
-        elif isinstance(v, datetime):
-            # TODO use self.timestamp_value
-            return f"timestamp '{v}'"
-        elif isinstance(v, UUID):
-            return f"'{v}'"
-        return repr(v)
-
-    def constant_values(self, rows) -> str:
-        values = ", ".join("(%s)" % ", ".join(self._constant_value(v) for v in row) for row in rows)
-        return f"VALUES {values}"
-
-    def type_repr(self, t) -> str:
-        if isinstance(t, str):
-            return t
-        return {
-            int: "INT",
-            str: "VARCHAR",
-            bool: "BOOLEAN",
-            float: "FLOAT",
-            datetime: "TIMESTAMP",
-        }[t]
-
     def _query_cursor(self, c, sql_code: str):
         assert isinstance(sql_code, str), sql_code
         try:
@@ -388,9 +399,6 @@ class Database(AbstractDatabase):
         c = conn.cursor()
         callback = partial(self._query_cursor, c)
         return apply_query(callback, sql_code)
-
-    def explain_as_text(self, query: str) -> str:
-        return f"EXPLAIN {query}"
 
 
 class ThreadedDatabase(Database):

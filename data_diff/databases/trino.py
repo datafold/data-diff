@@ -1,5 +1,5 @@
 from .database_types import TemporalType, ColType_UUID
-from .presto import Presto
+from .presto import Presto, Dialect
 from .base import import_helper
 from .base import TIMESTAMP_PRECISION_POS
 
@@ -11,11 +11,8 @@ def import_trino():
     return trino
 
 
-class Trino(Presto):
-    def __init__(self, **kw):
-        trino = import_trino()
-
-        self._conn = trino.dbapi.connect(**kw)
+class Dialect(Dialect):
+    name = "Trino"
 
     def normalize_timestamp(self, value: str, coltype: TemporalType) -> str:
         if coltype.rounds:
@@ -29,3 +26,12 @@ class Trino(Presto):
 
     def normalize_uuid(self, value: str, coltype: ColType_UUID) -> str:
         return f"TRIM({value})"
+
+
+class Trino(Presto):
+    dialect = Dialect()
+
+    def __init__(self, **kw):
+        trino = import_trino()
+
+        self._conn = trino.dbapi.connect(**kw)

@@ -17,7 +17,7 @@ from .database_types import (
     ColType_UUID,
     TemporalType,
 )
-from .base import Database, import_helper, ThreadLocalInterpreter
+from .base import BaseDialect, Database, import_helper, ThreadLocalInterpreter
 from .base import (
     MD5_HEXDIGITS,
     CHECKSUM_HEXDIGITS,
@@ -41,7 +41,49 @@ def import_presto():
     return prestodb
 
 
+class Dialect(BaseDialect):
+    name = "Presto"
+
+    def explain_as_text(self, query: str) -> str:
+        return f"EXPLAIN (FORMAT TEXT) {query}"
+
+    def type_repr(self, t) -> str:
+        try:
+            return {float: "REAL"}[t]
+        except KeyError:
+            return super().type_repr(t)
+
+    def timestamp_value(self, t: DbTime) -> str:
+        return f"timestamp '{t.isoformat(' ')}'"
+
+    def quote(self, s: str):
+        return f'"{s}"'
+
+    def md5_as_int(self, s: str) -> str:
+        return f"cast(from_base(substr(to_hex(md5(to_utf8({s}))), {1+MD5_HEXDIGITS-CHECKSUM_HEXDIGITS}), 16) as decimal(38, 0))"
+
+    def to_string(self, s: str):
+        return f"cast({s} as varchar)"
+
+    def normalize_uuid(self, value: str, coltype: ColType_UUID) -> str:
+        # Trim doesn't work on CHAR type
+        return f"TRIM(CAST({value} AS VARCHAR))"
+
+    def normalize_timestamp(self, value: str, coltype: TemporalType) -> str:
+        # TODO rounds
+        if coltype.rounds:
+            s = f"date_format(cast({value} as timestamp(6)), '%Y-%m-%d %H:%i:%S.%f')"
+        else:
+            s = f"date_format(cast({value} as timestamp(6)), '%Y-%m-%d %H:%i:%S.%f')"
+
+        return f"RPAD(RPAD({s}, {TIMESTAMP_PRECISION_POS+coltype.precision}, '.'), {TIMESTAMP_PRECISION_POS+6}, '0')"
+
+    def normalize_number(self, value: str, coltype: FractionalType) -> str:
+        return self.to_string(f"cast({value} as decimal(38,{coltype.precision}))")
+
+
 class Presto(Database):
+    dialect = Dialect()
     default_schema = "public"
     TYPE_CLASSES = {
         # Timestamps
@@ -74,15 +116,6 @@ class Presto(Database):
         else:
             self._conn = prestodb.dbapi.connect(**kw)
 
-    def quote(self, s: str):
-        return f'"{s}"'
-
-    def md5_to_int(self, s: str) -> str:
-        return f"cast(from_base(substr(to_hex(md5(to_utf8({s}))), {1+MD5_HEXDIGITS-CHECKSUM_HEXDIGITS}), 16) as decimal(38, 0))"
-
-    def to_string(self, s: str):
-        return f"cast({s} as varchar)"
-
     def _query(self, sql_code: str) -> list:
         "Uses the standard SQL cursor interface"
         c = self._conn.cursor()
@@ -94,18 +127,6 @@ class Presto(Database):
 
     def close(self):
         self._conn.close()
-
-    def normalize_timestamp(self, value: str, coltype: TemporalType) -> str:
-        # TODO rounds
-        if coltype.rounds:
-            s = f"date_format(cast({value} as timestamp(6)), '%Y-%m-%d %H:%i:%S.%f')"
-        else:
-            s = f"date_format(cast({value} as timestamp(6)), '%Y-%m-%d %H:%i:%S.%f')"
-
-        return f"RPAD(RPAD({s}, {TIMESTAMP_PRECISION_POS+coltype.precision}, '.'), {TIMESTAMP_PRECISION_POS+6}, '0')"
-
-    def normalize_number(self, value: str, coltype: FractionalType) -> str:
-        return self.to_string(f"cast({value} as decimal(38,{coltype.precision}))")
 
     def select_table_schema(self, path: DbPath) -> str:
         schema, table = self._normalize_table_path(path)
@@ -144,22 +165,6 @@ class Presto(Database):
 
         return super()._parse_type(table_path, col_name, type_repr, datetime_precision, numeric_precision)
 
-    def normalize_uuid(self, value: str, coltype: ColType_UUID) -> str:
-        # Trim doesn't work on CHAR type
-        return f"TRIM(CAST({value} AS VARCHAR))"
-
     @property
     def is_autocommit(self) -> bool:
         return False
-
-    def explain_as_text(self, query: str) -> str:
-        return f"EXPLAIN (FORMAT TEXT) {query}"
-
-    def type_repr(self, t) -> str:
-        try:
-            return {float: "REAL"}[t]
-        except KeyError:
-            return super().type_repr(t)
-
-    def timestamp_value(self, t: DbTime) -> str:
-        return f"timestamp '{t.isoformat(' ')}'"

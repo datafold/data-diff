@@ -13,7 +13,7 @@ from .database_types import (
     ColType,
     UnknownColType,
 )
-from .base import MD5_HEXDIGITS, CHECKSUM_HEXDIGITS, Database, import_helper, parse_table_name
+from .base import MD5_HEXDIGITS, CHECKSUM_HEXDIGITS, BaseDialect, Database, import_helper, parse_table_name
 
 
 @import_helper(text="You can install it using 'pip install databricks-sql-connector'")
@@ -23,7 +23,34 @@ def import_databricks():
     return databricks
 
 
+class Dialect(BaseDialect):
+    name = "Databricks"
+
+    def quote(self, s: str):
+        return f"`{s}`"
+
+    def md5_as_int(self, s: str) -> str:
+        return f"cast(conv(substr(md5({s}), {1+MD5_HEXDIGITS-CHECKSUM_HEXDIGITS}), 16, 10) as decimal(38, 0))"
+
+    def to_string(self, s: str) -> str:
+        return f"cast({s} as string)"
+
+    def normalize_timestamp(self, value: str, coltype: TemporalType) -> str:
+        """Databricks timestamp contains no more than 6 digits in precision"""
+
+        if coltype.rounds:
+            timestamp = f"cast(round(unix_micros({value}) / 1000000, {coltype.precision}) * 1000000 as bigint)"
+            return f"date_format(timestamp_micros({timestamp}), 'yyyy-MM-dd HH:mm:ss.SSSSSS')"
+
+        precision_format = "S" * coltype.precision + "0" * (6 - coltype.precision)
+        return f"date_format({value}, 'yyyy-MM-dd HH:mm:ss.{precision_format}')"
+
+    def normalize_number(self, value: str, coltype: NumericType) -> str:
+        return self.to_string(f"cast({value} as decimal(38, {coltype.precision}))")
+
+
 class Databricks(Database):
+    dialect = Dialect()
     TYPE_CLASSES = {
         # Numbers
         "INT": Integer,
@@ -65,15 +92,6 @@ class Databricks(Database):
     def _query(self, sql_code: str) -> list:
         "Uses the standard SQL cursor interface"
         return self._query_conn(self._conn, sql_code)
-
-    def quote(self, s: str):
-        return f"`{s}`"
-
-    def md5_to_int(self, s: str) -> str:
-        return f"cast(conv(substr(md5({s}), {1+MD5_HEXDIGITS-CHECKSUM_HEXDIGITS}), 16, 10) as decimal(38, 0))"
-
-    def to_string(self, s: str) -> str:
-        return f"cast({s} as string)"
 
     def _convert_db_precision_to_digits(self, p: int) -> int:
         # Subtracting 1 due to wierd precision issues
@@ -131,19 +149,6 @@ class Databricks(Database):
 
         self._refine_coltypes(path, col_dict, where)
         return col_dict
-
-    def normalize_timestamp(self, value: str, coltype: TemporalType) -> str:
-        """Databricks timestamp contains no more than 6 digits in precision"""
-
-        if coltype.rounds:
-            timestamp = f"cast(round(unix_micros({value}) / 1000000, {coltype.precision}) * 1000000 as bigint)"
-            return f"date_format(timestamp_micros({timestamp}), 'yyyy-MM-dd HH:mm:ss.SSSSSS')"
-
-        precision_format = "S" * coltype.precision + "0" * (6 - coltype.precision)
-        return f"date_format({value}, 'yyyy-MM-dd HH:mm:ss.{precision_format}')"
-
-    def normalize_number(self, value: str, coltype: NumericType) -> str:
-        return self.to_string(f"cast({value} as decimal(38, {coltype.precision}))")
 
     def parse_table_name(self, name: str) -> DbPath:
         path = parse_table_name(name)

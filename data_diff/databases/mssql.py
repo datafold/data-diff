@@ -17,7 +17,7 @@
 #     def quote(self, s: str):
 #         return f"[{s}]"
 
-#     def md5_to_int(self, s: str) -> str:
+#     def md5_as_int(self, s: str) -> str:
 #         return f"CONVERT(decimal(38,0), CONVERT(bigint, HashBytes('MD5', {s}), 2))"
 #         # return f"CONVERT(bigint, (CHECKSUM({s})))"
 

@@ -186,14 +186,7 @@ class AbstractDialect(ABC):
         ...
 
 
-class AbstractDatadiffDialect(ABC):
-    """Dialect-dependent query expressions, that are specific to data-diff"""
-
-    @abstractmethod
-    def md5_to_int(self, s: str) -> str:
-        "Provide SQL for computing md5 and returning an int"
-        ...
-
+class AbstractMixin_NormalizeValue(ABC):
     @abstractmethod
     def normalize_timestamp(self, value: str, coltype: TemporalType) -> str:
         """Creates an SQL expression, that converts 'value' to a normalized timestamp.
@@ -235,8 +228,41 @@ class AbstractDatadiffDialect(ABC):
         """
         ...
 
+    def normalize_value_by_type(self, value: str, coltype: ColType) -> str:
+        """Creates an SQL expression, that converts 'value' to a normalized representation.
 
-class AbstractDatabase(AbstractDialect, AbstractDatadiffDialect):
+        The returned expression must accept any SQL value, and return a string.
+
+        The default implementation dispatches to a method according to `coltype`:
+
+        ::
+
+            TemporalType    -> normalize_timestamp()
+            FractionalType  -> normalize_number()
+            *else*          -> to_string()
+
+            (`Integer` falls in the *else* category)
+
+        """
+        if isinstance(coltype, TemporalType):
+            return self.normalize_timestamp(value, coltype)
+        elif isinstance(coltype, FractionalType):
+            return self.normalize_number(value, coltype)
+        elif isinstance(coltype, ColType_UUID):
+            return self.normalize_uuid(value, coltype)
+        return self.to_string(value)
+
+
+class AbstractMixin_MD5(ABC):
+    """Dialect-dependent query expressions, that are specific to data-diff"""
+
+    @abstractmethod
+    def md5_as_int(self, s: str) -> str:
+        "Provide SQL for computing md5 and returning an int"
+        ...
+
+
+class AbstractDatabase:
     @abstractmethod
     def _query(self, sql_code: str) -> list:
         "Send query to database and return result"
@@ -295,30 +321,6 @@ class AbstractDatabase(AbstractDialect, AbstractDatadiffDialect):
     @abstractmethod
     def is_autocommit(self) -> bool:
         ...
-
-    def normalize_value_by_type(self, value: str, coltype: ColType) -> str:
-        """Creates an SQL expression, that converts 'value' to a normalized representation.
-
-        The returned expression must accept any SQL value, and return a string.
-
-        The default implementation dispatches to a method according to `coltype`:
-
-        ::
-
-            TemporalType    -> normalize_timestamp()
-            FractionalType  -> normalize_number()
-            *else*          -> to_string()
-
-            (`Integer` falls in the *else* category)
-
-        """
-        if isinstance(coltype, TemporalType):
-            return self.normalize_timestamp(value, coltype)
-        elif isinstance(coltype, FractionalType):
-            return self.normalize_number(value, coltype)
-        elif isinstance(coltype, ColType_UUID):
-            return self.normalize_uuid(value, coltype)
-        return self.to_string(value)
 
 
 Schema = CaseAwareMapping

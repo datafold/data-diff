@@ -6,7 +6,7 @@ from typing import Any, Dict, Sequence, List
 from runtype import dataclass
 
 from data_diff.utils import ArithString
-from data_diff.databases.database_types import AbstractDialect, DbPath
+from data_diff.databases.database_types import AbstractDatabase, AbstractDialect, DbPath
 
 import contextvars
 
@@ -15,7 +15,7 @@ cv_params = contextvars.ContextVar("params")
 
 @dataclass
 class Compiler:
-    database: AbstractDialect
+    database: AbstractDatabase
     params: dict = {}
     in_select: bool = False  # Compilation runtime flag
     in_join: bool = False  # Compilation runtime flag
@@ -25,6 +25,10 @@ class Compiler:
     root: bool = True
 
     _counter: List = [0]
+
+    @property
+    def dialect(self) -> AbstractDialect:
+        return self.database.dialect
 
     def compile(self, elem, params=None) -> str:
         if params:
@@ -47,7 +51,7 @@ class Compiler:
         elif isinstance(elem, int):
             return str(elem)
         elif isinstance(elem, datetime):
-            return self.database.timestamp_value(elem)
+            return self.dialect.timestamp_value(elem)
         elif isinstance(elem, bytes):
             return f"b'{elem.decode()}'"
         elif isinstance(elem, ArithString):
@@ -66,7 +70,7 @@ class Compiler:
         return self.replace(_table_context=self._table_context + list(tables), **kw)
 
     def quote(self, s: str):
-        return self.database.quote(s)
+        return self.dialect.quote(s)
 
 
 class Compilable(ABC):

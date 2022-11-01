@@ -2,7 +2,7 @@ from typing import Union, List
 import logging
 
 from .database_types import Timestamp, TimestampTZ, Decimal, Float, Text, FractionalType, TemporalType, DbPath
-from .base import ConnectError, Database, import_helper, CHECKSUM_MASK, ThreadLocalInterpreter
+from .base import BaseDialect, ConnectError, Database, import_helper, CHECKSUM_MASK, ThreadLocalInterpreter
 
 
 @import_helper("snowflake")
@@ -14,7 +14,35 @@ def import_snowflake():
     return snowflake, serialization, default_backend
 
 
+class Dialect(BaseDialect):
+    name = "Snowflake"
+
+    def explain_as_text(self, query: str) -> str:
+        return f"EXPLAIN USING TEXT {query}"
+
+    def normalize_timestamp(self, value: str, coltype: TemporalType) -> str:
+        if coltype.rounds:
+            timestamp = f"to_timestamp(round(date_part(epoch_nanosecond, {value}::timestamp(9))/1000000000, {coltype.precision}))"
+        else:
+            timestamp = f"cast({value} as timestamp({coltype.precision}))"
+
+        return f"to_char({timestamp}, 'YYYY-MM-DD HH24:MI:SS.FF6')"
+
+    def normalize_number(self, value: str, coltype: FractionalType) -> str:
+        return self.to_string(f"cast({value} as decimal(38, {coltype.precision}))")
+
+    def quote(self, s: str):
+        return f'"{s}"'
+
+    def md5_as_int(self, s: str) -> str:
+        return f"BITAND(md5_number_lower64({s}), {CHECKSUM_MASK})"
+
+    def to_string(self, s: str):
+        return f"cast({s} as string)"
+
+
 class Snowflake(Database):
+    dialect = Dialect()
     TYPE_CLASSES = {
         # Timestamps
         "TIMESTAMP_NTZ": Timestamp,
@@ -65,36 +93,13 @@ class Snowflake(Database):
         "Uses the standard SQL cursor interface"
         return self._query_conn(self._conn, sql_code)
 
-    def quote(self, s: str):
-        return f'"{s}"'
-
-    def md5_to_int(self, s: str) -> str:
-        return f"BITAND(md5_number_lower64({s}), {CHECKSUM_MASK})"
-
-    def to_string(self, s: str):
-        return f"cast({s} as string)"
-
     def select_table_schema(self, path: DbPath) -> str:
         schema, table = self._normalize_table_path(path)
         return super().select_table_schema((schema, table))
 
-    def normalize_timestamp(self, value: str, coltype: TemporalType) -> str:
-        if coltype.rounds:
-            timestamp = f"to_timestamp(round(date_part(epoch_nanosecond, {value}::timestamp(9))/1000000000, {coltype.precision}))"
-        else:
-            timestamp = f"cast({value} as timestamp({coltype.precision}))"
-
-        return f"to_char({timestamp}, 'YYYY-MM-DD HH24:MI:SS.FF6')"
-
-    def normalize_number(self, value: str, coltype: FractionalType) -> str:
-        return self.to_string(f"cast({value} as decimal(38, {coltype.precision}))")
-
     @property
     def is_autocommit(self) -> bool:
         return True
-
-    def explain_as_text(self, query: str) -> str:
-        return f"EXPLAIN USING TEXT {query}"
 
     def query_table_unique_columns(self, path: DbPath) -> List[str]:
         return []

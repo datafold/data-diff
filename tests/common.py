@@ -135,8 +135,8 @@ class TestPerDatabase(unittest.TestCase):
         self.table_src_path = self.connection.parse_table_name(self.table_src_name)
         self.table_dst_path = self.connection.parse_table_name(self.table_dst_name)
 
-        self.table_src = ".".join(map(self.connection.quote, self.table_src_path))
-        self.table_dst = ".".join(map(self.connection.quote, self.table_dst_path))
+        self.table_src = ".".join(map(self.connection.dialect.quote, self.table_src_path))
+        self.table_dst = ".".join(map(self.connection.dialect.quote, self.table_dst_path))
 
         drop_table(self.connection, self.table_src_path)
         drop_table(self.connection, self.table_dst_path)

@@ -141,14 +141,14 @@ class Concat(ExprNode):
 
     def compile(self, c: Compiler) -> str:
         # We coalesce because on some DBs (e.g. MySQL) concat('a', NULL) is NULL
-        items = [f"coalesce({c.compile(c.database.to_string(c.compile(expr)))}, '<null>')" for expr in self.exprs]
+        items = [f"coalesce({c.compile(c.dialect.to_string(c.compile(expr)))}, '<null>')" for expr in self.exprs]
         assert items
         if len(items) == 1:
             return items[0]
 
         if self.sep:
             items = list(join_iter(f"'{self.sep}'", items))
-        return c.database.concat(items)
+        return c.dialect.concat(items)
 
 
 @dataclass
@@ -239,7 +239,7 @@ class IsDistinctFrom(ExprNode, LazyOps):
     type = bool
 
     def compile(self, c: Compiler) -> str:
-        return c.database.is_distinct_from(c.compile(self.a), c.compile(self.b))
+        return c.dialect.is_distinct_from(c.compile(self.a), c.compile(self.b))
 
 
 @dataclass(eq=False, order=False)
@@ -481,7 +481,7 @@ class Select(ExprNode, ITable):
             select += " ORDER BY " + ", ".join(map(c.compile, self.order_by_exprs))
 
         if self.limit_expr is not None:
-            select += " " + c.database.offset_limit(0, self.limit_expr)
+            select += " " + c.dialect.offset_limit(0, self.limit_expr)
 
         if parent_c.in_select:
             select = f"({select}) {c.new_unique_name()}"
@@ -605,7 +605,7 @@ class Random(ExprNode):
     type = float
 
     def compile(self, c: Compiler) -> str:
-        return c.database.random()
+        return c.dialect.random()
 
 
 @dataclass
@@ -616,7 +616,7 @@ class ConstantTable(ExprNode):
         raise NotImplementedError()
 
     def compile_for_insert(self, c: Compiler):
-        return c.database.constant_values(self.rows)
+        return c.dialect.constant_values(self.rows)
 
 
 @dataclass
@@ -626,7 +626,7 @@ class Explain(ExprNode):
     type = str
 
     def compile(self, c: Compiler) -> str:
-        return c.database.explain_as_text(c.compile(self.select))
+        return c.dialect.explain_as_text(c.compile(self.select))
 
 
 # DDL
@@ -648,10 +648,10 @@ class CreateTable(Statement):
         if self.source_table:
             return f"CREATE TABLE {ne}{c.compile(self.path)} AS {c.compile(self.source_table)}"
 
-        schema = ", ".join(f"{c.database.quote(k)} {c.database.type_repr(v)}" for k, v in self.path.schema.items())
+        schema = ", ".join(f"{c.dialect.quote(k)} {c.dialect.type_repr(v)}" for k, v in self.path.schema.items())
         pks = (
             ", PRIMARY KEY (%s)" % ", ".join(self.primary_keys)
-            if self.primary_keys and c.database.SUPPORTS_PRIMARY_KEY
+            if self.primary_keys and c.dialect.SUPPORTS_PRIMARY_KEY
             else ""
         )
         return f"CREATE TABLE {ne}{c.compile(self.path)}({schema}{pks})"
@@ -698,6 +698,7 @@ class Commit(Statement):
     def compile(self, c: Compiler) -> str:
         return "COMMIT" if not c.database.is_autocommit else SKIP
 
+
 @dataclass
 class Param(ExprNode, ITable):
     """A value placeholder, to be specified at compilation time using the `cv_params` context variable."""
@@ -711,4 +712,3 @@ class Param(ExprNode, ITable):
     def compile(self, c: Compiler) -> str:
         params = cv_params.get()
         return c._compile(params[self.name])
-
