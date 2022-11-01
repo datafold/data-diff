@@ -32,6 +32,29 @@ def import_clickhouse():
 class Dialect(BaseDialect):
     name = "Clickhouse"
     ROUNDS_ON_PREC_LOSS = False
+    TYPE_CLASSES = {
+        "Int8": Integer,
+        "Int16": Integer,
+        "Int32": Integer,
+        "Int64": Integer,
+        "Int128": Integer,
+        "Int256": Integer,
+        "UInt8": Integer,
+        "UInt16": Integer,
+        "UInt32": Integer,
+        "UInt64": Integer,
+        "UInt128": Integer,
+        "UInt256": Integer,
+        "Float32": Float,
+        "Float64": Float,
+        "Decimal": Decimal,
+        "UUID": Native_UUID,
+        "String": Text,
+        "FixedString": Text,
+        "DateTime": Timestamp,
+        "DateTime64": Timestamp,
+    }
+
 
     def normalize_number(self, value: str, coltype: FractionalType) -> str:
         # If a decimal value has trailing zeros in a fractional part, when casting to string they are dropped.
@@ -121,28 +144,6 @@ class Dialect(BaseDialect):
 
 class Clickhouse(ThreadedDatabase):
     dialect = Dialect()
-    TYPE_CLASSES = {
-        "Int8": Integer,
-        "Int16": Integer,
-        "Int32": Integer,
-        "Int64": Integer,
-        "Int128": Integer,
-        "Int256": Integer,
-        "UInt8": Integer,
-        "UInt16": Integer,
-        "UInt32": Integer,
-        "UInt64": Integer,
-        "UInt128": Integer,
-        "UInt256": Integer,
-        "Float32": Float,
-        "Float64": Float,
-        "Decimal": Decimal,
-        "UUID": Native_UUID,
-        "String": Text,
-        "FixedString": Text,
-        "DateTime": Timestamp,
-        "DateTime64": Timestamp,
-    }
 
     def __init__(self, *, thread_count: int, **kw):
         super().__init__(thread_count=thread_count)
