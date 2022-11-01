@@ -184,6 +184,8 @@ def connect(db_conf: Union[str, dict], thread_count: Optional[int] = 1) -> Datab
 
     Configuration can be given either as a URI string, or as a dict of {option: value}.
 
+    The dictionary configuration uses the same keys as the TOML 'database' definition given with --conf.
+
     thread_count determines the max number of worker threads per database,
     if relevant. None means no limit.
 
@@ -205,6 +207,12 @@ def connect(db_conf: Union[str, dict], thread_count: Optional[int] = 1) -> Datab
     - trino
     - clickhouse
     - vertica
+
+    Example:
+        >>> connect("mysql://localhost/db")
+        <data_diff.databases.mysql.MySQL object at 0x0000025DB45F4190>
+        >>> connect({"driver": "mysql", "host": "localhost", "database": "db"})
+        <data_diff.databases.mysql.MySQL object at 0x0000025DB3F94820>
     """
     if isinstance(db_conf, str):
         return connect_to_uri(db_conf, thread_count)

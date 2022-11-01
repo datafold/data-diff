@@ -36,8 +36,8 @@ class Redshift(PostgreSQL):
     def normalize_number(self, value: str, coltype: FractionalType) -> str:
         return self.to_string(f"{value}::decimal(38,{coltype.precision})")
 
-    def concat(self, l: List[str]) -> str:
-        joined_exprs = " || ".join(l)
+    def concat(self, items: List[str]) -> str:
+        joined_exprs = " || ".join(items)
         return f"({joined_exprs})"
 
     def select_table_schema(self, path: DbPath) -> str:

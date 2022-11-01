@@ -6,7 +6,7 @@ from runtype import dataclass
 
 from data_diff.utils import ArithString, join_iter
 
-from .compiler import Compilable, Compiler
+from .compiler import Compilable, Compiler, cv_params
 from .base import SKIP, CompileError, DbPath, Schema, args_as_tuple
 
 
@@ -32,7 +32,7 @@ class ExprNode(Compilable):
 Expr = Union[ExprNode, str, bool, int, datetime, ArithString, None]
 
 
-def get_type(e: Expr) -> type:
+def _expr_type(e: Expr) -> type:
     if isinstance(e, ExprNode):
         return e.type
     return type(e)
@@ -48,7 +48,7 @@ class Alias(ExprNode):
 
     @property
     def type(self):
-        return get_type(self.expr)
+        return _expr_type(self.expr)
 
 
 def _drop_skips(exprs):
@@ -156,6 +156,8 @@ class Count(ExprNode):
     expr: Expr = "*"
     distinct: bool = False
 
+    type = int
+
     def compile(self, c: Compiler) -> str:
         expr = c.compile(self.expr)
         if self.distinct:
@@ -172,12 +174,6 @@ class Func(ExprNode):
     def compile(self, c: Compiler) -> str:
         args = ", ".join(c.compile(e) for e in self.args)
         return f"{self.name}({args})"
-
-
-def _expr_type(e: Expr):
-    if isinstance(e, ExprNode):
-        return e.type
-    return type(e)
 
 
 @dataclass
@@ -226,6 +222,9 @@ class LazyOps:
     def __or__(self, other):
         return BinBoolOp("OR", [self, other])
 
+    def __and__(self, other):
+        return BinBoolOp("AND", [self, other])
+
     def is_distinct_from(self, other):
         return IsDistinctFrom(self, other)
 
@@ -254,7 +253,7 @@ class BinOp(ExprNode, LazyOps):
 
     @property
     def type(self):
-        types = {get_type(i) for i in self.args}
+        types = {_expr_type(i) for i in self.args}
         if len(types) > 1:
             raise TypeError(f"Expected all args to have the same type, got {types}")
         (t,) = types
@@ -298,7 +297,17 @@ class TablePath(ExprNode, ITable):
     path: DbPath
     schema: Optional[Schema] = field(default=None, repr=False)
 
+    @property
+    def source_table(self):
+        return self
+
+    def compile(self, c: Compiler) -> str:
+        path = self.path  # c.database._normalize_table_path(self.name)
+        return ".".join(map(c.quote, path))
+
+    # Statement shorthands
     def create(self, source_table: ITable = None, *, if_not_exists=False, primary_keys=None):
+
         if source_table is None and not self.schema:
             raise ValueError("Either schema or source table needed to create table")
         if isinstance(source_table, TablePath):
@@ -322,14 +331,6 @@ class TablePath(ExprNode, ITable):
         if isinstance(expr, TablePath):
             expr = expr.select()
         return InsertToTable(self, expr)
-
-    @property
-    def source_table(self):
-        return self
-
-    def compile(self, c: Compiler) -> str:
-        path = self.path  # c.database._normalize_table_path(self.name)
-        return ".".join(map(c.quote, path))
 
 
 @dataclass
@@ -386,7 +387,7 @@ class Join(ExprNode, ITable):
         tables = [
             t if isinstance(t, TableAlias) else TableAlias(t, parent_c.new_unique_name()) for t in self.source_tables
         ]
-        c = parent_c.add_table_context(*tables).replace(in_join=True, in_select=False)
+        c = parent_c.add_table_context(*tables, in_join=True, in_select=False)
         op = " JOIN " if self.op is None else f" {self.op} JOIN "
         joined = op.join(c.compile(t) for t in tables)
 
@@ -408,7 +409,7 @@ class Join(ExprNode, ITable):
 
 class GroupBy(ITable):
     def having(self):
-        pass
+        raise NotImplementedError()
 
 
 @dataclass
@@ -546,26 +547,26 @@ class _ResolveColumn(ExprNode, LazyOps):
     resolve_name: str
     resolved: Expr = None
 
-    def resolve(self, expr):
-        assert self.resolved is None
+    def resolve(self, expr: Expr):
+        if self.resolved is not None:
+            raise RuntimeError("Already resolved!")
         self.resolved = expr
 
-    def compile(self, c: Compiler) -> str:
+    def _get_resolved(self) -> Expr:
         if self.resolved is None:
             raise RuntimeError(f"Column not resolved: {self.resolve_name}")
-        return self.resolved.compile(c)
+        return self.resolved
+
+    def compile(self, c: Compiler) -> str:
+        return self._get_resolved().compile(c)
 
     @property
     def type(self):
-        if self.resolved is None:
-            raise RuntimeError(f"Column not resolved: {self.resolve_name}")
-        return self.resolved.type
+        return self._get_resolved().type
 
     @property
     def name(self):
-        if self.resolved is None:
-            raise RuntimeError(f"Column not resolved: {self.name}")
-        return self.resolved.name
+        return self._get_resolved().name
 
 
 class This:
@@ -583,6 +584,8 @@ class In(ExprNode):
     expr: Expr
     list: Sequence[Expr]
 
+    type = bool
+
     def compile(self, c: Compiler):
         elems = ", ".join(map(c.compile, self.list))
         return f"({c.compile(self.expr)} IN ({elems}))"
@@ -599,6 +602,8 @@ class Cast(ExprNode):
 
 @dataclass
 class Random(ExprNode):
+    type = float
+
     def compile(self, c: Compiler) -> str:
         return c.database.random()
 
@@ -617,6 +622,8 @@ class ConstantTable(ExprNode):
 @dataclass
 class Explain(ExprNode):
     select: Select
+
+    type = str
 
     def compile(self, c: Compiler) -> str:
         return c.database.explain_as_text(c.compile(self.select))
@@ -690,3 +697,18 @@ class InsertToTable(Statement):
 class Commit(Statement):
     def compile(self, c: Compiler) -> str:
         return "COMMIT" if not c.database.is_autocommit else SKIP
+
+@dataclass
+class Param(ExprNode, ITable):
+    """A value placeholder, to be specified at compilation time using the `cv_params` context variable."""
+
+    name: str
+
+    @property
+    def source_table(self):
+        return self
+
+    def compile(self, c: Compiler) -> str:
+        params = cv_params.get()
+        return c._compile(params[self.name])
+

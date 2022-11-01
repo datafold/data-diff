@@ -128,8 +128,8 @@ class Oracle(ThreadedDatabase):
 
         return f"FETCH NEXT {limit} ROWS ONLY"
 
-    def concat(self, l: List[str]) -> str:
-        joined_exprs = " || ".join(l)
+    def concat(self, items: List[str]) -> str:
+        joined_exprs = " || ".join(items)
         return f"({joined_exprs})"
 
     def timestamp_value(self, t: DbTime) -> str:
@@ -154,4 +154,6 @@ class Oracle(ThreadedDatabase):
             return super().type_repr(t)
 
     def constant_values(self, rows) -> str:
-        return " UNION ALL ".join("SELECT %s FROM DUAL" % ", ".join(self._constant_value(v) for v in row) for row in rows)
+        return " UNION ALL ".join(
+            "SELECT %s FROM DUAL" % ", ".join(self._constant_value(v) for v in row) for row in rows
+        )

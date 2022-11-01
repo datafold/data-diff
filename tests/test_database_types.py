@@ -178,6 +178,7 @@ DATABASE_TYPES = {
             "numeric",
             "real",
             "double precision",
+            "Number(5, 2)",
         ],
         "uuid": [
             "CHAR(100)",

@@ -8,10 +8,15 @@ from runtype import dataclass
 from data_diff.utils import ArithString
 from data_diff.databases.database_types import AbstractDialect, DbPath
 
+import contextvars
+
+cv_params = contextvars.ContextVar("params")
+
 
 @dataclass
 class Compiler:
     database: AbstractDialect
+    params: dict = {}
     in_select: bool = False  # Compilation runtime flag
     in_join: bool = False  # Compilation runtime flag
 
@@ -21,10 +26,10 @@ class Compiler:
 
     _counter: List = [0]
 
-    def quote(self, s: str):
-        return self.database.quote(s)
+    def compile(self, elem, params=None) -> str:
+        if params:
+            cv_params.set(params)
 
-    def compile(self, elem) -> str:
         res = self._compile(elem)
         if self.root and self._subqueries:
             subq = ", ".join(f"\n  {k} AS ({v})" for k, v in self._subqueries.items())
@@ -57,8 +62,11 @@ class Compiler:
         self._counter[0] += 1
         return self.database.parse_table_name(f"{prefix}{self._counter[0]}_{'%x'%random.randrange(2**32)}")
 
-    def add_table_context(self, *tables: Sequence):
-        return self.replace(_table_context=self._table_context + list(tables))
+    def add_table_context(self, *tables: Sequence, **kw):
+        return self.replace(_table_context=self._table_context + list(tables), **kw)
+
+    def quote(self, s: str):
+        return self.database.quote(s)
 
 
 class Compilable(ABC):

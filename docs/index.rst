@@ -3,7 +3,10 @@
    :caption: Reference
    :hidden:
 
+   supported-databases
+   how-to-use
    python-api
+   technical-explanation
    new-database-driver-guide
 
 Introduction
@@ -33,45 +36,36 @@ Requires Python 3.7+ with pip.
 
     pip install data-diff
 
-or when you need extras like mysql and postgresql:
+For installing with 3rd-party database connectors, use the following syntax:
 
 ::
 
+    pip install "data-diff[db1,db2]"
+
+    e.g.
     pip install "data-diff[mysql,postgresql]"
 
+Supported connectors:
 
-How to use from Python
-----------------------
+- mysql
+- postgresql
+- snowflake
+- presto
+- oracle
+- trino
+- clickhouse
+- vertica
 
-.. code-block:: python
-
-    # Optional: Set logging to display the progress of the diff
-    import logging
-    logging.basicConfig(level=logging.INFO)
-
-    from data_diff import connect_to_table, diff_tables
-
-    table1 = connect_to_table("postgresql:///", "table_name", "id")
-    table2 = connect_to_table("mysql:///", "table_name", "id")
-
-    for sign, columns in diff_tables(table1, table2):
-        print(sign, columns)
-
-    # Example output:
-    + ('4775622148347', '2022-06-05 16:57:32.000000')
-    - ('4775622312187', '2022-06-05 16:57:32.000000')
-    - ('4777375432955', '2022-06-07 16:57:36.000000')
 
 
 Resources
 ---------
 
-- Source code (git): `<https://github.com/datafold/data-diff>`_
-- API Reference
-   - :doc:`python-api`
-- Guides
+- Users
+    - Source code (git): `<https://github.com/datafold/data-diff>`_
+    - :doc:`supported-databases`
+    - :doc:`how-to-use`
+    - :doc:`python-api`
+    - :doc:`technical-explanation`
+- Contributors
    - :doc:`new-database-driver-guide`
-- Tutorials
-   - TODO
-
-

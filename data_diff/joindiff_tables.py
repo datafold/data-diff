@@ -2,7 +2,6 @@
 
 """
 
-from contextlib import suppress
 from decimal import Decimal
 from functools import partial
 import logging
@@ -21,7 +20,7 @@ from .table_segment import TableSegment
 from .diff_tables import TableDiffer, DiffResult
 from .thread_utils import ThreadedYielder
 
-from .queries import table, sum_, min_, max_, avg, commit
+from .queries import table, sum_, min_, max_, avg
 from .queries.api import and_, if_, or_, outerjoin, leftjoin, rightjoin, this, ITable
 from .queries.ast_classes import Concat, Count, Expr, Random, TablePath
 from .queries.compiler import Compiler
