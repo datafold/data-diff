@@ -36,6 +36,7 @@ DEFAULT_N_SAMPLES = 50
 N_SAMPLES = int(os.environ.get("N_SAMPLES", DEFAULT_N_SAMPLES))
 BENCHMARK = os.environ.get("BENCHMARK", False)
 N_THREADS = int(os.environ.get("N_THREADS", 1))
+TEST_ACROSS_ALL_DBS = os.environ.get("TEST_ACROSS_ALL_DBS", True)  # Should we run the full db<->db test suite?
 
 
 def get_git_revision_short_hash() -> str:
@@ -94,6 +95,10 @@ def _print_used_dbs():
     logging.info(f"Testing databases: {', '.join(used)}")
     if unused:
         logging.info(f"Connection not configured; skipping tests for: {', '.join(unused)}")
+    if TEST_ACROSS_ALL_DBS:
+        logging.info(
+            f"Full tests enabled (every db<->db). May take very long when many dbs are involved. ={TEST_ACROSS_ALL_DBS}"
+        )
 
 
 _print_used_dbs()

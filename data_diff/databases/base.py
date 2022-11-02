@@ -267,6 +267,9 @@ class Database(AbstractDatabase):
             if res is None:  # May happen due to sum() of 0 items
                 return None
             return int(res)
+        elif res_type is datetime:
+            res = _one(_one(res))
+            return res  # XXX parse timestamp?
         elif res_type is tuple:
             assert len(res) == 1, (sql_code, res)
             return res[0]
