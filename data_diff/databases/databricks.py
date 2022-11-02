@@ -1,3 +1,4 @@
+import math
 from typing import Dict, Sequence
 import logging
 
@@ -61,11 +62,14 @@ class Dialect(BaseDialect):
         return f"date_format({value}, 'yyyy-MM-dd HH:mm:ss.{precision_format}')"
 
     def normalize_number(self, value: str, coltype: NumericType) -> str:
-        return self.to_string(f"cast({value} as decimal(38, {coltype.precision}))")
+        value = f"cast({value} as decimal(38, {coltype.precision}))"
+        if coltype.precision > 0:
+            value = f"format_number({value}, {coltype.precision})"
+        return f"replace({self.to_string(value)}, ',', '')"
 
     def _convert_db_precision_to_digits(self, p: int) -> int:
-        # Subtracting 1 due to wierd precision issues
-        return max(super()._convert_db_precision_to_digits(p) - 1, 0)
+        # Subtracting 2 due to wierd precision issues
+        return max(super()._convert_db_precision_to_digits(p) - 2, 0)
 
 
 class Databricks(ThreadedDatabase):
@@ -75,7 +79,7 @@ class Databricks(ThreadedDatabase):
         logging.getLogger("databricks.sql").setLevel(logging.WARNING)
 
         self._args = kw
-        self.default_schema = kw.get('schema', 'hive_metastore')
+        self.default_schema = kw.get("schema", "hive_metastore")
         super().__init__(thread_count=thread_count)
 
     def create_connection(self):
@@ -83,11 +87,11 @@ class Databricks(ThreadedDatabase):
 
         try:
             return databricks.sql.connect(
-                server_hostname=self._args['server_hostname'],
-                http_path=self._args['http_path'],
-                access_token=self._args['access_token'],
-                catalog=self._args['catalog'],
-        )
+                server_hostname=self._args["server_hostname"],
+                http_path=self._args["http_path"],
+                access_token=self._args["access_token"],
+                catalog=self._args["catalog"],
+            )
         except databricks.sql.exc.Error as e:
             raise ConnectionError(*e.args) from e
 
@@ -100,11 +104,9 @@ class Databricks(ThreadedDatabase):
 
         schema, table = self._normalize_table_path(path)
         with conn.cursor() as cursor:
-            cursor.columns(catalog_name=self._args['catalog'], schema_name=schema, table_name=table)
+            cursor.columns(catalog_name=self._args["catalog"], schema_name=schema, table_name=table)
             try:
                 rows = cursor.fetchall()
-            except:
-                rows = None
             finally:
                 conn.close()
             if not rows:
@@ -129,7 +131,7 @@ class Databricks(ThreadedDatabase):
                 row = (row[0], row_type, None, None, 0)
 
             elif issubclass(type_cls, Float):
-                numeric_precision = self._convert_db_precision_to_digits(row[2])
+                numeric_precision = math.ceil(row[2] / math.log(2, 10))
                 row = (row[0], row_type, None, numeric_precision, None)
 
             elif issubclass(type_cls, Decimal):
