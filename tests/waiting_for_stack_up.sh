@@ -5,7 +5,7 @@ if [ -n "$DATADIFF_VERTICA_URI" ]
         echo "Check Vertica DB running..."
         while true
         do
-            if docker logs vertica | tail -n 100 | grep -q -i "vertica is now running"
+            if docker logs dd-vertica | tail -n 100 | grep -q -i "vertica is now running"
             then
                echo "Vertica DB is ready";
                break;

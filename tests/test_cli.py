@@ -37,7 +37,7 @@ class TestCLI(unittest.TestCase):
 
         src_table = table(table_src_name, schema={"id": int, "datetime": datetime, "text_comment": str})
         self.conn.query(src_table.create())
-        self.now = now = arrow.get()
+        self.now = now = arrow.get(datetime.now())
 
         rows = [
             (now, "now"),

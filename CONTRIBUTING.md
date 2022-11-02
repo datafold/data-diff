@@ -34,7 +34,7 @@ The same goes for other technical requests, like missing features, or gaps in th
 
 See [issues](/datafold/data-diff/issues/).
 
-For questions, and non-technical discussions, see [discussions](/datafold/data-diff/discussions).
+For questions, and non-technical discussions, see [discussions](https://github.com/datafold/data-diff/discussions).
 
 ### Contributing code
 
