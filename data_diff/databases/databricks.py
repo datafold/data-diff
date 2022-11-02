@@ -13,7 +13,7 @@ from .database_types import (
     ColType,
     UnknownColType,
 )
-from .base import MD5_HEXDIGITS, CHECKSUM_HEXDIGITS, BaseDialect, Database, import_helper, parse_table_name
+from .base import MD5_HEXDIGITS, CHECKSUM_HEXDIGITS, BaseDialect, ThreadedDatabase, import_helper, parse_table_name
 
 
 @import_helper(text="You can install it using 'pip install databricks-sql-connector'")
@@ -68,43 +68,45 @@ class Dialect(BaseDialect):
         return max(super()._convert_db_precision_to_digits(p) - 1, 0)
 
 
-class Databricks(Database):
+class Databricks(ThreadedDatabase):
     dialect = Dialect()
 
-    def __init__(
-        self,
-        http_path: str,
-        access_token: str,
-        server_hostname: str,
-        catalog: str = "hive_metastore",
-        schema: str = "default",
-        **kwargs,
-    ):
-        databricks = import_databricks()
-
-        self._conn = databricks.sql.connect(
-            server_hostname=server_hostname, http_path=http_path, access_token=access_token, catalog=catalog
-        )
-
+    def __init__(self, *, thread_count, **kw):
         logging.getLogger("databricks.sql").setLevel(logging.WARNING)
 
-        self.catalog = catalog
-        self.default_schema = schema
-        self.kwargs = kwargs
+        self._args = kw
+        self.default_schema = kw.get('schema', 'hive_metastore')
+        super().__init__(thread_count=thread_count)
 
-    def _query(self, sql_code: str) -> list:
-        "Uses the standard SQL cursor interface"
-        return self._query_conn(self._conn, sql_code)
+    def create_connection(self):
+        databricks = import_databricks()
+
+        try:
+            return databricks.sql.connect(
+                server_hostname=self._args['server_hostname'],
+                http_path=self._args['http_path'],
+                access_token=self._args['access_token'],
+                catalog=self._args['catalog'],
+        )
+        except databricks.sql.exc.Error as e:
+            raise ConnectionError(*e.args) from e
 
     def query_table_schema(self, path: DbPath) -> Dict[str, tuple]:
         # Databricks has INFORMATION_SCHEMA only for Databricks Runtime, not for Databricks SQL.
         # https://docs.databricks.com/spark/latest/spark-sql/language-manual/information-schema/columns.html
         # So, to obtain information about schema, we should use another approach.
 
+        conn = self.create_connection()
+
         schema, table = self._normalize_table_path(path)
-        with self._conn.cursor() as cursor:
-            cursor.columns(catalog_name=self.catalog, schema_name=schema, table_name=table)
-            rows = cursor.fetchall()
+        with conn.cursor() as cursor:
+            cursor.columns(catalog_name=self._args['catalog'], schema_name=schema, table_name=table)
+            try:
+                rows = cursor.fetchall()
+            except:
+                rows = None
+            finally:
+                conn.close()
             if not rows:
                 raise RuntimeError(f"{self.name}: Table '{'.'.join(path)}' does not exist, or has no columns")
 
@@ -121,7 +123,7 @@ class Databricks(Database):
         resulted_rows = []
         for row in rows:
             row_type = "DECIMAL" if row[1].startswith("DECIMAL") else row[1]
-            type_cls = self.TYPE_CLASSES.get(row_type, UnknownColType)
+            type_cls = self.dialect.TYPE_CLASSES.get(row_type, UnknownColType)
 
             if issubclass(type_cls, Integer):
                 row = (row[0], row_type, None, None, 0)
@@ -151,9 +153,6 @@ class Databricks(Database):
     def parse_table_name(self, name: str) -> DbPath:
         path = parse_table_name(name)
         return self._normalize_table_path(path)
-
-    def close(self):
-        self._conn.close()
 
     @property
     def is_autocommit(self) -> bool:
