@@ -127,9 +127,7 @@ class Dialect(BaseDialect):
             precision = int(m.group(1))
             return t_cls(precision=precision, rounds=self.ROUNDS_ON_PREC_LOSS)
 
-        return super().parse_type(
-            table_path, col_name, type_repr, datetime_precision, numeric_precision, numeric_scale
-        )
+        return super().parse_type(table_path, col_name, type_repr, datetime_precision, numeric_precision, numeric_scale)
 
 
 class Oracle(ThreadedDatabase):

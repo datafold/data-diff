@@ -18,9 +18,6 @@ jobs:
       matrix:
         os: [ubuntu-latest]
         python-version:
-          - "3.7"
-          - "3.8"
-          - "3.9"
           - "3.10"
 
     name: Check Python ${{ matrix.python-version }} on ${{ matrix.os }}
@@ -46,9 +43,8 @@ jobs:
         env:
             DATADIFF_SNOWFLAKE_URI: '${{ secrets.DATADIFF_SNOWFLAKE_URI }}'
             DATADIFF_PRESTO_URI: '${{ secrets.DATADIFF_PRESTO_URI }}'
-            DATADIFF_TRINO_URI: '${{ secrets.DATADIFF_TRINO_URI }}'
             DATADIFF_CLICKHOUSE_URI: 'clickhouse://clickhouse:Password1@localhost:9000/clickhouse'
             DATADIFF_VERTICA_URI: 'vertica://vertica:Password1@localhost:5433/vertica'
         run: |
           chmod +x tests/waiting_for_stack_up.sh
-          ./tests/waiting_for_stack_up.sh && poetry run unittest-parallel -j 16
+          ./tests/waiting_for_stack_up.sh && FULL_TESTS=1 poetry run unittest-parallel -j 16

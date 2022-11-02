@@ -55,7 +55,6 @@ class Dialect(BaseDialect):
         "DateTime64": Timestamp,
     }
 
-
     def normalize_number(self, value: str, coltype: FractionalType) -> str:
         # If a decimal value has trailing zeros in a fractional part, when casting to string they are dropped.
         # For example:

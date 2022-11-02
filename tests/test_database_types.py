@@ -25,6 +25,7 @@ from .common import (
     N_THREADS,
     BENCHMARK,
     GIT_REVISION,
+    FULL_TESTS,
     get_conn,
     random_table_suffix,
 )
@@ -418,6 +419,7 @@ TYPE_SAMPLES = {
     "uuid": UUID_Faker(N_SAMPLES),
 }
 
+
 def _get_test_db_pairs(full):
     if full:
         for source_db in DATABASE_TYPES:
@@ -430,6 +432,7 @@ def _get_test_db_pairs(full):
             yield db_cls, db.Snowflake
             yield db.Snowflake, db_cls
 
+
 def get_test_db_pairs(full=True):
     active_pairs = {(db1, db2) for db1, db2 in _get_test_db_pairs(full) if db1 in CONN_STRINGS and db2 in CONN_STRINGS}
     for db1, db2 in active_pairs:
@@ -437,7 +440,7 @@ def get_test_db_pairs(full=True):
 
 
 type_pairs = []
-for source_db, source_type_categories, target_db, target_type_categories in get_test_db_pairs():
+for source_db, source_type_categories, target_db, target_type_categories in get_test_db_pairs(FULL_TESTS):
     for type_category, source_types in source_type_categories.items():  # int, datetime, ..
         for source_type in source_types:
             for target_type in target_type_categories[type_category]:
