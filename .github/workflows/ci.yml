@@ -51,4 +51,4 @@ jobs:
             DATADIFF_VERTICA_URI: 'vertica://vertica:Password1@localhost:5433/vertica'
         run: |
           chmod +x tests/waiting_for_stack_up.sh
-          ./tests/waiting_for_stack_up.sh && poetry run unittest-parallel -j 16
+          ./tests/waiting_for_stack_up.sh && TEST_ACROSS_ALL_DBS=0 poetry run unittest-parallel -j 16

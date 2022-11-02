@@ -25,7 +25,7 @@ from .common import (
     N_THREADS,
     BENCHMARK,
     GIT_REVISION,
-    FULL_TESTS,
+    TEST_ACROSS_ALL_DBS,
     get_conn,
     random_table_suffix,
 )
@@ -420,27 +420,29 @@ TYPE_SAMPLES = {
 }
 
 
-def _get_test_db_pairs(full):
-    if full:
+def _get_test_db_pairs():
+    if str(TEST_ACROSS_ALL_DBS).lower() == "full":
         for source_db in DATABASE_TYPES:
             for target_db in DATABASE_TYPES:
                 yield source_db, target_db
-    else:
+    elif int(TEST_ACROSS_ALL_DBS):
         for db_cls in DATABASE_TYPES:
             yield db_cls, db.PostgreSQL
             yield db.PostgreSQL, db_cls
             yield db_cls, db.Snowflake
             yield db.Snowflake, db_cls
+    else:
+        yield db.PostgreSQL, db.PostgreSQL
 
 
-def get_test_db_pairs(full=True):
-    active_pairs = {(db1, db2) for db1, db2 in _get_test_db_pairs(full) if db1 in CONN_STRINGS and db2 in CONN_STRINGS}
+def get_test_db_pairs():
+    active_pairs = {(db1, db2) for db1, db2 in _get_test_db_pairs() if db1 in CONN_STRINGS and db2 in CONN_STRINGS}
     for db1, db2 in active_pairs:
         yield db1, DATABASE_TYPES[db1], db2, DATABASE_TYPES[db2]
 
 
 type_pairs = []
-for source_db, source_type_categories, target_db, target_type_categories in get_test_db_pairs(FULL_TESTS):
+for source_db, source_type_categories, target_db, target_type_categories in get_test_db_pairs():
     for type_category, source_types in source_type_categories.items():  # int, datetime, ..
         for source_type in source_types:
             for target_type in target_type_categories[type_category]:
