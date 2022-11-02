@@ -38,6 +38,7 @@ presto-python-client = {version="*", optional=true}
 clickhouse-driver = {version="*", optional=true}
 
 [tool.poetry.dev-dependencies]
+arrow = "^1.2.3"
 parameterized = "*"
 unittest-parallel = "*"
 preql = "^0.2.19"
