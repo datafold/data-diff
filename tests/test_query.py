@@ -1,7 +1,7 @@
 from datetime import datetime
 from typing import List, Optional
 import unittest
-from data_diff.databases.database_types import AbstractDialect, CaseInsensitiveDict, CaseSensitiveDict
+from data_diff.databases.database_types import AbstractDatabase, AbstractDialect, CaseInsensitiveDict, CaseSensitiveDict
 
 from data_diff.queries import this, table, Compiler, outerjoin, cte
 from data_diff.queries.ast_classes import Random
@@ -12,6 +12,10 @@ def normalize_spaces(s: str):
 
 
 class MockDialect(AbstractDialect):
+    name = "MockDialect"
+
+    ROUNDS_ON_PREC_LOSS = False
+
     def quote(self, s: str) -> str:
         return s
 
@@ -38,13 +42,28 @@ class MockDialect(AbstractDialect):
     def timestamp_value(self, t: datetime) -> str:
         return f"timestamp '{t}'"
 
+    parse_type = NotImplemented
+
+
+class MockDatabase(AbstractDatabase):
+    dialect = MockDialect()
+
+    _query = NotImplemented
+    query_table_schema = NotImplemented
+    select_table_schema = NotImplemented
+    _process_table_schema = NotImplemented
+    parse_table_name = NotImplemented
+    close = NotImplemented
+    _normalize_table_path = NotImplemented
+    is_autocommit = NotImplemented
+
 
 class TestQuery(unittest.TestCase):
     def setUp(self):
         pass
 
     def test_basic(self):
-        c = Compiler(MockDialect())
+        c = Compiler(MockDatabase())
 
         t = table("point")
         t2 = t.select(x=this.x + 1, y=t["y"] + this.x)
@@ -57,7 +76,7 @@ class TestQuery(unittest.TestCase):
         assert c.compile(t) == "SELECT x, y FROM point"
 
     def test_outerjoin(self):
-        c = Compiler(MockDialect())
+        c = Compiler(MockDatabase())
 
         a = table("a")
         b = table("b")
@@ -82,7 +101,7 @@ class TestQuery(unittest.TestCase):
         # t.group_by(keys=[this.x], values=[this.py])
 
     def test_schema(self):
-        c = Compiler(MockDialect())
+        c = Compiler(MockDatabase())
         schema = dict(id="int", comment="varchar")
 
         # test table
@@ -108,7 +127,7 @@ class TestQuery(unittest.TestCase):
         self.assertRaises(KeyError, j.__getitem__, "ysum")
 
     def test_commutable_select(self):
-        # c = Compiler(MockDialect())
+        # c = Compiler(MockDatabase())
 
         t = table("a")
         q1 = t.select("a").where("b")
@@ -116,7 +135,7 @@ class TestQuery(unittest.TestCase):
         assert q1 == q2, (q1, q2)
 
     def test_cte(self):
-        c = Compiler(MockDialect())
+        c = Compiler(MockDatabase())
 
         t = table("a")
 
@@ -128,14 +147,14 @@ class TestQuery(unittest.TestCase):
         assert normalize_spaces(c.compile(t3)) == expected
 
         # nested cte
-        c = Compiler(MockDialect())
+        c = Compiler(MockDatabase())
         t4 = cte(t3).select(this.x)
 
         expected = "WITH tmp1 AS (SELECT x FROM a), tmp2 AS (SELECT x FROM tmp1) SELECT x FROM tmp2"
         assert normalize_spaces(c.compile(t4)) == expected
 
         # parameterized cte
-        c = Compiler(MockDialect())
+        c = Compiler(MockDatabase())
         t2 = cte(t.select(this.x), params=["y"])
         t3 = t2.select(this.y)
 
@@ -143,14 +162,14 @@ class TestQuery(unittest.TestCase):
         assert normalize_spaces(c.compile(t3)) == expected
 
     def test_funcs(self):
-        c = Compiler(MockDialect())
+        c = Compiler(MockDatabase())
         t = table("a")
 
         q = c.compile(t.order_by(Random()).limit(10))
         assert q == "SELECT * FROM a ORDER BY random() limit 10"
 
     def test_union(self):
-        c = Compiler(MockDialect())
+        c = Compiler(MockDatabase())
         a = table("a").select("x")
         b = table("b").select("y")
 

@@ -200,7 +200,9 @@ class JoinDiffer(TableDiffer):
 
         # Test duplicate keys
         for ts in [table1, table2]:
-            unique = ts.database.query_table_unique_columns(ts.table_path) if ts.database.SUPPORTS_UNIQUE_CONSTAINT else []
+            unique = (
+                ts.database.query_table_unique_columns(ts.table_path) if ts.database.SUPPORTS_UNIQUE_CONSTAINT else []
+            )
 
             t = ts.make_select()
             key_columns = ts.key_columns

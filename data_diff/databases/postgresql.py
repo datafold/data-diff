@@ -9,7 +9,7 @@ from .database_types import (
     Text,
     FractionalType,
 )
-from .base import ThreadedDatabase, import_helper, ConnectError
+from .base import BaseDialect, ThreadedDatabase, import_helper, ConnectError
 from .base import MD5_HEXDIGITS, CHECKSUM_HEXDIGITS, _CHECKSUM_BITSIZE, TIMESTAMP_PRECISION_POS
 
 SESSION_TIME_ZONE = None  # Changed by the tests
@@ -24,7 +24,11 @@ def import_postgresql():
     return psycopg2
 
 
-class PostgreSQL(ThreadedDatabase):
+class PostgresqlDialect(BaseDialect):
+    name = "PostgreSQL"
+    ROUNDS_ON_PREC_LOSS = True
+    SUPPORTS_PRIMARY_KEY = True
+
     TYPE_CLASSES = {
         # Timestamps
         "timestamp with time zone": TimestampTZ,
@@ -45,38 +49,11 @@ class PostgreSQL(ThreadedDatabase):
         # UUID
         "uuid": Native_UUID,
     }
-    ROUNDS_ON_PREC_LOSS = True
-    SUPPORTS_PRIMARY_KEY = True
-    SUPPORTS_UNIQUE_CONSTAINT = True
-
-    default_schema = "public"
-
-    def __init__(self, *, thread_count, **kw):
-        self._args = kw
-
-        super().__init__(thread_count=thread_count)
-
-    def _convert_db_precision_to_digits(self, p: int) -> int:
-        # Subtracting 2 due to wierd precision issues in PostgreSQL
-        return super()._convert_db_precision_to_digits(p) - 2
-
-    def create_connection(self):
-        if not self._args:
-            self._args["host"] = None  # psycopg2 requires 1+ arguments
-
-        pg = import_postgresql()
-        try:
-            c = pg.connect(**self._args)
-            if SESSION_TIME_ZONE:
-                c.cursor().execute(f"SET TIME ZONE '{SESSION_TIME_ZONE}'")
-            return c
-        except pg.OperationalError as e:
-            raise ConnectError(*e.args) from e
 
     def quote(self, s: str):
         return f'"{s}"'
 
-    def md5_to_int(self, s: str) -> str:
+    def md5_as_int(self, s: str) -> str:
         return f"('x' || substring(md5({s}), {1+MD5_HEXDIGITS-CHECKSUM_HEXDIGITS}))::bit({_CHECKSUM_BITSIZE})::bigint"
 
     def to_string(self, s: str):
@@ -93,3 +70,32 @@ class PostgreSQL(ThreadedDatabase):
 
     def normalize_number(self, value: str, coltype: FractionalType) -> str:
         return self.to_string(f"{value}::decimal(38, {coltype.precision})")
+
+    def _convert_db_precision_to_digits(self, p: int) -> int:
+        # Subtracting 2 due to wierd precision issues in PostgreSQL
+        return super()._convert_db_precision_to_digits(p) - 2
+
+
+class PostgreSQL(ThreadedDatabase):
+    dialect = PostgresqlDialect()
+    SUPPORTS_UNIQUE_CONSTAINT = True
+
+    default_schema = "public"
+
+    def __init__(self, *, thread_count, **kw):
+        self._args = kw
+
+        super().__init__(thread_count=thread_count)
+
+    def create_connection(self):
+        if not self._args:
+            self._args["host"] = None  # psycopg2 requires 1+ arguments
+
+        pg = import_postgresql()
+        try:
+            c = pg.connect(**self._args)
+            if SESSION_TIME_ZONE:
+                c.cursor().execute(f"SET TIME ZONE '{SESSION_TIME_ZONE}'")
+            return c
+        except pg.OperationalError as e:
+            raise ConnectError(*e.args) from e

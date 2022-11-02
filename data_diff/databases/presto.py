@@ -17,7 +17,7 @@ from .database_types import (
     ColType_UUID,
     TemporalType,
 )
-from .base import Database, import_helper, ThreadLocalInterpreter
+from .base import BaseDialect, Database, import_helper, ThreadLocalInterpreter
 from .base import (
     MD5_HEXDIGITS,
     CHECKSUM_HEXDIGITS,
@@ -41,8 +41,9 @@ def import_presto():
     return prestodb
 
 
-class Presto(Database):
-    default_schema = "public"
+class Dialect(BaseDialect):
+    name = "Presto"
+    ROUNDS_ON_PREC_LOSS = True
     TYPE_CLASSES = {
         # Timestamps
         "timestamp with time zone": TimestampTZ,
@@ -56,44 +57,31 @@ class Presto(Database):
         # Text
         "varchar": Text,
     }
-    ROUNDS_ON_PREC_LOSS = True
 
-    def __init__(self, **kw):
-        prestodb = import_presto()
+    def explain_as_text(self, query: str) -> str:
+        return f"EXPLAIN (FORMAT TEXT) {query}"
 
-        if kw.get("schema"):
-            self.default_schema = kw.get("schema")
+    def type_repr(self, t) -> str:
+        try:
+            return {float: "REAL"}[t]
+        except KeyError:
+            return super().type_repr(t)
 
-        if kw.get("auth") == "basic":  # if auth=basic, add basic authenticator for Presto
-            kw["auth"] = prestodb.auth.BasicAuthentication(kw.pop("user"), kw.pop("password"))
-
-        if "cert" in kw:  # if a certificate was specified in URI, verify session with cert
-            cert = kw.pop("cert")
-            self._conn = prestodb.dbapi.connect(**kw)
-            self._conn._http_session.verify = cert
-        else:
-            self._conn = prestodb.dbapi.connect(**kw)
+    def timestamp_value(self, t: DbTime) -> str:
+        return f"timestamp '{t.isoformat(' ')}'"
 
     def quote(self, s: str):
         return f'"{s}"'
 
-    def md5_to_int(self, s: str) -> str:
+    def md5_as_int(self, s: str) -> str:
         return f"cast(from_base(substr(to_hex(md5(to_utf8({s}))), {1+MD5_HEXDIGITS-CHECKSUM_HEXDIGITS}), 16) as decimal(38, 0))"
 
     def to_string(self, s: str):
         return f"cast({s} as varchar)"
 
-    def _query(self, sql_code: str) -> list:
-        "Uses the standard SQL cursor interface"
-        c = self._conn.cursor()
-
-        if isinstance(sql_code, ThreadLocalInterpreter):
-            return sql_code.apply_queries(partial(query_cursor, c))
-
-        return query_cursor(c, sql_code)
-
-    def close(self):
-        self._conn.close()
+    def normalize_uuid(self, value: str, coltype: ColType_UUID) -> str:
+        # Trim doesn't work on CHAR type
+        return f"TRIM(CAST({value} AS VARCHAR))"
 
     def normalize_timestamp(self, value: str, coltype: TemporalType) -> str:
         # TODO rounds
@@ -107,16 +95,7 @@ class Presto(Database):
     def normalize_number(self, value: str, coltype: FractionalType) -> str:
         return self.to_string(f"cast({value} as decimal(38,{coltype.precision}))")
 
-    def select_table_schema(self, path: DbPath) -> str:
-        schema, table = self._normalize_table_path(path)
-
-        return (
-            "SELECT column_name, data_type, 3 as datetime_precision, 3 as numeric_precision, NULL as numeric_scale "
-            "FROM INFORMATION_SCHEMA.COLUMNS "
-            f"WHERE table_name = '{table}' AND table_schema = '{schema}'"
-        )
-
-    def _parse_type(
+    def parse_type(
         self,
         table_path: DbPath,
         col_name: str,
@@ -142,24 +121,50 @@ class Presto(Database):
         for m, n_cls in match_regexps(string_regexps, type_repr):
             return n_cls()
 
-        return super()._parse_type(table_path, col_name, type_repr, datetime_precision, numeric_precision)
+        return super().parse_type(table_path, col_name, type_repr, datetime_precision, numeric_precision)
 
-    def normalize_uuid(self, value: str, coltype: ColType_UUID) -> str:
-        # Trim doesn't work on CHAR type
-        return f"TRIM(CAST({value} AS VARCHAR))"
+
+class Presto(Database):
+    dialect = Dialect()
+    default_schema = "public"
+
+    def __init__(self, **kw):
+        prestodb = import_presto()
+
+        if kw.get("schema"):
+            self.default_schema = kw.get("schema")
+
+        if kw.get("auth") == "basic":  # if auth=basic, add basic authenticator for Presto
+            kw["auth"] = prestodb.auth.BasicAuthentication(kw.pop("user"), kw.pop("password"))
+
+        if "cert" in kw:  # if a certificate was specified in URI, verify session with cert
+            cert = kw.pop("cert")
+            self._conn = prestodb.dbapi.connect(**kw)
+            self._conn._http_session.verify = cert
+        else:
+            self._conn = prestodb.dbapi.connect(**kw)
+
+    def _query(self, sql_code: str) -> list:
+        "Uses the standard SQL cursor interface"
+        c = self._conn.cursor()
+
+        if isinstance(sql_code, ThreadLocalInterpreter):
+            return sql_code.apply_queries(partial(query_cursor, c))
+
+        return query_cursor(c, sql_code)
+
+    def close(self):
+        self._conn.close()
+
+    def select_table_schema(self, path: DbPath) -> str:
+        schema, table = self._normalize_table_path(path)
+
+        return (
+            "SELECT column_name, data_type, 3 as datetime_precision, 3 as numeric_precision, NULL as numeric_scale "
+            "FROM INFORMATION_SCHEMA.COLUMNS "
+            f"WHERE table_name = '{table}' AND table_schema = '{schema}'"
+        )
 
     @property
     def is_autocommit(self) -> bool:
         return False
-
-    def explain_as_text(self, query: str) -> str:
-        return f"EXPLAIN (FORMAT TEXT) {query}"
-
-    def type_repr(self, t) -> str:
-        try:
-            return {float: "REAL"}[t]
-        except KeyError:
-            return super().type_repr(t)
-
-    def timestamp_value(self, t: DbTime) -> str:
-        return f"timestamp '{t.isoformat(' ')}'"

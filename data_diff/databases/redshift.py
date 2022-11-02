@@ -1,16 +1,17 @@
 from typing import List
 from .database_types import Float, TemporalType, FractionalType, DbPath
-from .postgresql import PostgreSQL, MD5_HEXDIGITS, CHECKSUM_HEXDIGITS, TIMESTAMP_PRECISION_POS
+from .postgresql import PostgreSQL, MD5_HEXDIGITS, CHECKSUM_HEXDIGITS, TIMESTAMP_PRECISION_POS, PostgresqlDialect
 
 
-class Redshift(PostgreSQL):
+class Dialect(PostgresqlDialect):
+    name = "Redshift"
     TYPE_CLASSES = {
-        **PostgreSQL.TYPE_CLASSES,
+        **PostgresqlDialect.TYPE_CLASSES,
         "double": Float,
         "real": Float,
     }
 
-    def md5_to_int(self, s: str) -> str:
+    def md5_as_int(self, s: str) -> str:
         return f"strtol(substring(md5({s}), {1+MD5_HEXDIGITS-CHECKSUM_HEXDIGITS}), 16)::decimal(38)"
 
     def normalize_timestamp(self, value: str, coltype: TemporalType) -> str:
@@ -40,6 +41,13 @@ class Redshift(PostgreSQL):
         joined_exprs = " || ".join(items)
         return f"({joined_exprs})"
 
+    def is_distinct_from(self, a: str, b: str) -> str:
+        return f"{a} IS NULL AND NOT {b} IS NULL OR {b} IS NULL OR {a}!={b}"
+
+
+class Redshift(PostgreSQL):
+    dialect = Dialect()
+
     def select_table_schema(self, path: DbPath) -> str:
         schema, table = self._normalize_table_path(path)
 
@@ -47,6 +55,3 @@ class Redshift(PostgreSQL):
             "SELECT column_name, data_type, datetime_precision, numeric_precision, numeric_scale FROM information_schema.columns "
             f"WHERE table_name = '{table.lower()}' AND table_schema = '{schema.lower()}'"
         )
-
-    def is_distinct_from(self, a: str, b: str) -> str:
-        return f"{a} IS NULL AND NOT {b} IS NULL OR {b} IS NULL OR {a}!={b}"

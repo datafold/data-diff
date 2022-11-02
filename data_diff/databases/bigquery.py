@@ -1,6 +1,6 @@
 from typing import List, Union
 from .database_types import Timestamp, Datetime, Integer, Decimal, Float, Text, DbPath, FractionalType, TemporalType
-from .base import Database, import_helper, parse_table_name, ConnectError, apply_query
+from .base import BaseDialect, Database, import_helper, parse_table_name, ConnectError, apply_query
 from .base import TIMESTAMP_PRECISION_POS, ThreadLocalInterpreter
 
 
@@ -11,7 +11,9 @@ def import_bigquery():
     return bigquery
 
 
-class BigQuery(Database):
+class Dialect(BaseDialect):
+    name = "BigQuery"
+    ROUNDS_ON_PREC_LOSS = False  # Technically BigQuery doesn't allow implicit rounding or truncation
     TYPE_CLASSES = {
         # Dates
         "TIMESTAMP": Timestamp,
@@ -26,7 +28,46 @@ class BigQuery(Database):
         # Text
         "STRING": Text,
     }
-    ROUNDS_ON_PREC_LOSS = False  # Technically BigQuery doesn't allow implicit rounding or truncation
+
+    def random(self) -> str:
+        return "RAND()"
+
+    def quote(self, s: str):
+        return f"`{s}`"
+
+    def md5_as_int(self, s: str) -> str:
+        return f"cast(cast( ('0x' || substr(TO_HEX(md5({s})), 18)) as int64) as numeric)"
+
+    def to_string(self, s: str):
+        return f"cast({s} as string)"
+
+    def normalize_timestamp(self, value: str, coltype: TemporalType) -> str:
+        if coltype.rounds:
+            timestamp = f"timestamp_micros(cast(round(unix_micros(cast({value} as timestamp))/1000000, {coltype.precision})*1000000 as int))"
+            return f"FORMAT_TIMESTAMP('%F %H:%M:%E6S', {timestamp})"
+
+        if coltype.precision == 0:
+            return f"FORMAT_TIMESTAMP('%F %H:%M:%S.000000, {value})"
+        elif coltype.precision == 6:
+            return f"FORMAT_TIMESTAMP('%F %H:%M:%E6S', {value})"
+
+        timestamp6 = f"FORMAT_TIMESTAMP('%F %H:%M:%E6S', {value})"
+        return (
+            f"RPAD(LEFT({timestamp6}, {TIMESTAMP_PRECISION_POS+coltype.precision}), {TIMESTAMP_PRECISION_POS+6}, '0')"
+        )
+
+    def normalize_number(self, value: str, coltype: FractionalType) -> str:
+        return f"format('%.{coltype.precision}f', {value})"
+
+    def type_repr(self, t) -> str:
+        try:
+            return {str: "STRING", float: "FLOAT64"}[t]
+        except KeyError:
+            return super().type_repr(t)
+
+
+class BigQuery(Database):
+    dialect = Dialect()
 
     def __init__(self, project, *, dataset, **kw):
         bigquery = import_bigquery()
@@ -36,12 +77,6 @@ class BigQuery(Database):
         self.dataset = dataset
 
         self.default_schema = dataset
-
-    def quote(self, s: str):
-        return f"`{s}`"
-
-    def md5_to_int(self, s: str) -> str:
-        return f"cast(cast( ('0x' || substr(TO_HEX(md5({s})), 18)) as int64) as numeric)"
 
     def _normalize_returned_value(self, value):
         if isinstance(value, bytes):
@@ -64,9 +99,6 @@ class BigQuery(Database):
     def _query(self, sql_code: Union[str, ThreadLocalInterpreter]):
         return apply_query(self._query_atom, sql_code)
 
-    def to_string(self, s: str):
-        return f"cast({s} as string)"
-
     def close(self):
         self._client.close()
 
@@ -81,37 +113,10 @@ class BigQuery(Database):
     def query_table_unique_columns(self, path: DbPath) -> List[str]:
         return []
 
-    def normalize_timestamp(self, value: str, coltype: TemporalType) -> str:
-        if coltype.rounds:
-            timestamp = f"timestamp_micros(cast(round(unix_micros(cast({value} as timestamp))/1000000, {coltype.precision})*1000000 as int))"
-            return f"FORMAT_TIMESTAMP('%F %H:%M:%E6S', {timestamp})"
-
-        if coltype.precision == 0:
-            return f"FORMAT_TIMESTAMP('%F %H:%M:%S.000000, {value})"
-        elif coltype.precision == 6:
-            return f"FORMAT_TIMESTAMP('%F %H:%M:%E6S', {value})"
-
-        timestamp6 = f"FORMAT_TIMESTAMP('%F %H:%M:%E6S', {value})"
-        return (
-            f"RPAD(LEFT({timestamp6}, {TIMESTAMP_PRECISION_POS+coltype.precision}), {TIMESTAMP_PRECISION_POS+6}, '0')"
-        )
-
-    def normalize_number(self, value: str, coltype: FractionalType) -> str:
-        return f"format('%.{coltype.precision}f', {value})"
-
     def parse_table_name(self, name: str) -> DbPath:
         path = parse_table_name(name)
         return self._normalize_table_path(path)
 
-    def random(self) -> str:
-        return "RAND()"
-
     @property
     def is_autocommit(self) -> bool:
         return True
-
-    def type_repr(self, t) -> str:
-        try:
-            return {str: "STRING", float: "FLOAT64"}[t]
-        except KeyError:
-            return super().type_repr(t)

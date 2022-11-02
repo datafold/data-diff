@@ -5,6 +5,7 @@ from .base import (
     CHECKSUM_HEXDIGITS,
     MD5_HEXDIGITS,
     TIMESTAMP_PRECISION_POS,
+    BaseDialect,
     ConnectError,
     DbPath,
     ColType,
@@ -12,7 +13,16 @@ from .base import (
     ThreadedDatabase,
     import_helper,
 )
-from .database_types import Decimal, Float, FractionalType, Integer, TemporalType, Text, Timestamp, TimestampTZ
+from .database_types import (
+    Decimal,
+    Float,
+    FractionalType,
+    Integer,
+    TemporalType,
+    Text,
+    Timestamp,
+    TimestampTZ,
+)
 
 
 @import_helper("vertica")
@@ -22,8 +32,9 @@ def import_vertica():
     return vertica_python
 
 
-class Vertica(ThreadedDatabase):
-    default_schema = "public"
+class Dialect(BaseDialect):
+    name = "Vertica"
+    ROUNDS_ON_PREC_LOSS = True
 
     TYPE_CLASSES = {
         # Timestamps
@@ -38,23 +49,38 @@ class Vertica(ThreadedDatabase):
         "varchar": Text,
     }
 
-    ROUNDS_ON_PREC_LOSS = True
+    def quote(self, s: str):
+        return f'"{s}"'
 
-    def __init__(self, *, thread_count, **kw):
-        self._args = kw
-        self._args["AUTOCOMMIT"] = False
+    def concat(self, items: List[str]) -> str:
+        return " || ".join(items)
 
-        super().__init__(thread_count=thread_count)
+    def md5_as_int(self, s: str) -> str:
+        return f"CAST(HEX_TO_INTEGER(SUBSTRING(MD5({s}), {1 + MD5_HEXDIGITS - CHECKSUM_HEXDIGITS})) AS NUMERIC(38, 0))"
 
-    def create_connection(self):
-        vertica = import_vertica()
-        try:
-            c = vertica.connect(**self._args)
-            return c
-        except vertica.errors.ConnectionError as e:
-            raise ConnectError(*e.args) from e
+    def to_string(self, s: str) -> str:
+        return f"CAST({s} AS VARCHAR)"
 
-    def _parse_type(
+    def normalize_timestamp(self, value: str, coltype: TemporalType) -> str:
+        if coltype.rounds:
+            return f"TO_CHAR({value}::TIMESTAMP({coltype.precision}), 'YYYY-MM-DD HH24:MI:SS.US')"
+
+        timestamp6 = f"TO_CHAR({value}::TIMESTAMP(6), 'YYYY-MM-DD HH24:MI:SS.US')"
+        return (
+            f"RPAD(LEFT({timestamp6}, {TIMESTAMP_PRECISION_POS+coltype.precision}), {TIMESTAMP_PRECISION_POS+6}, '0')"
+        )
+
+    def normalize_number(self, value: str, coltype: FractionalType) -> str:
+        return self.to_string(f"CAST({value} AS NUMERIC(38, {coltype.precision}))")
+
+    def normalize_uuid(self, value: str, coltype: ColType_UUID) -> str:
+        # Trim doesn't work on CHAR type
+        return f"TRIM(CAST({value} AS VARCHAR))"
+
+    def is_distinct_from(self, a: str, b: str) -> str:
+        return f"not ({a} <=> {b})"
+
+    def parse_type(
         self,
         table_path: DbPath,
         col_name: str,
@@ -85,7 +111,26 @@ class Vertica(ThreadedDatabase):
         for m, n_cls in match_regexps(string_regexps, type_repr):
             return n_cls()
 
-        return super()._parse_type(table_path, col_name, type_repr, datetime_precision, numeric_precision)
+        return super().parse_type(table_path, col_name, type_repr, datetime_precision, numeric_precision)
+
+
+class Vertica(ThreadedDatabase):
+    dialect = Dialect()
+    default_schema = "public"
+
+    def __init__(self, *, thread_count, **kw):
+        self._args = kw
+        self._args["AUTOCOMMIT"] = False
+
+        super().__init__(thread_count=thread_count)
+
+    def create_connection(self):
+        vertica = import_vertica()
+        try:
+            c = vertica.connect(**self._args)
+            return c
+        except vertica.errors.ConnectionError as e:
+            raise ConnectError(*e.args) from e
 
     def select_table_schema(self, path: DbPath) -> str:
         schema, table = self._normalize_table_path(path)
@@ -95,34 +140,3 @@ class Vertica(ThreadedDatabase):
             "FROM V_CATALOG.COLUMNS "
             f"WHERE table_name = '{table}' AND table_schema = '{schema}'"
         )
-
-    def quote(self, s: str):
-        return f'"{s}"'
-
-    def concat(self, items: List[str]) -> str:
-        return " || ".join(items)
-
-    def md5_to_int(self, s: str) -> str:
-        return f"CAST(HEX_TO_INTEGER(SUBSTRING(MD5({s}), {1 + MD5_HEXDIGITS - CHECKSUM_HEXDIGITS})) AS NUMERIC(38, 0))"
-
-    def to_string(self, s: str) -> str:
-        return f"CAST({s} AS VARCHAR)"
-
-    def normalize_timestamp(self, value: str, coltype: TemporalType) -> str:
-        if coltype.rounds:
-            return f"TO_CHAR({value}::TIMESTAMP({coltype.precision}), 'YYYY-MM-DD HH24:MI:SS.US')"
-
-        timestamp6 = f"TO_CHAR({value}::TIMESTAMP(6), 'YYYY-MM-DD HH24:MI:SS.US')"
-        return (
-            f"RPAD(LEFT({timestamp6}, {TIMESTAMP_PRECISION_POS+coltype.precision}), {TIMESTAMP_PRECISION_POS+6}, '0')"
-        )
-
-    def normalize_number(self, value: str, coltype: FractionalType) -> str:
-        return self.to_string(f"CAST({value} AS NUMERIC(38, {coltype.precision}))")
-
-    def normalize_uuid(self, value: str, coltype: ColType_UUID) -> str:
-        # Trim doesn't work on CHAR type
-        return f"TRIM(CAST({value} AS VARCHAR))"
-
-    def is_distinct_from(self, a: str, b: str) -> str:
-        return f"not ({a} <=> {b})"
