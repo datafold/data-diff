@@ -14,7 +14,7 @@ from itertools import islice, repeat, chain
 from parameterized import parameterized
 
 from data_diff import databases as db
-from data_diff.databases import postgresql, oracle
+from data_diff.databases import postgresql, oracle, duckdb
 from data_diff.query_utils import drop_table
 from data_diff.utils import number_to_human, accumulate
 from data_diff.hashdiff_tables import HashDiffer, DEFAULT_BISECTION_THRESHOLD
@@ -40,6 +40,7 @@ def init_conns():
 
     CONNS = {cls: get_conn(cls) for cls in CONN_STRINGS}
     CONNS[db.MySQL].query("SET @@session.time_zone='+00:00'")
+    CONNS[db.DuckDB].query("SET GLOBAL TimeZone='UTC'")
     oracle.SESSION_TIME_ZONE = postgresql.SESSION_TIME_ZONE = "UTC"
 
 
@@ -105,6 +106,28 @@ DATABASE_TYPES = {
         ],
         "boolean": [
             "boolean",
+        ],
+    },
+    db.DuckDB: {
+        "int": [
+            "INTEGER",  # 4 bytes
+            "BIGINT",  # 8 bytes
+        ],
+        "datetime": [
+            "TIMESTAMP",
+            "TIMESTAMPTZ"
+        ],
+        #  DDB truncates instead of rounding on Prec loss. Currently
+        "float": [
+            # "FLOAT",
+            # "DOUBLE",
+            # 'DECIMAL'
+        ],
+        "uuid": [
+            "VARCHAR(100)",
+        ],
+        "boolean": [
+            "BOOLEAN",
         ],
     },
     db.BigQuery: {
@@ -540,7 +563,7 @@ def _drop_table_if_exists(conn, tbl):
             conn.query(f"DROP TABLE {tbl}", None)
     else:
         conn.query(f"DROP TABLE IF EXISTS {tbl}", None)
-        if not isinstance(conn, (db.BigQuery, db.Databricks, db.Clickhouse)):
+        if not conn.is_autocommit:
             conn.query("COMMIT", None)
 
 
@@ -628,7 +651,7 @@ def _insert_to_table(conn, table, values, type):
         else:
             conn.query(insertion_query[0:-1], None)
 
-    if not isinstance(conn, (db.BigQuery, db.Databricks, db.Clickhouse)):
+    if not conn.is_autocommit:
         conn.query("COMMIT", None)
 
 
@@ -672,7 +695,7 @@ def _create_table_with_indexes(conn, table, type):
         conn.query(f"CREATE TABLE IF NOT EXISTS {table}(id int, col {type})", None)
 
     _create_indexes(conn, table)
-    if not isinstance(conn, (db.BigQuery, db.Databricks, db.Clickhouse)):
+    if not conn.is_autocommit:
         conn.query("COMMIT", None)
 
 

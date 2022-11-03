@@ -16,6 +16,7 @@ from .databricks import Databricks
 from .trino import Trino
 from .clickhouse import Clickhouse
 from .vertica import Vertica
+from .duckdb import DuckDB
 
 
 @dataclass
@@ -86,6 +87,7 @@ MATCH_URI_PATH = {
         ["catalog", "schema"],
         help_str="databricks://:access_token@server_name/http_path",
     ),
+    "duckdb": MatchUriPath(DuckDB, ['database', 'dbpath'], help_str="duckdb://<database>@<dbpath>"),
     "trino": MatchUriPath(Trino, ["catalog", "schema"], help_str="trino://<user>@<host>/<catalog>/<schema>"),
     "clickhouse": MatchUriPath(Clickhouse, ["database?"], help_str="clickhouse://<user>:<pass>@<host>/<database>"),
     "vertica": MatchUriPath(Vertica, ["database?"], help_str="vertica://<user>:<pass>@<host>/<database>"),
@@ -137,6 +139,10 @@ def connect_to_uri(db_uri: str, thread_count: Optional[int] = 1) -> Database:
         kw["http_path"] = dsn.path
         kw["server_hostname"] = dsn.host
         kw.update(dsn.query)
+    elif scheme == 'duckdb':
+        kw = {}
+        kw['filepath'] = dsn.dbname
+        kw['dbname'] = dsn.user
     else:
         kw = matcher.match_path(dsn)
 
