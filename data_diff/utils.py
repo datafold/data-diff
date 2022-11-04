@@ -130,6 +130,7 @@ class ArithAlphanumeric(ArithString):
                 print(f"DATA_DIFF: str: {self._str}")
                 print(f"DATA_DIFF: other:{other} ")
                 lastchar = self._str[-1] if self._str else alphanums[0]
+                print(f"DATA_DIFF: other:{alphanums.index(lastchar)} ")
                 print(f"DATA_DIFF: lastchar: {lastchar} ")
                 raise e
         return NotImplemented
