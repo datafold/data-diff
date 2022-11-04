@@ -414,7 +414,7 @@ class TestAlphanumericKeys(TestPerDatabase):
         super().setUp()
 
         self.src_table = src_table = table(self.table_src_path, schema={"id": str, "text_comment": str})
-        self.new_alphanum = "aBcDeFgHiJ"
+        self.new_alphanum = "aBcDeFgHiz"
 
         values = []
         for i in range(0, 10000, 1000):

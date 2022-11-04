@@ -66,7 +66,7 @@ def numberToAlphanum(num: int, base: str = alphanums) -> str:
     return "".join(base[i] for i in digits[::-1])
 
 
-def alphanumToNumber(alphanum: str, base: str) -> int:
+def alphanumToNumber(alphanum: str, base: str = alphanums) -> int:
     num = 0
     for c in alphanum:
         num = num * len(base) + base.index(c)
@@ -82,8 +82,8 @@ def justify_alphanums(s1: str, s2: str):
 
 def alphanums_to_numbers(s1: str, s2: str):
     s1, s2 = justify_alphanums(s1, s2)
-    n1 = alphanumToNumber(s1, alphanums)
-    n2 = alphanumToNumber(s2, alphanums)
+    n1 = alphanumToNumber(s1)
+    n2 = alphanumToNumber(s2)
     return n1, n2
 
 
@@ -121,9 +121,9 @@ class ArithAlphanumeric(ArithString):
         if isinstance(other, int):
             if other != 1:
                 raise NotImplementedError("not implemented for arbitrary numbers")
-            lastchar = self._str[-1] if self._str else alphanums[0]
-            s = self._str[:-1] + alphanums[alphanums.index(lastchar) + other]
-            return self.new(s)
+            num = alphanumToNumber(self._str)
+            return self.new(numberToAlphanum(num + 1))
+
         return NotImplemented
 
     def range(self, other: "ArithAlphanumeric", count: int):
