@@ -119,11 +119,17 @@ class ArithAlphanumeric(ArithString):
 
     def __add__(self, other: "Union[ArithAlphanumeric, int]") -> "ArithAlphanumeric":
         if isinstance(other, int):
-            if other != 1:
-                raise NotImplementedError("not implemented for arbitrary numbers")
-            lastchar = self._str[-1] if self._str else alphanums[0]
-            s = self._str[:-1] + alphanums[alphanums.index(lastchar) + other]
-            return self.new(s)
+            try:
+                if other != 1:
+                    raise NotImplementedError("not implemented for arbitrary numbers")
+                lastchar = self._str[-1] if self._str else alphanums[0]
+                s = self._str[:-1] + alphanums[alphanums.index(lastchar) + other]
+                return self.new(s)
+            except Exception as e:
+                print(f"DATA_DIFF: str:  {self._str} ")
+                lastchar = self._str[-1] if self._str else alphanums[0]
+                print(f"DATA_DIFF: lastchar: {lastchar} ")
+                raise e
         return NotImplemented
 
     def range(self, other: "ArithAlphanumeric", count: int):
