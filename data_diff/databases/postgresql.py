@@ -8,6 +8,7 @@ from .database_types import (
     Native_UUID,
     Text,
     FractionalType,
+    Boolean,
 )
 from .base import BaseDialect, ThreadedDatabase, import_helper, ConnectError
 from .base import MD5_HEXDIGITS, CHECKSUM_HEXDIGITS, _CHECKSUM_BITSIZE, TIMESTAMP_PRECISION_POS
@@ -48,6 +49,8 @@ class PostgresqlDialect(BaseDialect):
         "text": Text,
         # UUID
         "uuid": Native_UUID,
+        # Boolean
+        "boolean": Boolean,
     }
 
     def quote(self, s: str):
@@ -70,6 +73,9 @@ class PostgresqlDialect(BaseDialect):
 
     def normalize_number(self, value: str, coltype: FractionalType) -> str:
         return self.to_string(f"{value}::decimal(38, {coltype.precision})")
+
+    def normalize_boolean(self, value: str, coltype: Boolean) -> str:
+        return self.to_string(f"{value}::int")
 
     def _convert_db_precision_to_digits(self, p: int) -> int:
         # Subtracting 2 due to wierd precision issues in PostgreSQL

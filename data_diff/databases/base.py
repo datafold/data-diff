@@ -30,6 +30,7 @@ from .database_types import (
     Text,
     DbTime,
     DbPath,
+    Boolean,
 )
 
 logger = logging.getLogger("database")
@@ -186,6 +187,9 @@ class BaseDialect(AbstractDialect, AbstractMixin_MD5, AbstractMixin_NormalizeVal
             )
 
         elif issubclass(cls, Integer):
+            return cls()
+
+        elif issubclass(cls, Boolean):
             return cls()
 
         elif issubclass(cls, Decimal):

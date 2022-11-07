@@ -16,6 +16,7 @@ from .database_types import (
     ColType,
     ColType_UUID,
     TemporalType,
+    Boolean,
 )
 from .base import BaseDialect, Database, import_helper, ThreadLocalInterpreter
 from .base import (
@@ -56,6 +57,8 @@ class Dialect(BaseDialect):
         "double": Float,
         # Text
         "varchar": Text,
+        # Boolean
+        "boolean": Boolean,
     }
 
     def explain_as_text(self, query: str) -> str:
@@ -94,6 +97,9 @@ class Dialect(BaseDialect):
 
     def normalize_number(self, value: str, coltype: FractionalType) -> str:
         return self.to_string(f"cast({value} as decimal(38,{coltype.precision}))")
+
+    def normalize_boolean(self, value: str, coltype: Boolean) -> str:
+        return self.to_string(f"cast ({value} as int)")
 
     def parse_type(
         self,

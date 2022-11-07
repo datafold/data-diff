@@ -1,7 +1,7 @@
 from typing import Union, List
 import logging
 
-from .database_types import Timestamp, TimestampTZ, Decimal, Float, Text, FractionalType, TemporalType, DbPath
+from .database_types import Timestamp, TimestampTZ, Decimal, Float, Text, FractionalType, TemporalType, DbPath, Boolean
 from .base import BaseDialect, ConnectError, Database, import_helper, CHECKSUM_MASK, ThreadLocalInterpreter
 
 
@@ -27,6 +27,8 @@ class Dialect(BaseDialect):
         "FLOAT": Float,
         # Text
         "TEXT": Text,
+        # Boolean
+        "BOOLEAN": Boolean,
     }
 
     def explain_as_text(self, query: str) -> str:
@@ -42,6 +44,9 @@ class Dialect(BaseDialect):
 
     def normalize_number(self, value: str, coltype: FractionalType) -> str:
         return self.to_string(f"cast({value} as decimal(38, {coltype.precision}))")
+
+    def normalize_boolean(self, value: str, coltype: Boolean) -> str:
+        return self.to_string(f"{value}::int")
 
     def quote(self, s: str):
         return f'"{s}"'
