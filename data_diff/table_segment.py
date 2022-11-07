@@ -5,10 +5,10 @@ import logging
 from runtype import dataclass
 
 from .utils import ArithString, split_space
-from .databases.base import Database
-from .databases.database_types import DbPath, DbKey, DbTime, Schema, create_schema
-from .queries import Count, Checksum, SKIP, table, this, Expr, min_, max_
-from .queries.extras import ApplyFuncAndNormalizeAsString, NormalizeAsString
+from .sqeleton.databases.base import Database
+from .sqeleton.databases.database_types import DbPath, DbKey, DbTime, Schema, create_schema
+from .sqeleton.queries import Count, Checksum, SKIP, table, this, Expr, min_, max_
+from .sqeleton.queries.extras import ApplyFuncAndNormalizeAsString, NormalizeAsString
 
 logger = logging.getLogger("table_segment")
 

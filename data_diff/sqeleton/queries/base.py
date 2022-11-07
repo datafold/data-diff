@@ -1,6 +1,6 @@
 from typing import Generator
 
-from data_diff.databases.database_types import DbPath, DbKey, Schema
+from data_diff.sqeleton.databases.database_types import DbPath, DbKey, Schema
 
 
 class _SKIP:

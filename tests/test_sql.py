@@ -3,7 +3,7 @@ import unittest
 from data_diff.databases import connect_to_uri
 from .common import TEST_MYSQL_CONN_STRING
 
-from data_diff.queries import Compiler, Count, Explain, Select, table, In, BinOp
+from data_diff.sqeleton.queries import Compiler, Count, Explain, Select, table, In, BinOp
 
 
 class TestSQL(unittest.TestCase):

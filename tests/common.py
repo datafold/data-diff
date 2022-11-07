@@ -12,7 +12,7 @@ from parameterized import parameterized_class
 from data_diff import databases as db
 from data_diff import tracking
 from data_diff import connect
-from data_diff.queries.api import table
+from data_diff.sqeleton.queries.api import table
 from data_diff.query_utils import drop_table
 
 tracking.disable_tracking()
@@ -47,7 +47,7 @@ def get_git_revision_short_hash() -> str:
 
 GIT_REVISION = get_git_revision_short_hash()
 
-level = logging.ERROR
+level = logging.INFO
 if os.environ.get("LOG_LEVEL", False):
     level = getattr(logging, os.environ["LOG_LEVEL"].upper())
 

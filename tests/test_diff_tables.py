@@ -5,7 +5,7 @@ import unittest
 
 import arrow  # comes with preql
 
-from data_diff.queries import table, this, commit
+from data_diff.sqeleton.queries import table, this, commit
 
 from data_diff.hashdiff_tables import HashDiffer
 from data_diff.table_segment import TableSegment, split_space

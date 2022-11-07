@@ -16,7 +16,7 @@ from .utils import run_as_daemon, safezip, getLogger
 from .thread_utils import ThreadedYielder
 from .table_segment import TableSegment
 from .tracking import create_end_event_json, create_start_event_json, send_event_json, is_tracking_enabled
-from .databases.database_types import IKey
+from .sqeleton.databases.database_types import IKey
 
 logger = getLogger(__name__)
 

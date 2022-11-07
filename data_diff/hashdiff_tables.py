@@ -9,7 +9,7 @@ from runtype import dataclass
 
 from .utils import safezip
 from .thread_utils import ThreadedYielder
-from .databases.database_types import ColType_UUID, NumericType, PrecisionType, StringType
+from .sqeleton.databases.database_types import ColType_UUID, NumericType, PrecisionType, StringType
 from .table_segment import TableSegment
 
 from .diff_tables import TableDiffer

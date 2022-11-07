@@ -4,7 +4,7 @@ from datetime import datetime
 
 from data_diff import diff_tables, connect_to_table
 from data_diff.databases import MySQL
-from data_diff.queries.api import table
+from data_diff.sqeleton.queries.api import table
 
 from .common import TEST_MYSQL_CONN_STRING, get_conn
 
