@@ -1,7 +1,7 @@
 from typing import Sequence, Tuple, Iterator, Optional, Union
 
 from .tracking import disable_tracking
-from .sqeleton.databases.connect import connect
+from .databases import connect
 from .sqeleton.databases.database_types import DbKey, DbTime, DbPath
 from .diff_tables import Algorithm
 from .hashdiff_tables import HashDiffer, DEFAULT_BISECTION_THRESHOLD, DEFAULT_BISECTION_FACTOR

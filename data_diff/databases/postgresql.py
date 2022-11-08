@@ -1,8 +1,8 @@
-from data_diff.sqeleton.databases.postgresql import PostgresqlDialect, PostgreSQL
+from data_diff.sqeleton.databases import postgresql
 from .base import BaseDialect
 
-class PostgresqlDialect(BaseDialect, PostgresqlDialect):
+class PostgresqlDialect(BaseDialect, postgresql.PostgresqlDialect):
     pass
 
-class PostgreSQL(PostgreSQL):
+class PostgreSQL(postgresql.PostgreSQL):
     dialect = PostgresqlDialect()

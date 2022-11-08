@@ -1,4 +1,4 @@
-from typing import Type, List, Optional, Union
+from typing import Type, List, Optional, Union, Dict
 from itertools import zip_longest
 import dsnparse
 
@@ -94,134 +94,138 @@ MATCH_URI_PATH = {
 }
 
 
-def connect_to_uri(db_uri: str, thread_count: Optional[int] = 1) -> Database:
-    """Connect to the given database uri
+@dataclass
+class Connect:
+    match_uri_path: Dict[str, MatchUriPath]
 
-    thread_count determines the max number of worker threads per database,
-    if relevant. None means no limit.
+    def connect_to_uri(self, db_uri: str, thread_count: Optional[int] = 1) -> Database:
+        """Connect to the given database uri
 
-    Parameters:
-        db_uri (str): The URI for the database to connect
-        thread_count (int, optional): Size of the threadpool. Ignored by cloud databases. (default: 1)
+        thread_count determines the max number of worker threads per database,
+        if relevant. None means no limit.
 
-    Note: For non-cloud databases, a low thread-pool size may be a performance bottleneck.
+        Parameters:
+            db_uri (str): The URI for the database to connect
+            thread_count (int, optional): Size of the threadpool. Ignored by cloud databases. (default: 1)
 
-    Supported schemes:
-    - postgresql
-    - mysql
-    - oracle
-    - snowflake
-    - bigquery
-    - redshift
-    - presto
-    - databricks
-    - trino
-    - clickhouse
-    - vertica
-    """
+        Note: For non-cloud databases, a low thread-pool size may be a performance bottleneck.
 
-    dsn = dsnparse.parse(db_uri)
-    if len(dsn.schemes) > 1:
-        raise NotImplementedError("No support for multiple schemes")
-    (scheme,) = dsn.schemes
+        Supported schemes:
+        - postgresql
+        - mysql
+        - oracle
+        - snowflake
+        - bigquery
+        - redshift
+        - presto
+        - databricks
+        - trino
+        - clickhouse
+        - vertica
+        """
 
-    try:
-        matcher = MATCH_URI_PATH[scheme]
-    except KeyError:
-        raise NotImplementedError(f"Scheme {scheme} currently not supported")
+        dsn = dsnparse.parse(db_uri)
+        if len(dsn.schemes) > 1:
+            raise NotImplementedError("No support for multiple schemes")
+        (scheme,) = dsn.schemes
 
-    cls = matcher.database_cls
+        try:
+            matcher = self.match_uri_path[scheme]
+        except KeyError:
+            raise NotImplementedError(f"Scheme {scheme} currently not supported")
 
-    if scheme == "databricks":
-        assert not dsn.user
-        kw = {}
-        kw["access_token"] = dsn.password
-        kw["http_path"] = dsn.path
-        kw["server_hostname"] = dsn.host
-        kw.update(dsn.query)
-    elif scheme == 'duckdb':
-        kw = {}
-        kw['filepath'] = dsn.dbname
-        kw['dbname'] = dsn.user
-    else:
-        kw = matcher.match_path(dsn)
+        cls = matcher.database_cls
 
-        if scheme == "bigquery":
-            kw["project"] = dsn.host
-            return cls(**kw)
-
-        if scheme == "snowflake":
-            kw["account"] = dsn.host
-            assert not dsn.port
-            kw["user"] = dsn.user
-            kw["password"] = dsn.password
+        if scheme == "databricks":
+            assert not dsn.user
+            kw = {}
+            kw["access_token"] = dsn.password
+            kw["http_path"] = dsn.path
+            kw["server_hostname"] = dsn.host
+            kw.update(dsn.query)
+        elif scheme == 'duckdb':
+            kw = {}
+            kw['filepath'] = dsn.dbname
+            kw['dbname'] = dsn.user
         else:
-            kw["host"] = dsn.host
-            kw["port"] = dsn.port
-            kw["user"] = dsn.user
-            if dsn.password:
+            kw = matcher.match_path(dsn)
+
+            if scheme == "bigquery":
+                kw["project"] = dsn.host
+                return cls(**kw)
+
+            if scheme == "snowflake":
+                kw["account"] = dsn.host
+                assert not dsn.port
+                kw["user"] = dsn.user
                 kw["password"] = dsn.password
+            else:
+                kw["host"] = dsn.host
+                kw["port"] = dsn.port
+                kw["user"] = dsn.user
+                if dsn.password:
+                    kw["password"] = dsn.password
 
-    kw = {k: v for k, v in kw.items() if v is not None}
+        kw = {k: v for k, v in kw.items() if v is not None}
 
-    if issubclass(cls, ThreadedDatabase):
-        return cls(thread_count=thread_count, **kw)
+        if issubclass(cls, ThreadedDatabase):
+            return cls(thread_count=thread_count, **kw)
 
-    return cls(**kw)
-
-
-def connect_with_dict(d, thread_count):
-    d = dict(d)
-    driver = d.pop("driver")
-    try:
-        matcher = MATCH_URI_PATH[driver]
-    except KeyError:
-        raise NotImplementedError(f"Driver {driver} currently not supported")
-
-    cls = matcher.database_cls
-    if issubclass(cls, ThreadedDatabase):
-        return cls(thread_count=thread_count, **d)
-
-    return cls(**d)
+        return cls(**kw)
 
 
-def connect(db_conf: Union[str, dict], thread_count: Optional[int] = 1) -> Database:
-    """Connect to a database using the given database configuration.
+    def connect_with_dict(self, d, thread_count):
+        d = dict(d)
+        driver = d.pop("driver")
+        try:
+            matcher = self.match_uri_path[driver]
+        except KeyError:
+            raise NotImplementedError(f"Driver {driver} currently not supported")
 
-    Configuration can be given either as a URI string, or as a dict of {option: value}.
+        cls = matcher.database_cls
+        if issubclass(cls, ThreadedDatabase):
+            return cls(thread_count=thread_count, **d)
 
-    The dictionary configuration uses the same keys as the TOML 'database' definition given with --conf.
+        return cls(**d)
 
-    thread_count determines the max number of worker threads per database,
-    if relevant. None means no limit.
 
-    Parameters:
-        db_conf (str | dict): The configuration for the database to connect. URI or dict.
-        thread_count (int, optional): Size of the threadpool. Ignored by cloud databases. (default: 1)
+    def __call__(self, db_conf: Union[str, dict], thread_count: Optional[int] = 1) -> Database:
+        """Connect to a database using the given database configuration.
 
-    Note: For non-cloud databases, a low thread-pool size may be a performance bottleneck.
+        Configuration can be given either as a URI string, or as a dict of {option: value}.
 
-    Supported drivers:
-    - postgresql
-    - mysql
-    - oracle
-    - snowflake
-    - bigquery
-    - redshift
-    - presto
-    - databricks
-    - trino
-    - clickhouse
-    - vertica
+        The dictionary configuration uses the same keys as the TOML 'database' definition given with --conf.
 
-    Example:
-        >>> connect("mysql://localhost/db")
-        <data_diff.databases.mysql.MySQL object at 0x0000025DB45F4190>
-        >>> connect({"driver": "mysql", "host": "localhost", "database": "db"})
-        <data_diff.databases.mysql.MySQL object at 0x0000025DB3F94820>
-    """
-    if isinstance(db_conf, str):
-        return connect_to_uri(db_conf, thread_count)
-    elif isinstance(db_conf, dict):
-        return connect_with_dict(db_conf, thread_count)
-    raise TypeError(f"db configuration must be a URI string or a dictionary. Instead got '{db_conf}'.")
+        thread_count determines the max number of worker threads per database,
+        if relevant. None means no limit.
+
+        Parameters:
+            db_conf (str | dict): The configuration for the database to connect. URI or dict.
+            thread_count (int, optional): Size of the threadpool. Ignored by cloud databases. (default: 1)
+
+        Note: For non-cloud databases, a low thread-pool size may be a performance bottleneck.
+
+        Supported drivers:
+        - postgresql
+        - mysql
+        - oracle
+        - snowflake
+        - bigquery
+        - redshift
+        - presto
+        - databricks
+        - trino
+        - clickhouse
+        - vertica
+
+        Example:
+            >>> connect("mysql://localhost/db")
+            <data_diff.databases.mysql.MySQL object at 0x0000025DB45F4190>
+            >>> connect({"driver": "mysql", "host": "localhost", "database": "db"})
+            <data_diff.databases.mysql.MySQL object at 0x0000025DB3F94820>
+        """
+        if isinstance(db_conf, str):
+            return self.connect_to_uri(db_conf, thread_count)
+        elif isinstance(db_conf, dict):
+            return self.connect_with_dict(db_conf, thread_count)
+        raise TypeError(f"db configuration must be a URI string or a dictionary. Instead got '{db_conf}'.")
