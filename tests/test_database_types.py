@@ -70,6 +70,9 @@ DATABASE_TYPES = {
             "varchar(100)",
             "char(100)",
         ],
+        "boolean": [
+            "boolean",
+        ],
     },
     db.MySQL: {
         # https://dev.mysql.com/doc/refman/8.0/en/integer-types.html
@@ -100,6 +103,9 @@ DATABASE_TYPES = {
             "char(100)",
             "varbinary(100)",
         ],
+        "boolean": [
+            "boolean",
+        ],
     },
     db.BigQuery: {
         "int": ["int"],
@@ -114,6 +120,9 @@ DATABASE_TYPES = {
         ],
         "uuid": [
             "STRING",
+        ],
+        "boolean": [
+            "boolean",
         ],
     },
     db.Snowflake: {
@@ -144,6 +153,9 @@ DATABASE_TYPES = {
             "varchar",
             "varchar(100)",
         ],
+        "boolean": [
+            "boolean",
+        ],
     },
     db.Redshift: {
         "int": [
@@ -163,6 +175,9 @@ DATABASE_TYPES = {
             "text",
             "varchar(100)",
             "char(100)",
+        ],
+        "boolean": [
+            "boolean",
         ],
     },
     db.Oracle: {
@@ -187,6 +202,8 @@ DATABASE_TYPES = {
             "NCHAR(100)",
             "NVARCHAR2(100)",
         ],
+        "boolean": [    # Oracle has no boolean type
+        ],
     },
     db.Presto: {
         "int": [
@@ -209,6 +226,9 @@ DATABASE_TYPES = {
         "uuid": [
             "varchar",
             "char(100)",
+        ],
+        "boolean": [
+            "boolean",
         ],
     },
     db.Databricks: {
@@ -233,6 +253,9 @@ DATABASE_TYPES = {
         "uuid": [
             "STRING",
         ],
+        "boolean": [
+            "boolean",
+        ],
     },
     db.Trino: {
         "int": [
@@ -252,6 +275,9 @@ DATABASE_TYPES = {
         "uuid": [
             "varchar",
             "char(100)",
+        ],
+        "boolean": [
+            "boolean",
         ],
     },
     db.Clickhouse: {
@@ -277,6 +303,9 @@ DATABASE_TYPES = {
         "uuid": [
             "String",
         ],
+        "boolean": [
+            "boolean",
+        ],
     },
     db.Vertica: {
         "int": ["int"],
@@ -294,6 +323,9 @@ DATABASE_TYPES = {
         "uuid": [
             "varchar(100)",
             "char(100)",
+        ],
+        "boolean": [
+            "boolean",
         ],
     },
 }
@@ -368,6 +400,18 @@ class IntFaker:
     def __len__(self):
         return self.max
 
+class BooleanFaker:
+    MANUAL_FAKES = [False, True, True, False]
+
+    def __init__(self, max):
+        self.max = max
+
+    def __iter__(self):
+        return iter(self.MANUAL_FAKES[:self.max])
+
+    def __len__(self):
+        return min(self.max, len(self.MANUAL_FAKES))
+
 
 class FloatFaker:
     MANUAL_FAKES = [
@@ -417,6 +461,7 @@ TYPE_SAMPLES = {
     "datetime": DateTimeFaker(N_SAMPLES),
     "float": FloatFaker(N_SAMPLES),
     "uuid": UUID_Faker(N_SAMPLES),
+    "boolean": BooleanFaker(N_SAMPLES),
 }
 
 
@@ -529,6 +574,9 @@ def _insert_to_table(conn, table, values, type):
         if isinstance(sample, bytearray):
             value = f"'{sample.decode()}'"
 
+        elif type == 'boolean':
+            value = str(bool(sample))
+
         elif isinstance(conn, db.Clickhouse):
             if type.startswith("DateTime64"):
                 value = f"'{sample.replace(tzinfo=None)}'"
@@ -567,9 +615,18 @@ def _insert_to_table(conn, table, values, type):
                 insertion_query += " UNION ALL ".join(selects)
                 conn.query(insertion_query, None)
                 selects = []
+                insertion_query = default_insertion_query
             else:
                 conn.query(insertion_query[0:-1], None)
                 insertion_query = default_insertion_query
+
+    if insertion_query != default_insertion_query:
+        # Very bad, but this whole function needs to go
+        if isinstance(conn, db.Oracle):
+            insertion_query += " UNION ALL ".join(selects)
+            conn.query(insertion_query, None)
+        else:
+            conn.query(insertion_query[0:-1], None)
 
     if not isinstance(conn, (db.BigQuery, db.Databricks, db.Clickhouse)):
         conn.query("COMMIT", None)
@@ -686,16 +743,16 @@ class TestDiffCrossDatabaseTables(unittest.TestCase):
             self.table2 = TableSegment(self.dst_conn, dst_table_path, ("id",), None, ("col",), case_sensitive=False)
 
         start = time.monotonic()
-        self.assertEqual(N_SAMPLES, self.table.count())
+        self.assertEqual(len(sample_values), self.table.count())
         count_source_duration = time.monotonic() - start
 
         start = time.monotonic()
-        self.assertEqual(N_SAMPLES, self.table2.count())
+        self.assertEqual(len(sample_values), self.table2.count())
         count_target_duration = time.monotonic() - start
 
         # When testing, we configure these to their lowest possible values for
         # the DEFAULT_N_SAMPLES.
-        # When benchmarking, we try to dynamically create some more optimal
+        # When benchmarking, we try to dynamically create some more optima
         # configuration with each segment being ~250k rows.
         ch_factor = min(max(int(N_SAMPLES / 250_000), 2), 128) if BENCHMARK else 2
         ch_threshold = min(DEFAULT_BISECTION_THRESHOLD, int(N_SAMPLES / ch_factor)) if BENCHMARK else 3
@@ -710,7 +767,7 @@ class TestDiffCrossDatabaseTables(unittest.TestCase):
         checksum_duration = time.monotonic() - start
         expected = []
         self.assertEqual(expected, diff)
-        self.assertEqual(0, differ.stats.get("rows_downloaded", 0))
+        self.assertEqual(0, differ.stats.get("rows_downloaded", 0))     # This may fail if the hash is different, but downloaded values are equal
 
         # This section downloads all rows to ensure that Python agrees with the
         # database, in terms of comparison.

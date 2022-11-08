@@ -26,6 +26,9 @@ class PrecisionType(ColType):
     rounds: bool
 
 
+class Boolean(ColType):
+    supported = True
+
 class TemporalType(PrecisionType):
     pass
 
@@ -250,6 +253,11 @@ class AbstractMixin_NormalizeValue(ABC):
         """
         ...
 
+    def normalize_boolean(self, value: str, coltype: Boolean) -> str:
+        """Creates an SQL expression, that converts 'value' to either '0' or '1'.
+        """
+        return self.to_string(value)
+
     def normalize_value_by_type(self, value: str, coltype: ColType) -> str:
         """Creates an SQL expression, that converts 'value' to a normalized representation.
 
@@ -272,6 +280,8 @@ class AbstractMixin_NormalizeValue(ABC):
             return self.normalize_number(value, coltype)
         elif isinstance(coltype, ColType_UUID):
             return self.normalize_uuid(value, coltype)
+        elif isinstance(coltype, Boolean):
+            return self.normalize_boolean(value, coltype)
         return self.to_string(value)
 
 

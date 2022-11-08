@@ -8,6 +8,7 @@ from .database_types import (
     TemporalType,
     FractionalType,
     ColType_UUID,
+    Boolean,
 )
 from .base import ThreadedDatabase, import_helper, ConnectError, BaseDialect
 from .base import MD5_HEXDIGITS, CHECKSUM_HEXDIGITS, TIMESTAMP_PRECISION_POS
@@ -39,6 +40,8 @@ class Dialect(BaseDialect):
         "char": Text,
         "varbinary": Text,
         "binary": Text,
+        # Boolean
+        "boolean": Boolean,
     }
 
     def quote(self, s: str):

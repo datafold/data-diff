@@ -22,6 +22,7 @@ from .database_types import (
     Text,
     Timestamp,
     TimestampTZ,
+    Boolean,
 )
 
 
@@ -47,6 +48,8 @@ class Dialect(BaseDialect):
         # Text
         "char": Text,
         "varchar": Text,
+        # Boolean
+        "boolean": Boolean,
     }
 
     def quote(self, s: str):
@@ -76,6 +79,9 @@ class Dialect(BaseDialect):
     def normalize_uuid(self, value: str, coltype: ColType_UUID) -> str:
         # Trim doesn't work on CHAR type
         return f"TRIM(CAST({value} AS VARCHAR))"
+
+    def normalize_boolean(self, value: str, coltype: Boolean) -> str:
+        return self.to_string(f"cast ({value} as int)")
 
     def is_distinct_from(self, a: str, b: str) -> str:
         return f"not ({a} <=> {b})"
