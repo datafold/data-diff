@@ -30,6 +30,8 @@ class Dialect(Dialect):
 
 class Trino(Presto):
     dialect = Dialect()
+    CONNECT_URI_HELP = "trino://<user>@<host>/<catalog>/<schema>"
+    CONNECT_URI_PARAMS = ["catalog", "schema"]
 
     def __init__(self, **kw):
         trino = import_trino()

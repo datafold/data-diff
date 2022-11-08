@@ -31,7 +31,7 @@ MATCH_URI_PATH = {
     "databricks": MatchUriPath(
         Databricks,
         ["catalog", "schema"],
-        help_str="databricks://:access_token@server_name/http_path",
+        help_str="databricks://:<access_token>@<server_name>/<http_path>",
     ),
     "trino": MatchUriPath(Trino, ["catalog", "schema"], help_str="trino://<user>@<host>/<catalog>/<schema>"),
     "clickhouse": MatchUriPath(Clickhouse, ["database?"], help_str="clickhouse://<user>:<pass>@<host>/<database>"),

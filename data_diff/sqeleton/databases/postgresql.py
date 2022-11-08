@@ -85,6 +85,8 @@ class PostgresqlDialect(BaseDialect):
 class PostgreSQL(ThreadedDatabase):
     dialect = PostgresqlDialect()
     SUPPORTS_UNIQUE_CONSTAINT = True
+    CONNECT_URI_HELP = "postgresql://<user>:<pass>@<host>/<database>"
+    CONNECT_URI_PARAMS = ["database?"]
 
     default_schema = "public"
 

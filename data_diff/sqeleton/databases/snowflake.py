@@ -60,6 +60,9 @@ class Dialect(BaseDialect):
 
 class Snowflake(Database):
     dialect = Dialect()
+    CONNECT_URI_HELP = "snowflake://<user>:<pass>@<account>/<database>/<SCHEMA>?warehouse=<WAREHOUSE>"
+    CONNECT_URI_PARAMS = ["database", "schema"]
+    CONNECT_URI_KWPARAMS = ["warehouse"]
 
     def __init__(self, *, schema: str, **kw):
         snowflake, serialization, default_backend = import_snowflake()

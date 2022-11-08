@@ -74,6 +74,8 @@ class Dialect(BaseDialect):
 
 class Databricks(ThreadedDatabase):
     dialect = Dialect()
+    CONNECT_URI_HELP = "databricks://:<access_token>@<server_name>/<http_path>"
+    CONNECT_URI_PARAMS = ["catalog", "schema"]
 
     def __init__(self, *, thread_count, **kw):
         logging.getLogger("databricks.sql").setLevel(logging.WARNING)

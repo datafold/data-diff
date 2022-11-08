@@ -88,6 +88,8 @@ class MySQL(ThreadedDatabase):
     dialect = Dialect()
     SUPPORTS_ALPHANUMS = False
     SUPPORTS_UNIQUE_CONSTAINT = True
+    CONNECT_URI_HELP = "mysql://<user>:<pass>@<host>/<database>"
+    CONNECT_URI_PARAMS = ["database?"]
 
     def __init__(self, *, thread_count, **kw):
         self._args = kw

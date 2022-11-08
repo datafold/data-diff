@@ -132,6 +132,9 @@ class Dialect(BaseDialect):
 
 class Presto(Database):
     dialect = Dialect()
+    CONNECT_URI_HELP = "presto://<user>@<host>/<catalog>/<schema>"
+    CONNECT_URI_PARAMS = ["catalog", "schema"]
+
     default_schema = "public"
 
     def __init__(self, **kw):

@@ -122,6 +122,9 @@ class Dialect(BaseDialect):
 
 class Vertica(ThreadedDatabase):
     dialect = Dialect()
+    CONNECT_URI_HELP = "vertica://<user>:<pass>@<host>/<database>"
+    CONNECT_URI_PARAMS = ["database?"]
+
     default_schema = "public"
 
     def __init__(self, *, thread_count, **kw):

@@ -26,6 +26,11 @@ class MatchUriPath:
     kwparams: List[str] = []
     help_str: str
 
+    def __post_init__(self):
+        assert self.params == self.database_cls.CONNECT_URI_PARAMS
+        assert self.help_str == self.database_cls.CONNECT_URI_HELP, ('\n%s\n%s' % (self.help_str, self.database_cls.CONNECT_URI_HELP))
+        assert self.kwparams == self.database_cls.CONNECT_URI_KWPARAMS
+
     def match_path(self, dsn):
         dsn_dict = dict(dsn.query)
         matches = {}
@@ -85,7 +90,7 @@ MATCH_URI_PATH = {
     "databricks": MatchUriPath(
         Databricks,
         ["catalog", "schema"],
-        help_str="databricks://:access_token@server_name/http_path",
+        help_str="databricks://:<access_token>@<server_name>/<http_path>",
     ),
     "duckdb": MatchUriPath(DuckDB, ['database', 'dbpath'], help_str="duckdb://<database>@<dbpath>"),
     "trino": MatchUriPath(Trino, ["catalog", "schema"], help_str="trino://<user>@<host>/<catalog>/<schema>"),

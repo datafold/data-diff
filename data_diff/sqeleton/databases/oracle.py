@@ -132,6 +132,8 @@ class Dialect(BaseDialect):
 
 class Oracle(ThreadedDatabase):
     dialect = Dialect()
+    CONNECT_URI_HELP = "oracle://<user>:<pass>@<host>/<database>"
+    CONNECT_URI_PARAMS = ["database?"]
 
     def __init__(self, *, host, database, thread_count, **kw):
         self.kwargs = dict(dsn=f"{host}/{database}" if database else host, **kw)

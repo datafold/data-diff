@@ -72,6 +72,8 @@ class Dialect(BaseDialect):
 
 
 class BigQuery(Database):
+    CONNECT_URI_HELP = "bigquery://<project>/<dataset>"
+    CONNECT_URI_PARAMS = ["dataset"]
     dialect = Dialect()
 
     def __init__(self, project, *, dataset, **kw):

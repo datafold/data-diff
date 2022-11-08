@@ -230,6 +230,18 @@ class Database(AbstractDatabase):
     SUPPORTS_ALPHANUMS = True
     SUPPORTS_UNIQUE_CONSTAINT = False
 
+    @property
+    @abstractmethod
+    def CONNECT_URI_HELP(self) -> str:
+        "Example URI to show the user in help and error messages"
+
+    @property
+    @abstractmethod
+    def CONNECT_URI_PARAMS(self) -> List[str]:
+        "List of parameters given in the path of the URI"
+
+    CONNECT_URI_KWPARAMS = []
+
     _interactive = False
 
     @property
