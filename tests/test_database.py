@@ -24,6 +24,4 @@ class TestConnect(unittest.TestCase):
         self.assertRaises(ValueError, connect, "p")
         self.assertRaises(ValueError, connect, "postgresql:///bla/foo")
         self.assertRaises(ValueError, connect, "snowflake://user:pass@bya42734/xdiffdev/TEST1")
-        self.assertRaises(
-            ValueError, connect, "snowflake://user:pass@bya42734/xdiffdev/TEST1?warehouse=ha&schema=dup"
-        )
+        self.assertRaises(ValueError, connect, "snowflake://user:pass@bya42734/xdiffdev/TEST1?warehouse=ha&schema=dup")

@@ -14,4 +14,3 @@ from .vertica import Vertica
 from .duckdb import DuckDB
 
 from ._connect import connect
-

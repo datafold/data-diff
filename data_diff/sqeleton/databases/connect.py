@@ -28,7 +28,10 @@ class MatchUriPath:
 
     def __post_init__(self):
         assert self.params == self.database_cls.CONNECT_URI_PARAMS
-        assert self.help_str == self.database_cls.CONNECT_URI_HELP, ('\n%s\n%s' % (self.help_str, self.database_cls.CONNECT_URI_HELP))
+        assert self.help_str == self.database_cls.CONNECT_URI_HELP, "\n%s\n%s" % (
+            self.help_str,
+            self.database_cls.CONNECT_URI_HELP,
+        )
         assert self.kwparams == self.database_cls.CONNECT_URI_KWPARAMS
 
     def match_path(self, dsn):
@@ -178,7 +181,6 @@ class Connect:
 
         return cls(**kw)
 
-
     def connect_with_dict(self, d, thread_count):
         d = dict(d)
         driver = d.pop("driver")
@@ -192,7 +194,6 @@ class Connect:
             return cls(thread_count=thread_count, **d)
 
         return cls(**d)
-
 
     def __call__(self, db_conf: Union[str, dict], thread_count: Optional[int] = 1) -> Database:
         """Connect to a database using the given database configuration.

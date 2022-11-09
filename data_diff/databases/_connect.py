@@ -13,7 +13,6 @@ from .clickhouse import Clickhouse
 from .vertica import Vertica
 
 
-
 MATCH_URI_PATH = {
     "postgresql": MatchUriPath(PostgreSQL, ["database?"], help_str="postgresql://<user>:<pass>@<host>/<database>"),
     "mysql": MatchUriPath(MySQL, ["database?"], help_str="mysql://<user>:<pass>@<host>/<database>"),

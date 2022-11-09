@@ -11,4 +11,3 @@ from .databricks import Databricks
 from .trino import Trino
 from .clickhouse import Clickhouse
 from .vertica import Vertica
-
