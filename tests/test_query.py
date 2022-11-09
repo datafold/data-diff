@@ -32,6 +32,9 @@ class MockDialect(AbstractDialect):
     def random(self) -> str:
         return "random()"
 
+    def current_timestamp(self) -> str:
+        return "select current_timestamp()"
+
     def offset_limit(self, offset: Optional[int] = None, limit: Optional[int] = None):
         x = offset and f"offset {offset}", limit and f"limit {limit}"
         return " ".join(filter(None, x))

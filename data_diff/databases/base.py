@@ -132,6 +132,9 @@ class BaseDialect(AbstractDialect, AbstractMixin_MD5, AbstractMixin_NormalizeVal
     def random(self) -> str:
         return "RANDOM()"
 
+    def current_timestamp(self) -> str:
+        return "SELECT CURRENT_TIMESTAMP()"
+
     def explain_as_text(self, query: str) -> str:
         return f"EXPLAIN {query}"
 
@@ -288,6 +291,10 @@ class Database(AbstractDatabase):
 
     def enable_interactive(self):
         self._interactive = True
+
+    def query_database_current_timestamp(self) -> datetime:
+        res = self._query(self.dialect.current_timestamp())
+        return _one(_one(res))
 
     def select_table_schema(self, path: DbPath) -> str:
         schema, table = self._normalize_table_path(path)

@@ -7,6 +7,10 @@ class ParseError(ValueError):
     pass
 
 
+class TimeZoneError(ValueError):
+    pass
+
+
 TIME_UNITS = dict(
     seconds="seconds",
     minutes="minutes",
@@ -72,3 +76,7 @@ def parse_time_delta(t: str):
 
 def parse_time_before_now(t: str):
     return datetime.now() - parse_time_delta(t)
+
+
+def parse_database_time_before_now(t: str, db_dt: datetime):
+    return db_dt - parse_time_delta(t)

@@ -5,6 +5,7 @@ import json
 import logging
 from itertools import islice
 from typing import Optional
+from datetime import datetime, timedelta
 
 import rich
 import click
@@ -16,7 +17,7 @@ from .joindiff_tables import TABLE_WRITE_LIMIT, JoinDiffer
 from .table_segment import TableSegment
 from .databases.database_types import create_schema
 from .databases.connect import connect
-from .parse_time import parse_time_before_now, UNITS_STR, ParseError
+from .parse_time import parse_database_time_before_now, UNITS_STR, ParseError
 from .config import apply_config_from_file
 from .tracking import disable_tracking
 
@@ -277,17 +278,6 @@ def _main(
 
     start = time.monotonic()
 
-    try:
-        options = dict(
-            min_update=max_age and parse_time_before_now(max_age),
-            max_update=min_age and parse_time_before_now(min_age),
-            case_sensitive=case_sensitive,
-            where=where,
-        )
-    except ParseError as e:
-        logging.error(f"Error while parsing age expression: {e}")
-        return
-
     if database1 is None or database2 is None:
         logging.error(
             f"Error: Databases not specified. Got {database1} and {database2}. Use --help for more information."
@@ -305,6 +295,35 @@ def _main(
         return
 
     dbs = db1, db2
+
+    try:
+        db1_time = db1.query_database_current_timestamp()
+    except Exception as e:
+        logging.error(e)
+        return
+
+    try:
+        db2_time = db2.query_database_current_timestamp()
+    except Exception as e:
+        logging.error(e)
+        return
+
+    if abs(db1_time - db2_time) >= timedelta(hours=1):
+        logging.error(
+            "Error: Databases have difference > 1 hour in current_timestamp values. Likely that databases use different time zones."
+        )
+        return
+
+    try:
+        options = dict(
+            min_update=max_age and parse_database_time_before_now(max_age, db1_time),
+            max_update=min_age and parse_database_time_before_now(min_age, db1_time),
+            case_sensitive=case_sensitive,
+            where=where,
+        )
+    except ParseError as e:
+        logging.error(f"Error while parsing age expression: {e}")
+        return
 
     if interactive:
         for db in dbs:

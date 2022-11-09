@@ -184,6 +184,11 @@ class AbstractDialect(ABC):
         "Provide SQL for generating a random number betweein 0..1"
 
     @abstractmethod
+    def current_timestamp(self) -> str:
+        "Provide SQL for getting current time of database session"
+        ...
+
+    @abstractmethod
     def offset_limit(self, offset: Optional[int] = None, limit: Optional[int] = None):
         "Provide SQL fragment for limit and offset inside a select"
         ...
@@ -298,6 +303,11 @@ class AbstractDatabase:
     @abstractmethod
     def _query(self, sql_code: str) -> list:
         "Send query to database and return result"
+        ...
+
+    @abstractmethod
+    def query_database_current_timestamp(self) -> datetime:
+        "Query database for the current time"
         ...
 
     @abstractmethod
