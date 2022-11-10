@@ -3,7 +3,7 @@
 from typing import Callable, Sequence
 from runtype import dataclass
 
-from data_diff.sqeleton.databases.database_types import ColType, Native_UUID
+from ..databases import ColType, Native_UUID
 
 from .compiler import Compiler
 from .ast_classes import Expr, ExprNode, Concat

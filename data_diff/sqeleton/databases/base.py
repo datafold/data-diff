@@ -68,7 +68,7 @@ def _one(seq):
 
 
 class ThreadLocalInterpreter:
-    """An interpeter used to execute a sequence of queries within the same thread.
+    """An interpeter used to execute a sequence of queries within the same thread and cursor.
 
     Useful for cursor-sensitive operations, such as creating a temporary table.
     """
@@ -217,20 +217,8 @@ class Database(AbstractDatabase):
     """
 
     default_schema: str = None
-    dialect: AbstractDialect = None
-
     SUPPORTS_ALPHANUMS = True
     SUPPORTS_UNIQUE_CONSTAINT = False
-
-    @property
-    @abstractmethod
-    def CONNECT_URI_HELP(self) -> str:
-        "Example URI to show the user in help and error messages"
-
-    @property
-    @abstractmethod
-    def CONNECT_URI_PARAMS(self) -> List[str]:
-        "List of parameters given in the path of the URI"
 
     CONNECT_URI_KWPARAMS = []
 
@@ -241,7 +229,12 @@ class Database(AbstractDatabase):
         return type(self).__name__
 
     def query(self, sql_ast: Union[Expr, Generator], res_type: type = list):
-        "Query the given SQL code/AST, and attempt to convert the result to type 'res_type'"
+        """Query the given SQL code/AST, and attempt to convert the result to type 'res_type'
+
+        If given a generator, it will execute all the yielded sql queries with the same thread and cursor.
+        The results of the queries a returned by the `yield` stmt (using the .send() mechanism).
+        It's a cleaner approach than exposing cursors, but may not be enough in all cases.
+        """
 
         compiler = Compiler(self)
         if isinstance(sql_ast, Generator):
@@ -294,6 +287,8 @@ class Database(AbstractDatabase):
         self._interactive = True
 
     def select_table_schema(self, path: DbPath) -> str:
+        """Provide SQL for selecting the table schema as (name, type, date_prec, num_prec)
+        """
         schema, table = self._normalize_table_path(path)
 
         return (
@@ -445,6 +440,7 @@ class ThreadedDatabase(Database):
 
     @abstractmethod
     def create_connection(self):
+        "Return a connection instance, that supports the .cursor() method."
         ...
 
     def close(self):
@@ -455,7 +451,7 @@ class ThreadedDatabase(Database):
         return False
 
 
-CHECKSUM_HEXDIGITS = 15  # Must be 15 or lower
+CHECKSUM_HEXDIGITS = 15  # Must be 15 or lower, otherwise SUM() overflows
 MD5_HEXDIGITS = 32
 
 _CHECKSUM_BITSIZE = CHECKSUM_HEXDIGITS << 2

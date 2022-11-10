@@ -2,9 +2,7 @@
 
 from contextlib import suppress
 
-from .sqeleton.databases.database_types import DbPath
-from .sqeleton.databases.base import QueryError
-from .sqeleton.databases import Oracle
+from .sqeleton.databases import DbPath, QueryError, Oracle
 from .sqeleton.queries import table, commit, Expr
 
 

@@ -6,7 +6,7 @@ from typing import Any, Dict, Sequence, List
 from runtype import dataclass
 
 from data_diff.utils import ArithString
-from data_diff.sqeleton.databases.database_types import AbstractDatabase, AbstractDialect, DbPath
+from data_diff.sqeleton.databases import AbstractDatabase, AbstractDialect, DbPath
 
 import contextvars
 
