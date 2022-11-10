@@ -1,6 +1,6 @@
 from typing import Dict, List, Optional
 
-from data_diff.utils import match_regexps
+from ..utils import match_regexps
 from .database_types import (
     Decimal,
     Float,

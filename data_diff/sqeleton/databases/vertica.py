@@ -1,6 +1,6 @@
 from typing import List
 
-from data_diff.utils import match_regexps
+from ..utils import match_regexps
 from .base import (
     CHECKSUM_HEXDIGITS,
     MD5_HEXDIGITS,

@@ -1,7 +1,7 @@
 from functools import partial
 import re
 
-from data_diff.utils import match_regexps
+from ..utils import match_regexps
 
 from .database_types import (
     Timestamp,

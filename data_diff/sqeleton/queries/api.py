@@ -1,6 +1,6 @@
 from typing import Optional
 
-from data_diff.utils import CaseAwareMapping, CaseSensitiveDict
+from ..utils import CaseAwareMapping, CaseSensitiveDict
 from .ast_classes import *
 from .base import args_as_tuple
 

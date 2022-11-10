@@ -6,7 +6,7 @@ from datetime import datetime
 
 from runtype import dataclass
 
-from data_diff.utils import ArithAlphanumeric, ArithUUID, CaseAwareMapping, CaseInsensitiveDict, CaseSensitiveDict
+from ..utils import CaseAwareMapping, CaseInsensitiveDict, CaseSensitiveDict, ArithAlphanumeric, ArithUUID
 
 
 DbPath = Tuple[str, ...]

@@ -4,7 +4,7 @@ from typing import Any, Generator, List, Optional, Sequence, Tuple, Union
 
 from runtype import dataclass
 
-from data_diff.utils import ArithString, join_iter
+from ..utils import join_iter, ArithString
 
 from .compiler import Compilable, Compiler, cv_params
 from .base import SKIP, CompileError, DbPath, Schema, args_as_tuple

@@ -9,8 +9,8 @@ import threading
 from abc import abstractmethod
 from uuid import UUID
 
-from data_diff.utils import is_uuid, safezip
-from data_diff.sqeleton.queries import Expr, Compiler, table, Select, SKIP, Explain
+from ..utils import is_uuid, safezip
+from ..queries import Expr, Compiler, table, Select, SKIP, Explain
 from .database_types import (
     AbstractDatabase,
     AbstractDialect,
