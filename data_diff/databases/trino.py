@@ -1,8 +1,8 @@
 from data_diff.sqeleton.databases import trino
-from .base import BaseDialect
+from .base import DatadiffDialect
 
 
-class Dialect(BaseDialect, trino.Dialect):
+class Dialect(trino.Dialect, trino.Mixin_MD5, trino.Mixin_NormalizeValue, DatadiffDialect):
     pass
 
 

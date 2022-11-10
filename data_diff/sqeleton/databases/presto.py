@@ -17,6 +17,8 @@ from .database_types import (
     ColType_UUID,
     TemporalType,
     Boolean,
+    AbstractMixin_MD5,
+    AbstractMixin_NormalizeValue,
 )
 from .base import BaseDialect, Database, import_helper, ThreadLocalInterpreter
 from .base import (
@@ -40,6 +42,32 @@ def import_presto():
     import prestodb
 
     return prestodb
+
+
+class Mixin_MD5(AbstractMixin_MD5):
+    def md5_as_int(self, s: str) -> str:
+        return f"cast(from_base(substr(to_hex(md5(to_utf8({s}))), {1+MD5_HEXDIGITS-CHECKSUM_HEXDIGITS}), 16) as decimal(38, 0))"
+
+
+class Mixin_NormalizeValue(AbstractMixin_NormalizeValue):
+    def normalize_uuid(self, value: str, coltype: ColType_UUID) -> str:
+        # Trim doesn't work on CHAR type
+        return f"TRIM(CAST({value} AS VARCHAR))"
+
+    def normalize_timestamp(self, value: str, coltype: TemporalType) -> str:
+        # TODO rounds
+        if coltype.rounds:
+            s = f"date_format(cast({value} as timestamp(6)), '%Y-%m-%d %H:%i:%S.%f')"
+        else:
+            s = f"date_format(cast({value} as timestamp(6)), '%Y-%m-%d %H:%i:%S.%f')"
+
+        return f"RPAD(RPAD({s}, {TIMESTAMP_PRECISION_POS+coltype.precision}, '.'), {TIMESTAMP_PRECISION_POS+6}, '0')"
+
+    def normalize_number(self, value: str, coltype: FractionalType) -> str:
+        return self.to_string(f"cast({value} as decimal(38,{coltype.precision}))")
+
+    def normalize_boolean(self, value: str, coltype: Boolean) -> str:
+        return self.to_string(f"cast ({value} as int)")
 
 
 class Dialect(BaseDialect):
@@ -76,30 +104,8 @@ class Dialect(BaseDialect):
     def quote(self, s: str):
         return f'"{s}"'
 
-    def md5_as_int(self, s: str) -> str:
-        return f"cast(from_base(substr(to_hex(md5(to_utf8({s}))), {1+MD5_HEXDIGITS-CHECKSUM_HEXDIGITS}), 16) as decimal(38, 0))"
-
     def to_string(self, s: str):
         return f"cast({s} as varchar)"
-
-    def normalize_uuid(self, value: str, coltype: ColType_UUID) -> str:
-        # Trim doesn't work on CHAR type
-        return f"TRIM(CAST({value} AS VARCHAR))"
-
-    def normalize_timestamp(self, value: str, coltype: TemporalType) -> str:
-        # TODO rounds
-        if coltype.rounds:
-            s = f"date_format(cast({value} as timestamp(6)), '%Y-%m-%d %H:%i:%S.%f')"
-        else:
-            s = f"date_format(cast({value} as timestamp(6)), '%Y-%m-%d %H:%i:%S.%f')"
-
-        return f"RPAD(RPAD({s}, {TIMESTAMP_PRECISION_POS+coltype.precision}, '.'), {TIMESTAMP_PRECISION_POS+6}, '0')"
-
-    def normalize_number(self, value: str, coltype: FractionalType) -> str:
-        return self.to_string(f"cast({value} as decimal(38,{coltype.precision}))")
-
-    def normalize_boolean(self, value: str, coltype: Boolean) -> str:
-        return self.to_string(f"cast ({value} as int)")
 
     def parse_type(
         self,

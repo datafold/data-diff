@@ -14,13 +14,10 @@ from data_diff.sqeleton.queries import Expr, Compiler, table, Select, SKIP, Expl
 from .database_types import (
     AbstractDatabase,
     AbstractDialect,
-    AbstractMixin_MD5,
-    AbstractMixin_NormalizeValue,
     ColType,
     Integer,
     Decimal,
     Float,
-    ColType_UUID,
     Native_UUID,
     String_UUID,
     String_Alphanum,
@@ -103,7 +100,7 @@ def apply_query(callback: Callable[[str], Any], sql_code: Union[str, ThreadLocal
         return callback(sql_code)
 
 
-class BaseDialect(AbstractDialect, AbstractMixin_MD5, AbstractMixin_NormalizeValue):
+class BaseDialect(AbstractDialect):
     SUPPORTS_PRIMARY_KEY = False
     TYPE_CLASSES: Dict[str, type] = {}
 
@@ -123,11 +120,6 @@ class BaseDialect(AbstractDialect, AbstractMixin_MD5, AbstractMixin_NormalizeVal
 
     def timestamp_value(self, t: DbTime) -> str:
         return f"'{t.isoformat()}'"
-
-    def normalize_uuid(self, value: str, coltype: ColType_UUID) -> str:
-        if isinstance(coltype, String_UUID):
-            return f"TRIM({value})"
-        return self.to_string(value)
 
     def random(self) -> str:
         return "RANDOM()"

@@ -1,8 +1,8 @@
 from data_diff.sqeleton.databases import mysql
-from .base import BaseDialect
+from .base import DatadiffDialect
 
 
-class Dialect(BaseDialect, mysql.Dialect):
+class Dialect(mysql.Dialect, mysql.Mixin_MD5, mysql.Mixin_NormalizeValue, DatadiffDialect):
     pass
 
 

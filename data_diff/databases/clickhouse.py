@@ -1,8 +1,8 @@
 from data_diff.sqeleton.databases import clickhouse
-from .base import BaseDialect
+from .base import DatadiffDialect
 
 
-class Dialect(BaseDialect, clickhouse.Dialect):
+class Dialect(clickhouse.Dialect, clickhouse.Mixin_MD5, clickhouse.Mixin_NormalizeValue, DatadiffDialect):
     pass
 
 

@@ -9,8 +9,15 @@ from .database_types import (
     Text,
     FractionalType,
     Boolean,
+    AbstractMixin_MD5,
+    AbstractMixin_NormalizeValue,
 )
-from .base import BaseDialect, ThreadedDatabase, import_helper, ConnectError
+from .base import (
+    BaseDialect,
+    ThreadedDatabase,
+    import_helper,
+    ConnectError,
+)
 from .base import MD5_HEXDIGITS, CHECKSUM_HEXDIGITS, _CHECKSUM_BITSIZE, TIMESTAMP_PRECISION_POS
 
 SESSION_TIME_ZONE = None  # Changed by the tests
@@ -23,6 +30,28 @@ def import_postgresql():
 
     psycopg2.extensions.set_wait_callback(psycopg2.extras.wait_select)
     return psycopg2
+
+
+class Mixin_MD5(AbstractMixin_MD5):
+    def md5_as_int(self, s: str) -> str:
+        return f"('x' || substring(md5({s}), {1+MD5_HEXDIGITS-CHECKSUM_HEXDIGITS}))::bit({_CHECKSUM_BITSIZE})::bigint"
+
+
+class Mixin_NormalizeValue(AbstractMixin_NormalizeValue):
+    def normalize_timestamp(self, value: str, coltype: TemporalType) -> str:
+        if coltype.rounds:
+            return f"to_char({value}::timestamp({coltype.precision}), 'YYYY-mm-dd HH24:MI:SS.US')"
+
+        timestamp6 = f"to_char({value}::timestamp(6), 'YYYY-mm-dd HH24:MI:SS.US')"
+        return (
+            f"RPAD(LEFT({timestamp6}, {TIMESTAMP_PRECISION_POS+coltype.precision}), {TIMESTAMP_PRECISION_POS+6}, '0')"
+        )
+
+    def normalize_number(self, value: str, coltype: FractionalType) -> str:
+        return self.to_string(f"{value}::decimal(38, {coltype.precision})")
+
+    def normalize_boolean(self, value: str, coltype: Boolean) -> str:
+        return self.to_string(f"{value}::int")
 
 
 class PostgresqlDialect(BaseDialect):
@@ -56,26 +85,8 @@ class PostgresqlDialect(BaseDialect):
     def quote(self, s: str):
         return f'"{s}"'
 
-    def md5_as_int(self, s: str) -> str:
-        return f"('x' || substring(md5({s}), {1+MD5_HEXDIGITS-CHECKSUM_HEXDIGITS}))::bit({_CHECKSUM_BITSIZE})::bigint"
-
     def to_string(self, s: str):
         return f"{s}::varchar"
-
-    def normalize_timestamp(self, value: str, coltype: TemporalType) -> str:
-        if coltype.rounds:
-            return f"to_char({value}::timestamp({coltype.precision}), 'YYYY-mm-dd HH24:MI:SS.US')"
-
-        timestamp6 = f"to_char({value}::timestamp(6), 'YYYY-mm-dd HH24:MI:SS.US')"
-        return (
-            f"RPAD(LEFT({timestamp6}, {TIMESTAMP_PRECISION_POS+coltype.precision}), {TIMESTAMP_PRECISION_POS+6}, '0')"
-        )
-
-    def normalize_number(self, value: str, coltype: FractionalType) -> str:
-        return self.to_string(f"{value}::decimal(38, {coltype.precision})")
-
-    def normalize_boolean(self, value: str, coltype: Boolean) -> str:
-        return self.to_string(f"{value}::int")
 
     def _convert_db_precision_to_digits(self, p: int) -> int:
         # Subtracting 2 due to wierd precision issues in PostgreSQL

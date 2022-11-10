@@ -1,19 +1,14 @@
 from typing import List
-from .database_types import Float, TemporalType, FractionalType, DbPath
+from .database_types import Float, TemporalType, FractionalType, DbPath, AbstractMixin_NormalizeValue, AbstractMixin_MD5
 from .postgresql import PostgreSQL, MD5_HEXDIGITS, CHECKSUM_HEXDIGITS, TIMESTAMP_PRECISION_POS, PostgresqlDialect
 
 
-class Dialect(PostgresqlDialect):
-    name = "Redshift"
-    TYPE_CLASSES = {
-        **PostgresqlDialect.TYPE_CLASSES,
-        "double": Float,
-        "real": Float,
-    }
-
+class Mixin_MD5(AbstractMixin_MD5):
     def md5_as_int(self, s: str) -> str:
         return f"strtol(substring(md5({s}), {1+MD5_HEXDIGITS-CHECKSUM_HEXDIGITS}), 16)::decimal(38)"
 
+
+class Mixin_NormalizeValue(AbstractMixin_NormalizeValue):
     def normalize_timestamp(self, value: str, coltype: TemporalType) -> str:
         if coltype.rounds:
             timestamp = f"{value}::timestamp(6)"
@@ -36,6 +31,15 @@ class Dialect(PostgresqlDialect):
 
     def normalize_number(self, value: str, coltype: FractionalType) -> str:
         return self.to_string(f"{value}::decimal(38,{coltype.precision})")
+
+
+class Dialect(PostgresqlDialect):
+    name = "Redshift"
+    TYPE_CLASSES = {
+        **PostgresqlDialect.TYPE_CLASSES,
+        "double": Float,
+        "real": Float,
+    }
 
     def concat(self, items: List[str]) -> str:
         joined_exprs = " || ".join(items)

@@ -1,5 +1,5 @@
 from .database_types import TemporalType, ColType_UUID
-from .presto import Presto, Dialect
+from . import presto
 from .base import import_helper
 from .base import TIMESTAMP_PRECISION_POS
 
@@ -11,9 +11,10 @@ def import_trino():
     return trino
 
 
-class Dialect(Dialect):
-    name = "Trino"
+Mixin_MD5 = presto.Mixin_MD5
 
+
+class Mixin_NormalizeValue(presto.Mixin_NormalizeValue):
     def normalize_timestamp(self, value: str, coltype: TemporalType) -> str:
         if coltype.rounds:
             s = f"date_format(cast({value} as timestamp({coltype.precision})), '%Y-%m-%d %H:%i:%S.%f')"
@@ -28,7 +29,11 @@ class Dialect(Dialect):
         return f"TRIM({value})"
 
 
-class Trino(Presto):
+class Dialect(presto.Dialect):
+    name = "Trino"
+
+
+class Trino(presto.Presto):
     dialect = Dialect()
     CONNECT_URI_HELP = "trino://<user>@<host>/<catalog>/<schema>"
     CONNECT_URI_PARAMS = ["catalog", "schema"]

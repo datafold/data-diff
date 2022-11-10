@@ -258,6 +258,11 @@ class AbstractMixin_NormalizeValue(ABC):
         """Creates an SQL expression, that converts 'value' to either '0' or '1'."""
         return self.to_string(value)
 
+    def normalize_uuid(self, value: str, coltype: ColType_UUID) -> str:
+        if isinstance(coltype, String_UUID):
+            return f"TRIM({value})"
+        return self.to_string(value)
+
     def normalize_value_by_type(self, value: str, coltype: ColType) -> str:
         """Creates an SQL expression, that converts 'value' to a normalized representation.
 

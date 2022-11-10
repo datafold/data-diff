@@ -19,6 +19,8 @@ from .database_types import (
     TemporalType,
     Text,
     Timestamp,
+    AbstractMixin_MD5,
+    AbstractMixin_NormalizeValue,
 )
 
 
@@ -29,32 +31,13 @@ def import_clickhouse():
     return clickhouse_driver
 
 
-class Dialect(BaseDialect):
-    name = "Clickhouse"
-    ROUNDS_ON_PREC_LOSS = False
-    TYPE_CLASSES = {
-        "Int8": Integer,
-        "Int16": Integer,
-        "Int32": Integer,
-        "Int64": Integer,
-        "Int128": Integer,
-        "Int256": Integer,
-        "UInt8": Integer,
-        "UInt16": Integer,
-        "UInt32": Integer,
-        "UInt64": Integer,
-        "UInt128": Integer,
-        "UInt256": Integer,
-        "Float32": Float,
-        "Float64": Float,
-        "Decimal": Decimal,
-        "UUID": Native_UUID,
-        "String": Text,
-        "FixedString": Text,
-        "DateTime": Timestamp,
-        "DateTime64": Timestamp,
-    }
+class Mixin_MD5(AbstractMixin_MD5):
+    def md5_as_int(self, s: str) -> str:
+        substr_idx = 1 + MD5_HEXDIGITS - CHECKSUM_HEXDIGITS
+        return f"reinterpretAsUInt128(reverse(unhex(lowerUTF8(substr(hex(MD5({s})), {substr_idx})))))"
 
+
+class Mixin_NormalizeValue(AbstractMixin_NormalizeValue):
     def normalize_number(self, value: str, coltype: FractionalType) -> str:
         # If a decimal value has trailing zeros in a fractional part, when casting to string they are dropped.
         # For example:
@@ -100,16 +83,6 @@ class Dialect(BaseDialect):
         """
         return value
 
-    def quote(self, s: str) -> str:
-        return f'"{s}"'
-
-    def md5_as_int(self, s: str) -> str:
-        substr_idx = 1 + MD5_HEXDIGITS - CHECKSUM_HEXDIGITS
-        return f"reinterpretAsUInt128(reverse(unhex(lowerUTF8(substr(hex(MD5({s})), {substr_idx})))))"
-
-    def to_string(self, s: str) -> str:
-        return f"toString({s})"
-
     def normalize_timestamp(self, value: str, coltype: TemporalType) -> str:
         prec = coltype.precision
         if coltype.rounds:
@@ -120,6 +93,39 @@ class Dialect(BaseDialect):
         fractional = f"lpad({self.to_string(fractional)}, 6, '0')"
         value = f"formatDateTime({value}, '%Y-%m-%d %H:%M:%S') || '.' || {self.to_string(fractional)}"
         return f"rpad({value}, {TIMESTAMP_PRECISION_POS + 6}, '0')"
+
+
+class Dialect(BaseDialect):
+    name = "Clickhouse"
+    ROUNDS_ON_PREC_LOSS = False
+    TYPE_CLASSES = {
+        "Int8": Integer,
+        "Int16": Integer,
+        "Int32": Integer,
+        "Int64": Integer,
+        "Int128": Integer,
+        "Int256": Integer,
+        "UInt8": Integer,
+        "UInt16": Integer,
+        "UInt32": Integer,
+        "UInt64": Integer,
+        "UInt128": Integer,
+        "UInt256": Integer,
+        "Float32": Float,
+        "Float64": Float,
+        "Decimal": Decimal,
+        "UUID": Native_UUID,
+        "String": Text,
+        "FixedString": Text,
+        "DateTime": Timestamp,
+        "DateTime64": Timestamp,
+    }
+
+    def quote(self, s: str) -> str:
+        return f'"{s}"'
+
+    def to_string(self, s: str) -> str:
+        return f"toString({s})"
 
     def _convert_db_precision_to_digits(self, p: int) -> int:
         # Done the same as for PostgreSQL but need to rewrite in another way

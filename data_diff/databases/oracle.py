@@ -1,8 +1,8 @@
 from data_diff.sqeleton.databases import oracle
-from .base import BaseDialect
+from .base import DatadiffDialect
 
 
-class Dialect(BaseDialect, oracle.Dialect):
+class Dialect(oracle.Dialect, oracle.Mixin_MD5, oracle.Mixin_NormalizeValue, DatadiffDialect):
     pass
 
 

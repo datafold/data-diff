@@ -10,6 +10,8 @@ from .database_types import (
     FractionalType,
     TemporalType,
     Boolean,
+    AbstractMixin_MD5,
+    AbstractMixin_NormalizeValue,
 )
 from .base import BaseDialect, Database, import_helper, parse_table_name, ConnectError, apply_query
 from .base import TIMESTAMP_PRECISION_POS, ThreadLocalInterpreter
@@ -20,6 +22,34 @@ def import_bigquery():
     from google.cloud import bigquery
 
     return bigquery
+
+
+class Mixin_MD5(AbstractMixin_MD5):
+    def md5_as_int(self, s: str) -> str:
+        return f"cast(cast( ('0x' || substr(TO_HEX(md5({s})), 18)) as int64) as numeric)"
+
+
+class Mixin_NormalizeValue(AbstractMixin_NormalizeValue):
+    def normalize_timestamp(self, value: str, coltype: TemporalType) -> str:
+        if coltype.rounds:
+            timestamp = f"timestamp_micros(cast(round(unix_micros(cast({value} as timestamp))/1000000, {coltype.precision})*1000000 as int))"
+            return f"FORMAT_TIMESTAMP('%F %H:%M:%E6S', {timestamp})"
+
+        if coltype.precision == 0:
+            return f"FORMAT_TIMESTAMP('%F %H:%M:%S.000000, {value})"
+        elif coltype.precision == 6:
+            return f"FORMAT_TIMESTAMP('%F %H:%M:%E6S', {value})"
+
+        timestamp6 = f"FORMAT_TIMESTAMP('%F %H:%M:%E6S', {value})"
+        return (
+            f"RPAD(LEFT({timestamp6}, {TIMESTAMP_PRECISION_POS+coltype.precision}), {TIMESTAMP_PRECISION_POS+6}, '0')"
+        )
+
+    def normalize_number(self, value: str, coltype: FractionalType) -> str:
+        return f"format('%.{coltype.precision}f', {value})"
+
+    def normalize_boolean(self, value: str, coltype: Boolean) -> str:
+        return self.to_string(f"cast({value} as int)")
 
 
 class Dialect(BaseDialect):
@@ -48,32 +78,8 @@ class Dialect(BaseDialect):
     def quote(self, s: str):
         return f"`{s}`"
 
-    def md5_as_int(self, s: str) -> str:
-        return f"cast(cast( ('0x' || substr(TO_HEX(md5({s})), 18)) as int64) as numeric)"
-
     def to_string(self, s: str):
         return f"cast({s} as string)"
-
-    def normalize_timestamp(self, value: str, coltype: TemporalType) -> str:
-        if coltype.rounds:
-            timestamp = f"timestamp_micros(cast(round(unix_micros(cast({value} as timestamp))/1000000, {coltype.precision})*1000000 as int))"
-            return f"FORMAT_TIMESTAMP('%F %H:%M:%E6S', {timestamp})"
-
-        if coltype.precision == 0:
-            return f"FORMAT_TIMESTAMP('%F %H:%M:%S.000000, {value})"
-        elif coltype.precision == 6:
-            return f"FORMAT_TIMESTAMP('%F %H:%M:%E6S', {value})"
-
-        timestamp6 = f"FORMAT_TIMESTAMP('%F %H:%M:%E6S', {value})"
-        return (
-            f"RPAD(LEFT({timestamp6}, {TIMESTAMP_PRECISION_POS+coltype.precision}), {TIMESTAMP_PRECISION_POS+6}, '0')"
-        )
-
-    def normalize_number(self, value: str, coltype: FractionalType) -> str:
-        return f"format('%.{coltype.precision}f', {value})"
-
-    def normalize_boolean(self, value: str, coltype: Boolean) -> str:
-        return self.to_string(f"cast({value} as int)")
 
     def type_repr(self, t) -> str:
         try:

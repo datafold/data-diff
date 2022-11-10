@@ -13,6 +13,8 @@ from .database_types import (
     DbPath,
     ColType,
     UnknownColType,
+    AbstractMixin_MD5,
+    AbstractMixin_NormalizeValue,
 )
 from .base import MD5_HEXDIGITS, CHECKSUM_HEXDIGITS, BaseDialect, ThreadedDatabase, import_helper, parse_table_name
 
@@ -22,6 +24,29 @@ def import_databricks():
     import databricks.sql
 
     return databricks
+
+
+class Mixin_MD5(AbstractMixin_MD5):
+    def md5_as_int(self, s: str) -> str:
+        return f"cast(conv(substr(md5({s}), {1+MD5_HEXDIGITS-CHECKSUM_HEXDIGITS}), 16, 10) as decimal(38, 0))"
+
+
+class Mixin_NormalizeValue(AbstractMixin_NormalizeValue):
+    def normalize_timestamp(self, value: str, coltype: TemporalType) -> str:
+        """Databricks timestamp contains no more than 6 digits in precision"""
+
+        if coltype.rounds:
+            timestamp = f"cast(round(unix_micros({value}) / 1000000, {coltype.precision}) * 1000000 as bigint)"
+            return f"date_format(timestamp_micros({timestamp}), 'yyyy-MM-dd HH:mm:ss.SSSSSS')"
+
+        precision_format = "S" * coltype.precision + "0" * (6 - coltype.precision)
+        return f"date_format({value}, 'yyyy-MM-dd HH:mm:ss.{precision_format}')"
+
+    def normalize_number(self, value: str, coltype: NumericType) -> str:
+        value = f"cast({value} as decimal(38, {coltype.precision}))"
+        if coltype.precision > 0:
+            value = f"format_number({value}, {coltype.precision})"
+        return f"replace({self.to_string(value)}, ',', '')"
 
 
 class Dialect(BaseDialect):
@@ -45,27 +70,8 @@ class Dialect(BaseDialect):
     def quote(self, s: str):
         return f"`{s}`"
 
-    def md5_as_int(self, s: str) -> str:
-        return f"cast(conv(substr(md5({s}), {1+MD5_HEXDIGITS-CHECKSUM_HEXDIGITS}), 16, 10) as decimal(38, 0))"
-
     def to_string(self, s: str) -> str:
         return f"cast({s} as string)"
-
-    def normalize_timestamp(self, value: str, coltype: TemporalType) -> str:
-        """Databricks timestamp contains no more than 6 digits in precision"""
-
-        if coltype.rounds:
-            timestamp = f"cast(round(unix_micros({value}) / 1000000, {coltype.precision}) * 1000000 as bigint)"
-            return f"date_format(timestamp_micros({timestamp}), 'yyyy-MM-dd HH:mm:ss.SSSSSS')"
-
-        precision_format = "S" * coltype.precision + "0" * (6 - coltype.precision)
-        return f"date_format({value}, 'yyyy-MM-dd HH:mm:ss.{precision_format}')"
-
-    def normalize_number(self, value: str, coltype: NumericType) -> str:
-        value = f"cast({value} as decimal(38, {coltype.precision}))"
-        if coltype.precision > 0:
-            value = f"format_number({value}, {coltype.precision})"
-        return f"replace({self.to_string(value)}, ',', '')"
 
     def _convert_db_precision_to_digits(self, p: int) -> int:
         # Subtracting 2 due to wierd precision issues

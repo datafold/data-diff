@@ -1,7 +1,19 @@
 from typing import Union, List
 import logging
 
-from .database_types import Timestamp, TimestampTZ, Decimal, Float, Text, FractionalType, TemporalType, DbPath, Boolean
+from .database_types import (
+    Timestamp,
+    TimestampTZ,
+    Decimal,
+    Float,
+    Text,
+    FractionalType,
+    TemporalType,
+    DbPath,
+    Boolean,
+    AbstractMixin_MD5,
+    AbstractMixin_NormalizeValue,
+)
 from .base import BaseDialect, ConnectError, Database, import_helper, CHECKSUM_MASK, ThreadLocalInterpreter
 
 
@@ -12,6 +24,27 @@ def import_snowflake():
     from cryptography.hazmat.backends import default_backend
 
     return snowflake, serialization, default_backend
+
+
+class Mixin_MD5(AbstractMixin_MD5):
+    def md5_as_int(self, s: str) -> str:
+        return f"BITAND(md5_number_lower64({s}), {CHECKSUM_MASK})"
+
+
+class Mixin_NormalizeValue(AbstractMixin_NormalizeValue):
+    def normalize_timestamp(self, value: str, coltype: TemporalType) -> str:
+        if coltype.rounds:
+            timestamp = f"to_timestamp(round(date_part(epoch_nanosecond, {value}::timestamp(9))/1000000000, {coltype.precision}))"
+        else:
+            timestamp = f"cast({value} as timestamp({coltype.precision}))"
+
+        return f"to_char({timestamp}, 'YYYY-MM-DD HH24:MI:SS.FF6')"
+
+    def normalize_number(self, value: str, coltype: FractionalType) -> str:
+        return self.to_string(f"cast({value} as decimal(38, {coltype.precision}))")
+
+    def normalize_boolean(self, value: str, coltype: Boolean) -> str:
+        return self.to_string(f"{value}::int")
 
 
 class Dialect(BaseDialect):
@@ -34,25 +67,8 @@ class Dialect(BaseDialect):
     def explain_as_text(self, query: str) -> str:
         return f"EXPLAIN USING TEXT {query}"
 
-    def normalize_timestamp(self, value: str, coltype: TemporalType) -> str:
-        if coltype.rounds:
-            timestamp = f"to_timestamp(round(date_part(epoch_nanosecond, {value}::timestamp(9))/1000000000, {coltype.precision}))"
-        else:
-            timestamp = f"cast({value} as timestamp({coltype.precision}))"
-
-        return f"to_char({timestamp}, 'YYYY-MM-DD HH24:MI:SS.FF6')"
-
-    def normalize_number(self, value: str, coltype: FractionalType) -> str:
-        return self.to_string(f"cast({value} as decimal(38, {coltype.precision}))")
-
-    def normalize_boolean(self, value: str, coltype: Boolean) -> str:
-        return self.to_string(f"{value}::int")
-
     def quote(self, s: str):
         return f'"{s}"'
-
-    def md5_as_int(self, s: str) -> str:
-        return f"BITAND(md5_number_lower64({s}), {CHECKSUM_MASK})"
 
     def to_string(self, s: str):
         return f"cast({s} as string)"
