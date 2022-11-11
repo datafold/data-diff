@@ -208,3 +208,27 @@ class TestQuery(unittest.TestCase):
 
         q = c.compile(t.select(this.b.like(this.c)))
         self.assertEqual(q, "SELECT (b LIKE c) FROM a")
+
+    def test_group_by(self):
+        c = Compiler(MockDatabase())
+        t = table("a")
+
+        q = c.compile(t.group_by(keys=[this.b], values=[this.c]))
+        self.assertEqual(q, "SELECT b, c FROM a GROUP BY 1")
+
+        q = c.compile(t.where(this.b > 1).group_by(keys=[this.b], values=[this.c]))
+        self.assertEqual(q, "SELECT b, c FROM a WHERE (b > 1) GROUP BY 1")
+
+        q = c.compile(t.select(this.b).group_by(keys=[this.b], values=[]))
+        self.assertEqual(q, "SELECT b FROM (SELECT b FROM a) tmp1 GROUP BY 1")
+
+        # Having
+        q = c.compile(t.group_by(keys=[this.b], values=[this.c]).having(this.b > 1))
+        self.assertEqual(q, "SELECT b, c FROM a GROUP BY 1 HAVING (b > 1)")
+
+        q = c.compile(t.select(this.b).group_by(keys=[this.b], values=[]).having(this.b > 1))
+        self.assertEqual(q, "SELECT b FROM (SELECT b FROM a) tmp2 GROUP BY 1 HAVING (b > 1)")
+
+        # Having sum
+        q = c.compile(t.group_by(keys=[this.b], values=[this.c]).having(this.b.sum() > 1))
+        self.assertEqual(q, "SELECT b, c FROM a GROUP BY 1 HAVING (SUM(b) > 1)")

@@ -106,9 +106,13 @@ class ITable:
         return Join(self, target)
 
     def group_by(self, *, keys=None, values=None):
-        # TODO
-        assert keys or values
-        raise NotImplementedError()
+        keys = _drop_skips(keys)
+        resolve_names(self.source_table, keys)
+
+        values = _drop_skips(values)
+        resolve_names(self.source_table, values)
+
+        return GroupBy(self, keys, values)
 
     def with_schema(self):
         # TODO
@@ -166,38 +170,6 @@ class Count(ExprNode):
         return f"count({expr})"
 
 
-@dataclass
-class Func(ExprNode):
-    name: str
-    args: Sequence[Expr]
-
-    def compile(self, c: Compiler) -> str:
-        args = ", ".join(c.compile(e) for e in self.args)
-        return f"{self.name}({args})"
-
-
-@dataclass
-class CaseWhen(ExprNode):
-    cases: Sequence[Tuple[Expr, Expr]]
-    else_: Expr = None
-
-    def compile(self, c: Compiler) -> str:
-        assert self.cases
-        when_thens = " ".join(f"WHEN {c.compile(when)} THEN {c.compile(then)}" for when, then in self.cases)
-        else_ = (" ELSE " + c.compile(self.else_)) if self.else_ is not None else ""
-        return f"CASE {when_thens}{else_} END"
-
-    @property
-    def type(self):
-        when_types = {_expr_type(w) for _c, w in self.cases}
-        if self.else_:
-            when_types |= _expr_type(self.else_)
-        if len(when_types) > 1:
-            raise RuntimeError(f"Non-matching types in when: {when_types}")
-        (t,) = when_types
-        return t
-
-
 class LazyOps:
     def __add__(self, other):
         return BinOp("+", [self, other])
@@ -233,6 +205,39 @@ class LazyOps:
 
     def sum(self):
         return Func("SUM", [self])
+
+
+@dataclass
+class Func(ExprNode, LazyOps):
+    name: str
+    args: Sequence[Expr]
+
+    def compile(self, c: Compiler) -> str:
+        args = ", ".join(c.compile(e) for e in self.args)
+        return f"{self.name}({args})"
+
+
+@dataclass
+class CaseWhen(ExprNode):
+    cases: Sequence[Tuple[Expr, Expr]]
+    else_: Expr = None
+
+    def compile(self, c: Compiler) -> str:
+        assert self.cases
+        when_thens = " ".join(f"WHEN {c.compile(when)} THEN {c.compile(then)}" for when, then in self.cases)
+        else_ = (" ELSE " + c.compile(self.else_)) if self.else_ is not None else ""
+        return f"CASE {when_thens}{else_} END"
+
+    @property
+    def type(self):
+        when_types = {_expr_type(w) for _c, w in self.cases}
+        if self.else_:
+            when_types |= _expr_type(self.else_)
+        if len(when_types) > 1:
+            raise RuntimeError(f"Non-matching types in when: {when_types}")
+        (t,) = when_types
+        return t
+
 
 
 @dataclass(eq=False, order=False)
@@ -410,9 +415,41 @@ class Join(ExprNode, ITable):
         return select
 
 
-class GroupBy(ITable):
-    def having(self):
-        raise NotImplementedError()
+@dataclass
+class GroupBy(ExprNode, ITable):
+    table: ITable
+    keys: Sequence[Expr] = None     # IKey?
+    values: Sequence[Expr] = None
+    having_exprs: Sequence[Expr] = None
+
+    def __post_init__(self):
+        assert self.keys or self.values
+
+    def having(self, *exprs):
+        exprs = args_as_tuple(exprs)
+        exprs = _drop_skips(exprs)
+        if not exprs:
+            return self
+
+        resolve_names(self.table, exprs)
+        return self.replace(having_exprs=(self.having_exprs or []) + exprs)
+
+    def compile(self, c: Compiler) -> str:
+        keys = [str(i+1) for i in range(len(self.keys))]
+        columns = (self.keys or []) + (self.values or [])
+        if isinstance(self.table, Select) and self.table.columns is None and self.table.group_by_exprs is None:
+            return c.compile(self.table.replace(
+                columns=columns,
+                group_by_exprs=keys,     # XXX pass Expr instances, not strings (Code)
+                having_exprs=self.having_exprs
+            ))
+
+        keys_str = ", ".join(keys)
+        columns_str = ", ".join(c.compile(x) for x in columns)
+        having_str = " HAVING " + " AND ".join(map(c.compile, self.having_exprs)) if self.having_exprs is not None else ''
+        return f'SELECT {columns_str} FROM {c.replace(in_select=True).compile(self.table)} GROUP BY {keys_str}{having_str}'
+
+
 
 
 @dataclass
@@ -452,6 +489,7 @@ class Select(ExprNode, ITable):
     where_exprs: Sequence[Expr] = None
     order_by_exprs: Sequence[Expr] = None
     group_by_exprs: Sequence[Expr] = None
+    having_exprs: Sequence[Expr] = None
     limit_expr: int = None
     distinct: bool = False
 
@@ -481,6 +519,10 @@ class Select(ExprNode, ITable):
 
         if self.group_by_exprs:
             select += " GROUP BY " + ", ".join(map(c.compile, self.group_by_exprs))
+
+        if self.having_exprs:
+            assert self.group_by_exprs
+            select += " HAVING " + " AND ".join(map(c.compile, self.having_exprs))
 
         if self.order_by_exprs:
             select += " ORDER BY " + ", ".join(map(c.compile, self.order_by_exprs))
@@ -555,7 +597,7 @@ def _named_exprs_as_aliases(named_exprs):
 def resolve_names(source_table, exprs):
     i = 0
     for expr in exprs:
-        # Iterate recursively and update _ResolveColumn with the right expression
+        # Iterate recursively and update _ResolveColumn instances with the right expression
         if isinstance(expr, ExprNode):
             for v in expr._dfs_values():
                 if isinstance(v, _ResolveColumn):
