@@ -134,7 +134,8 @@ class TestJoindiff(TestPerDatabase):
         t = TablePath(materialize_path)
         rows = self.connection.query(t.select(), List[tuple])
         # is_xa, is_xb, is_diff1, is_diff2, row1, row2
-        assert rows == [(1, 0, 1, 1) + expected_row + (None, None)], rows
+        # assert rows == [(1, 0, 1, 1) + expected_row + (None, None)], rows
+        assert rows == [(1, 0, 1, 1) + (expected_row[0], None, expected_row[1], None)], rows
         self.connection.query(t.drop())
 
         # Test materialize all rows

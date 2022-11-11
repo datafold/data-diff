@@ -184,13 +184,17 @@ class JoinDiffer(TableDiffer):
             else None,
         ):
 
+            assert len(a_cols) == len(b_cols)
             logger.debug("Querying for different rows")
             for is_xa, is_xb, *x in db.query(diff_rows, list):
                 if is_xa and is_xb:
                     # Can't both be exclusive, meaning a pk is NULL
                     # This can happen if the explicit null test didn't finish running yet
                     raise ValueError("NULL values in one or more primary keys")
-                _is_diff, a_row, b_row = _slice_tuple(x, len(is_diff_cols), len(a_cols), len(b_cols))
+                # _is_diff, a_row, b_row = _slice_tuple(x, len(is_diff_cols), len(a_cols), len(b_cols))
+                _is_diff, ab_row = _slice_tuple(x, len(is_diff_cols), len(a_cols) + len(b_cols))
+                a_row, b_row = ab_row[::2], ab_row[1::2]
+                assert len(a_row) == len(b_row)
                 if not is_xb:
                     yield "-", tuple(a_row)
                 if not is_xa:
