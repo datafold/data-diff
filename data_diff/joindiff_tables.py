@@ -6,6 +6,7 @@ from decimal import Decimal
 from functools import partial
 import logging
 from typing import List
+from itertools import chain
 
 from runtype import dataclass
 
@@ -273,10 +274,12 @@ class JoinDiffer(TableDiffer):
 
         is_diff_cols = {f"is_diff_{c1}": bool_to_int(a[c1].is_distinct_from(b[c2])) for c1, c2 in safezip(cols1, cols2)}
 
-        a_cols = {f"table1_{c}": NormalizeAsString(a[c]) for c in cols1}
-        b_cols = {f"table2_{c}": NormalizeAsString(b[c]) for c in cols2}
+        a_cols = {f"{c}_a": NormalizeAsString(a[c]) for c in cols1}
+        b_cols = {f"{c}_b": NormalizeAsString(b[c]) for c in cols2}
+        # Order columns as col1_a, col1_b, col2_a, col2_b, etc.
+        cols = {k: v for k, v in chain(*zip(a_cols.items(), b_cols.items()))}
 
-        all_rows = _outerjoin(db, a, b, keys1, keys2, {**is_diff_cols, **a_cols, **b_cols})
+        all_rows = _outerjoin(db, a, b, keys1, keys2, {**is_diff_cols, **cols})
         diff_rows = all_rows.where(or_(this[c] == 1 for c in is_diff_cols))
         return diff_rows, a_cols, b_cols, is_diff_cols, all_rows
 
