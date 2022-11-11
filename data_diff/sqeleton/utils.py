@@ -8,6 +8,7 @@ from uuid import UUID
 
 # -- Common --
 
+
 def join_iter(joiner: Any, iterable: Iterable) -> Iterable:
     it = iter(iterable)
     try:
@@ -35,7 +36,6 @@ def is_uuid(u):
     return True
 
 
-
 def match_regexps(regexps: Dict[str, Any], s: str) -> Sequence[tuple]:
     for regexp, v in regexps.items():
         m = re.match(regexp + "$", s)
@@ -46,6 +46,7 @@ def match_regexps(regexps: Dict[str, Any], s: str) -> Sequence[tuple]:
 # -- Schema --
 
 V = TypeVar("V")
+
 
 class CaseAwareMapping(MutableMapping[str, V]):
     @abstractmethod

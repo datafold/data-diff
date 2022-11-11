@@ -181,7 +181,7 @@ class TestQuery(unittest.TestCase):
         assert q == "SELECT DISTINCT b FROM a"
 
         # selects merge
-        q = c.compile(t.where(this.b>10).select(this.b, distinct=True))
+        q = c.compile(t.where(this.b > 10).select(this.b, distinct=True))
         self.assertEqual(q, "SELECT DISTINCT b FROM a WHERE (b > 10)")
 
         # selects stay apart
@@ -198,3 +198,13 @@ class TestQuery(unittest.TestCase):
 
         q = c.compile(a.union(b))
         assert q == "SELECT x FROM a UNION SELECT y FROM b"
+
+    def test_ops(self):
+        c = Compiler(MockDatabase())
+        t = table("a")
+
+        q = c.compile(t.select(this.b + this.c))
+        self.assertEqual(q, "SELECT (b + c) FROM a")
+
+        q = c.compile(t.select(this.b.like(this.c)))
+        self.assertEqual(q, "SELECT (b LIKE c) FROM a")

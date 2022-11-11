@@ -228,6 +228,9 @@ class LazyOps:
     def is_distinct_from(self, other):
         return IsDistinctFrom(self, other)
 
+    def like(self, other):
+        return BinBoolOp("LIKE", [self, other])
+
     def sum(self):
         return Func("SUM", [self])
 
@@ -493,11 +496,11 @@ class Select(ExprNode, ITable):
 
     @classmethod
     def make(cls, table: ITable, distinct: bool = SKIP, **kwargs):
-        assert 'table' not in kwargs
+        assert "table" not in kwargs
 
         if not isinstance(table, cls):  # If not Select
             if distinct is not SKIP:
-                kwargs['distinct'] = distinct
+                kwargs["distinct"] = distinct
             return cls(table, **kwargs)
 
         # We can safely assume isinstance(table, Select)
@@ -505,7 +508,7 @@ class Select(ExprNode, ITable):
         if distinct is not SKIP:
             if distinct == False and table.distinct:
                 return cls(table, **kwargs)
-            kwargs['distinct'] = distinct
+            kwargs["distinct"] = distinct
 
         if table.limit_expr or table.group_by_exprs:
             return cls(table, **kwargs)
@@ -513,13 +516,12 @@ class Select(ExprNode, ITable):
         # Fill in missing attributes, instead of creating a new instance.
         for k, v in kwargs.items():
             if getattr(table, k) is not None:
-                if k == 'where_exprs':  # Additive attribute
+                if k == "where_exprs":  # Additive attribute
                     kwargs[k] = getattr(table, k) + v
-                elif k == 'distinct':
+                elif k == "distinct":
                     pass
                 else:
                     raise ValueError(k)
-
 
         return table.replace(**kwargs)
 

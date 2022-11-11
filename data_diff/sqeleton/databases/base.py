@@ -287,8 +287,7 @@ class Database(AbstractDatabase):
         self._interactive = True
 
     def select_table_schema(self, path: DbPath) -> str:
-        """Provide SQL for selecting the table schema as (name, type, date_prec, num_prec)
-        """
+        """Provide SQL for selecting the table schema as (name, type, date_prec, num_prec)"""
         schema, table = self._normalize_table_path(path)
 
         return (
