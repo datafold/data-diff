@@ -63,13 +63,13 @@ class ITable:
     source_table: Any
     schema: Schema = None
 
-    def select(self, *exprs, **named_exprs):
+    def select(self, *exprs, distinct=SKIP, **named_exprs):
         exprs = args_as_tuple(exprs)
         exprs = _drop_skips(exprs)
         named_exprs = _drop_skips_dict(named_exprs)
         exprs += _named_exprs_as_aliases(named_exprs)
         resolve_names(self.source_table, exprs)
-        return Select.make(self, columns=exprs)
+        return Select.make(self, columns=exprs, distinct=distinct)
 
     def where(self, *exprs):
         exprs = args_as_tuple(exprs)
@@ -78,7 +78,7 @@ class ITable:
             return self
 
         resolve_names(self.source_table, exprs)
-        return Select.make(self, where_exprs=exprs, _concat=True)
+        return Select.make(self, where_exprs=exprs)
 
     def order_by(self, *exprs):
         exprs = _drop_skips(exprs)
@@ -450,6 +450,7 @@ class Select(ExprNode, ITable):
     order_by_exprs: Sequence[Expr] = None
     group_by_exprs: Sequence[Expr] = None
     limit_expr: int = None
+    distinct: bool = False
 
     @property
     def schema(self):
@@ -466,7 +467,8 @@ class Select(ExprNode, ITable):
         c = parent_c.replace(in_select=True)  # .add_table_context(self.table)
 
         columns = ", ".join(map(c.compile, self.columns)) if self.columns else "*"
-        select = f"SELECT {columns}"
+        distinct = "DISTINCT " if self.distinct else ""
+        select = f"SELECT {distinct}{columns}"
 
         if self.table:
             select += " FROM " + c.compile(self.table)
@@ -490,17 +492,34 @@ class Select(ExprNode, ITable):
         return select
 
     @classmethod
-    def make(cls, table: ITable, _concat: bool = False, **kwargs):
-        if not isinstance(table, cls):
+    def make(cls, table: ITable, distinct: bool = SKIP, **kwargs):
+        assert 'table' not in kwargs
+
+        if not isinstance(table, cls):  # If not Select
+            if distinct is not SKIP:
+                kwargs['distinct'] = distinct
+            return cls(table, **kwargs)
+
+        # We can safely assume isinstance(table, Select)
+
+        if distinct is not SKIP:
+            if distinct == False and table.distinct:
+                return cls(table, **kwargs)
+            kwargs['distinct'] = distinct
+
+        if table.limit_expr or table.group_by_exprs:
             return cls(table, **kwargs)
 
         # Fill in missing attributes, instead of creating a new instance.
         for k, v in kwargs.items():
             if getattr(table, k) is not None:
-                if _concat:
+                if k == 'where_exprs':  # Additive attribute
                     kwargs[k] = getattr(table, k) + v
+                elif k == 'distinct':
+                    pass
                 else:
-                    raise ValueError("...")
+                    raise ValueError(k)
+
 
         return table.replace(**kwargs)
 

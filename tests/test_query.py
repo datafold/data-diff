@@ -38,7 +38,7 @@ class MockDialect(AbstractDialect):
         return "random()"
 
     def offset_limit(self, offset: Optional[int] = None, limit: Optional[int] = None):
-        x = offset and f"offset {offset}", limit and f"limit {limit}"
+        x = offset and f"OFFSET {offset}", limit and f"LIMIT {limit}"
         return " ".join(filter(None, x))
 
     def explain_as_text(self, query: str) -> str:
@@ -171,7 +171,25 @@ class TestQuery(unittest.TestCase):
         t = table("a")
 
         q = c.compile(t.order_by(Random()).limit(10))
-        assert q == "SELECT * FROM a ORDER BY random() limit 10"
+        self.assertEqual(q, "SELECT * FROM a ORDER BY random() LIMIT 10")
+
+    def test_select_distinct(self):
+        c = Compiler(MockDatabase())
+        t = table("a")
+
+        q = c.compile(t.select(this.b, distinct=True))
+        assert q == "SELECT DISTINCT b FROM a"
+
+        # selects merge
+        q = c.compile(t.where(this.b>10).select(this.b, distinct=True))
+        self.assertEqual(q, "SELECT DISTINCT b FROM a WHERE (b > 10)")
+
+        # selects stay apart
+        q = c.compile(t.limit(10).select(this.b, distinct=True))
+        self.assertEqual(q, "SELECT DISTINCT b FROM (SELECT * FROM a LIMIT 10) tmp1")
+
+        q = c.compile(t.select(this.b, distinct=True).select(distinct=False))
+        self.assertEqual(q, "SELECT * FROM (SELECT DISTINCT b FROM a) tmp2")
 
     def test_union(self):
         c = Compiler(MockDatabase())
