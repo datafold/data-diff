@@ -24,10 +24,23 @@ Then, users can install the dependencies needed for your database driver, with `
 
 This way, data-diff can support a wide variety of drivers, without requiring our users to install libraries that they won't use.
 
-2. Implement database module
+2. Implement a database module
 ----------------------------
 
 New database modules belong in the ``data_diff/databases`` directory.
+
+The module consists of:
+1. Dialect (Class responsible for normalizing/casting fields. e.g. Numbers/Timestamps)
+2. Database class that handles connecting to the DB, querying (if the default doesn't work) , closing connectiosn and etc.
+
+Choosing a base class, based on threading Model
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+You can choose to inherit from either ``base.Database`` or ``base.ThreadedDatabase``.
+
+Usually, databases with cursor-based connections, like MySQL or Postgresql, only allow one thread per connection. In order to support multithreading, we implement them by inheriting from ``ThreadedDatabase``, which holds a pool of worker threads, and creates a new connection per thread.
+
+Usually, cloud databases, such as snowflake and bigquery, open a new connection per request, and support simultaneous queries from any number of threads. In other words, they already support multithreading, so we can implement them by inheriting directly from ``Database``.
 
 Import on demand
 ~~~~~~~~~~~~~~~~~
@@ -49,16 +62,6 @@ Instead, they should be imported and initialized within a function. Example:
         return psycopg2
 
 We use the ``import_helper()`` decorator to provide a uniform and informative error. The string argument should be the name of the package, as written in ``pyproject.toml``.
-
-Choosing a base class, based on threading Model
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-
-You can choose to inherit from either ``base.Database`` or ``base.ThreadedDatabase``.
-
-Usually, databases with cursor-based connections, like MySQL or Postgresql, only allow one thread per connection. In order to support multithreading, we implement them by inheriting from ``ThreadedDatabase``, which holds a pool of worker threads, and creates a new connection per thread.
-
-Usually, cloud databases, such as snowflake and bigquery, open a new connection per request, and support simultaneous queries from any number of threads. In other words, they already support multithreading, so we can implement them by inheriting directly from ``Database``.
-
 
 :meth:`_query()`
 ~~~~~~~~~~~~~~~~~~
@@ -124,18 +127,36 @@ Docs:
 
 - :meth:`data_diff.databases.database_types.AbstractDatabase.close`
 
-:meth:`quote()`, :meth:`to_string()`, :meth:`normalize_number()`, :meth:`normalize_timestamp()`, :meth:`md5_to_int()`
+:meth:`quote()`, :meth:`to_string()`,
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-These methods are used when creating queries.
-
-They accept an SQL code fragment, and returns a new code fragment representing the appropriate computation.
+These methods are used when creating queries or normalizing fields.
 
 For more information, read their docs:
 
 - :meth:`data_diff.databases.database_types.AbstractDatabase.quote`
 
 - :meth:`data_diff.databases.database_types.AbstractDatabase.to_string`
+
+:meth:`normalize_number()`, :meth:`normalize_timestamp()`, :meth:`md5_to_int()`
+
+Because comparing data between 2 databases requires both the data to be in the same format - we have normalization functions.
+
+Databases can have the same data in different formats, e.g. ``DECIMAL`` vs ``FLOAT`` vs ``VARCHAR``, with different precisions.
+DataDiff works by converting the values to ``VARCHAR`` and comparing it.
+Your normalize_number/normalize_timestamp functions should account for differing precions between columns.
+
+These functions accept an SQL code fragment, and returns a new code fragment representing the appropriate computation.
+
+:meth:`parse_type`
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+This is the last resort if for type detection.
+If you added the type to the TYPE_CLASSES dict and it still isn't getting detected - you should use this function.
+
+The common approach is to use Regex to get Column Type + Precision/Width
+
+
 
 3. Add tests
 --------------
