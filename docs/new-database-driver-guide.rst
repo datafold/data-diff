@@ -157,6 +157,12 @@ If you added the type to the TYPE_CLASSES dict and it still isn't getting detect
 The common approach is to use Regex to get Column Type + Precision/Width
 
 
+4. Debugging
+-----------------------
+
+You can enable debug logging for tests by setting the logger level to ``DEBUG`` in /tests/common.py
+This will display all the queries ran + display types detected for columns.
+
 
 3. Add tests
 --------------
