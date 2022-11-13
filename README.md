@@ -125,8 +125,9 @@ To get a Slack invite - [click here](https://locallyoptimistic.com/community/)
 
 ## How to Use
 
-* [How to use from the shell (or: command-line)](https://docs.datafold.com/os_diff/how_to_use#how-to-use-from-the-command-line)
-* [How to use from Python](https://docs.datafold.com/os_diff/how_to_use#how-to-use-from-python)
+* [How to use from the shell (or: command-line)](https://docs.datafold.com/os_diff/how_to_use/how_to_use_with_command_line)
+* [How to use from Python](https://docs.datafold.com/os_diff/how_to_use/how_to_use_with_python)
+* [How to use with TOML configuration file](https://docs.datafold.com/os_diff/how_to_use/how_to_use_with_toml)
 * [Usage Analytics & Data Privacy](https://docs.datafold.com/os_diff/usage_analytics_data_privacy)
 
 ## How to Contribute
