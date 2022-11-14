@@ -194,13 +194,22 @@ class TestQuery(unittest.TestCase):
         q = c.compile(t.select(this.b, distinct=True).select(distinct=False))
         self.assertEqual(q, "SELECT * FROM (SELECT DISTINCT b FROM a) tmp2")
 
-    def test_union(self):
+    def test_table_ops(self):
         c = Compiler(MockDatabase())
         a = table("a").select("x")
         b = table("b").select("y")
 
         q = c.compile(a.union(b))
         assert q == "SELECT x FROM a UNION SELECT y FROM b"
+
+        q = c.compile(a.union_all(b))
+        assert q == "SELECT x FROM a UNION ALL SELECT y FROM b"
+
+        q = c.compile(a.minus(b))
+        assert q == "SELECT x FROM a EXCEPT SELECT y FROM b"
+
+        q = c.compile(a.intersect(b))
+        assert q == "SELECT x FROM a INTERSECT SELECT y FROM b"
 
     def test_ops(self):
         c = Compiler(MockDatabase())

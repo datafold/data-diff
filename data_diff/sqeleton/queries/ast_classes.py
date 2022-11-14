@@ -147,7 +147,17 @@ class ITable:
         return Select(self, [Count()])
 
     def union(self, other: "ITable"):
-        return SetUnion(self, other)
+        return TableOp("UNION", self, other)
+
+    def union_all(self, other: "ITable"):
+        return TableOp("UNION ALL", self, other)
+
+    def minus(self, other: "ITable"):
+        # aka
+        return TableOp("EXCEPT", self, other)
+
+    def intersect(self, other: "ITable"):
+        return TableOp("INTERSECT", self, other)
 
 
 @dataclass
@@ -320,6 +330,7 @@ class BinOp(ExprNode, LazyOps):
             raise TypeError(f"Expected all args to have the same type, got {types}")
         (t,) = types
         return t
+
 
 @dataclass
 class UnaryOp(ExprNode, LazyOps):
@@ -519,7 +530,8 @@ class GroupBy(ExprNode, ITable):
 
 
 @dataclass
-class SetUnion(ExprNode, ITable):
+class TableOp(ExprNode, ITable):
+    op: str
     table1: ITable
     table2: ITable
 
@@ -540,12 +552,12 @@ class SetUnion(ExprNode, ITable):
 
     def compile(self, parent_c: Compiler) -> str:
         c = parent_c.replace(in_select=False)
-        union = f"{c.compile(self.table1)} UNION {c.compile(self.table2)}"
+        table_expr = f"{c.compile(self.table1)} {self.op} {c.compile(self.table2)}"
         if parent_c.in_select:
-            union = f"({union}) {c.new_unique_name()}"
+            table_expr = f"({table_expr}) {c.new_unique_name()}"
         elif parent_c.in_join:
-            union = f"({union})"
-        return union
+            table_expr = f"({table_expr})"
+        return table_expr
 
 
 @dataclass

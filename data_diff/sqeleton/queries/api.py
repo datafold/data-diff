@@ -80,8 +80,10 @@ def if_(cond: Expr, then: Expr, else_: Optional[Expr] = None):
 def when(*when: Expr):
     return CaseWhen([]).when(*when)
 
+
 def coalesce(*exprs):
     exprs = args_as_tuple(exprs)
     return Func("COALESCE", exprs)
+
 
 commit = Commit()
