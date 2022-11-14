@@ -392,12 +392,13 @@ def _main(
                 "different_percent": percent,
                 "different_+": plus,
                 "different_-": minus,
+                "different_unique": unique_diff_count,
                 "total": max_table_count,
                 "stats": differ.stats,
             }
-            print(json.dumps(json_output))
+            rich.print(json.dumps(json_output))
         else:
-            print(f"Diff-Total: {len(diff)} changed rows out of {max_table_count}")
+            print(f"Diff-Total: {unique_diff_count} changed rows out of {max_table_count}")
             print(f"Diff-Percent: {percent:.14f}%")
             print(f"Diff-Split: +{plus}  -{minus}")
             if differ.stats:
