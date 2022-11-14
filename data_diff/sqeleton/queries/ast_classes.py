@@ -186,6 +186,12 @@ class LazyOps:
     def __add__(self, other):
         return BinOp("+", [self, other])
 
+    def __sub__(self, other):
+        return BinOp("-", [self, other])
+
+    def __neg__(self):
+        return UnaryOp("-", self)
+
     def __gt__(self, other):
         return BinBoolOp(">", [self, other])
 
@@ -314,6 +320,14 @@ class BinOp(ExprNode, LazyOps):
             raise TypeError(f"Expected all args to have the same type, got {types}")
         (t,) = types
         return t
+
+@dataclass
+class UnaryOp(ExprNode, LazyOps):
+    op: str
+    expr: Expr
+
+    def compile(self, c: Compiler) -> str:
+        return f"({self.op}{c.compile(self.expr)})"
 
 
 class BinBoolOp(BinOp):

@@ -209,6 +209,9 @@ class TestQuery(unittest.TestCase):
         q = c.compile(t.select(this.b.like(this.c)))
         self.assertEqual(q, "SELECT (b LIKE c) FROM a")
 
+        q = c.compile(t.select(-this.b.sum()))
+        self.assertEqual(q, "SELECT (-SUM(b)) FROM a")
+
     def test_group_by(self):
         c = Compiler(MockDatabase())
         t = table("a")
