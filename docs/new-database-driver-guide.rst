@@ -155,15 +155,11 @@ This is used to determine types which the system cannot effectively detect.
 Examples:
 DECIMAL(10,3) needs to be parsed by a custom algorithm. You'd be using regex to split it into Field name + Width + Scale.
 
-
-
-
 4. Debugging
 -----------------------
 
 You can enable debug logging for tests by setting the logger level to ``DEBUG`` in /tests/common.py
 This will display all the queries ran + display types detected for columns.
-
 
 3. Add tests
 --------------
@@ -204,4 +200,3 @@ When debugging, we recommend using the `-f` flag, to stop on error. Also, use th
 -----------------------
 
 Open a pull-request on github, and we'll take it from there!
-
