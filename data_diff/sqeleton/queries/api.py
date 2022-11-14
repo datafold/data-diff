@@ -74,7 +74,11 @@ def max_(expr: Expr):
 
 
 def if_(cond: Expr, then: Expr, else_: Optional[Expr] = None):
-    return CaseWhen([(cond, then)], else_=else_)
+    return when(cond).then(then).else_(else_)
+
+
+def when(*when: Expr):
+    return CaseWhen([]).when(*when)
 
 
 commit = Commit()

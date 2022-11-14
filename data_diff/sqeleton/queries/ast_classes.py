@@ -10,6 +10,18 @@ from .compiler import Compilable, Compiler, cv_params
 from .base import SKIP, CompileError, DbPath, Schema, args_as_tuple
 
 
+class SqeletonError(Exception):
+    pass
+
+
+class QueryBuilderError(SqeletonError):
+    pass
+
+
+class QB_TypeError(QueryBuilderError):
+    pass
+
+
 class ExprNode(Compilable):
     type: Any = None
 
@@ -218,26 +230,62 @@ class Func(ExprNode, LazyOps):
 
 
 @dataclass
+class WhenThen(ExprNode):
+    when: Expr
+    then: Expr
+
+    def compile(self, c: Compiler) -> str:
+        return f"WHEN {c.compile(self.when)} THEN {c.compile(self.then)}"
+
+
+@dataclass
 class CaseWhen(ExprNode):
-    cases: Sequence[Tuple[Expr, Expr]]
-    else_: Expr = None
+    cases: Sequence[WhenThen]
+    else_expr: Expr = None
 
     def compile(self, c: Compiler) -> str:
         assert self.cases
-        when_thens = " ".join(f"WHEN {c.compile(when)} THEN {c.compile(then)}" for when, then in self.cases)
-        else_ = (" ELSE " + c.compile(self.else_)) if self.else_ is not None else ""
-        return f"CASE {when_thens}{else_} END"
+        when_thens = " ".join(c.compile(case) for case in self.cases)
+        else_expr = (" ELSE " + c.compile(self.else_expr)) if self.else_expr is not None else ""
+        return f"CASE {when_thens}{else_expr} END"
 
     @property
     def type(self):
-        when_types = {_expr_type(w) for _c, w in self.cases}
-        if self.else_:
-            when_types |= _expr_type(self.else_)
-        if len(when_types) > 1:
-            raise RuntimeError(f"Non-matching types in when: {when_types}")
-        (t,) = when_types
+        then_types = {_expr_type(case.then) for case in self.cases}
+        if self.else_expr:
+            then_types |= _expr_type(self.else_expr)
+        if len(then_types) > 1:
+            raise QB_TypeError(f"Non-matching types in when: {then_types}")
+        (t,) = then_types
         return t
 
+    def when(self, *whens: Expr) -> "QB_When":
+        whens = args_as_tuple(whens)
+        whens = _drop_skips(whens)
+        if not whens:
+            raise QueryBuilderError("Expected valid whens")
+
+        # XXX reimplementing api.and_()
+        if len(whens) == 1:
+            return QB_When(self, whens[0])
+        return QB_When(self, BinBoolOp("AND", whens))
+
+    def else_(self, then: Expr):
+        if self.else_expr is not None:
+            raise QueryBuilderError(f"Else clause already specified in {self}")
+
+        return self.replace(else_expr=then)
+
+
+@dataclass
+class QB_When:
+    "Partial case-when, used for query-building"
+    casewhen: CaseWhen
+    when: Expr
+
+    def then(self, then: Expr) -> CaseWhen:
+        case = WhenThen(self.when, then)
+        return self.casewhen.replace(cases=self.casewhen.cases + [case])
 
 
 @dataclass(eq=False, order=False)
@@ -280,7 +328,7 @@ class Column(ExprNode, LazyOps):
     @property
     def type(self):
         if self.source_table.schema is None:
-            raise RuntimeError(f"Schema required for table {self.source_table}")
+            raise QueryBuilderError(f"Schema required for table {self.source_table}")
         return self.source_table.schema[self.name]
 
     def compile(self, c: Compiler) -> str:
@@ -387,7 +435,7 @@ class Join(ExprNode, ITable):
         exprs = _drop_skips(exprs)
         named_exprs = _drop_skips_dict(named_exprs)
         exprs += _named_exprs_as_aliases(named_exprs)
-        # resolve_names(self.source_table, exprs)
+        resolve_names(self.source_table, exprs)
         # TODO Ensure exprs <= self.columns ?
         return self.replace(columns=exprs)
 
@@ -418,7 +466,7 @@ class Join(ExprNode, ITable):
 @dataclass
 class GroupBy(ExprNode, ITable):
     table: ITable
-    keys: Sequence[Expr] = None     # IKey?
+    keys: Sequence[Expr] = None  # IKey?
     values: Sequence[Expr] = None
     having_exprs: Sequence[Expr] = None
 
@@ -435,21 +483,25 @@ class GroupBy(ExprNode, ITable):
         return self.replace(having_exprs=(self.having_exprs or []) + exprs)
 
     def compile(self, c: Compiler) -> str:
-        keys = [str(i+1) for i in range(len(self.keys))]
+        keys = [str(i + 1) for i in range(len(self.keys))]
         columns = (self.keys or []) + (self.values or [])
         if isinstance(self.table, Select) and self.table.columns is None and self.table.group_by_exprs is None:
-            return c.compile(self.table.replace(
-                columns=columns,
-                group_by_exprs=keys,     # XXX pass Expr instances, not strings (Code)
-                having_exprs=self.having_exprs
-            ))
+            return c.compile(
+                self.table.replace(
+                    columns=columns,
+                    group_by_exprs=keys,  # XXX pass Expr instances, not strings (Code)
+                    having_exprs=self.having_exprs,
+                )
+            )
 
         keys_str = ", ".join(keys)
         columns_str = ", ".join(c.compile(x) for x in columns)
-        having_str = " HAVING " + " AND ".join(map(c.compile, self.having_exprs)) if self.having_exprs is not None else ''
-        return f'SELECT {columns_str} FROM {c.replace(in_select=True).compile(self.table)} GROUP BY {keys_str}{having_str}'
-
-
+        having_str = (
+            " HAVING " + " AND ".join(map(c.compile, self.having_exprs)) if self.having_exprs is not None else ""
+        )
+        return (
+            f"SELECT {columns_str} FROM {c.replace(in_select=True).compile(self.table)} GROUP BY {keys_str}{having_str}"
+        )
 
 
 @dataclass
@@ -612,12 +664,12 @@ class _ResolveColumn(ExprNode, LazyOps):
 
     def resolve(self, expr: Expr):
         if self.resolved is not None:
-            raise RuntimeError("Already resolved!")
+            raise QueryBuilderError("Already resolved!")
         self.resolved = expr
 
     def _get_resolved(self) -> Expr:
         if self.resolved is None:
-            raise RuntimeError(f"Column not resolved: {self.resolve_name}")
+            raise QueryBuilderError(f"Column not resolved: {self.resolve_name}")
         return self.resolved
 
     def compile(self, c: Compiler) -> str:

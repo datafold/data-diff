@@ -8,7 +8,7 @@ from data_diff.sqeleton.databases.database_types import (
     CaseSensitiveDict,
 )
 
-from data_diff.sqeleton.queries import this, table, Compiler, outerjoin, cte
+from data_diff.sqeleton.queries import this, table, Compiler, outerjoin, cte, when
 from data_diff.sqeleton.queries.ast_classes import Random
 
 
@@ -232,3 +232,16 @@ class TestQuery(unittest.TestCase):
         # Having sum
         q = c.compile(t.group_by(keys=[this.b], values=[this.c]).having(this.b.sum() > 1))
         self.assertEqual(q, "SELECT b, c FROM a GROUP BY 1 HAVING (SUM(b) > 1)")
+
+    def test_case_when(self):
+        c = Compiler(MockDatabase())
+        t = table("a")
+
+        z = when(this.b).then(this.c)
+        y = t.select(z)
+
+        q = c.compile(t.select(when(this.b).then(this.c)))
+        self.assertEqual(q, "SELECT CASE WHEN b THEN c END FROM a")
+
+        q = c.compile(t.select(when(this.b).then(this.c).else_(this.d)))
+        self.assertEqual(q, "SELECT CASE WHEN b THEN c ELSE d END FROM a")
