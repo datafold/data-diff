@@ -8,7 +8,7 @@ from data_diff.sqeleton.databases.database_types import (
     CaseSensitiveDict,
 )
 
-from data_diff.sqeleton.queries import this, table, Compiler, outerjoin, cte, when
+from data_diff.sqeleton.queries import this, table, Compiler, outerjoin, cte, when, coalesce
 from data_diff.sqeleton.queries.ast_classes import Random
 
 
@@ -172,6 +172,9 @@ class TestQuery(unittest.TestCase):
 
         q = c.compile(t.order_by(Random()).limit(10))
         self.assertEqual(q, "SELECT * FROM a ORDER BY random() LIMIT 10")
+
+        q = c.compile(t.select(coalesce(this.a, this.b)))
+        self.assertEqual(q, "SELECT COALESCE(a, b) FROM a")
 
     def test_select_distinct(self):
         c = Compiler(MockDatabase())
