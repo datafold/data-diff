@@ -130,7 +130,7 @@ Docs:
 :meth:`quote()`, :meth:`to_string()`,
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-These methods are used when creating queries or normalizing fields.
+These methods are used when creating queries, to cast to quote a value or cast it to VARCHAR.
 
 For more information, read their docs:
 
@@ -144,17 +144,18 @@ Because comparing data between 2 databases requires both the data to be in the s
 
 Databases can have the same data in different formats, e.g. ``DECIMAL`` vs ``FLOAT`` vs ``VARCHAR``, with different precisions.
 DataDiff works by converting the values to ``VARCHAR`` and comparing it.
-Your normalize_number/normalize_timestamp functions should account for differing precions between columns.
+Your normalize_number/normalize_timestamp functions should account for differing precisions between columns.
 
 These functions accept an SQL code fragment, and returns a new code fragment representing the appropriate computation.
 
 :meth:`parse_type`
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-This is the last resort if for type detection.
-If you added the type to the TYPE_CLASSES dict and it still isn't getting detected - you should use this function.
+This is used to determine types which the system cannot effectively detect.
+Examples:
+DECIMAL(10,3) needs to be parsed by a custom algorithm. You'd be using regex to split it into Field name + Width + Scale.
 
-The common approach is to use Regex to get Column Type + Precision/Width
+
 
 
 4. Debugging
