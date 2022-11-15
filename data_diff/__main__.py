@@ -380,7 +380,6 @@ def _main(
 
     if stats:
         diff = list(diff_iter)
-        unique_diff_count = len({i[0] for _, i in diff})
         key_columns_len = len(key_columns)
 
         diff_by_key = {}
@@ -396,8 +395,9 @@ def _main(
         for sign in diff_by_key.values():
             diff_by_sign[sign] += 1
 
-        table1_count = differ.stats["table1_count"]
-        table2_count = differ.stats["table2_count"]
+        table1_count = differ.stats.pop("table1_count")
+        table2_count = differ.stats.pop("table2_count")
+        del differ.stats['diff_count']
         unchanged = table1_count - diff_by_sign["-"] - diff_by_sign["!"]
         diff_percent = 1 - unchanged / max(table1_count, table2_count)
 
