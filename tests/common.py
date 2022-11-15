@@ -47,7 +47,7 @@ def get_git_revision_short_hash() -> str:
 
 GIT_REVISION = get_git_revision_short_hash()
 
-level = logging.INFO
+level = logging.ERROR
 if os.environ.get("LOG_LEVEL", False):
     level = getattr(logging, os.environ["LOG_LEVEL"].upper())
 

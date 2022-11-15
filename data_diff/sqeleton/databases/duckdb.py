@@ -1,6 +1,6 @@
 from typing import Union
 
-from data_diff.utils import match_regexps
+from ..utils import match_regexps
 from .database_types import (
     Timestamp,
     TimestampTZ,
@@ -14,6 +14,8 @@ from .database_types import (
     Text,
     FractionalType,
     Boolean,
+    AbstractMixin_MD5,
+    AbstractMixin_NormalizeValue,
 )
 from .base import (
     Database,
@@ -33,7 +35,26 @@ def import_duckdb():
     return duckdb
 
 
-class DuckDBDialect(BaseDialect):
+class Mixin_MD5(AbstractMixin_MD5):
+    def md5_as_int(self, s: str) -> str:
+        return f"('0x' || SUBSTRING(md5({s}), {1+MD5_HEXDIGITS-CHECKSUM_HEXDIGITS},{CHECKSUM_HEXDIGITS}))::BIGINT"
+
+class Mixin_NormalizeValue(AbstractMixin_NormalizeValue):
+    def normalize_timestamp(self, value: str, coltype: TemporalType) -> str:
+        # It's precision 6 by default. If precision is less than 6 -> we remove the trailing numbers.
+        if coltype.rounds and coltype.precision > 0:
+            return f"CONCAT(SUBSTRING(STRFTIME({value}::TIMESTAMP, '%Y-%m-%d %H:%M:%S.'),1,23), LPAD(((ROUND(strftime({value}::timestamp, '%f')::DECIMAL(15,7)/100000,{coltype.precision-1})*100000)::INT)::VARCHAR,6,'0'))"
+
+        return f"rpad(substring(strftime({value}::timestamp, '%Y-%m-%d %H:%M:%S.%f'),1,{TIMESTAMP_PRECISION_POS+coltype.precision}),26,'0')"
+
+    def normalize_number(self, value: str, coltype: FractionalType) -> str:
+        return self.to_string(f"{value}::DECIMAL(38, {coltype.precision})")
+
+    def normalize_boolean(self, value: str, coltype: Boolean) -> str:
+        return self.to_string(f"{value}::INTEGER")
+
+
+class Dialect(BaseDialect):
     name = "DuckDB"
     ROUNDS_ON_PREC_LOSS = False
     SUPPORTS_PRIMARY_KEY = True
@@ -60,24 +81,8 @@ class DuckDBDialect(BaseDialect):
     def quote(self, s: str):
         return f'"{s}"'
 
-    def md5_as_int(self, s: str) -> str:
-        return f"('0x' || SUBSTRING(md5({s}), {1+MD5_HEXDIGITS-CHECKSUM_HEXDIGITS},{CHECKSUM_HEXDIGITS}))::BIGINT"
-
     def to_string(self, s: str):
         return f"{s}::VARCHAR"
-
-    def normalize_timestamp(self, value: str, coltype: TemporalType) -> str:
-        # It's precision 6 by default. If precision is less than 6 -> we remove the trailing numbers.
-        if coltype.rounds and coltype.precision > 0:
-            return f"CONCAT(SUBSTRING(STRFTIME({value}::TIMESTAMP, '%Y-%m-%d %H:%M:%S.'),1,23), LPAD(((ROUND(strftime({value}::timestamp, '%f')::DECIMAL(15,7)/100000,{coltype.precision-1})*100000)::INT)::VARCHAR,6,'0'))"
-
-        return f"rpad(substring(strftime({value}::timestamp, '%Y-%m-%d %H:%M:%S.%f'),1,{TIMESTAMP_PRECISION_POS+coltype.precision}),26,'0')"
-
-    def normalize_number(self, value: str, coltype: FractionalType) -> str:
-        return self.to_string(f"{value}::DECIMAL(38, {coltype.precision})")
-
-    def normalize_boolean(self, value: str, coltype: Boolean) -> str:
-        return self.to_string(f"{value}::INTEGER")
 
     def _convert_db_precision_to_digits(self, p: int) -> int:
         # Subtracting 2 due to wierd precision issues in PostgreSQL
@@ -104,9 +109,11 @@ class DuckDBDialect(BaseDialect):
 
 
 class DuckDB(Database):
+    dialect = Dialect()
     SUPPORTS_UNIQUE_CONSTAINT = True
     default_schema = "main"
-    dialect = DuckDBDialect()
+    CONNECT_URI_HELP = "duckdb://<database>@<dbpath>"
+    CONNECT_URI_PARAMS = ['database', 'dbpath']
 
     def __init__(self, **kw):
         self._args = kw

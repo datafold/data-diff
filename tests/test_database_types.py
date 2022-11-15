@@ -18,6 +18,7 @@ from data_diff.databases import postgresql, oracle, duckdb
 from data_diff.query_utils import drop_table
 from data_diff.utils import accumulate
 from data_diff.sqeleton.utils import number_to_human
+from data_diff.sqeleton.queries import table, commit
 from data_diff.hashdiff_tables import HashDiffer, DEFAULT_BISECTION_THRESHOLD
 from data_diff.table_segment import TableSegment
 from .common import (
@@ -557,24 +558,13 @@ def expand_params(testcase_func, param_num, param):
     return name
 
 
-def _drop_table_if_exists(conn, tbl):
-    if isinstance(conn, db.Oracle):
-        with suppress(db.QueryError):
-            conn.query(f"DROP TABLE {tbl}", None)
-            conn.query(f"DROP TABLE {tbl}", None)
-    else:
-        conn.query(f"DROP TABLE IF EXISTS {tbl}", None)
-        if not conn.is_autocommit:
-            conn.query("COMMIT", None)
-
-
 def _insert_to_table(conn, table, values, type):
     current_n_rows = conn.query(f"SELECT COUNT(*) FROM {table}", int)
     if current_n_rows == N_SAMPLES:
         assert BENCHMARK, "Table should've been deleted, or we should be in BENCHMARK mode"
         return
     elif current_n_rows > 0:
-        _drop_table_if_exists(conn, table)
+        conn.query(drop_table(table))
         _create_table_with_indexes(conn, table, type)
 
     if BENCHMARK and N_SAMPLES > 10_000:
@@ -652,8 +642,7 @@ def _insert_to_table(conn, table, values, type):
         else:
             conn.query(insertion_query[0:-1], None)
 
-    if not conn.is_autocommit:
-        conn.query("COMMIT", None)
+    conn.query(commit)
 
 
 def _create_indexes(conn, table):
@@ -696,8 +685,7 @@ def _create_table_with_indexes(conn, table, type):
         conn.query(f"CREATE TABLE IF NOT EXISTS {table}(id int, col {type})", None)
 
     _create_indexes(conn, table)
-    if not conn.is_autocommit:
-        conn.query("COMMIT", None)
+    conn.query(commit)
 
 
 class TestDiffCrossDatabaseTables(unittest.TestCase):

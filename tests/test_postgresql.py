@@ -2,6 +2,7 @@ import unittest
 
 from data_diff import TableSegment, HashDiffer
 from data_diff import databases as db
+from data_diff.sqeleton.queries import table, commit
 from .common import get_conn, random_table_suffix
 
 
@@ -11,35 +12,33 @@ class TestUUID(unittest.TestCase):
 
         table_suffix = random_table_suffix()
 
-        self.table_src = f"src{table_suffix}"
-        self.table_dst = f"dst{table_suffix}"
+        self.table_src_name = f"src{table_suffix}"
+        self.table_dst_name = f"dst{table_suffix}"
+
+        self.table_src = table(self.table_src_name)
+        self.table_dst = table(self.table_dst_name)
 
     def test_uuid(self):
         self.connection.query('CREATE EXTENSION IF NOT EXISTS "uuid-ossp";', None)
 
         queries = [
-            f"DROP TABLE IF EXISTS {self.table_src}",
-            f"DROP TABLE IF EXISTS {self.table_dst}",
-            f"CREATE TABLE {self.table_src} (id uuid DEFAULT uuid_generate_v4 (), comment VARCHAR, PRIMARY KEY (id))",
-            "COMMIT",
+            self.table_src.drop(True),
+            self.table_dst.drop(True),
+            f"CREATE TABLE {self.table_src_name} (id uuid DEFAULT uuid_generate_v4 (), comment VARCHAR, PRIMARY KEY (id))",
+            commit,
+            self.table_src.insert_rows([[i] for i in range(100)], columns=['comment']),
+            commit,
+            self.table_dst.create(self.table_src),
+            commit,
+            self.table_src.insert_row('This one is different', columns=['comment']),
+            commit,
         ]
-        for i in range(100):
-            queries.append(f"INSERT INTO {self.table_src}(comment) VALUES ('{i}')")
-
-        queries += [
-            "COMMIT",
-            f"CREATE TABLE {self.table_dst} AS SELECT * FROM {self.table_src}",
-            "COMMIT",
-        ]
-
-        queries.append(f"INSERT INTO {self.table_src}(comment) VALUES ('This one is different')")
-        queries.append("COMMIT")
 
         for query in queries:
-            self.connection.query(query, None)
+            self.connection.query(query)
 
-        a = TableSegment(self.connection, (self.table_src,), ("id",), "comment")
-        b = TableSegment(self.connection, (self.table_dst,), ("id",), "comment")
+        a = TableSegment(self.connection, self.table_src.path, ("id",), "comment")
+        b = TableSegment(self.connection, self.table_dst.path, ("id",), "comment")
 
         differ = HashDiffer()
         diff = list(differ.diff_tables(a, b))
@@ -49,20 +48,24 @@ class TestUUID(unittest.TestCase):
         # Compare with MySql
         mysql_conn = get_conn(db.MySQL)
 
-        rows = self.connection.query(f"SELECT * FROM {self.table_src}", list)
+        rows = self.connection.query(self.table_src.select(), list)
 
-        mysql_conn.query(f"CREATE TABLE {self.table_dst} (id VARCHAR(128), comment VARCHAR(128))", None)
-        mysql_conn.query(f"COMMIT", None)
-        for uuid, comment in rows:
-            mysql_conn.query(f"INSERT INTO {self.table_dst}(id, comment) VALUES ('{uuid}', '{comment}')", None)
-        mysql_conn.query(f"COMMIT", None)
+        queries = [
+            f"CREATE TABLE {self.table_dst_name} (id VARCHAR(128), comment VARCHAR(128))",
+            commit,
+            self.table_dst.insert_rows(rows, columns=['id', 'comment']),
+            commit,
+        ]
 
-        c = TableSegment(mysql_conn, (self.table_dst,), ("id",), "comment")
+        for q in queries:
+            mysql_conn.query(q)
+
+        c = TableSegment(mysql_conn, (self.table_dst_name,), ("id",), "comment")
         diff = list(differ.diff_tables(a, c))
         assert not diff, diff
         diff = list(differ.diff_tables(c, a))
         assert not diff, diff
 
-        self.connection.query(f"DROP TABLE {self.table_src}", None)
-        self.connection.query(f"DROP TABLE {self.table_dst}", None)
-        mysql_conn.query(f"DROP TABLE {self.table_dst}", None)
+        self.connection.query(self.table_src.drop(True))
+        self.connection.query(self.table_dst.drop(True))
+        mysql_conn.query(self.table_dst.drop(True))

@@ -27,7 +27,7 @@ class MatchUriPath:
     help_str: str
 
     def __post_init__(self):
-        assert self.params == self.database_cls.CONNECT_URI_PARAMS
+        assert self.params == self.database_cls.CONNECT_URI_PARAMS, self.params
         assert self.help_str == self.database_cls.CONNECT_URI_HELP, "\n%s\n%s" % (
             self.help_str,
             self.database_cls.CONNECT_URI_HELP,
@@ -130,6 +130,7 @@ class Connect:
         - trino
         - clickhouse
         - vertica
+        - duckdb
         """
 
         dsn = dsnparse.parse(db_uri)
