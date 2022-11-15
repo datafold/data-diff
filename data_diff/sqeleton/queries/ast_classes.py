@@ -185,7 +185,7 @@ class Count(ExprNode):
     type = int
 
     def compile(self, c: Compiler) -> str:
-        expr = c.compile(self.expr) if self.expr else '*'
+        expr = c.compile(self.expr) if self.expr else "*"
         if self.distinct:
             return f"count(distinct {expr})"
 

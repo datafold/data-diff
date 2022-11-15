@@ -26,11 +26,11 @@ class TestUUID(unittest.TestCase):
             self.table_dst.drop(True),
             f"CREATE TABLE {self.table_src_name} (id uuid DEFAULT uuid_generate_v4 (), comment VARCHAR, PRIMARY KEY (id))",
             commit,
-            self.table_src.insert_rows([[i] for i in range(100)], columns=['comment']),
+            self.table_src.insert_rows([[i] for i in range(100)], columns=["comment"]),
             commit,
             self.table_dst.create(self.table_src),
             commit,
-            self.table_src.insert_row('This one is different', columns=['comment']),
+            self.table_src.insert_row("This one is different", columns=["comment"]),
             commit,
         ]
 
@@ -53,7 +53,7 @@ class TestUUID(unittest.TestCase):
         queries = [
             f"CREATE TABLE {self.table_dst_name} (id VARCHAR(128), comment VARCHAR(128))",
             commit,
-            self.table_dst.insert_rows(rows, columns=['id', 'comment']),
+            self.table_dst.insert_rows(rows, columns=["id", "comment"]),
             commit,
         ]
 

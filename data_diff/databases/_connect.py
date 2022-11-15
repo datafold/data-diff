@@ -36,7 +36,7 @@ MATCH_URI_PATH = {
     "trino": MatchUriPath(Trino, ["catalog", "schema"], help_str="trino://<user>@<host>/<catalog>/<schema>"),
     "clickhouse": MatchUriPath(Clickhouse, ["database?"], help_str="clickhouse://<user>:<pass>@<host>/<database>"),
     "vertica": MatchUriPath(Vertica, ["database?"], help_str="vertica://<user>:<pass>@<host>/<database>"),
-    "duckdb": MatchUriPath(DuckDB, ['database', 'dbpath'], help_str="duckdb://<database>@<dbpath>"),
+    "duckdb": MatchUriPath(DuckDB, ["database", "dbpath"], help_str="duckdb://<database>@<dbpath>"),
 }
 
 connect = Connect(MATCH_URI_PATH)

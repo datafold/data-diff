@@ -115,10 +115,7 @@ DATABASE_TYPES = {
             "INTEGER",  # 4 bytes
             "BIGINT",  # 8 bytes
         ],
-        "datetime": [
-            "TIMESTAMP",
-            "TIMESTAMPTZ"
-        ],
+        "datetime": ["TIMESTAMP", "TIMESTAMPTZ"],
         #  DDB truncates instead of rounding on Prec loss. Currently
         "float": [
             # "FLOAT",

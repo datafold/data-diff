@@ -39,6 +39,7 @@ class Mixin_MD5(AbstractMixin_MD5):
     def md5_as_int(self, s: str) -> str:
         return f"('0x' || SUBSTRING(md5({s}), {1+MD5_HEXDIGITS-CHECKSUM_HEXDIGITS},{CHECKSUM_HEXDIGITS}))::BIGINT"
 
+
 class Mixin_NormalizeValue(AbstractMixin_NormalizeValue):
     def normalize_timestamp(self, value: str, coltype: TemporalType) -> str:
         # It's precision 6 by default. If precision is less than 6 -> we remove the trailing numbers.
@@ -113,7 +114,7 @@ class DuckDB(Database):
     SUPPORTS_UNIQUE_CONSTAINT = True
     default_schema = "main"
     CONNECT_URI_HELP = "duckdb://<database>@<dbpath>"
-    CONNECT_URI_PARAMS = ['database', 'dbpath']
+    CONNECT_URI_PARAMS = ["database", "dbpath"]
 
     def __init__(self, **kw):
         self._args = kw

@@ -39,7 +39,7 @@ class TestApi(unittest.TestCase):
         self.conn.query(src_table.insert_rows((i, ts.datetime, s) for i, (ts, s) in enumerate(rows)))
         _commit(self.conn)
 
-        self.conn.query( self.table_dst.create(self.table_src) )
+        self.conn.query(self.table_dst.create(self.table_src))
         _commit(self.conn)
 
         self.conn.query(src_table.insert_row(len(rows), self.now.shift(seconds=-3).datetime, "3 seconds ago"))
