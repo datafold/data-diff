@@ -1,5 +1,16 @@
 from typing import List, Union
-from .database_types import Timestamp, Datetime, Integer, Decimal, Float, Text, DbPath, FractionalType, TemporalType, Boolean
+from .database_types import (
+    Timestamp,
+    Datetime,
+    Integer,
+    Decimal,
+    Float,
+    Text,
+    DbPath,
+    FractionalType,
+    TemporalType,
+    Boolean,
+)
 from .base import BaseDialect, Database, import_helper, parse_table_name, ConnectError, apply_query
 from .base import TIMESTAMP_PRECISION_POS, ThreadLocalInterpreter
 

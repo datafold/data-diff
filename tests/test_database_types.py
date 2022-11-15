@@ -202,8 +202,7 @@ DATABASE_TYPES = {
             "NCHAR(100)",
             "NVARCHAR2(100)",
         ],
-        "boolean": [    # Oracle has no boolean type
-        ],
+        "boolean": [],  # Oracle has no boolean type
     },
     db.Presto: {
         "int": [
@@ -400,6 +399,7 @@ class IntFaker:
     def __len__(self):
         return self.max
 
+
 class BooleanFaker:
     MANUAL_FAKES = [False, True, True, False]
 
@@ -407,7 +407,7 @@ class BooleanFaker:
         self.max = max
 
     def __iter__(self):
-        return iter(self.MANUAL_FAKES[:self.max])
+        return iter(self.MANUAL_FAKES[: self.max])
 
     def __len__(self):
         return min(self.max, len(self.MANUAL_FAKES))
@@ -574,7 +574,7 @@ def _insert_to_table(conn, table, values, type):
         if isinstance(sample, bytearray):
             value = f"'{sample.decode()}'"
 
-        elif type == 'boolean':
+        elif type == "boolean":
             value = str(bool(sample))
 
         elif isinstance(conn, db.Clickhouse):
@@ -767,7 +767,9 @@ class TestDiffCrossDatabaseTables(unittest.TestCase):
         checksum_duration = time.monotonic() - start
         expected = []
         self.assertEqual(expected, diff)
-        self.assertEqual(0, differ.stats.get("rows_downloaded", 0))     # This may fail if the hash is different, but downloaded values are equal
+        self.assertEqual(
+            0, differ.stats.get("rows_downloaded", 0)
+        )  # This may fail if the hash is different, but downloaded values are equal
 
         # This section downloads all rows to ensure that Python agrees with the
         # database, in terms of comparison.

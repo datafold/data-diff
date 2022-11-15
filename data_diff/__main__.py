@@ -397,7 +397,7 @@ def _main(
 
         table1_count = differ.stats.pop("table1_count")
         table2_count = differ.stats.pop("table2_count")
-        del differ.stats['diff_count']
+        del differ.stats["diff_count"]
         unchanged = table1_count - diff_by_sign["-"] - diff_by_sign["!"]
         diff_percent = 1 - unchanged / max(table1_count, table2_count)
 
