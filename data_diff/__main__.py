@@ -380,27 +380,48 @@ def _main(
 
     if stats:
         diff = list(diff_iter)
-        unique_diff_count = len({i[0] for _, i in diff})
-        max_table_count = max(differ.stats["table1_count"], differ.stats["table2_count"])
-        percent = 100 * unique_diff_count / (max_table_count or 1)
-        plus = len([1 for op, _ in diff if op == "+"])
-        minus = len([1 for op, _ in diff if op == "-"])
+        key_columns_len = len(key_columns)
+
+        diff_by_key = {}
+        for sign, values in diff:
+            k = values[:key_columns_len]
+            if k in diff_by_key:
+                assert sign != diff_by_key[k]
+                diff_by_key[k] = "!"
+            else:
+                diff_by_key[k] = sign
+
+        diff_by_sign = {k: 0 for k in "+-!"}
+        for sign in diff_by_key.values():
+            diff_by_sign[sign] += 1
+
+        table1_count = differ.stats.pop("table1_count")
+        table2_count = differ.stats.pop("table2_count")
+        del differ.stats['diff_count']
+        unchanged = table1_count - diff_by_sign["-"] - diff_by_sign["!"]
+        diff_percent = 1 - unchanged / max(table1_count, table2_count)
 
         if json_output:
             json_output = {
-                "different_rows": len(diff),
-                "different_percent": percent,
-                "different_+": plus,
-                "different_-": minus,
-                "different_unique": unique_diff_count,
-                "total": max_table_count,
+                "rows_A": table1_count,
+                "rows_B": table2_count,
+                "exclusive_A": diff_by_sign["-"],
+                "exclusive_B": diff_by_sign["+"],
+                "updated": diff_by_sign["!"],
+                "unchanged": unchanged,
+                "total": sum(diff_by_sign.values()),
                 "stats": differ.stats,
             }
-            rich.print(json.dumps(json_output))
+            rich.print_json(json.dumps(json_output))
         else:
-            print(f"Diff-Total: {unique_diff_count} changed rows out of {max_table_count}")
-            print(f"Diff-Percent: {percent:.14f}%")
-            print(f"Diff-Split: +{plus}  -{minus}")
+            rich.print(f"{table1_count} rows in table A")
+            rich.print(f"{table2_count} rows in table B")
+            rich.print(f"{diff_by_sign['-']} rows exclusive to table A (not present in B)")
+            rich.print(f"{diff_by_sign['+']} rows exclusive to table B (not present in A)")
+            rich.print(f"{diff_by_sign['!']} rows updated")
+            rich.print(f"{unchanged} rows unchanged")
+            rich.print(f"{100*diff_percent:.2f}% difference score")
+
             if differ.stats:
                 print("Extra-Info:")
                 for k, v in differ.stats.items():

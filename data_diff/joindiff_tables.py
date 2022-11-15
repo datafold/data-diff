@@ -241,10 +241,15 @@ class JoinDiffer(TableDiffer):
         # Metrics
         col_exprs = merge_dicts(
             {
+                # f"min_{c}": min_(this[c]),
+                # f"max_{c}": max_(this[c]),
+            }
+            if c in table_seg.key_columns else
+            {
                 f"sum_{c}": sum_(this[c]),
-                f"avg_{c}": avg(this[c]),
-                f"min_{c}": min_(this[c]),
-                f"max_{c}": max_(this[c]),
+                # f"avg_{c}": avg(this[c]),
+                # f"min_{c}": min_(this[c]),
+                # f"max_{c}": max_(this[c]),
             }
             for c in table_seg.relevant_columns
             if isinstance(table_seg._schema[c], NumericType)
@@ -252,9 +257,16 @@ class JoinDiffer(TableDiffer):
         col_exprs["count"] = Count()
 
         res = db.query(table_seg.make_select().select(**col_exprs), tuple)
-        res = dict(zip([f"table{i}_{n}" for n in col_exprs], map(json_friendly_value, res)))
-        for k, v in res.items():
-            self.stats[k] = self.stats.get(k, 0) + (v or 0)
+
+        for col_name, value in safezip(col_exprs, res):
+            if value is not None:
+                value = json_friendly_value(value)
+                stat_name = f"table{i}_{col_name}"
+
+                if stat_name in self.stats:
+                    self.stats[stat_name] += value
+                else:
+                    self.stats[stat_name] = value
 
         logger.debug("Done collecting stats for table #%s", i)
 
