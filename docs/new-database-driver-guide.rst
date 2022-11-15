@@ -1,7 +1,7 @@
 How to implement a new database driver for data-diff
 ====================================================
 
-First, read through the CONTRIBUTING.md document.
+First, read through the `CONTRIBUTING.md <https://github.com/datafold/data-diff/blob/master/CONTRIBUTING.md>`_ document.
 
 Make sure data-diff is set up for development, and that all the tests pass (try to at least set it up for mysql and postgresql)
 
@@ -38,9 +38,9 @@ Choosing a base class, based on threading Model
 
 You can choose to inherit from either ``base.Database`` or ``base.ThreadedDatabase``.
 
-Usually, databases with cursor-based connections, like MySQL or Postgresql, only allow one thread per connection. In order to support multithreading, we implement them by inheriting from ``ThreadedDatabase``, which holds a pool of worker threads, and creates a new connection per thread.
+Usually, databases with cursor-based connections, like MySQL or Postgresql, only allow connections to be used by the thread that created them. In order to support multithreading, we implement them by inheriting from ``ThreadedDatabase``, which holds a pool of worker threads, and creates a new connection per thread.
 
-Usually, cloud databases, such as snowflake and bigquery, open a new connection per request, and support simultaneous queries from any number of threads. In other words, they already support multithreading, so we can implement them by inheriting directly from ``Database``.
+Usually, cloud databases, such as Snowflake and BigQuery, open a new connection per request, and support simultaneous queries from any number of threads. In other words, they already support multithreading, so we can implement them by inheriting directly from ``Database``.
 
 Import on demand
 ~~~~~~~~~~~~~~~~~
@@ -130,7 +130,7 @@ Docs:
 :meth:`quote()`, :meth:`to_string()`,
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-These methods are used when creating queries, to cast to quote a value or cast it to VARCHAR.
+These methods are used when creating queries, to quote a value, or cast it to STRING/VARCHAR.
 
 For more information, read their docs:
 
@@ -158,8 +158,8 @@ DECIMAL(10,3) needs to be parsed by a custom algorithm. You'd be using regex to 
 4. Debugging
 -----------------------
 
-You can enable debug logging for tests by setting the logger level to ``DEBUG`` in /tests/common.py
-This will display all the queries ran + display types detected for columns.
+You can enable debug logging for tests by setting the logger level to ``DEBUG``, via the environment variable ``LOG_LEVEL``, or the ``LOG_LEVEL`` variable in /tests/common.py.
+This will display all the queries ran, and display the type detected for each column.
 
 3. Add tests
 --------------
