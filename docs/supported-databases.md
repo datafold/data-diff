@@ -13,12 +13,12 @@
 | Trino         |  💛    | `trino://<username>:<password>@<hostname>:8080/<database>`                                                                          |
 | Clickhouse    |  💛    | `clickhouse://<username>:<password>@<hostname>:9000/<database>`                                                                     |
 | Vertica       |  💛    | `vertica://<username>:<password>@<hostname>:5433/<database>`                                                                        |
+| DuckDB        |  💛    |                                                                                                                                     |
 | ElasticSearch |  📝    |                                                                                                                                     |
 | Planetscale   |  📝    |                                                                                                                                     |
 | Pinot         |  📝    |                                                                                                                                     |
 | Druid         |  📝    |                                                                                                                                     |
 | Kafka         |  📝    |                                                                                                                                     |
-| DuckDB        |  📝    |                                                                                                                                     |
 | SQLite        |  📝    |                                                                                                                                     |
 
 * 💚: Implemented and thoroughly tested.
