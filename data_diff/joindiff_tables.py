@@ -236,6 +236,11 @@ class JoinDiffer(TableDiffer):
         # Metrics
         col_exprs = merge_dicts(
             {
+                f"min_{c}": min_(this[c]),
+                f"max_{c}": max_(this[c]),
+            }
+            if c in table_seg.key_columns else
+            {
                 f"sum_{c}": sum_(this[c]),
                 f"avg_{c}": avg(this[c]),
                 f"min_{c}": min_(this[c]),
