@@ -154,7 +154,7 @@ class TableSegment:
     def _relevant_columns_repr(self) -> List[Expr]:
         return [NormalizeAsString(this[c]) for c in self.relevant_columns]
 
-    def count(self) -> Tuple[int, int]:
+    def count(self) -> int:
         """Count how many rows are in the segment, in one pass."""
         return self.database.query(self.make_select().select(Count()), int)
 
