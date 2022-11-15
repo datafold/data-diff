@@ -179,13 +179,13 @@ class Concat(ExprNode):
 
 @dataclass
 class Count(ExprNode):
-    expr: Expr = "*"
+    expr: Expr = None
     distinct: bool = False
 
     type = int
 
     def compile(self, c: Compiler) -> str:
-        expr = c.compile(self.expr)
+        expr = c.compile(self.expr) if self.expr else '*'
         if self.distinct:
             return f"count(distinct {expr})"
 
