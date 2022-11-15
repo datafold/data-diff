@@ -24,10 +24,23 @@ Then, users can install the dependencies needed for your database driver, with `
 
 This way, data-diff can support a wide variety of drivers, without requiring our users to install libraries that they won't use.
 
-2. Implement database module
+2. Implement a database module
 ----------------------------
 
 New database modules belong in the ``data_diff/databases`` directory.
+
+The module consists of:
+1. Dialect (Class responsible for normalizing/casting fields. e.g. Numbers/Timestamps)
+2. Database class that handles connecting to the DB, querying (if the default doesn't work) , closing connectiosn and etc.
+
+Choosing a base class, based on threading Model
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+You can choose to inherit from either ``base.Database`` or ``base.ThreadedDatabase``.
+
+Usually, databases with cursor-based connections, like MySQL or Postgresql, only allow one thread per connection. In order to support multithreading, we implement them by inheriting from ``ThreadedDatabase``, which holds a pool of worker threads, and creates a new connection per thread.
+
+Usually, cloud databases, such as snowflake and bigquery, open a new connection per request, and support simultaneous queries from any number of threads. In other words, they already support multithreading, so we can implement them by inheriting directly from ``Database``.
 
 Import on demand
 ~~~~~~~~~~~~~~~~~
@@ -49,16 +62,6 @@ Instead, they should be imported and initialized within a function. Example:
         return psycopg2
 
 We use the ``import_helper()`` decorator to provide a uniform and informative error. The string argument should be the name of the package, as written in ``pyproject.toml``.
-
-Choosing a base class, based on threading Model
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-
-You can choose to inherit from either ``base.Database`` or ``base.ThreadedDatabase``.
-
-Usually, databases with cursor-based connections, like MySQL or Postgresql, only allow one thread per connection. In order to support multithreading, we implement them by inheriting from ``ThreadedDatabase``, which holds a pool of worker threads, and creates a new connection per thread.
-
-Usually, cloud databases, such as snowflake and bigquery, open a new connection per request, and support simultaneous queries from any number of threads. In other words, they already support multithreading, so we can implement them by inheriting directly from ``Database``.
-
 
 :meth:`_query()`
 ~~~~~~~~~~~~~~~~~~
@@ -124,18 +127,39 @@ Docs:
 
 - :meth:`data_diff.databases.database_types.AbstractDatabase.close`
 
-:meth:`quote()`, :meth:`to_string()`, :meth:`normalize_number()`, :meth:`normalize_timestamp()`, :meth:`md5_to_int()`
+:meth:`quote()`, :meth:`to_string()`,
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-These methods are used when creating queries.
-
-They accept an SQL code fragment, and returns a new code fragment representing the appropriate computation.
+These methods are used when creating queries, to cast to quote a value or cast it to VARCHAR.
 
 For more information, read their docs:
 
 - :meth:`data_diff.databases.database_types.AbstractDatabase.quote`
 
 - :meth:`data_diff.databases.database_types.AbstractDatabase.to_string`
+
+:meth:`normalize_number()`, :meth:`normalize_timestamp()`, :meth:`md5_to_int()`
+
+Because comparing data between 2 databases requires both the data to be in the same format - we have normalization functions.
+
+Databases can have the same data in different formats, e.g. ``DECIMAL`` vs ``FLOAT`` vs ``VARCHAR``, with different precisions.
+DataDiff works by converting the values to ``VARCHAR`` and comparing it.
+Your normalize_number/normalize_timestamp functions should account for differing precisions between columns.
+
+These functions accept an SQL code fragment, and returns a new code fragment representing the appropriate computation.
+
+:meth:`parse_type`
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+This is used to determine types which the system cannot effectively detect.
+Examples:
+DECIMAL(10,3) needs to be parsed by a custom algorithm. You'd be using regex to split it into Field name + Width + Scale.
+
+4. Debugging
+-----------------------
+
+You can enable debug logging for tests by setting the logger level to ``DEBUG`` in /tests/common.py
+This will display all the queries ran + display types detected for columns.
 
 3. Add tests
 --------------
@@ -176,4 +200,3 @@ When debugging, we recommend using the `-f` flag, to stop on error. Also, use th
 -----------------------
 
 Open a pull-request on github, and we'll take it from there!
-
