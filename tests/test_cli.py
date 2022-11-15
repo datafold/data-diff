@@ -37,7 +37,6 @@ class TestCLI(unittest.TestCase):
 
         src_table = table(table_src_name, schema={"id": int, "datetime": datetime, "text_comment": str})
         self.conn.query(src_table.create())
-
         self.conn.query("SET @@session.time_zone='+00:00'")
         db_time = self.conn.query("select now()", datetime)
         self.now = now = arrow.get(db_time)

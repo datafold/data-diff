@@ -36,6 +36,7 @@ cryptography = {version="*", optional=true}
 trino = {version="^0.314.0", optional=true}
 presto-python-client = {version="*", optional=true}
 clickhouse-driver = {version="*", optional=true}
+duckdb = "^0.6.0"
 
 [tool.poetry.dev-dependencies]
 arrow = "^1.2.3"
