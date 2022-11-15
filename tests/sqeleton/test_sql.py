@@ -1,8 +1,8 @@
 import unittest
 
-from data_diff.databases import connect
-from .common import TEST_MYSQL_CONN_STRING
+from ..common import TEST_MYSQL_CONN_STRING
 
+from data_diff.sqeleton import connect
 from data_diff.sqeleton.queries import Compiler, Count, Explain, Select, table, In, BinOp
 
 

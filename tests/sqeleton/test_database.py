@@ -1,6 +1,6 @@
 import unittest
 
-from .common import str_to_checksum, TEST_MYSQL_CONN_STRING
+from ..common import str_to_checksum, TEST_MYSQL_CONN_STRING
 from data_diff.databases import connect
 
 
