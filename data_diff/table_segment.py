@@ -180,8 +180,7 @@ class TableSegment:
         # Normalizes the result (needed for UUIDs) after the min/max computation
         (k,) = self.key_columns
         select = self.make_select().select(
-            ApplyFuncAndNormalizeAsString(this[k], min_),
-            ApplyFuncAndNormalizeAsString(this[k], max_),
+            ApplyFuncAndNormalizeAsString(this[k], min_), ApplyFuncAndNormalizeAsString(this[k], max_),
         )
         min_key, max_key = self.database.query(select, tuple)
 

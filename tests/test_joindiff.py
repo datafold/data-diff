@@ -165,12 +165,7 @@ class TestJoindiff(TestPerDatabase):
                     columns=cols,
                 ),
                 self.dst_table.insert_rows(
-                    [
-                        [1, 1, 1, 9, time_obj],
-                        [2, 2, 2, 9, time_obj],
-                        [3, 3, 3, 9, time_obj],
-                        [4, 4, 4, 9, time_obj],
-                    ],
+                    [[1, 1, 1, 9, time_obj], [2, 2, 2, 9, time_obj], [3, 3, 3, 9, time_obj], [4, 4, 4, 9, time_obj],],
                     columns=cols,
                 ),
                 commit,
@@ -281,14 +276,8 @@ class TestUniqueConstraint(TestPerDatabase):
     def setUp(self):
         super().setUp()
 
-        self.src_table = table(
-            self.table_src_path,
-            schema={"id": int, "userid": int, "movieid": int, "rating": float},
-        )
-        self.dst_table = table(
-            self.table_dst_path,
-            schema={"id": int, "userid": int, "movieid": int, "rating": float},
-        )
+        self.src_table = table(self.table_src_path, schema={"id": int, "userid": int, "movieid": int, "rating": float},)
+        self.dst_table = table(self.table_dst_path, schema={"id": int, "userid": int, "movieid": int, "rating": float},)
 
         self.connection.query(
             [self.src_table.create(primary_keys=["id"]), self.dst_table.create(primary_keys=["id", "userid"]), commit]

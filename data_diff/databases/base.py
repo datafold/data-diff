@@ -154,13 +154,7 @@ class BaseDialect(AbstractDialect, AbstractMixin_MD5, AbstractMixin_NormalizeVal
     def type_repr(self, t) -> str:
         if isinstance(t, str):
             return t
-        return {
-            int: "INT",
-            str: "VARCHAR",
-            bool: "BOOLEAN",
-            float: "FLOAT",
-            datetime: "TIMESTAMP",
-        }[t]
+        return {int: "INT", str: "VARCHAR", bool: "BOOLEAN", float: "FLOAT", datetime: "TIMESTAMP",}[t]
 
     def _parse_type_repr(self, type_repr: str) -> Optional[Type[ColType]]:
         return self.TYPE_CLASSES.get(type_repr)
@@ -213,7 +207,7 @@ class BaseDialect(AbstractDialect, AbstractMixin_MD5, AbstractMixin_NormalizeVal
     def _convert_db_precision_to_digits(self, p: int) -> int:
         """Convert from binary precision, used by floats, to decimal precision."""
         # See: https://en.wikipedia.org/wiki/Single-precision_floating-point_format
-        return math.floor(math.log(2**p, 10))
+        return math.floor(math.log(2 ** p, 10))
 
 
 class Database(AbstractDatabase):
@@ -455,7 +449,7 @@ CHECKSUM_HEXDIGITS = 15  # Must be 15 or lower
 MD5_HEXDIGITS = 32
 
 _CHECKSUM_BITSIZE = CHECKSUM_HEXDIGITS << 2
-CHECKSUM_MASK = (2**_CHECKSUM_BITSIZE) - 1
+CHECKSUM_MASK = (2 ** _CHECKSUM_BITSIZE) - 1
 
 DEFAULT_DATETIME_PRECISION = 6
 DEFAULT_NUMERIC_PRECISION = 24

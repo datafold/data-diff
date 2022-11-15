@@ -77,9 +77,7 @@ class Dialect(BaseDialect):
 
     def type_repr(self, t) -> str:
         try:
-            return {
-                str: "VARCHAR(1024)",
-            }[t]
+            return {str: "VARCHAR(1024)",}[t]
         except KeyError:
             return super().type_repr(t)
 

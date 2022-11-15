@@ -60,20 +60,9 @@ DATABASE_TYPES = {
             "timestamp with time zone",
         ],
         # https://www.postgresql.org/docs/current/datatype-numeric.html
-        "float": [
-            "real",
-            "float",
-            "double precision",
-            "numeric(6,3)",
-        ],
-        "uuid": [
-            "text",
-            "varchar(100)",
-            "char(100)",
-        ],
-        "boolean": [
-            "boolean",
-        ],
+        "float": ["real", "float", "double precision", "numeric(6,3)",],
+        "uuid": ["text", "varchar(100)", "char(100)",],
+        "boolean": ["boolean",],
     },
     db.MySQL: {
         # https://dev.mysql.com/doc/refman/8.0/en/integer-types.html
@@ -85,68 +74,30 @@ DATABASE_TYPES = {
             "bigint",  # 8 bytes
         ],
         # https://dev.mysql.com/doc/refman/8.0/en/datetime.html
-        "datetime": [
-            "timestamp(6)",
-            "timestamp(3)",
-            "timestamp(0)",
-            "timestamp",
-            "datetime(6)",
-        ],
+        "datetime": ["timestamp(6)", "timestamp(3)", "timestamp(0)", "timestamp", "datetime(6)",],
         # https://dev.mysql.com/doc/refman/8.0/en/numeric-types.html
-        "float": [
-            "float",
-            "double",
-            "numeric",
-            "numeric(65, 10)",
-        ],
-        "uuid": [
-            "varchar(100)",
-            "char(100)",
-            "varbinary(100)",
-        ],
-        "boolean": [
-            "boolean",
-        ],
+        "float": ["float", "double", "numeric", "numeric(65, 10)",],
+        "uuid": ["varchar(100)", "char(100)", "varbinary(100)",],
+        "boolean": ["boolean",],
     },
     db.DuckDB: {
-        "int": [
-            "INTEGER",  # 4 bytes
-            "BIGINT",  # 8 bytes
-        ],
-        "datetime": [
-            "TIMESTAMP",
-            "TIMESTAMPTZ"
-        ],
+        "int": ["INTEGER", "BIGINT",],  # 4 bytes  # 8 bytes
+        "datetime": ["TIMESTAMP", "TIMESTAMPTZ"],
         #  DDB truncates instead of rounding on Prec loss. Currently
         "float": [
             # "FLOAT",
             # "DOUBLE",
             # 'DECIMAL'
         ],
-        "uuid": [
-            "VARCHAR(100)",
-        ],
-        "boolean": [
-            "BOOLEAN",
-        ],
+        "uuid": ["VARCHAR(100)",],
+        "boolean": ["BOOLEAN",],
     },
     db.BigQuery: {
         "int": ["int"],
-        "datetime": [
-            "timestamp",
-            "datetime",
-        ],
-        "float": [
-            "numeric",
-            "float64",
-            "bignumeric",
-        ],
-        "uuid": [
-            "STRING",
-        ],
-        "boolean": [
-            "boolean",
-        ],
+        "datetime": ["timestamp", "datetime",],
+        "float": ["numeric", "float64", "bignumeric",],
+        "uuid": ["STRING",],
+        "boolean": ["boolean",],
     },
     db.Snowflake: {
         # https://docs.snowflake.com/en/sql-reference/data-types-numeric.html#int-integer-bigint-smallint-tinyint-byteint
@@ -168,63 +119,27 @@ DATABASE_TYPES = {
             "timestamp_ntz(9)",
         ],
         # https://docs.snowflake.com/en/sql-reference/data-types-numeric.html#decimal-numeric
-        "float": [
-            "float",
-            "numeric",
-        ],
-        "uuid": [
-            "varchar",
-            "varchar(100)",
-        ],
-        "boolean": [
-            "boolean",
-        ],
+        "float": ["float", "numeric",],
+        "uuid": ["varchar", "varchar(100)",],
+        "boolean": ["boolean",],
     },
     db.Redshift: {
-        "int": [
-            "int",
-        ],
-        "datetime": [
-            "TIMESTAMP",
-            "timestamp with time zone",
-        ],
+        "int": ["int",],
+        "datetime": ["TIMESTAMP", "timestamp with time zone",],
         # https://docs.aws.amazon.com/redshift/latest/dg/r_Numeric_types201.html#r_Numeric_types201-floating-point-types
-        "float": [
-            "float4",
-            "float8",
-            "numeric",
-        ],
-        "uuid": [
-            "text",
-            "varchar(100)",
-            "char(100)",
-        ],
-        "boolean": [
-            "boolean",
-        ],
+        "float": ["float4", "float8", "numeric",],
+        "uuid": ["text", "varchar(100)", "char(100)",],
+        "boolean": ["boolean",],
     },
     db.Oracle: {
-        "int": [
-            "int",
-        ],
+        "int": ["int",],
         "datetime": [
             "timestamp with local time zone",
             "timestamp(6) with local time zone",
             "timestamp(9) with local time zone",
         ],
-        "float": [
-            "float",
-            "numeric",
-            "real",
-            "double precision",
-            "Number(5, 2)",
-        ],
-        "uuid": [
-            "CHAR(100)",
-            "VARCHAR(100)",
-            "NCHAR(100)",
-            "NVARCHAR2(100)",
-        ],
+        "float": ["float", "numeric", "real", "double precision", "Number(5, 2)",],
+        "uuid": ["CHAR(100)", "VARCHAR(100)", "NCHAR(100)", "NVARCHAR2(100)",],
         "boolean": [],  # Oracle has no boolean type
     },
     db.Presto: {
@@ -235,99 +150,37 @@ DATABASE_TYPES = {
             "int",  # 4 bytes
             "bigint",  # 8 bytes
         ],
-        "datetime": [
-            "timestamp",
-            "timestamp with time zone",
-        ],
-        "float": [
-            "real",
-            "double",
-            "decimal(10,2)",
-            "decimal(30,6)",
-        ],
-        "uuid": [
-            "varchar",
-            "char(100)",
-        ],
-        "boolean": [
-            "boolean",
-        ],
+        "datetime": ["timestamp", "timestamp with time zone",],
+        "float": ["real", "double", "decimal(10,2)", "decimal(30,6)",],
+        "uuid": ["varchar", "char(100)",],
+        "boolean": ["boolean",],
     },
     db.Databricks: {
         # https://docs.databricks.com/spark/latest/spark-sql/language-manual/data-types/int-type.html
         # https://docs.databricks.com/spark/latest/spark-sql/language-manual/data-types/bigint-type.html
-        "int": [
-            "INT",
-            "BIGINT",
-        ],
+        "int": ["INT", "BIGINT",],
         # https://docs.databricks.com/spark/latest/spark-sql/language-manual/data-types/timestamp-type.html
-        "datetime": [
-            "TIMESTAMP",
-        ],
+        "datetime": ["TIMESTAMP",],
         # https://docs.databricks.com/spark/latest/spark-sql/language-manual/data-types/float-type.html
         # https://docs.databricks.com/spark/latest/spark-sql/language-manual/data-types/double-type.html
         # https://docs.databricks.com/spark/latest/spark-sql/language-manual/data-types/decimal-type.html
-        "float": [
-            "FLOAT",
-            "DOUBLE",
-            "DECIMAL(6, 2)",
-        ],
-        "uuid": [
-            "STRING",
-        ],
-        "boolean": [
-            "boolean",
-        ],
+        "float": ["FLOAT", "DOUBLE", "DECIMAL(6, 2)",],
+        "uuid": ["STRING",],
+        "boolean": ["boolean",],
     },
     db.Trino: {
-        "int": [
-            "int",
-            "bigint",
-        ],
-        "datetime": [
-            "timestamp",
-            "timestamp with time zone",
-        ],
-        "float": [
-            "real",
-            "double",
-            "decimal(10,2)",
-            "decimal(30,6)",
-        ],
-        "uuid": [
-            "varchar",
-            "char(100)",
-        ],
-        "boolean": [
-            "boolean",
-        ],
+        "int": ["int", "bigint",],
+        "datetime": ["timestamp", "timestamp with time zone",],
+        "float": ["real", "double", "decimal(10,2)", "decimal(30,6)",],
+        "uuid": ["varchar", "char(100)",],
+        "boolean": ["boolean",],
     },
     db.Clickhouse: {
-        "int": [
-            "Int8",
-            "Int16",
-            "Int32",
-            "Int64",
-            "Int128",
-            "Int256",
-        ],
-        "datetime": [
-            "DateTime64(6)",
-            "DateTime64(3)",
-            "DateTime64(0)",
-            "DateTime",
-        ],
-        "float": [
-            "Decimal(6, 2)",
-            "Float32",
-            "Float64",
-        ],
-        "uuid": [
-            "String",
-        ],
-        "boolean": [
-            "boolean",
-        ],
+        "int": ["Int8", "Int16", "Int32", "Int64", "Int128", "Int256",],
+        "datetime": ["DateTime64(6)", "DateTime64(3)", "DateTime64(0)", "DateTime",],
+        "float": ["Decimal(6, 2)", "Float32", "Float64",],
+        "uuid": ["String",],
+        "boolean": ["boolean",],
     },
     db.Vertica: {
         "int": ["int"],
@@ -337,18 +190,9 @@ DATABASE_TYPES = {
             "timestamp(0) without time zone",
             "timestamp with time zone",
         ],
-        "float": [
-            "numeric(6, 2)",
-            "float",
-            "float8",
-        ],
-        "uuid": [
-            "varchar(100)",
-            "char(100)",
-        ],
-        "boolean": [
-            "boolean",
-        ],
+        "float": ["numeric(6, 2)", "float", "float8",],
+        "uuid": ["varchar(100)", "char(100)",],
+        "boolean": ["boolean",],
     },
 }
 
@@ -514,15 +358,7 @@ for source_db, source_type_categories, target_db, target_type_categories in get_
     for type_category, source_types in source_type_categories.items():  # int, datetime, ..
         for source_type in source_types:
             for target_type in target_type_categories[type_category]:
-                type_pairs.append(
-                    (
-                        source_db,
-                        target_db,
-                        source_type,
-                        target_type,
-                        type_category,
-                    )
-                )
+                type_pairs.append((source_db, target_db, source_type, target_type, type_category,))
 
 
 def sanitize(name):
@@ -666,12 +502,10 @@ def _create_indexes(conn, table):
     try:
         if_not_exists = "IF NOT EXISTS" if not isinstance(conn, (db.MySQL, db.Oracle)) else ""
         conn.query(
-            f"CREATE INDEX {if_not_exists} xa_{table[1:-1]} ON {table} (id, col)",
-            None,
+            f"CREATE INDEX {if_not_exists} xa_{table[1:-1]} ON {table} (id, col)", None,
         )
         conn.query(
-            f"CREATE INDEX {if_not_exists} xb_{table[1:-1]} ON {table} (id)",
-            None,
+            f"CREATE INDEX {if_not_exists} xb_{table[1:-1]} ON {table} (id)", None,
         )
     except Exception as err:
         if "Duplicate key name" in str(err):  #  mysql
@@ -781,9 +615,7 @@ class TestDiffCrossDatabaseTables(unittest.TestCase):
         ch_threshold = min(DEFAULT_BISECTION_THRESHOLD, int(N_SAMPLES / ch_factor)) if BENCHMARK else 3
         ch_threads = N_THREADS
         differ = HashDiffer(
-            bisection_threshold=ch_threshold,
-            bisection_factor=ch_factor,
-            max_threadpool_size=ch_threads,
+            bisection_threshold=ch_threshold, bisection_factor=ch_factor, max_threadpool_size=ch_threads,
         )
         start = time.monotonic()
         diff = list(differ.diff_tables(self.table, self.table2))

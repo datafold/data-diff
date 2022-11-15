@@ -237,12 +237,7 @@ class TestDiffTables(TestPerDatabase):
                     columns=cols,
                 ),
                 self.dst_table.insert_rows(
-                    [
-                        [1, 1, 1, 9, time_obj],
-                        [2, 2, 2, 9, time_obj],
-                        [3, 3, 3, 9, time_obj],
-                        [4, 4, 4, 9, time_obj],
-                    ],
+                    [[1, 1, 1, 9, time_obj], [2, 2, 2, 9, time_obj], [3, 3, 3, 9, time_obj], [4, 4, 4, 9, time_obj],],
                     columns=cols,
                 ),
                 commit,
@@ -336,23 +331,11 @@ class TestDiffTables2(TestPerDatabase):
         self.connection.query(
             [
                 self.src_table.insert_rows(
-                    [
-                        [1, 9, time_obj],
-                        [2, 9, time_obj2],
-                        [3, 9, time_obj],
-                        [4, 9, time_obj2],
-                        [5, 9, time_obj],
-                    ],
+                    [[1, 9, time_obj], [2, 9, time_obj2], [3, 9, time_obj], [4, 9, time_obj2], [5, 9, time_obj],],
                     columns=["id", "rating", "timestamp"],
                 ),
                 self.dst_table.insert_rows(
-                    [
-                        [1, 9, time_obj],
-                        [2, 9, time_obj2],
-                        [3, 9, time_obj],
-                        [4, 9, time_obj2],
-                        [5, 9, time_obj],
-                    ],
+                    [[1, 9, time_obj], [2, 9, time_obj2], [3, 9, time_obj], [4, 9, time_obj2], [5, 9, time_obj],],
                     columns=["id2", "rating2", "timestamp2"],
                 ),
             ]
@@ -499,8 +482,7 @@ class TestVaryingAlphanumericKeys(TestPerDatabase):
         self.assertEqual(diff, [("-", (str(self.new_alphanum), "This one is different"))])
 
         self.connection.query(
-            self.src_table.insert_row("@@@", "<-- this bad value should not break us"),
-            commit,
+            self.src_table.insert_row("@@@", "<-- this bad value should not break us"), commit,
         )
 
         self.a = _table_segment(self.connection, self.table_src_path, "id", "text_comment", case_sensitive=False)

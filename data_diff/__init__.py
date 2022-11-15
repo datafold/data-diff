@@ -132,10 +132,7 @@ def diff_tables(
             max_threadpool_size=max_threadpool_size,
         )
     elif algorithm == Algorithm.JOINDIFF:
-        differ = JoinDiffer(
-            threaded=threaded,
-            max_threadpool_size=max_threadpool_size,
-        )
+        differ = JoinDiffer(threaded=threaded, max_threadpool_size=max_threadpool_size,)
     else:
         raise ValueError(f"Unknown algorithm: {algorithm}")
 

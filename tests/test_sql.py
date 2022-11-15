@@ -23,13 +23,7 @@ class TestSQL(unittest.TestCase):
     def test_compile_select(self):
         expected_sql = "SELECT name FROM `marine_mammals`.`walrus`"
         self.assertEqual(
-            expected_sql,
-            self.compiler.compile(
-                Select(
-                    table("marine_mammals", "walrus"),
-                    ["name"],
-                )
-            ),
+            expected_sql, self.compiler.compile(Select(table("marine_mammals", "walrus"), ["name"],)),
         )
 
     # def test_enum(self):
@@ -62,9 +56,7 @@ class TestSQL(unittest.TestCase):
             expected_sql,
             self.compiler.compile(
                 Select(
-                    table("marine_mammals", "walrus"),
-                    ["name"],
-                    [BinOp("<=", ["id", "1000"]), BinOp(">", ["id", "1"])],
+                    table("marine_mammals", "walrus"), ["name"], [BinOp("<=", ["id", "1000"]), BinOp(">", ["id", "1"])],
                 )
             ),
         )

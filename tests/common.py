@@ -31,7 +31,7 @@ TEST_TRINO_CONN_STRING: str = os.environ.get("DATADIFF_TRINO_URI") or None
 TEST_CLICKHOUSE_CONN_STRING: str = os.environ.get("DATADIFF_CLICKHOUSE_URI")
 # vertica uri provided for docker - "vertica://vertica:Password1@localhost:5433/vertica"
 TEST_VERTICA_CONN_STRING: str = os.environ.get("DATADIFF_VERTICA_URI")
-TEST_DUCKDB_CONN_STRING: str = 'duckdb://main:@:memory:'
+TEST_DUCKDB_CONN_STRING: str = "duckdb://main:@:memory:"
 
 
 DEFAULT_N_SAMPLES = 50
@@ -79,7 +79,7 @@ CONN_STRINGS = {
     db.Trino: TEST_TRINO_CONN_STRING,
     db.Clickhouse: TEST_CLICKHOUSE_CONN_STRING,
     db.Vertica: TEST_VERTICA_CONN_STRING,
-    db.DuckDB: TEST_DUCKDB_CONN_STRING
+    db.DuckDB: TEST_DUCKDB_CONN_STRING,
 }
 
 _database_instances = {}

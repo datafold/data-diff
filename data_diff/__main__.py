@@ -357,13 +357,7 @@ def _main(
 
     if db1 is db2:
         diff_schemas(
-            schema1,
-            schema2,
-            (
-                *key_columns,
-                update_column,
-                *columns,
-            ),
+            schema1, schema2, (*key_columns, update_column, *columns,),
         )
 
     logging.info(f"Diffing using columns: key={key_columns} update={update_column} extra={columns}")
