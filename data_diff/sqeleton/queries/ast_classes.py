@@ -4,10 +4,22 @@ from typing import Any, Generator, List, Optional, Sequence, Tuple, Union
 
 from runtype import dataclass
 
-from data_diff.utils import ArithString, join_iter
+from ..utils import join_iter, ArithString
 
 from .compiler import Compilable, Compiler, cv_params
 from .base import SKIP, CompileError, DbPath, Schema, args_as_tuple
+
+
+class SqeletonError(Exception):
+    pass
+
+
+class QueryBuilderError(SqeletonError):
+    pass
+
+
+class QB_TypeError(QueryBuilderError):
+    pass
 
 
 class ExprNode(Compilable):
@@ -63,13 +75,13 @@ class ITable:
     source_table: Any
     schema: Schema = None
 
-    def select(self, *exprs, **named_exprs):
+    def select(self, *exprs, distinct=SKIP, **named_exprs):
         exprs = args_as_tuple(exprs)
         exprs = _drop_skips(exprs)
         named_exprs = _drop_skips_dict(named_exprs)
         exprs += _named_exprs_as_aliases(named_exprs)
         resolve_names(self.source_table, exprs)
-        return Select.make(self, columns=exprs)
+        return Select.make(self, columns=exprs, distinct=distinct)
 
     def where(self, *exprs):
         exprs = args_as_tuple(exprs)
@@ -78,7 +90,7 @@ class ITable:
             return self
 
         resolve_names(self.source_table, exprs)
-        return Select.make(self, where_exprs=exprs, _concat=True)
+        return Select.make(self, where_exprs=exprs)
 
     def order_by(self, *exprs):
         exprs = _drop_skips(exprs)
@@ -106,9 +118,13 @@ class ITable:
         return Join(self, target)
 
     def group_by(self, *, keys=None, values=None):
-        # TODO
-        assert keys or values
-        raise NotImplementedError()
+        keys = _drop_skips(keys)
+        resolve_names(self.source_table, keys)
+
+        values = _drop_skips(values)
+        resolve_names(self.source_table, values)
+
+        return GroupBy(self, keys, values)
 
     def with_schema(self):
         # TODO
@@ -131,7 +147,17 @@ class ITable:
         return Select(self, [Count()])
 
     def union(self, other: "ITable"):
-        return SetUnion(self, other)
+        return TableOp("UNION", self, other)
+
+    def union_all(self, other: "ITable"):
+        return TableOp("UNION ALL", self, other)
+
+    def minus(self, other: "ITable"):
+        # aka
+        return TableOp("EXCEPT", self, other)
+
+    def intersect(self, other: "ITable"):
+        return TableOp("INTERSECT", self, other)
 
 
 @dataclass
@@ -153,54 +179,28 @@ class Concat(ExprNode):
 
 @dataclass
 class Count(ExprNode):
-    expr: Expr = "*"
+    expr: Expr = None
     distinct: bool = False
 
     type = int
 
     def compile(self, c: Compiler) -> str:
-        expr = c.compile(self.expr)
+        expr = c.compile(self.expr) if self.expr else "*"
         if self.distinct:
             return f"count(distinct {expr})"
 
         return f"count({expr})"
 
 
-@dataclass
-class Func(ExprNode):
-    name: str
-    args: Sequence[Expr]
-
-    def compile(self, c: Compiler) -> str:
-        args = ", ".join(c.compile(e) for e in self.args)
-        return f"{self.name}({args})"
-
-
-@dataclass
-class CaseWhen(ExprNode):
-    cases: Sequence[Tuple[Expr, Expr]]
-    else_: Expr = None
-
-    def compile(self, c: Compiler) -> str:
-        assert self.cases
-        when_thens = " ".join(f"WHEN {c.compile(when)} THEN {c.compile(then)}" for when, then in self.cases)
-        else_ = (" ELSE " + c.compile(self.else_)) if self.else_ is not None else ""
-        return f"CASE {when_thens}{else_} END"
-
-    @property
-    def type(self):
-        when_types = {_expr_type(w) for _c, w in self.cases}
-        if self.else_:
-            when_types |= _expr_type(self.else_)
-        if len(when_types) > 1:
-            raise RuntimeError(f"Non-matching types in when: {when_types}")
-        (t,) = when_types
-        return t
-
-
 class LazyOps:
     def __add__(self, other):
         return BinOp("+", [self, other])
+
+    def __sub__(self, other):
+        return BinOp("-", [self, other])
+
+    def __neg__(self):
+        return UnaryOp("-", self)
 
     def __gt__(self, other):
         return BinBoolOp(">", [self, other])
@@ -228,8 +228,80 @@ class LazyOps:
     def is_distinct_from(self, other):
         return IsDistinctFrom(self, other)
 
+    def like(self, other):
+        return BinBoolOp("LIKE", [self, other])
+
     def sum(self):
         return Func("SUM", [self])
+
+
+@dataclass
+class Func(ExprNode, LazyOps):
+    name: str
+    args: Sequence[Expr]
+
+    def compile(self, c: Compiler) -> str:
+        args = ", ".join(c.compile(e) for e in self.args)
+        return f"{self.name}({args})"
+
+
+@dataclass
+class WhenThen(ExprNode):
+    when: Expr
+    then: Expr
+
+    def compile(self, c: Compiler) -> str:
+        return f"WHEN {c.compile(self.when)} THEN {c.compile(self.then)}"
+
+
+@dataclass
+class CaseWhen(ExprNode):
+    cases: Sequence[WhenThen]
+    else_expr: Expr = None
+
+    def compile(self, c: Compiler) -> str:
+        assert self.cases
+        when_thens = " ".join(c.compile(case) for case in self.cases)
+        else_expr = (" ELSE " + c.compile(self.else_expr)) if self.else_expr is not None else ""
+        return f"CASE {when_thens}{else_expr} END"
+
+    @property
+    def type(self):
+        then_types = {_expr_type(case.then) for case in self.cases}
+        if self.else_expr:
+            then_types |= _expr_type(self.else_expr)
+        if len(then_types) > 1:
+            raise QB_TypeError(f"Non-matching types in when: {then_types}")
+        (t,) = then_types
+        return t
+
+    def when(self, *whens: Expr) -> "QB_When":
+        whens = args_as_tuple(whens)
+        whens = _drop_skips(whens)
+        if not whens:
+            raise QueryBuilderError("Expected valid whens")
+
+        # XXX reimplementing api.and_()
+        if len(whens) == 1:
+            return QB_When(self, whens[0])
+        return QB_When(self, BinBoolOp("AND", whens))
+
+    def else_(self, then: Expr):
+        if self.else_expr is not None:
+            raise QueryBuilderError(f"Else clause already specified in {self}")
+
+        return self.replace(else_expr=then)
+
+
+@dataclass
+class QB_When:
+    "Partial case-when, used for query-building"
+    casewhen: CaseWhen
+    when: Expr
+
+    def then(self, then: Expr) -> CaseWhen:
+        case = WhenThen(self.when, then)
+        return self.casewhen.replace(cases=self.casewhen.cases + [case])
 
 
 @dataclass(eq=False, order=False)
@@ -260,6 +332,15 @@ class BinOp(ExprNode, LazyOps):
         return t
 
 
+@dataclass
+class UnaryOp(ExprNode, LazyOps):
+    op: str
+    expr: Expr
+
+    def compile(self, c: Compiler) -> str:
+        return f"({self.op}{c.compile(self.expr)})"
+
+
 class BinBoolOp(BinOp):
     type = bool
 
@@ -272,7 +353,7 @@ class Column(ExprNode, LazyOps):
     @property
     def type(self):
         if self.source_table.schema is None:
-            raise RuntimeError(f"Schema required for table {self.source_table}")
+            raise QueryBuilderError(f"Schema required for table {self.source_table}")
         return self.source_table.schema[self.name]
 
     def compile(self, c: Compiler) -> str:
@@ -379,7 +460,7 @@ class Join(ExprNode, ITable):
         exprs = _drop_skips(exprs)
         named_exprs = _drop_skips_dict(named_exprs)
         exprs += _named_exprs_as_aliases(named_exprs)
-        # resolve_names(self.source_table, exprs)
+        resolve_names(self.source_table, exprs)
         # TODO Ensure exprs <= self.columns ?
         return self.replace(columns=exprs)
 
@@ -407,13 +488,50 @@ class Join(ExprNode, ITable):
         return select
 
 
-class GroupBy(ITable):
-    def having(self):
-        raise NotImplementedError()
+@dataclass
+class GroupBy(ExprNode, ITable):
+    table: ITable
+    keys: Sequence[Expr] = None  # IKey?
+    values: Sequence[Expr] = None
+    having_exprs: Sequence[Expr] = None
+
+    def __post_init__(self):
+        assert self.keys or self.values
+
+    def having(self, *exprs):
+        exprs = args_as_tuple(exprs)
+        exprs = _drop_skips(exprs)
+        if not exprs:
+            return self
+
+        resolve_names(self.table, exprs)
+        return self.replace(having_exprs=(self.having_exprs or []) + exprs)
+
+    def compile(self, c: Compiler) -> str:
+        keys = [str(i + 1) for i in range(len(self.keys))]
+        columns = (self.keys or []) + (self.values or [])
+        if isinstance(self.table, Select) and self.table.columns is None and self.table.group_by_exprs is None:
+            return c.compile(
+                self.table.replace(
+                    columns=columns,
+                    group_by_exprs=keys,  # XXX pass Expr instances, not strings (Code)
+                    having_exprs=self.having_exprs,
+                )
+            )
+
+        keys_str = ", ".join(keys)
+        columns_str = ", ".join(c.compile(x) for x in columns)
+        having_str = (
+            " HAVING " + " AND ".join(map(c.compile, self.having_exprs)) if self.having_exprs is not None else ""
+        )
+        return (
+            f"SELECT {columns_str} FROM {c.replace(in_select=True).compile(self.table)} GROUP BY {keys_str}{having_str}"
+        )
 
 
 @dataclass
-class SetUnion(ExprNode, ITable):
+class TableOp(ExprNode, ITable):
+    op: str
     table1: ITable
     table2: ITable
 
@@ -434,12 +552,12 @@ class SetUnion(ExprNode, ITable):
 
     def compile(self, parent_c: Compiler) -> str:
         c = parent_c.replace(in_select=False)
-        union = f"{c.compile(self.table1)} UNION {c.compile(self.table2)}"
+        table_expr = f"{c.compile(self.table1)} {self.op} {c.compile(self.table2)}"
         if parent_c.in_select:
-            union = f"({union}) {c.new_unique_name()}"
+            table_expr = f"({table_expr}) {c.new_unique_name()}"
         elif parent_c.in_join:
-            union = f"({union})"
-        return union
+            table_expr = f"({table_expr})"
+        return table_expr
 
 
 @dataclass
@@ -449,7 +567,9 @@ class Select(ExprNode, ITable):
     where_exprs: Sequence[Expr] = None
     order_by_exprs: Sequence[Expr] = None
     group_by_exprs: Sequence[Expr] = None
+    having_exprs: Sequence[Expr] = None
     limit_expr: int = None
+    distinct: bool = False
 
     @property
     def schema(self):
@@ -466,7 +586,8 @@ class Select(ExprNode, ITable):
         c = parent_c.replace(in_select=True)  # .add_table_context(self.table)
 
         columns = ", ".join(map(c.compile, self.columns)) if self.columns else "*"
-        select = f"SELECT {columns}"
+        distinct = "DISTINCT " if self.distinct else ""
+        select = f"SELECT {distinct}{columns}"
 
         if self.table:
             select += " FROM " + c.compile(self.table)
@@ -476,6 +597,10 @@ class Select(ExprNode, ITable):
 
         if self.group_by_exprs:
             select += " GROUP BY " + ", ".join(map(c.compile, self.group_by_exprs))
+
+        if self.having_exprs:
+            assert self.group_by_exprs
+            select += " HAVING " + " AND ".join(map(c.compile, self.having_exprs))
 
         if self.order_by_exprs:
             select += " ORDER BY " + ", ".join(map(c.compile, self.order_by_exprs))
@@ -490,17 +615,33 @@ class Select(ExprNode, ITable):
         return select
 
     @classmethod
-    def make(cls, table: ITable, _concat: bool = False, **kwargs):
-        if not isinstance(table, cls):
+    def make(cls, table: ITable, distinct: bool = SKIP, **kwargs):
+        assert "table" not in kwargs
+
+        if not isinstance(table, cls):  # If not Select
+            if distinct is not SKIP:
+                kwargs["distinct"] = distinct
+            return cls(table, **kwargs)
+
+        # We can safely assume isinstance(table, Select)
+
+        if distinct is not SKIP:
+            if distinct == False and table.distinct:
+                return cls(table, **kwargs)
+            kwargs["distinct"] = distinct
+
+        if table.limit_expr or table.group_by_exprs:
             return cls(table, **kwargs)
 
         # Fill in missing attributes, instead of creating a new instance.
         for k, v in kwargs.items():
             if getattr(table, k) is not None:
-                if _concat:
+                if k == "where_exprs":  # Additive attribute
                     kwargs[k] = getattr(table, k) + v
+                elif k == "distinct":
+                    pass
                 else:
-                    raise ValueError("...")
+                    raise ValueError(k)
 
         return table.replace(**kwargs)
 
@@ -534,7 +675,7 @@ def _named_exprs_as_aliases(named_exprs):
 def resolve_names(source_table, exprs):
     i = 0
     for expr in exprs:
-        # Iterate recursively and update _ResolveColumn with the right expression
+        # Iterate recursively and update _ResolveColumn instances with the right expression
         if isinstance(expr, ExprNode):
             for v in expr._dfs_values():
                 if isinstance(v, _ResolveColumn):
@@ -549,12 +690,12 @@ class _ResolveColumn(ExprNode, LazyOps):
 
     def resolve(self, expr: Expr):
         if self.resolved is not None:
-            raise RuntimeError("Already resolved!")
+            raise QueryBuilderError("Already resolved!")
         self.resolved = expr
 
     def _get_resolved(self) -> Expr:
         if self.resolved is None:
-            raise RuntimeError(f"Column not resolved: {self.resolve_name}")
+            raise QueryBuilderError(f"Column not resolved: {self.resolve_name}")
         return self.resolved
 
     def compile(self, c: Compiler) -> str:

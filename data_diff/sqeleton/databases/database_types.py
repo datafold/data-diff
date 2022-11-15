@@ -6,7 +6,7 @@ from datetime import datetime
 
 from runtype import dataclass
 
-from data_diff.utils import ArithAlphanumeric, ArithUUID, CaseAwareMapping, CaseInsensitiveDict, CaseSensitiveDict
+from ..utils import CaseAwareMapping, CaseInsensitiveDict, CaseSensitiveDict, ArithAlphanumeric, ArithUUID
 
 
 DbPath = Tuple[str, ...]
@@ -61,8 +61,12 @@ class Float(FractionalType):
 
 
 class IKey(ABC):
-    "Interface for ColType, for using a column as a key in data-diff"
-    python_type: type
+    "Interface for ColType, for using a column as a key in table."
+
+    @property
+    @abstractmethod
+    def python_type(self) -> type:
+        "Return the equivalent Python type of the key"
 
     def make_value(self, value):
         return self.python_type(value)
@@ -146,8 +150,6 @@ class UnknownColType(ColType):
 
 class AbstractDialect(ABC):
     """Dialect-dependent query expressions"""
-
-    name: str
 
     @property
     @abstractmethod
@@ -258,6 +260,12 @@ class AbstractMixin_NormalizeValue(ABC):
         """Creates an SQL expression, that converts 'value' to either '0' or '1'."""
         return self.to_string(value)
 
+    def normalize_uuid(self, value: str, coltype: ColType_UUID) -> str:
+        """Creates an SQL expression, that strips uuids of artifacts like whitespace."""
+        if isinstance(coltype, String_UUID):
+            return f"TRIM({value})"
+        return self.to_string(value)
+
     def normalize_value_by_type(self, value: str, coltype: ColType) -> str:
         """Creates an SQL expression, that converts 'value' to a normalized representation.
 
@@ -295,20 +303,33 @@ class AbstractMixin_MD5(ABC):
 
 
 class AbstractDatabase:
+    @property
+    @abstractmethod
+    def dialect(self) -> AbstractDialect:
+        "The dialect of the database. Used internally by Database, and also available publicly."
+
+    @property
+    @abstractmethod
+    def CONNECT_URI_HELP(self) -> str:
+        "Example URI to show the user in help and error messages"
+
+    @property
+    @abstractmethod
+    def CONNECT_URI_PARAMS(self) -> List[str]:
+        "List of parameters given in the path of the URI"
+
     @abstractmethod
     def _query(self, sql_code: str) -> list:
         "Send query to database and return result"
         ...
 
     @abstractmethod
-    def select_table_schema(self, path: DbPath) -> str:
-        "Provide SQL for selecting the table schema as (name, type, date_prec, num_prec)"
-        ...
-
-    @abstractmethod
     def query_table_schema(self, path: DbPath) -> Dict[str, tuple]:
         """Query the table for its schema for table in 'path', and return {column: tuple}
         where the tuple is (table_name, col_name, type_repr, datetime_precision?, numeric_precision?, numeric_scale?)
+
+        Note: This method exists instead of select_table_schema(), just because not all databases support
+              accessing the schema using a SQL query.
         """
         ...
 
@@ -352,7 +373,7 @@ class AbstractDatabase:
     @property
     @abstractmethod
     def is_autocommit(self) -> bool:
-        ...
+        "Return whether the database autocommits changes. When false, COMMIT statements are skipped."
 
 
 Schema = CaseAwareMapping

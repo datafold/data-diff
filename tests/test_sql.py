@@ -1,14 +1,14 @@
 import unittest
 
-from data_diff.databases import connect_to_uri
+from data_diff.databases import connect
 from .common import TEST_MYSQL_CONN_STRING
 
-from data_diff.queries import Compiler, Count, Explain, Select, table, In, BinOp
+from data_diff.sqeleton.queries import Compiler, Count, Explain, Select, table, In, BinOp
 
 
 class TestSQL(unittest.TestCase):
     def setUp(self):
-        self.mysql = connect_to_uri(TEST_MYSQL_CONN_STRING)
+        self.mysql = connect(TEST_MYSQL_CONN_STRING)
         self.compiler = Compiler(self.mysql)
 
     def test_compile_string(self):

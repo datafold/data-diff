@@ -1,10 +1,15 @@
 from datetime import datetime
 from typing import List, Optional
 import unittest
-from data_diff.databases.database_types import AbstractDatabase, AbstractDialect, CaseInsensitiveDict, CaseSensitiveDict
+from data_diff.sqeleton.databases.database_types import (
+    AbstractDatabase,
+    AbstractDialect,
+    CaseInsensitiveDict,
+    CaseSensitiveDict,
+)
 
-from data_diff.queries import this, table, Compiler, outerjoin, cte
-from data_diff.queries.ast_classes import Random
+from data_diff.sqeleton.queries import this, table, Compiler, outerjoin, cte, when, coalesce
+from data_diff.sqeleton.queries.ast_classes import Random
 
 
 def normalize_spaces(s: str):
@@ -33,7 +38,7 @@ class MockDialect(AbstractDialect):
         return "random()"
 
     def offset_limit(self, offset: Optional[int] = None, limit: Optional[int] = None):
-        x = offset and f"offset {offset}", limit and f"limit {limit}"
+        x = offset and f"OFFSET {offset}", limit and f"LIMIT {limit}"
         return " ".join(filter(None, x))
 
     def explain_as_text(self, query: str) -> str:
@@ -166,12 +171,92 @@ class TestQuery(unittest.TestCase):
         t = table("a")
 
         q = c.compile(t.order_by(Random()).limit(10))
-        assert q == "SELECT * FROM a ORDER BY random() limit 10"
+        self.assertEqual(q, "SELECT * FROM a ORDER BY random() LIMIT 10")
 
-    def test_union(self):
+        q = c.compile(t.select(coalesce(this.a, this.b)))
+        self.assertEqual(q, "SELECT COALESCE(a, b) FROM a")
+
+    def test_select_distinct(self):
+        c = Compiler(MockDatabase())
+        t = table("a")
+
+        q = c.compile(t.select(this.b, distinct=True))
+        assert q == "SELECT DISTINCT b FROM a"
+
+        # selects merge
+        q = c.compile(t.where(this.b > 10).select(this.b, distinct=True))
+        self.assertEqual(q, "SELECT DISTINCT b FROM a WHERE (b > 10)")
+
+        # selects stay apart
+        q = c.compile(t.limit(10).select(this.b, distinct=True))
+        self.assertEqual(q, "SELECT DISTINCT b FROM (SELECT * FROM a LIMIT 10) tmp1")
+
+        q = c.compile(t.select(this.b, distinct=True).select(distinct=False))
+        self.assertEqual(q, "SELECT * FROM (SELECT DISTINCT b FROM a) tmp2")
+
+    def test_table_ops(self):
         c = Compiler(MockDatabase())
         a = table("a").select("x")
         b = table("b").select("y")
 
         q = c.compile(a.union(b))
         assert q == "SELECT x FROM a UNION SELECT y FROM b"
+
+        q = c.compile(a.union_all(b))
+        assert q == "SELECT x FROM a UNION ALL SELECT y FROM b"
+
+        q = c.compile(a.minus(b))
+        assert q == "SELECT x FROM a EXCEPT SELECT y FROM b"
+
+        q = c.compile(a.intersect(b))
+        assert q == "SELECT x FROM a INTERSECT SELECT y FROM b"
+
+    def test_ops(self):
+        c = Compiler(MockDatabase())
+        t = table("a")
+
+        q = c.compile(t.select(this.b + this.c))
+        self.assertEqual(q, "SELECT (b + c) FROM a")
+
+        q = c.compile(t.select(this.b.like(this.c)))
+        self.assertEqual(q, "SELECT (b LIKE c) FROM a")
+
+        q = c.compile(t.select(-this.b.sum()))
+        self.assertEqual(q, "SELECT (-SUM(b)) FROM a")
+
+    def test_group_by(self):
+        c = Compiler(MockDatabase())
+        t = table("a")
+
+        q = c.compile(t.group_by(keys=[this.b], values=[this.c]))
+        self.assertEqual(q, "SELECT b, c FROM a GROUP BY 1")
+
+        q = c.compile(t.where(this.b > 1).group_by(keys=[this.b], values=[this.c]))
+        self.assertEqual(q, "SELECT b, c FROM a WHERE (b > 1) GROUP BY 1")
+
+        q = c.compile(t.select(this.b).group_by(keys=[this.b], values=[]))
+        self.assertEqual(q, "SELECT b FROM (SELECT b FROM a) tmp1 GROUP BY 1")
+
+        # Having
+        q = c.compile(t.group_by(keys=[this.b], values=[this.c]).having(this.b > 1))
+        self.assertEqual(q, "SELECT b, c FROM a GROUP BY 1 HAVING (b > 1)")
+
+        q = c.compile(t.select(this.b).group_by(keys=[this.b], values=[]).having(this.b > 1))
+        self.assertEqual(q, "SELECT b FROM (SELECT b FROM a) tmp2 GROUP BY 1 HAVING (b > 1)")
+
+        # Having sum
+        q = c.compile(t.group_by(keys=[this.b], values=[this.c]).having(this.b.sum() > 1))
+        self.assertEqual(q, "SELECT b, c FROM a GROUP BY 1 HAVING (SUM(b) > 1)")
+
+    def test_case_when(self):
+        c = Compiler(MockDatabase())
+        t = table("a")
+
+        z = when(this.b).then(this.c)
+        y = t.select(z)
+
+        q = c.compile(t.select(when(this.b).then(this.c)))
+        self.assertEqual(q, "SELECT CASE WHEN b THEN c END FROM a")
+
+        q = c.compile(t.select(when(this.b).then(this.c).else_(this.d)))
+        self.assertEqual(q, "SELECT CASE WHEN b THEN c ELSE d END FROM a")

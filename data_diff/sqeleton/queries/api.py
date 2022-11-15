@@ -1,6 +1,6 @@
 from typing import Optional
 
-from data_diff.utils import CaseAwareMapping, CaseSensitiveDict
+from ..utils import CaseAwareMapping, CaseSensitiveDict
 from .ast_classes import *
 from .base import args_as_tuple
 
@@ -74,7 +74,16 @@ def max_(expr: Expr):
 
 
 def if_(cond: Expr, then: Expr, else_: Optional[Expr] = None):
-    return CaseWhen([(cond, then)], else_=else_)
+    return when(cond).then(then).else_(else_)
+
+
+def when(*when: Expr):
+    return CaseWhen([]).when(*when)
+
+
+def coalesce(*exprs):
+    exprs = args_as_tuple(exprs)
+    return Func("COALESCE", exprs)
 
 
 commit = Commit()

@@ -10,22 +10,19 @@ from itertools import chain
 
 from runtype import dataclass
 
-from .databases.database_types import DbPath, NumericType
+from .sqeleton.databases import Database, DbPath, NumericType, MySQL, BigQuery, Presto, Oracle, Snowflake
+from .sqeleton.queries import table, sum_, min_, max_, avg
+from .sqeleton.queries.api import and_, if_, or_, outerjoin, leftjoin, rightjoin, this, ITable
+from .sqeleton.queries.ast_classes import Concat, Count, Expr, Random, TablePath
+from .sqeleton.queries.compiler import Compiler
+from .sqeleton.queries.extras import NormalizeAsString
+
 from .query_utils import append_to_table, drop_table
-
-
 from .utils import safezip
-from .databases.base import Database
-from .databases import MySQL, BigQuery, Presto, Oracle, Snowflake
 from .table_segment import TableSegment
 from .diff_tables import TableDiffer, DiffResult
 from .thread_utils import ThreadedYielder
 
-from .queries import table, sum_, min_, max_, avg
-from .queries.api import and_, if_, or_, outerjoin, leftjoin, rightjoin, this, ITable
-from .queries.ast_classes import Concat, Count, Expr, Random, TablePath
-from .queries.compiler import Compiler
-from .queries.extras import NormalizeAsString
 
 logger = logging.getLogger("joindiff_tables")
 

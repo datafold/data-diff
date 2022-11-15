@@ -1,4 +1,4 @@
-from .base import MD5_HEXDIGITS, CHECKSUM_HEXDIGITS, QueryError, ConnectError
+from data_diff.sqeleton.databases import MD5_HEXDIGITS, CHECKSUM_HEXDIGITS, QueryError, ConnectError
 
 from .postgresql import PostgreSQL
 from .mysql import MySQL
@@ -13,4 +13,4 @@ from .clickhouse import Clickhouse
 from .vertica import Vertica
 from .duckdb import DuckDB
 
-from .connect import connect_to_uri
+from ._connect import connect

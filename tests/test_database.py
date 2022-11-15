@@ -1,12 +1,12 @@
 import unittest
 
 from .common import str_to_checksum, TEST_MYSQL_CONN_STRING
-from data_diff.databases import connect_to_uri
+from data_diff.databases import connect
 
 
 class TestDatabase(unittest.TestCase):
     def setUp(self):
-        self.mysql = connect_to_uri(TEST_MYSQL_CONN_STRING)
+        self.mysql = connect(TEST_MYSQL_CONN_STRING)
 
     def test_connect_to_db(self):
         self.assertEqual(1, self.mysql.query("SELECT 1", int))
@@ -21,9 +21,7 @@ class TestDatabase(unittest.TestCase):
 
 class TestConnect(unittest.TestCase):
     def test_bad_uris(self):
-        self.assertRaises(ValueError, connect_to_uri, "p")
-        self.assertRaises(ValueError, connect_to_uri, "postgresql:///bla/foo")
-        self.assertRaises(ValueError, connect_to_uri, "snowflake://user:pass@bya42734/xdiffdev/TEST1")
-        self.assertRaises(
-            ValueError, connect_to_uri, "snowflake://user:pass@bya42734/xdiffdev/TEST1?warehouse=ha&schema=dup"
-        )
+        self.assertRaises(ValueError, connect, "p")
+        self.assertRaises(ValueError, connect, "postgresql:///bla/foo")
+        self.assertRaises(ValueError, connect, "snowflake://user:pass@bya42734/xdiffdev/TEST1")
+        self.assertRaises(ValueError, connect, "snowflake://user:pass@bya42734/xdiffdev/TEST1?warehouse=ha&schema=dup")
