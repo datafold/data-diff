@@ -374,6 +374,7 @@ def _main(
     ]
 
     diff_iter = differ.diff_tables(*segments)
+    info = diff_iter.info_tree.info
 
     if limit:
         diff_iter = islice(diff_iter, int(limit))
@@ -395,9 +396,8 @@ def _main(
         for sign in diff_by_key.values():
             diff_by_sign[sign] += 1
 
-        table1_count = differ.stats.pop("table1_count")
-        table2_count = differ.stats.pop("table2_count")
-        del differ.stats["diff_count"]
+        table1_count = info.rowcounts[1]
+        table2_count = info.rowcounts[2]
         unchanged = table1_count - diff_by_sign["-"] - diff_by_sign["!"]
         diff_percent = 1 - unchanged / max(table1_count, table2_count)
 
@@ -423,9 +423,9 @@ def _main(
             rich.print(f"{100*diff_percent:.2f}% difference score")
 
             if differ.stats:
-                print("Extra-Info:")
-                for k, v in differ.stats.items():
-                    print(f"  {k} = {v}")
+                print("\nExtra-Info:")
+                for k, v in sorted(differ.stats.items()):
+                    rich.print(f"  {k} = {v}")
     else:
         for op, values in diff_iter:
             color = COLOR_SCHEME[op]

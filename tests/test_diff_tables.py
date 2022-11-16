@@ -8,11 +8,12 @@ import arrow  # comes with preql
 from data_diff.sqeleton.queries import table, this, commit
 
 from data_diff.hashdiff_tables import HashDiffer
+from data_diff.joindiff_tables import JoinDiffer
 from data_diff.table_segment import TableSegment, split_space
 from data_diff import databases as db
 from data_diff.sqeleton.utils import ArithAlphanumeric, numberToAlphanum
 
-from .common import str_to_checksum, test_each_database_in_list, TestPerDatabase
+from .common import str_to_checksum, test_each_database_in_list, TestPerDatabase, get_conn, random_table_suffix
 
 
 TEST_DATABASES = {
@@ -195,11 +196,14 @@ class TestDiffTables(TestPerDatabase):
             ]
         )
 
-        diff = list(self.differ.diff_tables(self.table, self.table2))
+        diff_res = self.differ.diff_tables(self.table, self.table2)
+        info = diff_res.info_tree.info
+        diff = list(diff_res)
+
         expected = [("-", ("2", time + ".000000"))]
         self.assertEqual(expected, diff)
-        self.assertEqual(2, self.differ.stats["table1_count"])
-        self.assertEqual(1, self.differ.stats["table2_count"])
+        self.assertEqual(2, info.rowcounts[1])
+        self.assertEqual(1, info.rowcounts[2])
 
     def test_non_threaded(self):
         differ = HashDiffer(bisection_factor=3, bisection_threshold=4, threaded=False)
@@ -249,11 +253,14 @@ class TestDiffTables(TestPerDatabase):
             ]
         )
 
-        diff = list(self.differ.diff_tables(self.table, self.table2))
+        diff_res = self.differ.diff_tables(self.table, self.table2)
+        info = diff_res.info_tree.info
+        diff = list(diff_res)
+
         expected = [("-", ("5", time + ".000000"))]
         self.assertEqual(expected, diff)
-        self.assertEqual(5, self.differ.stats["table1_count"])
-        self.assertEqual(4, self.differ.stats["table2_count"])
+        self.assertEqual(5, info.rowcounts[1])
+        self.assertEqual(4, info.rowcounts[2])
 
     def test_return_empty_array_when_same(self):
         time = "2022-01-01 00:00:00"
@@ -720,3 +727,38 @@ class TestTableTableEmpty(TestPerDatabase):
 
         differ = HashDiffer()
         self.assertRaises(ValueError, list, differ.diff_tables(self.a, self.b))
+
+
+class TestInfoTree(unittest.TestCase):
+    def test_info_tree_root(self):
+        self.ddb = get_conn(db.DuckDB)
+
+        table_suffix = random_table_suffix()
+        self.table_src_name = f"src{table_suffix}"
+        self.table_dst_name = f"dst{table_suffix}"
+
+        schema = dict(
+            id=int,
+        )
+        self.table1 = table(self.table_src_name, schema=schema)
+        self.table2 = table(self.table_dst_name, schema=schema)
+
+        queries = [
+            self.table1.create(),
+            self.table2.create(),
+            self.table1.insert_rows([i] for i in range(1000)),
+            self.table2.insert_rows([i] for i in range(2000)),
+        ]
+        for q in queries:
+            self.ddb.query(q)
+
+        ts1 = TableSegment(self.ddb, self.table1.path, ("id",))
+        ts2 = TableSegment(self.ddb, self.table2.path, ("id",))
+
+        for differ in (HashDiffer(bisection_threshold=64), JoinDiffer(True)):
+            diff_res = differ.diff_tables(ts1, ts2)
+            diff = list(diff_res)
+            info_tree = diff_res.info_tree
+            assert info_tree.info.is_diff
+            assert info_tree.info.diff_count == 1000
+            self.assertEqual(info_tree.info.rowcounts, {1: 1000, 2: 2000})

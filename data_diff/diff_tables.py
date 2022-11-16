@@ -7,10 +7,12 @@ from abc import ABC, abstractmethod
 from enum import Enum
 from contextlib import contextmanager
 from operator import methodcaller
-from typing import Tuple, Iterator, Optional
+from typing import Iterable, Tuple, Iterator, Optional
 from concurrent.futures import ThreadPoolExecutor, as_completed
 
 from runtype import dataclass
+
+from data_diff.info_tree import InfoTree, SegmentInfo
 
 from .utils import run_as_daemon, safezip, getLogger
 from .thread_utils import ThreadedYielder
@@ -76,11 +78,20 @@ class ThreadBase:
                 f.result()
 
 
+@dataclass
+class DiffResultWrapper:
+    diff: iter  # DiffResult
+    info_tree: InfoTree
+
+    def __iter__(self):
+        return iter(self.diff)
+
+
 class TableDiffer(ThreadBase, ABC):
     bisection_factor = 32
     stats: dict = {}
 
-    def diff_tables(self, table1: TableSegment, table2: TableSegment) -> DiffResult:
+    def diff_tables(self, table1: TableSegment, table2: TableSegment, info_tree: InfoTree = None) -> DiffResultWrapper:
         """Diff the given tables.
 
         Parameters:
@@ -93,14 +104,17 @@ class TableDiffer(ThreadBase, ABC):
             ('+', row) for items in table2 but not in table1.
             Where `row` is a tuple of values, corresponding to the diffed columns.
         """
+        if info_tree is None:
+            info_tree = InfoTree(SegmentInfo([table1, table2]))
+        return DiffResultWrapper(self._diff_tables_wrapper(table1, table2, info_tree), info_tree)
 
+    def _diff_tables_wrapper(self, table1: TableSegment, table2: TableSegment, info_tree: InfoTree) -> DiffResult:
         if is_tracking_enabled():
             options = dict(self)
             options["differ_name"] = type(self).__name__
             event_json = create_start_event_json(options)
             run_as_daemon(send_event_json, event_json)
 
-        self.stats["diff_count"] = 0
         start = time.monotonic()
         error = None
         try:
@@ -109,16 +123,18 @@ class TableDiffer(ThreadBase, ABC):
             table1, table2 = self._threaded_call("with_schema", [table1, table2])
             self._validate_and_adjust_columns(table1, table2)
 
-            yield from self._diff_tables(table1, table2)
+            yield from self._diff_tables_root(table1, table2, info_tree)
 
         except BaseException as e:  # Catch KeyboardInterrupt too
             error = e
         finally:
+            info_tree.aggregate_info()
+
             if is_tracking_enabled():
                 runtime = time.monotonic() - start
-                table1_count = self.stats.get("table1_count")
-                table2_count = self.stats.get("table2_count")
-                diff_count = self.stats.get("diff_count")
+                table1_count = info_tree.info.rowcounts[1]
+                table2_count = info_tree.info.rowcounts[2]
+                diff_count = info_tree.info.diff_count
                 err_message = truncate_error(repr(error))
                 event_json = create_end_event_json(
                     error is None,
@@ -138,8 +154,8 @@ class TableDiffer(ThreadBase, ABC):
     def _validate_and_adjust_columns(self, table1: TableSegment, table2: TableSegment) -> DiffResult:
         pass
 
-    def _diff_tables(self, table1: TableSegment, table2: TableSegment) -> DiffResult:
-        return self._bisect_and_diff_tables(table1, table2)
+    def _diff_tables_root(self, table1: TableSegment, table2: TableSegment, info_tree: InfoTree) -> DiffResult:
+        return self._bisect_and_diff_tables(table1, table2, info_tree)
 
     @abstractmethod
     def _diff_segments(
@@ -147,6 +163,7 @@ class TableDiffer(ThreadBase, ABC):
         ti: ThreadedYielder,
         table1: TableSegment,
         table2: TableSegment,
+        info_tree: InfoTree,
         max_rows: int,
         level=0,
         segment_index=None,
@@ -154,7 +171,7 @@ class TableDiffer(ThreadBase, ABC):
     ):
         ...
 
-    def _bisect_and_diff_tables(self, table1, table2):
+    def _bisect_and_diff_tables(self, table1, table2, info_tree):
         if len(table1.key_columns) > 1:
             raise NotImplementedError("Composite key not supported yet!")
         if len(table2.key_columns) > 1:
@@ -185,18 +202,18 @@ class TableDiffer(ThreadBase, ABC):
 
         ti = ThreadedYielder(self.max_threadpool_size)
         # Bisect (split) the table into segments, and diff them recursively.
-        ti.submit(self._bisect_and_diff_segments, ti, table1, table2)
+        ti.submit(self._bisect_and_diff_segments, ti, table1, table2, info_tree)
 
         # Now we check for the second min-max, to diff the portions we "missed".
         min_key2, max_key2 = self._parse_key_range_result(key_type, next(key_ranges))
 
         if min_key2 < min_key1:
             pre_tables = [t.new(min_key=min_key2, max_key=min_key1) for t in (table1, table2)]
-            ti.submit(self._bisect_and_diff_segments, ti, *pre_tables)
+            ti.submit(self._bisect_and_diff_segments, ti, *pre_tables, info_tree)
 
         if max_key2 > max_key1:
             post_tables = [t.new(min_key=max_key1, max_key=max_key2) for t in (table1, table2)]
-            ti.submit(self._bisect_and_diff_segments, ti, *post_tables)
+            ti.submit(self._bisect_and_diff_segments, ti, *post_tables, info_tree)
 
         return ti
 
@@ -210,7 +227,13 @@ class TableDiffer(ThreadBase, ABC):
             raise type(e)(f"Cannot apply {key_type} to '{mn}', '{mx}'.") from e
 
     def _bisect_and_diff_segments(
-        self, ti: ThreadedYielder, table1: TableSegment, table2: TableSegment, level=0, max_rows=None
+        self,
+        ti: ThreadedYielder,
+        table1: TableSegment,
+        table2: TableSegment,
+        info_tree: InfoTree,
+        level=0,
+        max_rows=None,
     ):
         assert table1.is_bounded and table2.is_bounded
 
@@ -224,4 +247,7 @@ class TableDiffer(ThreadBase, ABC):
 
         # Recursively compare each pair of corresponding segments between table1 and table2
         for i, (t1, t2) in enumerate(safezip(segmented1, segmented2)):
-            ti.submit(self._diff_segments, ti, t1, t2, max_rows, level + 1, i + 1, len(segmented1), priority=level)
+            info_node = info_tree.add_node(t1, t2, max_rows=max_rows)
+            ti.submit(
+                self._diff_segments, ti, t1, t2, info_node, max_rows, level + 1, i + 1, len(segmented1), priority=level
+            )

@@ -116,12 +116,15 @@ class TestJoindiff(TestPerDatabase):
             ]
         )
 
-        diff = list(self.differ.diff_tables(self.table, self.table2))
+        diff_res = self.differ.diff_tables(self.table, self.table2)
+        info = diff_res.info_tree.info
+        diff = list(diff_res)
+
         expected_row = ("2", time + ".000000")
         expected = [("-", expected_row)]
         self.assertEqual(expected, diff)
-        self.assertEqual(2, self.differ.stats["table1_count"])
-        self.assertEqual(1, self.differ.stats["table2_count"])
+        self.assertEqual(2, info.rowcounts[1])
+        self.assertEqual(1, info.rowcounts[2])
         # self.assertEqual(2, self.differ.stats["table1_max_id"])
         # self.assertEqual(1, self.differ.stats["table2_min_id"])
 
@@ -177,11 +180,13 @@ class TestJoindiff(TestPerDatabase):
             ]
         )
 
-        diff = list(self.differ.diff_tables(self.table, self.table2))
+        diff_res = self.differ.diff_tables(self.table, self.table2)
+        info = diff_res.info_tree.info
+        diff = list(diff_res)
         expected = [("-", ("5", time + ".000000"))]
         self.assertEqual(expected, diff)
-        self.assertEqual(5, self.differ.stats["table1_count"])
-        self.assertEqual(4, self.differ.stats["table2_count"])
+        self.assertEqual(5, info.rowcounts[1])
+        self.assertEqual(4, info.rowcounts[2])
 
     def test_return_empty_array_when_same(self):
         time = "2022-01-01 00:00:00"

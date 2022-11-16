@@ -111,7 +111,7 @@ class Dialect(BaseDialect):
 
 class DuckDB(Database):
     dialect = Dialect()
-    SUPPORTS_UNIQUE_CONSTAINT = True
+    SUPPORTS_UNIQUE_CONSTAINT = False  # XXX Temporary, until implemented
     default_schema = "main"
     CONNECT_URI_HELP = "duckdb://<database>@<dbpath>"
     CONNECT_URI_PARAMS = ["database", "dbpath"]
