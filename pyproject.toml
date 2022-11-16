@@ -36,7 +36,7 @@ cryptography = {version="*", optional=true}
 trino = {version="^0.314.0", optional=true}
 presto-python-client = {version="*", optional=true}
 clickhouse-driver = {version="*", optional=true}
-duckdb = "^0.6.0"
+duckdb = {version="^0.6.0", optional=true}
 
 [tool.poetry.dev-dependencies]
 arrow = "^1.2.3"
@@ -51,6 +51,7 @@ trino = "^0.314.0"
 presto-python-client = "*"
 clickhouse-driver = "*"
 vertica-python = "*"
+duckdb = "^0.6.0"
 # databricks-sql-connector = "*"
 
 [tool.poetry.extras]
@@ -65,6 +66,7 @@ oracle = ["cx_Oracle"]
 trino = ["trino"]
 clickhouse = ["clickhouse-driver"]
 vertica = ["vertica-python"]
+duckdb = ["duckdb"]
 
 [build-system]
 requires = ["poetry-core>=1.0.0"]

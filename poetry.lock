@@ -619,6 +619,7 @@ testing = ["flake8 (<5)", "func-timeout", "jaraco.functools", "jaraco.itertools"
 
 [extras]
 clickhouse = ["clickhouse-driver"]
+duckdb = ["duckdb"]
 mysql = ["mysql-connector-python"]
 oracle = []
 postgresql = ["psycopg2"]
@@ -631,7 +632,7 @@ vertica = []
 [metadata]
 lock-version = "1.1"
 python-versions = "^3.7"
-content-hash = "28e4b420d1c6da3d84d9ac7d44074e6c65e875266718b0cc281f6357ee1ac760"
+content-hash = "90a70ac66136d6cab50e220375f676cfcd22c033bbfab5be7ba2b53f589e0b34"
 
 [metadata.files]
 arrow = [
