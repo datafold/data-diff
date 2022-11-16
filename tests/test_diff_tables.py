@@ -308,13 +308,13 @@ class TestDiffTables(TestPerDatabase):
         )
 
         differ = HashDiffer()
-        diff = list(differ.diff_tables(self.table, self.table2))
-        expected = [
+        diff = set(differ.diff_tables(self.table, self.table2))
+        expected = {
             ("-", ("2", time2 + ".000000")),
             ("+", ("2", time + ".000000")),
             ("-", ("4", time2 + ".000000")),
             ("+", ("4", time + ".000000")),
-        ]
+        }
         self.assertEqual(expected, diff)
 
 

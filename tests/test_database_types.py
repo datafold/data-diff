@@ -47,7 +47,8 @@ def init_conns():
         CONNS[db.PostgreSQL].query("SET TIME ZONE 'UTC';")
     if db.DuckDB in CONNS:
         CONNS[db.DuckDB].query("SET GLOBAL TimeZone='UTC'")
-    oracle.SESSION_TIME_ZONE = postgresql.SESSION_TIME_ZONE = "UTC"
+    if db.Oracle in CONNS:
+        CONNS[db.Oracle].query("ALTER SESSION SET TIME_ZONE = 'UTC'")
 
 
 DATABASE_TYPES = {
