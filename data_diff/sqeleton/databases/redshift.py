@@ -1,6 +1,6 @@
 from typing import List
 from .database_types import Float, TemporalType, FractionalType, DbPath, AbstractMixin_NormalizeValue, AbstractMixin_MD5
-from .postgresql import PostgreSQL, MD5_HEXDIGITS, CHECKSUM_HEXDIGITS, TIMESTAMP_PRECISION_POS, PostgresqlDialect
+from .postgresql import PostgreSQL, MD5_HEXDIGITS, CHECKSUM_HEXDIGITS, TIMESTAMP_PRECISION_POS, PostgresqlDialect, Mixin_NormalizeValue
 
 
 class Mixin_MD5(AbstractMixin_MD5):
@@ -8,7 +8,7 @@ class Mixin_MD5(AbstractMixin_MD5):
         return f"strtol(substring(md5({s}), {1+MD5_HEXDIGITS-CHECKSUM_HEXDIGITS}), 16)::decimal(38)"
 
 
-class Mixin_NormalizeValue(AbstractMixin_NormalizeValue):
+class Mixin_NormalizeValue(Mixin_NormalizeValue):
     def normalize_timestamp(self, value: str, coltype: TemporalType) -> str:
         if coltype.rounds:
             timestamp = f"{value}::timestamp(6)"
