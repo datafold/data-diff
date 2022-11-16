@@ -13,10 +13,10 @@ from uuid import uuid4
 
 import toml
 
-TRACK_URL = "https://api.perfalytics.com/track"
+TRACK_URL = "https://hosted.rudderlabs.com"
 START_EVENT = "os_diff_run_start"
 END_EVENT = "os_diff_run_end"
-TOKEN = "ccb8c3a6-3b6f-445c-ad67-994efa7bd020"
+TOKEN = "2HdaLmOFIvFfsvIdkAyUWJ1mYgy"
 TIMEOUT = 8
 
 DEFAULT_PROFILE = os.path.expanduser("~/.datadiff.toml")
