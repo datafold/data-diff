@@ -16,7 +16,7 @@ import toml
 TRACK_URL = "https://hosted.rudderlabs.com/v1/track"
 START_EVENT = "os_diff_run_start"
 END_EVENT = "os_diff_run_end"
-TOKEN = "2HdaLmOFIvFfsvIdkAyUWJ1mYgy" ### change to production token before merging!
+TOKEN = "2HgtM4Hcq9BmeiCqNYhz7O9tkjM"
 TIMEOUT = 8
 
 DEFAULT_PROFILE = os.path.expanduser("~/.datadiff.toml")
@@ -106,7 +106,7 @@ def send_event_json(event_json):
 
     headers = {
         'Content-Type': 'application/json',
-        'Authorization': 'Basic MkhkYUxtT0ZJdkZmc3ZJZGtBeVVXSjFtWWd5Og=='
+        'Authorization': 'Basic MkhndE00SGNxOUJtZWlDcU5ZaHo3Tzl0a2pNOg=='
     }
     data = json.dumps(event_json).encode()
     try:
