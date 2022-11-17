@@ -8,6 +8,7 @@ from concurrent.futures import ThreadPoolExecutor
 import threading
 from abc import abstractmethod
 from uuid import UUID
+import decimal
 
 from ..utils import is_uuid, safezip
 from ..queries import Expr, Compiler, table, Select, SKIP, Explain
@@ -133,10 +134,13 @@ class BaseDialect(AbstractDialect):
         elif isinstance(v, str):
             return f"'{v}'"
         elif isinstance(v, datetime):
-            # TODO use self.timestamp_value
-            return f"timestamp '{v}'"
+            return self.timestamp_value(v)
         elif isinstance(v, UUID):
             return f"'{v}'"
+        elif isinstance(v, decimal.Decimal):
+            return str(v)
+        elif isinstance(v, bytearray):
+            return f"'{v.decode()}'"
         return repr(v)
 
     def constant_values(self, rows) -> str:

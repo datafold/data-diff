@@ -86,4 +86,13 @@ def coalesce(*exprs):
     return Func("COALESCE", exprs)
 
 
+def insert_rows_in_batches(db, table: TablePath, rows, *, columns=None, batch_size=1024 * 8):
+    assert batch_size > 0
+    rows = list(rows)
+
+    while rows:
+        batch, rows = rows[:batch_size], rows[batch_size:]
+        db.query(table.insert_rows(batch, columns=columns))
+
+
 commit = Commit()

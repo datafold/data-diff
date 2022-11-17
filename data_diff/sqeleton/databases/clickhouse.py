@@ -8,6 +8,7 @@ from .base import (
     ThreadedDatabase,
     import_helper,
     ConnectError,
+    DbTime,
 )
 from .database_types import (
     ColType,
@@ -145,6 +146,10 @@ class Dialect(BaseDialect):
             type_repr = "DateTime64"
 
         return self.TYPE_CLASSES.get(type_repr)
+
+    # def timestamp_value(self, t: DbTime) -> str:
+    #     # return f"'{t}'"
+    #     return f"'{str(t)[:19]}'"
 
 
 class Clickhouse(ThreadedDatabase):
