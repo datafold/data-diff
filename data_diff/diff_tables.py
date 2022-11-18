@@ -185,7 +185,8 @@ class TableDiffer(ThreadBase, ABC):
             raise NotImplementedError(f"Cannot use column of type {key_type} as a key")
         if not isinstance(key_type2, IKey):
             raise NotImplementedError(f"Cannot use column of type {key_type2} as a key")
-        assert key_type.python_type is key_type2.python_type
+        if key_type.python_type is not key_type2.python_type:
+            raise TypeError(f"Incompatible key types: {key_type} and {key_type2}")
 
         # Query min/max values
         key_ranges = self._threaded_call_as_completed("query_key_range", [table1, table2])
