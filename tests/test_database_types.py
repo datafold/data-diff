@@ -619,17 +619,25 @@ def _create_indexes(conn, table):
             raise (err)
 
 
-def _create_table_with_indexes(conn, table, type):
-    if isinstance(conn, db.Oracle):
-        already_exists = conn.query(f"SELECT COUNT(*) from tab where tname='{table.upper()}'", int) > 0
-        if not already_exists:
-            conn.query(f"CREATE TABLE {table}(id int, col {type})", None)
-    elif isinstance(conn, db.Clickhouse):
-        conn.query(f"CREATE TABLE {table}(id int, col {type}) engine = Memory;", None)
-    else:
-        conn.query(f"CREATE TABLE IF NOT EXISTS {table}(id int, col {type})", None)
+def _create_table_with_indexes(conn, table_name, type_):
+    tbl = table(
+        table_name,
+        schema={
+            "id": int,
+            "col": type_,
+        },
+    )
 
-    _create_indexes(conn, table)
+    if isinstance(conn, db.Oracle):
+        already_exists = conn.query(f"SELECT COUNT(*) from tab where tname='{table_name.upper()}'", int) > 0
+        if not already_exists:
+            conn.query(tbl.create())
+    elif isinstance(conn, db.Clickhouse):
+        conn.query(f"CREATE TABLE {table_name}(id int, col {type_}) engine = Memory;", None)
+    else:
+        conn.query(tbl.create(if_not_exists=True))
+
+    _create_indexes(conn, table_name)
     conn.query(commit)
 
 
@@ -674,7 +682,7 @@ class TestDiffCrossDatabaseTables(unittest.TestCase):
         start = time.monotonic()
         if not BENCHMARK:
             drop_table(src_conn, src_table_path)
-        _create_table_with_indexes(src_conn, src_table, source_type)
+        _create_table_with_indexes(src_conn, src_table_name, source_type)
         _insert_to_table(src_conn, src_table_name, enumerate(sample_values, 1), source_type)
         insertion_source_duration = time.monotonic() - start
 
@@ -688,7 +696,7 @@ class TestDiffCrossDatabaseTables(unittest.TestCase):
         start = time.monotonic()
         if not BENCHMARK:
             drop_table(dst_conn, dst_table_path)
-        _create_table_with_indexes(dst_conn, dst_table, target_type)
+        _create_table_with_indexes(dst_conn, dst_table_name, target_type)
         _insert_to_table(dst_conn, dst_table_name, values_in_source, target_type)
         insertion_target_duration = time.monotonic() - start
 
