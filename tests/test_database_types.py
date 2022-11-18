@@ -18,7 +18,7 @@ from data_diff.databases import postgresql, oracle, duckdb
 from data_diff.query_utils import drop_table
 from data_diff.utils import accumulate
 from data_diff.sqeleton.utils import number_to_human
-from data_diff.sqeleton.queries import table, commit, this
+from data_diff.sqeleton.queries import table, commit, this, Code
 from data_diff.sqeleton.queries.api import insert_rows_in_batches
 from data_diff.hashdiff_tables import HashDiffer, DEFAULT_BISECTION_THRESHOLD
 from data_diff.table_segment import TableSegment
@@ -363,15 +363,15 @@ class PaginatedTable:
     # much memory.
     RECORDS_PER_BATCH = 1000000
 
-    def __init__(self, table, conn):
-        self.table = table
+    def __init__(self, table_path, conn):
+        self.table_path = table_path
         self.conn = conn
 
     def __iter__(self):
         last_id = 0
         while True:
             query = (
-                table(self.table)
+                table(self.table_path)
                 .select(this.id, this.col)
                 .where(this.id > last_id)
                 .order_by(this.id)
@@ -554,8 +554,8 @@ def expand_params(testcase_func, param_num, param):
     return name
 
 
-def _insert_to_table(conn, table_name, values, type):
-    tbl = table(table_name)
+def _insert_to_table(conn, table_path, values, type):
+    tbl = table(table_path)
 
     current_n_rows = conn.query(tbl.count(), int)
     if current_n_rows == N_SAMPLES:
@@ -563,7 +563,7 @@ def _insert_to_table(conn, table_name, values, type):
         return
     elif current_n_rows > 0:
         conn.query(drop_table(table_name))
-        _create_table_with_indexes(conn, table_name, type)
+        _create_table_with_indexes(conn, table_path, type)
 
     # if BENCHMARK and N_SAMPLES > 10_000:
     #     description = f"{conn.name}: {table}"
@@ -585,6 +585,9 @@ def _insert_to_table(conn, table_name, values, type):
         elif type.startswith("Decimal("):
             precision = int(type[8:].rstrip(")").split(",")[1])
             values = [(i, round(sample, precision)) for i, sample in values]
+    elif isinstance(conn, db.BigQuery) and type == "datetime":
+        values = [(i, Code(f"cast(timestamp '{sample}' as datetime)")) for i, sample in values]
+
 
     insert_rows_in_batches(conn, tbl, values, columns=["id", "col"])
     conn.query(commit)
@@ -619,9 +622,11 @@ def _create_indexes(conn, table):
             raise (err)
 
 
-def _create_table_with_indexes(conn, table_name, type_):
+def _create_table_with_indexes(conn, table_path, type_):
+    table_name = ".".join(map(conn.dialect.quote, table_path))
+
     tbl = table(
-        table_name,
+        table_path,
         schema={
             "id": int,
             "col": type_,
@@ -676,17 +681,15 @@ class TestDiffCrossDatabaseTables(unittest.TestCase):
 
         self.src_table_path = src_table_path = src_conn.parse_table_name(src_table_name)
         self.dst_table_path = dst_table_path = dst_conn.parse_table_name(dst_table_name)
-        self.src_table = src_table = ".".join(map(src_conn.dialect.quote, src_table_path))
-        self.dst_table = dst_table = ".".join(map(dst_conn.dialect.quote, dst_table_path))
 
         start = time.monotonic()
         if not BENCHMARK:
             drop_table(src_conn, src_table_path)
-        _create_table_with_indexes(src_conn, src_table_name, source_type)
-        _insert_to_table(src_conn, src_table_name, enumerate(sample_values, 1), source_type)
+        _create_table_with_indexes(src_conn, src_table_path, source_type)
+        _insert_to_table(src_conn, src_table_path, enumerate(sample_values, 1), source_type)
         insertion_source_duration = time.monotonic() - start
 
-        values_in_source = PaginatedTable(src_table_name, src_conn)
+        values_in_source = PaginatedTable(src_table_path, src_conn)
         if source_db is db.Presto or source_db is db.Trino:
             if source_type.startswith("decimal"):
                 values_in_source = ((a, Decimal(b)) for a, b in values_in_source)
@@ -696,8 +699,8 @@ class TestDiffCrossDatabaseTables(unittest.TestCase):
         start = time.monotonic()
         if not BENCHMARK:
             drop_table(dst_conn, dst_table_path)
-        _create_table_with_indexes(dst_conn, dst_table_name, target_type)
-        _insert_to_table(dst_conn, dst_table_name, values_in_source, target_type)
+        _create_table_with_indexes(dst_conn, dst_table_path, target_type)
+        _insert_to_table(dst_conn, dst_table_path, values_in_source, target_type)
         insertion_target_duration = time.monotonic() - start
 
         if type_category == "uuid":
@@ -764,8 +767,8 @@ class TestDiffCrossDatabaseTables(unittest.TestCase):
             "rows": N_SAMPLES,
             "rows_human": number_to_human(N_SAMPLES),
             "name_human": f"{source_db.__name__}/{sanitize(source_type)} <-> {target_db.__name__}/{sanitize(target_type)}",
-            "src_table": src_table[1:-1],  #  remove quotes
-            "target_table": dst_table[1:-1],
+            "src_table": src_table_path,
+            "target_table": dst_table_path,
             "source_type": source_type,
             "target_type": target_type,
             "insertion_source_sec": round(insertion_source_duration, 3),

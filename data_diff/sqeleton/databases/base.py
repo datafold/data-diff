@@ -11,7 +11,7 @@ from uuid import UUID
 import decimal
 
 from ..utils import is_uuid, safezip
-from ..queries import Expr, Compiler, table, Select, SKIP, Explain
+from ..queries import Expr, Compiler, table, Select, SKIP, Explain, Code
 from .database_types import (
     AbstractDatabase,
     AbstractDialect,
@@ -141,6 +141,8 @@ class BaseDialect(AbstractDialect):
             return str(v)
         elif isinstance(v, bytearray):
             return f"'{v.decode()}'"
+        elif isinstance(v, Code):
+            return v.code
         return repr(v)
 
     def constant_values(self, rows) -> str:

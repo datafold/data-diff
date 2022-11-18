@@ -43,6 +43,12 @@ class ExprNode(Compilable):
 
 Expr = Union[ExprNode, str, bool, int, datetime, ArithString, None]
 
+@dataclass
+class Code(ExprNode):
+    code: str
+
+    def compile(self, c: Compiler) -> str:
+        return self.code
 
 def _expr_type(e: Expr) -> type:
     if isinstance(e, ExprNode):
