@@ -18,7 +18,8 @@ from data_diff.databases import postgresql, oracle, duckdb
 from data_diff.query_utils import drop_table
 from data_diff.utils import accumulate
 from data_diff.sqeleton.utils import number_to_human
-from data_diff.sqeleton.queries import table, commit
+from data_diff.sqeleton.queries import table, commit, this, Code
+from data_diff.sqeleton.queries.api import insert_rows_in_batches
 from data_diff.hashdiff_tables import HashDiffer, DEFAULT_BISECTION_THRESHOLD
 from data_diff.table_segment import TableSegment
 from .common import (
@@ -362,32 +363,25 @@ class PaginatedTable:
     # much memory.
     RECORDS_PER_BATCH = 1000000
 
-    def __init__(self, table, conn):
-        self.table = table
+    def __init__(self, table_path, conn):
+        self.table_path = table_path
         self.conn = conn
 
     def __iter__(self):
-        iter = PaginatedTable(self.table, self.conn)
-        iter.last_id = 0
-        iter.values = []
-        iter.value_index = 0
-        return iter
-
-    def __next__(self) -> str:
-        if self.value_index == len(self.values):  #  end of current batch
-            query = f"SELECT id, col FROM {self.table} WHERE id > {self.last_id} ORDER BY id ASC LIMIT {self.RECORDS_PER_BATCH}"
-            if isinstance(self.conn, db.Oracle):
-                query = f"SELECT id, col FROM {self.table} WHERE id > {self.last_id} ORDER BY id ASC OFFSET 0 ROWS FETCH NEXT {self.RECORDS_PER_BATCH} ROWS ONLY"
-
-            self.values = self.conn.query(query, list)
-            if len(self.values) == 0:  #  we must be done!
-                raise StopIteration
-            self.last_id = self.values[-1][0]
-            self.value_index = 0
-
-        this_value = self.values[self.value_index]
-        self.value_index += 1
-        return this_value
+        last_id = 0
+        while True:
+            query = (
+                table(self.table_path)
+                .select(this.id, this.col)
+                .where(this.id > last_id)
+                .order_by(this.id)
+                .limit(self.RECORDS_PER_BATCH)
+            )
+            rows = self.conn.query(query, list)
+            if not rows:
+                break
+            last_id = rows[-1][0]
+            yield from rows
 
 
 class DateTimeFaker:
@@ -560,90 +554,42 @@ def expand_params(testcase_func, param_num, param):
     return name
 
 
-def _insert_to_table(conn, table, values, type):
-    current_n_rows = conn.query(f"SELECT COUNT(*) FROM {table}", int)
+def _insert_to_table(conn, table_path, values, type):
+    tbl = table(table_path)
+
+    current_n_rows = conn.query(tbl.count(), int)
     if current_n_rows == N_SAMPLES:
         assert BENCHMARK, "Table should've been deleted, or we should be in BENCHMARK mode"
         return
     elif current_n_rows > 0:
-        conn.query(drop_table(table))
-        _create_table_with_indexes(conn, table, type)
+        conn.query(drop_table(table_name))
+        _create_table_with_indexes(conn, table_path, type)
 
-    if BENCHMARK and N_SAMPLES > 10_000:
-        description = f"{conn.name}: {table}"
-        values = rich.progress.track(values, total=N_SAMPLES, description=description)
+    # if BENCHMARK and N_SAMPLES > 10_000:
+    #     description = f"{conn.name}: {table}"
+    #     values = rich.progress.track(values, total=N_SAMPLES, description=description)
 
-    default_insertion_query = f"INSERT INTO {table} (id, col) VALUES "
-    if isinstance(conn, db.Oracle):
-        default_insertion_query = f"INSERT INTO {table} (id, col)"
+    if type == "boolean":
+        values = [(i, bool(sample)) for i, sample in values]
+    elif re.search(r"(time zone|tz)", type):
+        values = [(i, sample.replace(tzinfo=timezone.utc)) for i, sample in values]
 
-    batch_size = 8000
-    if isinstance(conn, db.BigQuery):
-        batch_size = 1000
+    if isinstance(conn, db.Clickhouse):
+        if type.startswith("DateTime64"):
+            values = [(i, f"{sample.replace(tzinfo=None)}") for i, sample in values]
 
-    insertion_query = default_insertion_query
-    selects = []
-    for j, sample in values:
-        if re.search(r"(time zone|tz)", type):
-            sample = sample.replace(tzinfo=timezone.utc)
+        elif type == "DateTime":
+            # Clickhouse's DateTime does not allow to store micro/milli/nano seconds
+            values = [(i, str(sample)[:19]) for i, sample in values]
 
-        if isinstance(sample, bytearray):
-            value = f"'{sample.decode()}'"
+        elif type.startswith("Decimal("):
+            precision = int(type[8:].rstrip(")").split(",")[1])
+            values = [(i, round(sample, precision)) for i, sample in values]
+    elif isinstance(conn, db.BigQuery) and type == "datetime":
+        values = [(i, Code(f"cast(timestamp '{sample}' as datetime)")) for i, sample in values]
 
-        elif type == "boolean":
-            value = str(bool(sample))
 
-        elif isinstance(conn, db.Clickhouse):
-            if type.startswith("DateTime64"):
-                value = f"'{sample.replace(tzinfo=None)}'"
-
-            elif type == "DateTime":
-                sample = sample.replace(tzinfo=None)
-                # Clickhouse's DateTime does not allow to store micro/milli/nano seconds
-                value = f"'{str(sample)[:19]}'"
-
-            elif type.startswith("Decimal"):
-                precision = int(type[8:].rstrip(")").split(",")[1])
-                value = round(sample, precision)
-
-            else:
-                value = f"'{sample}'"
-
-        elif isinstance(sample, (float, Decimal, int)):
-            value = str(sample)
-        elif isinstance(sample, datetime) and isinstance(conn, (db.Presto, db.Oracle, db.Trino)):
-            value = f"timestamp '{sample}'"
-        elif isinstance(sample, datetime) and isinstance(conn, db.BigQuery) and type == "datetime":
-            value = f"cast(timestamp '{sample}' as datetime)"
-
-        else:
-            value = f"'{sample}'"
-
-        if isinstance(conn, db.Oracle):
-            selects.append(f"SELECT {j}, {value} FROM dual")
-        else:
-            insertion_query += f"({j}, {value}),"
-
-        # Some databases want small batch sizes...
-        # Need to also insert on the last row, might not divide cleanly!
-        if j % batch_size == 0 or j == N_SAMPLES:
-            if isinstance(conn, db.Oracle):
-                insertion_query += " UNION ALL ".join(selects)
-                conn.query(insertion_query, None)
-                selects = []
-                insertion_query = default_insertion_query
-            else:
-                conn.query(insertion_query[0:-1], None)
-                insertion_query = default_insertion_query
-
-    if insertion_query != default_insertion_query:
-        # Very bad, but this whole function needs to go
-        if isinstance(conn, db.Oracle):
-            insertion_query += " UNION ALL ".join(selects)
-            conn.query(insertion_query, None)
-        else:
-            conn.query(insertion_query[0:-1], None)
-
+    insert_rows_in_batches(conn, tbl, values, columns=["id", "col"])
     conn.query(commit)
 
 
@@ -676,17 +622,27 @@ def _create_indexes(conn, table):
             raise (err)
 
 
-def _create_table_with_indexes(conn, table, type):
-    if isinstance(conn, db.Oracle):
-        already_exists = conn.query(f"SELECT COUNT(*) from tab where tname='{table.upper()}'", int) > 0
-        if not already_exists:
-            conn.query(f"CREATE TABLE {table}(id int, col {type})", None)
-    elif isinstance(conn, db.Clickhouse):
-        conn.query(f"CREATE TABLE {table}(id int, col {type}) engine = Memory;", None)
-    else:
-        conn.query(f"CREATE TABLE IF NOT EXISTS {table}(id int, col {type})", None)
+def _create_table_with_indexes(conn, table_path, type_):
+    table_name = ".".join(map(conn.dialect.quote, table_path))
 
-    _create_indexes(conn, table)
+    tbl = table(
+        table_path,
+        schema={
+            "id": int,
+            "col": type_,
+        },
+    )
+
+    if isinstance(conn, db.Oracle):
+        already_exists = conn.query(f"SELECT COUNT(*) from tab where tname='{table_name.upper()}'", int) > 0
+        if not already_exists:
+            conn.query(tbl.create())
+    elif isinstance(conn, db.Clickhouse):
+        conn.query(f"CREATE TABLE {table_name}(id int, col {type_}) engine = Memory;", None)
+    else:
+        conn.query(tbl.create(if_not_exists=True))
+
+    _create_indexes(conn, table_name)
     conn.query(commit)
 
 
@@ -725,17 +681,15 @@ class TestDiffCrossDatabaseTables(unittest.TestCase):
 
         self.src_table_path = src_table_path = src_conn.parse_table_name(src_table_name)
         self.dst_table_path = dst_table_path = dst_conn.parse_table_name(dst_table_name)
-        self.src_table = src_table = ".".join(map(src_conn.dialect.quote, src_table_path))
-        self.dst_table = dst_table = ".".join(map(dst_conn.dialect.quote, dst_table_path))
 
         start = time.monotonic()
         if not BENCHMARK:
             drop_table(src_conn, src_table_path)
-        _create_table_with_indexes(src_conn, src_table, source_type)
-        _insert_to_table(src_conn, src_table, enumerate(sample_values, 1), source_type)
+        _create_table_with_indexes(src_conn, src_table_path, source_type)
+        _insert_to_table(src_conn, src_table_path, enumerate(sample_values, 1), source_type)
         insertion_source_duration = time.monotonic() - start
 
-        values_in_source = PaginatedTable(src_table, src_conn)
+        values_in_source = PaginatedTable(src_table_path, src_conn)
         if source_db is db.Presto or source_db is db.Trino:
             if source_type.startswith("decimal"):
                 values_in_source = ((a, Decimal(b)) for a, b in values_in_source)
@@ -745,8 +699,8 @@ class TestDiffCrossDatabaseTables(unittest.TestCase):
         start = time.monotonic()
         if not BENCHMARK:
             drop_table(dst_conn, dst_table_path)
-        _create_table_with_indexes(dst_conn, dst_table, target_type)
-        _insert_to_table(dst_conn, dst_table, values_in_source, target_type)
+        _create_table_with_indexes(dst_conn, dst_table_path, target_type)
+        _insert_to_table(dst_conn, dst_table_path, values_in_source, target_type)
         insertion_target_duration = time.monotonic() - start
 
         if type_category == "uuid":
@@ -813,8 +767,8 @@ class TestDiffCrossDatabaseTables(unittest.TestCase):
             "rows": N_SAMPLES,
             "rows_human": number_to_human(N_SAMPLES),
             "name_human": f"{source_db.__name__}/{sanitize(source_type)} <-> {target_db.__name__}/{sanitize(target_type)}",
-            "src_table": src_table[1:-1],  #  remove quotes
-            "target_table": dst_table[1:-1],
+            "src_table": src_table_path,
+            "target_table": dst_table_path,
             "source_type": source_type,
             "target_type": target_type,
             "insertion_source_sec": round(insertion_source_duration, 3),

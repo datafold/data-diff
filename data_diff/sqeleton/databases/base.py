@@ -8,9 +8,10 @@ from concurrent.futures import ThreadPoolExecutor
 import threading
 from abc import abstractmethod
 from uuid import UUID
+import decimal
 
 from ..utils import is_uuid, safezip
-from ..queries import Expr, Compiler, table, Select, SKIP, Explain
+from ..queries import Expr, Compiler, table, Select, SKIP, Explain, Code
 from .database_types import (
     AbstractDatabase,
     AbstractDialect,
@@ -133,10 +134,15 @@ class BaseDialect(AbstractDialect):
         elif isinstance(v, str):
             return f"'{v}'"
         elif isinstance(v, datetime):
-            # TODO use self.timestamp_value
-            return f"timestamp '{v}'"
+            return self.timestamp_value(v)
         elif isinstance(v, UUID):
             return f"'{v}'"
+        elif isinstance(v, decimal.Decimal):
+            return str(v)
+        elif isinstance(v, bytearray):
+            return f"'{v.decode()}'"
+        elif isinstance(v, Code):
+            return v.code
         return repr(v)
 
     def constant_values(self, rows) -> str:
@@ -334,7 +340,7 @@ class Database(AbstractDatabase):
         # Return a dict of form {name: type} after normalization
         return col_dict
 
-    def _refine_coltypes(self, table_path: DbPath, col_dict: Dict[str, ColType], where: str = None, sample_size=32):
+    def _refine_coltypes(self, table_path: DbPath, col_dict: Dict[str, ColType], where: str = None, sample_size=64):
         """Refine the types in the column dict, by querying the database for a sample of their values
 
         'where' restricts the rows to be sampled.

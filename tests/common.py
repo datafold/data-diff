@@ -13,6 +13,7 @@ from data_diff import databases as db
 from data_diff import tracking
 from data_diff import connect
 from data_diff.sqeleton.queries.api import table
+from data_diff.sqeleton.databases import Database
 from data_diff.query_utils import drop_table
 
 tracking.disable_tracking()
@@ -85,7 +86,7 @@ CONN_STRINGS = {
 _database_instances = {}
 
 
-def get_conn(cls: type):
+def get_conn(cls: type) -> Database:
     if cls not in _database_instances:
         _database_instances[cls] = connect(CONN_STRINGS[cls], N_THREADS)
     return _database_instances[cls]
