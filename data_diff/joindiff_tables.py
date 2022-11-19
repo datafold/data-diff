@@ -216,6 +216,7 @@ class JoinDiffer(TableDiffer):
 
             unvalidated = list(set(key_columns) - set(unique))
             if unvalidated:
+                logger.info(f"Validating that the are no duplicate keys in columns: {unvalidated}")
                 # Validate that there are no duplicate keys
                 self.stats["validated_unique_keys"] = self.stats.get("validated_unique_keys", []) + [unvalidated]
                 q = t.select(total=Count(), total_distinct=Count(Concat(this[unvalidated]), distinct=True))
@@ -237,7 +238,7 @@ class JoinDiffer(TableDiffer):
                 raise ValueError("NULL values in one or more primary keys")
 
     def _collect_stats(self, i, table_seg: TableSegment, info_tree: InfoTree):
-        logger.info(f"Collecting stats for table #{i}")
+        logger.debug(f"Collecting stats for table #{i}")
         db = table_seg.database
 
         # Metrics
@@ -305,7 +306,7 @@ class JoinDiffer(TableDiffer):
         return diff_rows, a_cols, b_cols, is_diff_cols, all_rows
 
     def _count_diff_per_column(self, db, diff_rows, cols, is_diff_cols):
-        logger.info("Counting differences per column")
+        logger.debug("Counting differences per column")
         is_diff_cols_counts = db.query(diff_rows.select(sum_(this[c]) for c in is_diff_cols), tuple)
         diff_counts = {}
         for name, count in safezip(cols, is_diff_cols_counts):
@@ -319,7 +320,7 @@ class JoinDiffer(TableDiffer):
             exclusive_rows_query = diff_rows.where(this.is_exclusive_a | this.is_exclusive_b)
 
         if not self.sample_exclusive_rows:
-            logger.info("Counting exclusive rows")
+            logger.debug("Counting exclusive rows")
             self.stats["exclusive_count"] = db.query(exclusive_rows_query.count(), int)
             return
 
