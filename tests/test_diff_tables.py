@@ -731,7 +731,10 @@ class TestTableTableEmpty(TestPerDatabase):
 
 class TestInfoTree(unittest.TestCase):
     def test_info_tree_root(self):
-        self.ddb = get_conn(db.DuckDB)
+        try:
+            self.db = get_conn(db.DuckDB)
+        except KeyError:    # ddb not defined
+            self.db = get_conn(db.MySQL)
 
         table_suffix = random_table_suffix()
         self.table_src_name = f"src{table_suffix}"
@@ -750,10 +753,10 @@ class TestInfoTree(unittest.TestCase):
             self.table2.insert_rows([i] for i in range(2000)),
         ]
         for q in queries:
-            self.ddb.query(q)
+            self.db.query(q)
 
-        ts1 = TableSegment(self.ddb, self.table1.path, ("id",))
-        ts2 = TableSegment(self.ddb, self.table2.path, ("id",))
+        ts1 = TableSegment(self.db, self.table1.path, ("id",))
+        ts2 = TableSegment(self.db, self.table2.path, ("id",))
 
         for differ in (HashDiffer(bisection_threshold=64), JoinDiffer(True)):
             diff_res = differ.diff_tables(ts1, ts2)
