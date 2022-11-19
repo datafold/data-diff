@@ -132,8 +132,9 @@ class TableDiffer(ThreadBase, ABC):
 
             if is_tracking_enabled():
                 runtime = time.monotonic() - start
-                table1_count = info_tree.info.rowcounts[1]
-                table2_count = info_tree.info.rowcounts[2]
+                rowcounts = info_tree.info.rowcounts
+                table1_count = rowcounts[1] if rowcounts else None
+                table2_count = rowcounts[2] if rowcounts else None
                 diff_count = info_tree.info.diff_count
                 err_message = truncate_error(repr(error))
                 event_json = create_end_event_json(

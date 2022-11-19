@@ -45,14 +45,25 @@ def _get_schema(pair):
     return db.query_table_schema(table_path)
 
 
-def diff_schemas(schema1, schema2, columns):
+def diff_schemas(table1, table2, schema1, schema2, columns):
     logging.info("Diffing schemas...")
     attrs = "name", "type", "datetime_precision", "numeric_precision", "numeric_scale"
     for c in columns:
         if c is None:  # Skip for convenience
             continue
         diffs = []
-        for attr, v1, v2 in safezip(attrs, schema1[c], schema2[c]):
+
+        if c not in schema1:
+            cols = ', '.join(schema1)
+            raise ValueError(f"Column '{c}' not found in table 1, named '{table1}'. Columns: {cols}")
+        if c not in schema2:
+            cols = ', '.join(schema1)
+            raise ValueError(f"Column '{c}' not found in table 2, named '{table2}'. Columns: {cols}")
+
+        col1 = schema1[c]
+        col2 = schema2[c]
+
+        for attr, v1, v2 in safezip(attrs, col1, col2):
             if v1 != v2:
                 diffs.append(f"{attr}:({v1} != {v2})")
         if diffs:
@@ -197,7 +208,13 @@ def main(conf, run, **kw):
     if kw["algorithm"] == Algorithm.AUTO:
         kw["algorithm"] = Algorithm.JOINDIFF if indb_syntax else Algorithm.HASHDIFF
 
-    return _main(**kw)
+    try:
+        return _main(**kw)
+    except Exception as e:
+        logging.error(e)
+        if kw["debug"]:
+            raise
+
 
 
 def _main(
@@ -357,6 +374,8 @@ def _main(
 
     if db1 is db2:
         diff_schemas(
+            table_names[0],
+            table_names[1],
             schema1,
             schema2,
             (
