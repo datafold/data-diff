@@ -106,6 +106,11 @@ class Snowflake(Database):
                 encryption_algorithm=serialization.NoEncryption(),
             )
 
+        region = kw.get('region')
+        # For us-west we don't need to pass a region, and if we do, it fails to connect
+        if region == "us-west":
+            kw['region'] = None
+
         self._conn = snowflake.connector.connect(schema=f'"{schema}"', **kw)
 
         self.default_schema = schema
