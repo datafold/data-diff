@@ -144,6 +144,8 @@ class JoinDiffer(TableDiffer):
             else:
                 yield from self._bisect_and_diff_tables(table1, table2, info_tree)
             logger.info("Diffing complete")
+            if self.materialize_to_table:
+                logger.info("Materialized diff to table '%s'.", ".".join(self.materialize_to_table))
 
     def _diff_segments(
         self,
@@ -347,4 +349,3 @@ class JoinDiffer(TableDiffer):
         assert self.materialize_to_table
 
         append_to_table(db, self.materialize_to_table, diff_rows.limit(self.table_write_limit))
-        logger.info("Materialized diff to table '%s'.", ".".join(self.materialize_to_table))
