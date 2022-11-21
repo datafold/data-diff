@@ -3,7 +3,7 @@ import unittest
 import arrow
 import subprocess
 import sys
-from datetime import datetime
+from datetime import datetime, timedelta
 
 from data_diff.databases import MySQL
 from data_diff.sqeleton.queries import table, commit
@@ -41,23 +41,22 @@ class TestCLI(unittest.TestCase):
         src_table = table(table_src_name, schema={"id": int, "datetime": datetime, "text_comment": str})
         self.conn.query(src_table.create())
         self.conn.query("SET @@session.time_zone='+00:00'")
-        db_time = self.conn.query("select now()", datetime)
-        self.now = now = arrow.get(db_time)
+        now = self.conn.query("select now()", datetime)
 
         rows = [
             (now, "now"),
-            (self.now.shift(seconds=-10), "a"),
-            (self.now.shift(seconds=-7), "b"),
-            (self.now.shift(seconds=-6), "c"),
+            (now - timedelta(seconds=10), "a"),
+            (now - timedelta(seconds=7), "b"),
+            (now - timedelta(seconds=6), "c"),
         ]
 
-        self.conn.query(src_table.insert_rows((i, ts.datetime, s) for i, (ts, s) in enumerate(rows)))
+        self.conn.query(src_table.insert_rows((i, ts, s) for i, (ts, s) in enumerate(rows)))
         _commit(self.conn)
 
         self.conn.query(self.table_dst.create(self.table_src))
         _commit(self.conn)
 
-        self.conn.query(src_table.insert_row(len(rows), self.now.shift(seconds=-3).datetime, "3 seconds ago"))
+        self.conn.query(src_table.insert_row(len(rows), now - timedelta(seconds=3), "3 seconds ago"))
         _commit(self.conn)
 
     def tearDown(self) -> None:

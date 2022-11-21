@@ -13,6 +13,7 @@ from data_diff import databases as db
 from data_diff import tracking
 from data_diff import connect
 from data_diff.sqeleton.queries import table
+from data_diff.table_segment import TableSegment
 from data_diff.sqeleton.databases import Database
 from data_diff.query_utils import drop_table
 
@@ -86,10 +87,13 @@ CONN_STRINGS = {
 _database_instances = {}
 
 
-def get_conn(cls: type) -> Database:
-    if cls not in _database_instances:
-        _database_instances[cls] = connect(CONN_STRINGS[cls], N_THREADS)
-    return _database_instances[cls]
+def get_conn(cls: type, shared: bool =True) -> Database:
+    if shared:
+        if cls not in _database_instances:
+            _database_instances[cls] = get_conn(cls, shared=False)
+        return _database_instances[cls]
+
+    return connect(CONN_STRINGS[cls], N_THREADS)
 
 
 def _print_used_dbs():
@@ -134,11 +138,12 @@ class DiffTestCase(unittest.TestCase):
     db_cls = None
     src_schema = None
     dst_schema = None
+    shared_connection = True
 
     def setUp(self):
         assert self.db_cls, self.db_cls
 
-        self.connection = get_conn(self.db_cls)
+        self.connection = get_conn(self.db_cls, self.shared_connection)
 
         table_suffix = random_table_suffix()
         self.table_src_name = f"src{table_suffix}"
@@ -150,11 +155,11 @@ class DiffTestCase(unittest.TestCase):
         drop_table(self.connection, self.table_src_path)
         drop_table(self.connection, self.table_dst_path)
 
+        self.src_table = table(self.table_src_path, schema=self.src_schema)
+        self.dst_table = table(self.table_dst_path, schema=self.dst_schema)
         if self.src_schema:
-            self.src_table = table(self.table_src_path, schema=self.src_schema)
             self.connection.query(self.src_table.create())
         if self.dst_schema:
-            self.dst_table = table(self.table_dst_path, schema=self.dst_schema)
             self.connection.query(self.dst_table.create())
 
         return super().setUp()
@@ -175,3 +180,8 @@ def test_each_database_in_list(databases) -> Callable:
         return _parameterized_class_per_conn(databases)(cls)
 
     return _test_per_database
+
+def table_segment(database, table_path, key_columns, *args, **kw):
+    if isinstance(key_columns, str):
+        key_columns = (key_columns,)
+    return TableSegment(database, table_path, key_columns, *args, **kw)

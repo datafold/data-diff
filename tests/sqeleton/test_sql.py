@@ -18,7 +18,7 @@ class TestSQL(unittest.TestCase):
         self.assertEqual("1", self.compiler.compile(1))
 
     def test_compile_table_name(self):
-        self.assertEqual("`marine_mammals`.`walrus`", self.compiler.compile(table("marine_mammals", "walrus")))
+        self.assertEqual("`marine_mammals`.`walrus`", self.compiler.replace(root=False).compile(table("marine_mammals", "walrus")))
 
     def test_compile_select(self):
         expected_sql = "SELECT name FROM `marine_mammals`.`walrus`"
