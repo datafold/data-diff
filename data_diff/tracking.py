@@ -13,10 +13,10 @@ from uuid import uuid4
 
 import toml
 
-TRACK_URL = "https://api.perfalytics.com/track"
+TRACK_URL = "https://hosted.rudderlabs.com/v1/track"
 START_EVENT = "os_diff_run_start"
 END_EVENT = "os_diff_run_end"
-TOKEN = "ccb8c3a6-3b6f-445c-ad67-994efa7bd020"
+TOKEN = "2HgtM4Hcq9BmeiCqNYhz7O9tkjM"
 TIMEOUT = 8
 
 DEFAULT_PROFILE = os.path.expanduser("~/.datadiff.toml")
@@ -104,7 +104,10 @@ def send_event_json(event_json):
     if not g_tracking_enabled:
         raise RuntimeError("Won't send; tracking is disabled!")
 
-    headers = {"Content-Type": "application/json"}
+    headers = {
+        'Content-Type': 'application/json',
+        'Authorization': 'Basic MkhndE00SGNxOUJtZWlDcU5ZaHo3Tzl0a2pNOg=='
+    }
     data = json.dumps(event_json).encode()
     try:
         req = urllib.request.Request(TRACK_URL, data=data, headers=headers)
@@ -113,4 +116,4 @@ def send_event_json(event_json):
             if f.code != 200:
                 raise RuntimeError(res)
     except Exception as e:
-        logging.debug(f"Failed to post to freshpaint: {e}")
+        logging.debug(f"Failed to post to Rudderstack: {e}")
