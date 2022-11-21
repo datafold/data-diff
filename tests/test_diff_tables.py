@@ -68,7 +68,7 @@ class TestDates(TestPerDatabase):
                 src_table.insert_rows((i, ts.datetime, s) for i, (ts, s) in enumerate(rows)),
                 table(self.table_dst_path).create(src_table),
                 commit,
-                src_table.insert_row(len(rows), self.now.shift(seconds=-3).datetime, "3 seconds ago"),
+                src_table.insert_row(len(rows), self.now.shift(seconds=-5).datetime, "5 seconds ago"),
                 commit,
             ]
         )
@@ -93,7 +93,7 @@ class TestDates(TestPerDatabase):
 
     def test_offset(self):
         differ = HashDiffer(bisection_factor=2, bisection_threshold=10)
-        sec1 = self.now.shift(seconds=-2).datetime
+        sec1 = self.now.shift(seconds=-3).datetime
         a = _table_segment(
             self.connection, self.table_src_path, "id", "datetime", max_update=sec1, case_sensitive=False
         )
