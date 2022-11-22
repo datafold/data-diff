@@ -153,7 +153,7 @@ To get a Slack invite - [click here](https://locallyoptimistic.com/community/)
 
 ## How to Contribute
 * Feel free to open an issue or contribute to the project by working on an existing issue.
-* Please read the [contributing guidelines](https://github.com/leoebfolsom/data-diff/blob/master/CONTRIBUTING.md) to get started.
+* Please read the [contributing guidelines](https://github.com/datafold/data-diff/blob/master/CONTRIBUTING.md) to get started.
 
 Big thanks to everyone who contributed so far:
 
