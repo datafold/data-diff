@@ -733,7 +733,7 @@ class TestInfoTree(unittest.TestCase):
     def test_info_tree_root(self):
         try:
             self.db = get_conn(db.DuckDB)
-        except KeyError:    # ddb not defined
+        except KeyError:  # ddb not defined
             self.db = get_conn(db.MySQL)
 
         table_suffix = random_table_suffix()

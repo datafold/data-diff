@@ -1,5 +1,6 @@
 from typing import List
-from ..abcs.database_types import Float, TemporalType, FractionalType, DbPath, AbstractMixin_NormalizeValue, AbstractMixin_MD5
+from ..abcs.database_types import Float, TemporalType, FractionalType, DbPath
+from ..abcs.mixins import AbstractMixin_MD5, AbstractMixin_NormalizeValue
 from .postgresql import (
     PostgreSQL,
     MD5_HEXDIGITS,

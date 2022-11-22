@@ -10,9 +10,8 @@ from ..abcs.database_types import (
     FractionalType,
     TemporalType,
     Boolean,
-    AbstractMixin_MD5,
-    AbstractMixin_NormalizeValue,
 )
+from ..abcs.mixins import AbstractMixin_MD5, AbstractMixin_NormalizeValue
 from .base import BaseDialect, Database, import_helper, parse_table_name, ConnectError, apply_query
 from .base import TIMESTAMP_PRECISION_POS, ThreadLocalInterpreter
 

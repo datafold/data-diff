@@ -588,7 +588,6 @@ def _insert_to_table(conn, table_path, values, type):
     elif isinstance(conn, db.BigQuery) and type == "datetime":
         values = [(i, Code(f"cast(timestamp '{sample}' as datetime)")) for i, sample in values]
 
-
     insert_rows_in_batches(conn, tbl, values, columns=["id", "col"])
     conn.query(commit)
 

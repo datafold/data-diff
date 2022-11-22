@@ -14,7 +14,7 @@ from .diff_tables import Algorithm
 from .hashdiff_tables import HashDiffer, DEFAULT_BISECTION_THRESHOLD, DEFAULT_BISECTION_FACTOR
 from .joindiff_tables import TABLE_WRITE_LIMIT, JoinDiffer
 from .table_segment import TableSegment
-from .sqeleton.databases import create_schema
+from .sqeleton.schema import create_schema
 from .databases import connect
 from .parse_time import parse_time_before_now, UNITS_STR, ParseError
 from .config import apply_config_from_file
@@ -54,10 +54,10 @@ def diff_schemas(table1, table2, schema1, schema2, columns):
         diffs = []
 
         if c not in schema1:
-            cols = ', '.join(schema1)
+            cols = ", ".join(schema1)
             raise ValueError(f"Column '{c}' not found in table 1, named '{table1}'. Columns: {cols}")
         if c not in schema2:
-            cols = ', '.join(schema1)
+            cols = ", ".join(schema1)
             raise ValueError(f"Column '{c}' not found in table 2, named '{table2}'. Columns: {cols}")
 
         col1 = schema1[c]
@@ -214,7 +214,6 @@ def main(conf, run, **kw):
         logging.error(e)
         if kw["debug"]:
             raise
-
 
 
 def _main(

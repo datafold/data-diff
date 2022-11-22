@@ -70,4 +70,3 @@ class Compiler(AbstractCompiler):
 
     def quote(self, s: str):
         return self.dialect.quote(s)
-

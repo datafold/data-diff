@@ -6,9 +6,10 @@ from runtype import dataclass
 
 from ..utils import join_iter, ArithString
 from ..abcs import Compilable
+from ..schema import Schema
 
 from .compiler import Compiler, cv_params
-from .base import SKIP, CompileError, DbPath, Schema, args_as_tuple
+from .base import SKIP, CompileError, DbPath, args_as_tuple
 
 
 class SqeletonError(Exception):
@@ -44,12 +45,14 @@ class ExprNode(Compilable):
 
 Expr = Union[ExprNode, str, bool, int, datetime, ArithString, None]
 
+
 @dataclass
 class Code(ExprNode):
     code: str
 
     def compile(self, c: Compiler) -> str:
         return self.code
+
 
 def _expr_type(e: Expr) -> type:
     if isinstance(e, ExprNode):

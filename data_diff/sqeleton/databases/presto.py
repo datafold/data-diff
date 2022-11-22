@@ -17,9 +17,8 @@ from ..abcs.database_types import (
     ColType_UUID,
     TemporalType,
     Boolean,
-    AbstractMixin_MD5,
-    AbstractMixin_NormalizeValue,
 )
+from ..abcs.mixins import AbstractMixin_MD5, AbstractMixin_NormalizeValue
 from .base import BaseDialect, Database, import_helper, ThreadLocalInterpreter
 from .base import (
     MD5_HEXDIGITS,

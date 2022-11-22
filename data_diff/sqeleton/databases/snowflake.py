@@ -11,9 +11,8 @@ from ..abcs.database_types import (
     TemporalType,
     DbPath,
     Boolean,
-    AbstractMixin_MD5,
-    AbstractMixin_NormalizeValue,
 )
+from ..abcs.mixins import AbstractMixin_MD5, AbstractMixin_NormalizeValue
 from .base import BaseDialect, ConnectError, Database, import_helper, CHECKSUM_MASK, ThreadLocalInterpreter
 
 

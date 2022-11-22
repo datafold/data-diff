@@ -104,10 +104,7 @@ def send_event_json(event_json):
     if not g_tracking_enabled:
         raise RuntimeError("Won't send; tracking is disabled!")
 
-    headers = {
-        'Content-Type': 'application/json',
-        'Authorization': 'Basic MkhndE00SGNxOUJtZWlDcU5ZaHo3Tzl0a2pNOg=='
-    }
+    headers = {"Content-Type": "application/json", "Authorization": "Basic MkhndE00SGNxOUJtZWlDcU5ZaHo3Tzl0a2pNOg=="}
     data = json.dumps(event_json).encode()
     try:
         req = urllib.request.Request(TRACK_URL, data=data, headers=headers)

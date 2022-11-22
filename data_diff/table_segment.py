@@ -5,7 +5,9 @@ import logging
 from runtype import dataclass
 
 from .sqeleton.utils import ArithString, split_space
-from .sqeleton.databases import Database, DbPath, DbKey, DbTime, Schema, create_schema
+from .sqeleton.databases import Database
+from .sqeleton.abcs import DbPath, DbKey, DbTime
+from .sqeleton.schema import Schema, create_schema
 from .sqeleton.queries import Count, Checksum, SKIP, table, this, Expr, min_, max_
 from .sqeleton.queries.extras import ApplyFuncAndNormalizeAsString, NormalizeAsString
 

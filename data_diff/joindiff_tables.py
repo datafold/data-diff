@@ -10,7 +10,8 @@ from itertools import chain
 
 from runtype import dataclass
 
-from .sqeleton.databases import Database, DbPath, NumericType, MySQL, BigQuery, Presto, Oracle, Snowflake
+from .sqeleton.databases import Database, MySQL, BigQuery, Presto, Oracle, Snowflake
+from .sqeleton.abcs.database_types import DbPath, NumericType
 from .sqeleton.queries import table, sum_, min_, max_, avg
 from .sqeleton.queries.api import and_, if_, or_, outerjoin, leftjoin, rightjoin, this, ITable
 from .sqeleton.queries.ast_classes import Concat, Count, Expr, Random, TablePath

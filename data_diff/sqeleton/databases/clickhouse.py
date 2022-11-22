@@ -20,9 +20,8 @@ from ..abcs.database_types import (
     TemporalType,
     Text,
     Timestamp,
-    AbstractMixin_MD5,
-    AbstractMixin_NormalizeValue,
 )
+from ..abcs.mixins import AbstractMixin_MD5, AbstractMixin_NormalizeValue
 
 
 @import_helper("clickhouse")
