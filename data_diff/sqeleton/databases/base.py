@@ -11,7 +11,7 @@ from uuid import UUID
 import decimal
 
 from ..utils import is_uuid, safezip
-from ..queries import Expr, Compiler, table, Select, SKIP, Explain, Code
+from ..queries import Expr, Compiler, table, Select, SKIP, Explain, Code, this
 from ..abcs.database_types import (
     AbstractDatabase,
     AbstractDialect,
@@ -30,6 +30,8 @@ from ..abcs.database_types import (
     DbPath,
     Boolean,
 )
+from ..abcs.mixins import Compilable
+from ..abcs.mixins import AbstractMixin_Schema
 
 logger = logging.getLogger("database")
 
@@ -99,6 +101,22 @@ def apply_query(callback: Callable[[str], Any], sql_code: Union[str, ThreadLocal
         return sql_code.apply_queries(callback)
     else:
         return callback(sql_code)
+
+
+class Mixin_Schema(AbstractMixin_Schema):
+    def table_information(self) -> Compilable:
+        return table("information_schema", "tables")
+
+    def list_tables(self, table_schema: str, like: Compilable = None) -> Compilable:
+        return (
+            self.table_information()
+            .where(
+                this.table_schema == table_schema,
+                this.table_name.like(like) if like is not None else SKIP,
+                this.table_type == "BASE TABLE",
+            )
+            .select(this.table_name)
+        )
 
 
 class BaseDialect(AbstractDialect):
@@ -354,7 +372,9 @@ class Database(AbstractDatabase):
             return
 
         fields = [Code(self.dialect.normalize_uuid(self.dialect.quote(c), String_UUID())) for c in text_columns]
-        samples_by_row = self.query(table(*table_path).select(*fields).where(Code(where) if where else SKIP).limit(sample_size), list)
+        samples_by_row = self.query(
+            table(*table_path).select(*fields).where(Code(where) if where else SKIP).limit(sample_size), list
+        )
         if not samples_by_row:
             raise ValueError(f"Table {table_path} is empty.")
 

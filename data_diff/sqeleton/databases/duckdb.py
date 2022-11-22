@@ -24,7 +24,7 @@ from .base import (
     ThreadLocalInterpreter,
     TIMESTAMP_PRECISION_POS,
 )
-from .base import MD5_HEXDIGITS, CHECKSUM_HEXDIGITS
+from .base import MD5_HEXDIGITS, CHECKSUM_HEXDIGITS, Mixin_Schema
 
 
 @import_helper("duckdb")
@@ -54,7 +54,7 @@ class Mixin_NormalizeValue(AbstractMixin_NormalizeValue):
         return self.to_string(f"{value}::INTEGER")
 
 
-class Dialect(BaseDialect):
+class Dialect(BaseDialect, Mixin_Schema):
     name = "DuckDB"
     ROUNDS_ON_PREC_LOSS = False
     SUPPORTS_PRIMARY_KEY = True

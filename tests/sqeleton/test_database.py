@@ -1,7 +1,31 @@
+from typing import Callable, List
 import unittest
 
 from ..common import str_to_checksum, TEST_MYSQL_CONN_STRING
+from ..common import str_to_checksum, test_each_database_in_list, TestPerDatabase, get_conn, random_table_suffix
+# from data_diff.sqeleton import databases as db
+# from data_diff.sqeleton import connect
+
+from data_diff.sqeleton.queries import table
+
+from data_diff import databases as dbs
 from data_diff.databases import connect
+
+
+TEST_DATABASES = {
+    dbs.MySQL,
+    dbs.PostgreSQL,
+    # dbs.Oracle,
+    # dbs.Redshift,
+    dbs.Snowflake,
+    dbs.DuckDB,
+    dbs.BigQuery,
+    dbs.Presto,
+    dbs.Trino,
+    dbs.Vertica,
+}
+
+test_each_database: Callable = test_each_database_in_list(TEST_DATABASES)
 
 
 class TestDatabase(unittest.TestCase):
@@ -25,3 +49,19 @@ class TestConnect(unittest.TestCase):
         self.assertRaises(ValueError, connect, "postgresql:///bla/foo")
         self.assertRaises(ValueError, connect, "snowflake://user:pass@bya42734/xdiffdev/TEST1")
         self.assertRaises(ValueError, connect, "snowflake://user:pass@bya42734/xdiffdev/TEST1?warehouse=ha&schema=dup")
+
+
+@test_each_database
+class TestSchema(TestPerDatabase):
+    def test_table_list(self):
+        name = self.table_src_name
+        db = self.connection
+        tbl = table(db.parse_table_name(name), schema={'id': int})
+        q = db.dialect.list_tables(db.default_schema, name)
+        assert not db.query(q)
+
+        db.query(tbl.create())
+        assert db.query(q, List[str] ) == [name]
+
+        db.query( tbl.drop() )
+        assert not db.query(q)

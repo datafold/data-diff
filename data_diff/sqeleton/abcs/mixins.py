@@ -97,9 +97,13 @@ class AbstractMixin_Schema(ABC):
     TODO: Move AbstractDatabase.query_table_schema() and friends over here
     """
 
+    def table_information(self) -> Compilable:
+        "Query to return a table of schema information about existing tables"
+        raise NotImplementedError()
+
     @abstractmethod
-    def list_tables(self, like: Compilable = None) -> Compilable:
-        """Query to select the list of tables in the schema.
+    def list_tables(self, table_schema: str, like: Compilable = None) -> Compilable:
+        """Query to select the list of tables in the schema. (query return type: table[str])
 
         If 'like' is specified, the value is applied to the table name, using the 'like' operator.
         """
