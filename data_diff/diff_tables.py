@@ -94,34 +94,31 @@ class DiffResultWrapper:
     result_list: list = field(default_factory=list)
 
     def __iter__(self):
+        yield from self.result_list
         for i in self.diff:
             self.result_list.append(i)
             yield i
 
     def _get_stats(self) -> DiffStats:
 
+        list(self)
         diff_by_key = {}
-        if len(self.result_list) > 0:
-            for sign, values in self.result_list:
-                k = values[: len(self.info_tree.info.tables[0].key_columns)]
-                if k in diff_by_key:
-                    assert sign != diff_by_key[k]
-                    diff_by_key[k] = "!"
-                else:
-                    diff_by_key[k] = sign
+        for sign, values in self.result_list:
+            k = values[: len(self.info_tree.info.tables[0].key_columns)]
+            if k in diff_by_key:
+                assert sign != diff_by_key[k]
+                diff_by_key[k] = "!"
+            else:
+                diff_by_key[k] = sign
 
-            diff_by_sign = {k: 0 for k in "+-!"}
-            for sign in diff_by_key.values():
-                diff_by_sign[sign] += 1
+        diff_by_sign = {k: 0 for k in "+-!"}
+        for sign in diff_by_key.values():
+            diff_by_sign[sign] += 1
 
-            table1_count = self.info_tree.info.rowcounts[1]
-            table2_count = self.info_tree.info.rowcounts[2]
-            unchanged = table1_count - diff_by_sign["-"] - diff_by_sign["!"]
-            diff_percent = 1 - unchanged / max(table1_count, table2_count)
-        else:
-            raise RuntimeError(
-                "result_list is empty, consume the diff iterator to populate values: e.g. \ndiff_iter = diff_tables(...) \ndiff_list = list(diff_iter) \ndiff_iter.print_stats(json_output)"
-            )
+        table1_count = self.info_tree.info.rowcounts[1]
+        table2_count = self.info_tree.info.rowcounts[2]
+        unchanged = table1_count - diff_by_sign["-"] - diff_by_sign["!"]
+        diff_percent = 1 - unchanged / max(table1_count, table2_count)
 
         return DiffStats(diff_by_sign, table1_count, table2_count, unchanged, diff_percent)
 

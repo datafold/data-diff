@@ -408,8 +408,6 @@ def _main(
         diff_iter = islice(diff_iter, int(limit))
 
     if stats:
-        # required to create this variable before get_stats
-        diff_list = list(diff_iter)
         if json_output:
             rich.print(json.dumps(diff_iter.get_stats_dict()))
         else:

@@ -81,12 +81,11 @@ class TestApi(unittest.TestCase):
         t1 = connect_to_table(TEST_MYSQL_CONN_STRING, self.table_src_name)
         t2 = connect_to_table(TEST_MYSQL_CONN_STRING, self.table_dst_name)
         diff = diff_tables(t1, t2)
-        diff_list = list(diff)
         output = diff.get_stats_string()
 
         self.assertEqual(expected_string, output)
         self.assertIsNotNone(diff)
-        assert len(diff_list) == 1
+        assert len(list(diff)) == 1
 
         t1.database.close()
         t2.database.close()
@@ -96,23 +95,11 @@ class TestApi(unittest.TestCase):
         t1 = connect_to_table(TEST_MYSQL_CONN_STRING, self.table_src_name)
         t2 = connect_to_table(TEST_MYSQL_CONN_STRING, self.table_dst_name)
         diff = diff_tables(t1, t2)
-        diff_list = list(diff)
         output = diff.get_stats_dict()
 
         self.assertEqual(expected_dict, output)
         self.assertIsNotNone(diff)
-        assert len(diff_list) == 1
-
-        t1.database.close()
-        t2.database.close()
-
-    def test_api_print_error(self):
-        t1 = connect_to_table(TEST_MYSQL_CONN_STRING, self.table_src_name)
-        t2 = connect_to_table(TEST_MYSQL_CONN_STRING, (self.table_dst_name,))
-        diff = diff_tables(t1, t2)
-
-        with self.assertRaises(RuntimeError):
-            diff.get_stats_string()
+        assert len(list(diff)) == 1
 
         t1.database.close()
         t2.database.close()
