@@ -8,7 +8,7 @@ from datetime import datetime, timedelta
 from data_diff.databases import MySQL
 from data_diff.sqeleton.queries import table, commit
 
-from .common import TEST_MYSQL_CONN_STRING, get_conn
+from .common import TEST_MYSQL_CONN_STRING, get_conn, random_table_suffix
 
 
 def _commit(conn):
@@ -30,15 +30,16 @@ class TestCLI(unittest.TestCase):
     def setUp(self) -> None:
         self.conn = get_conn(MySQL)
 
-        table_src_name = "test_cli"
-        table_dst_name = "test_cli_2"
+        suffix = random_table_suffix()
+        self.table_src_name = f"test_api{suffix}"
+        self.table_dst_name = f"test_api_2{suffix}"
 
-        self.table_src = table(table_src_name)
-        self.table_dst = table(table_dst_name)
+        self.table_src = table(self.table_src_name)
+        self.table_dst = table(self.table_dst_name)
         self.conn.query(self.table_src.drop(True))
         self.conn.query(self.table_dst.drop(True))
 
-        src_table = table(table_src_name, schema={"id": int, "datetime": datetime, "text_comment": str})
+        src_table = table(self.table_src_name, schema={"id": int, "datetime": datetime, "text_comment": str})
         self.conn.query(src_table.create())
         self.conn.query("SET @@session.time_zone='+00:00'")
         now = self.conn.query("select now()", datetime)
@@ -67,15 +68,15 @@ class TestCLI(unittest.TestCase):
         return super().tearDown()
 
     def test_basic(self):
-        diff = run_datadiff_cli(TEST_MYSQL_CONN_STRING, "test_cli", TEST_MYSQL_CONN_STRING, "test_cli_2")
+        diff = run_datadiff_cli(TEST_MYSQL_CONN_STRING, self.table_src_name, TEST_MYSQL_CONN_STRING, self.table_dst_name)
         assert len(diff) == 1
 
     def test_options(self):
         diff = run_datadiff_cli(
             TEST_MYSQL_CONN_STRING,
-            "test_cli",
+            self.table_src_name,
             TEST_MYSQL_CONN_STRING,
-            "test_cli_2",
+            self.table_dst_name,
             "--bisection-factor",
             "16",
             "--bisection-threshold",
@@ -88,3 +89,15 @@ class TestCLI(unittest.TestCase):
             "1h",
         )
         assert len(diff) == 1
+
+    def test_stats(self):
+        diff_output = run_datadiff_cli(
+            TEST_MYSQL_CONN_STRING, self.table_src_name, TEST_MYSQL_CONN_STRING, self.table_dst_name, "-s"
+        )
+        assert len(diff_output) == 11
+    
+    def test_stats_json(self):
+        diff_output = run_datadiff_cli(
+            TEST_MYSQL_CONN_STRING, self.table_src_name, TEST_MYSQL_CONN_STRING, self.table_dst_name, "-s", "--json"
+        )
+        assert len(diff_output) == 2

@@ -403,58 +403,19 @@ def _main(
     ]
 
     diff_iter = differ.diff_tables(*segments)
-    info = diff_iter.info_tree.info
 
     if limit:
         diff_iter = islice(diff_iter, int(limit))
 
     if stats:
-        diff = list(diff_iter)
-        key_columns_len = len(key_columns)
-
-        diff_by_key = {}
-        for sign, values in diff:
-            k = values[:key_columns_len]
-            if k in diff_by_key:
-                assert sign != diff_by_key[k]
-                diff_by_key[k] = "!"
-            else:
-                diff_by_key[k] = sign
-
-        diff_by_sign = {k: 0 for k in "+-!"}
-        for sign in diff_by_key.values():
-            diff_by_sign[sign] += 1
-
-        table1_count = info.rowcounts[1]
-        table2_count = info.rowcounts[2]
-        unchanged = table1_count - diff_by_sign["-"] - diff_by_sign["!"]
-        diff_percent = 1 - unchanged / max(table1_count, table2_count)
-
+        # required to create this variable before get_stats
+        diff_list = list(diff_iter)
+        stats_output = diff_iter.get_stats()
         if json_output:
-            json_output = {
-                "rows_A": table1_count,
-                "rows_B": table2_count,
-                "exclusive_A": diff_by_sign["-"],
-                "exclusive_B": diff_by_sign["+"],
-                "updated": diff_by_sign["!"],
-                "unchanged": unchanged,
-                "total": sum(diff_by_sign.values()),
-                "stats": differ.stats,
-            }
-            rich.print_json(json.dumps(json_output))
+            rich.print(json.dumps(stats_output[0]))
         else:
-            rich.print(f"{table1_count} rows in table A")
-            rich.print(f"{table2_count} rows in table B")
-            rich.print(f"{diff_by_sign['-']} rows exclusive to table A (not present in B)")
-            rich.print(f"{diff_by_sign['+']} rows exclusive to table B (not present in A)")
-            rich.print(f"{diff_by_sign['!']} rows updated")
-            rich.print(f"{unchanged} rows unchanged")
-            rich.print(f"{100*diff_percent:.2f}% difference score")
+            rich.print(stats_output[1])
 
-            if differ.stats:
-                print("\nExtra-Info:")
-                for k, v in sorted(differ.stats.items()):
-                    rich.print(f"  {k} = {v}")
     else:
         for op, values in diff_iter:
             color = COLOR_SCHEME[op]

@@ -11,6 +11,7 @@ from typing import Iterable, Tuple, Iterator, Optional
 from concurrent.futures import ThreadPoolExecutor, as_completed
 
 from runtype import dataclass
+from dataclasses import field
 
 from data_diff.info_tree import InfoTree, SegmentInfo
 
@@ -82,10 +83,66 @@ class ThreadBase:
 class DiffResultWrapper:
     diff: iter  # DiffResult
     info_tree: InfoTree
+    stats: dict
+    result_list: list = field(default_factory=list)
 
     def __iter__(self):
-        return iter(self.diff)
+        for i in self.diff:
+            self.result_list.append(i)
+            yield i
 
+    def get_stats(self):
+
+        diff_by_key = {}
+        if len(self.result_list) > 0:
+            for sign, values in self.result_list:
+                k = values[: len(self.info_tree.info.tables[0].key_columns)]
+                if k in diff_by_key:
+                    assert sign != diff_by_key[k]
+                    diff_by_key[k] = "!"
+                else:
+                    diff_by_key[k] = sign
+
+            diff_by_sign = {k: 0 for k in "+-!"}
+            for sign in diff_by_key.values():
+                diff_by_sign[sign] += 1
+
+            table1_count = self.info_tree.info.rowcounts[1]
+            table2_count = self.info_tree.info.rowcounts[2]
+            unchanged = table1_count - diff_by_sign["-"] - diff_by_sign["!"]
+            diff_percent = 1 - unchanged / max(table1_count, table2_count)
+
+
+            json_output = {
+                    "rows_A": table1_count,
+                    "rows_B": table2_count,
+                    "exclusive_A": diff_by_sign["-"],
+                    "exclusive_B": diff_by_sign["+"],
+                    "updated": diff_by_sign["!"],
+                    "unchanged": unchanged,
+                    "total": sum(diff_by_sign.values()),
+                    "stats": self.stats,
+                }
+
+            string_output = ""
+            string_output += f"{table1_count} rows in table A\n"
+            string_output += f"{table2_count} rows in table B\n"
+            string_output += f"{diff_by_sign['-']} rows exclusive to table A (not present in B)\n"
+            string_output += f"{diff_by_sign['+']} rows exclusive to table B (not present in A)\n"
+            string_output += f"{diff_by_sign['!']} rows updated\n"
+            string_output += f"{unchanged} rows unchanged\n"
+            string_output += f"{100*diff_percent:.2f}% difference score\n"
+
+            if self.stats:
+                string_output += "\nExtra-Info:\n"
+                for k, v in sorted(self.stats.items()):
+                    string_output += f"  {k} = {v}\n"
+        else:
+            raise RuntimeError(
+                "result_list is empty, consume the diff iterator to populate values: e.g. \ndiff_iter = diff_tables(...) \ndiff_list = list(diff_iter) \ndiff_iter.print_stats(json_output)"
+            )
+
+        return json_output, string_output
 
 class TableDiffer(ThreadBase, ABC):
     bisection_factor = 32
@@ -106,7 +163,7 @@ class TableDiffer(ThreadBase, ABC):
         """
         if info_tree is None:
             info_tree = InfoTree(SegmentInfo([table1, table2]))
-        return DiffResultWrapper(self._diff_tables_wrapper(table1, table2, info_tree), info_tree)
+        return DiffResultWrapper(self._diff_tables_wrapper(table1, table2, info_tree), info_tree, self.stats, [])
 
     def _diff_tables_wrapper(self, table1: TableSegment, table2: TableSegment, info_tree: InfoTree) -> DiffResult:
         if is_tracking_enabled():
@@ -177,6 +234,8 @@ class TableDiffer(ThreadBase, ABC):
             raise NotImplementedError("Composite key not supported yet!")
         if len(table2.key_columns) > 1:
             raise NotImplementedError("Composite key not supported yet!")
+        if len(table1.key_columns) != len(table2.key_columns):
+            raise ValueError("Tables should have an equivalent number of key columns!")
         (key1,) = table1.key_columns
         (key2,) = table2.key_columns
 
