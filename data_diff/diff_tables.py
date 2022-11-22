@@ -144,7 +144,7 @@ class DiffResultWrapper:
 
         return string_output
 
-    def get_stats_json(self):
+    def get_stats_dict(self):
 
         diff_stats = self._get_stats()
         json_output = {
