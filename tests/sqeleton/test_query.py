@@ -1,12 +1,8 @@
 from datetime import datetime
 from typing import List, Optional
 import unittest
-from data_diff.sqeleton.databases.database_types import (
-    AbstractDatabase,
-    AbstractDialect,
-    CaseInsensitiveDict,
-    CaseSensitiveDict,
-)
+from data_diff.sqeleton.abcs import AbstractDatabase, AbstractDialect
+from data_diff.sqeleton.utils import CaseInsensitiveDict, CaseSensitiveDict
 
 from data_diff.sqeleton.queries import this, table, Compiler, outerjoin, cte, when, coalesce
 from data_diff.sqeleton.queries.ast_classes import Random
@@ -77,8 +73,9 @@ class TestQuery(unittest.TestCase):
         t = table("point").where(this.x == 1, this.y == 2)
         assert c.compile(t) == "SELECT * FROM point WHERE (x = 1) AND (y = 2)"
 
-        t = table("point").select("x", "y")
-        assert c.compile(t) == "SELECT x, y FROM point"
+        t = table("person").where(this.name == "Albert")
+        self.assertEqual( c.compile(t), "SELECT * FROM person WHERE (name = 'Albert')" )
+
 
     def test_outerjoin(self):
         c = Compiler(MockDatabase())
@@ -196,8 +193,8 @@ class TestQuery(unittest.TestCase):
 
     def test_table_ops(self):
         c = Compiler(MockDatabase())
-        a = table("a").select("x")
-        b = table("b").select("y")
+        a = table("a").select(this.x)
+        b = table("b").select(this.y)
 
         q = c.compile(a.union(b))
         assert q == "SELECT x FROM a UNION SELECT y FROM b"

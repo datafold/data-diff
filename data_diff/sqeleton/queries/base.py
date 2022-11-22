@@ -1,6 +1,7 @@
 from typing import Generator
 
-from ..databases.database_types import DbPath, DbKey, Schema
+from ..abcs import DbPath, DbKey
+from ..schema import Schema
 
 
 class _SKIP:

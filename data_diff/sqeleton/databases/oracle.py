@@ -1,7 +1,7 @@
 from typing import Dict, List, Optional
 
 from ..utils import match_regexps
-from .database_types import (
+from ..abcs.database_types import (
     Decimal,
     Float,
     Text,
@@ -13,9 +13,8 @@ from .database_types import (
     Timestamp,
     TimestampTZ,
     FractionalType,
-    AbstractMixin_MD5,
-    AbstractMixin_NormalizeValue,
 )
+from ..abcs.mixins import AbstractMixin_MD5, AbstractMixin_NormalizeValue
 from .base import BaseDialect, ThreadedDatabase, import_helper, ConnectError, QueryError
 from .base import TIMESTAMP_PRECISION_POS
 

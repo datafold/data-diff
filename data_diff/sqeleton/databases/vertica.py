@@ -12,7 +12,7 @@ from .base import (
     ThreadedDatabase,
     import_helper,
 )
-from .database_types import (
+from ..abcs.database_types import (
     Decimal,
     Float,
     FractionalType,
@@ -22,10 +22,9 @@ from .database_types import (
     Timestamp,
     TimestampTZ,
     Boolean,
-    AbstractMixin_MD5,
-    AbstractMixin_NormalizeValue,
     ColType_UUID,
 )
+from ..abcs.mixins import AbstractMixin_MD5, AbstractMixin_NormalizeValue
 
 
 @import_helper("vertica")

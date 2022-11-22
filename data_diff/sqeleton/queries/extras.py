@@ -3,10 +3,10 @@
 from typing import Callable, Sequence
 from runtype import dataclass
 
-from ..databases import ColType, Native_UUID
+from ..abcs.database_types import ColType, Native_UUID
 
 from .compiler import Compiler
-from .ast_classes import Expr, ExprNode, Concat
+from .ast_classes import Expr, ExprNode, Concat, Code
 
 
 @dataclass
@@ -51,7 +51,7 @@ class Checksum(ExprNode):
 
     def compile(self, c: Compiler):
         if len(self.exprs) > 1:
-            exprs = [f"coalesce({c.compile(expr)}, '<null>')" for expr in self.exprs]
+            exprs = [Code(f"coalesce({c.compile(expr)}, '<null>')") for expr in self.exprs]
             # exprs = [c.compile(e) for e in exprs]
             expr = Concat(exprs, "|")
         else:

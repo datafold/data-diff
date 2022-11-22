@@ -5,9 +5,11 @@ from typing import Any, Generator, List, Optional, Sequence, Tuple, Union
 from runtype import dataclass
 
 from ..utils import join_iter, ArithString
+from ..abcs import Compilable
+from ..schema import Schema
 
-from .compiler import Compilable, Compiler, cv_params
-from .base import SKIP, CompileError, DbPath, Schema, args_as_tuple
+from .compiler import Compiler, cv_params
+from .base import SKIP, CompileError, DbPath, args_as_tuple
 
 
 class SqeletonError(Exception):
@@ -43,12 +45,14 @@ class ExprNode(Compilable):
 
 Expr = Union[ExprNode, str, bool, int, datetime, ArithString, None]
 
+
 @dataclass
 class Code(ExprNode):
     code: str
 
     def compile(self, c: Compiler) -> str:
         return self.code
+
 
 def _expr_type(e: Expr) -> type:
     if isinstance(e, ExprNode):
@@ -173,7 +177,7 @@ class Concat(ExprNode):
 
     def compile(self, c: Compiler) -> str:
         # We coalesce because on some DBs (e.g. MySQL) concat('a', NULL) is NULL
-        items = [f"coalesce({c.compile(c.dialect.to_string(c.compile(expr)))}, '<null>')" for expr in self.exprs]
+        items = [f"coalesce({c.compile(Code(c.dialect.to_string(c.compile(expr))))}, '<null>')" for expr in self.exprs]
         assert items
         if len(items) == 1:
             return items[0]
@@ -520,7 +524,7 @@ class GroupBy(ExprNode, ITable):
             return c.compile(
                 self.table.replace(
                     columns=columns,
-                    group_by_exprs=keys,  # XXX pass Expr instances, not strings (Code)
+                    group_by_exprs=[Code(k) for k in keys],
                     having_exprs=self.having_exprs,
                 )
             )

@@ -1,7 +1,7 @@
 from typing import Union
 
 from ..utils import match_regexps
-from .database_types import (
+from ..abcs.database_types import (
     Timestamp,
     TimestampTZ,
     DbPath,
@@ -14,9 +14,8 @@ from .database_types import (
     Text,
     FractionalType,
     Boolean,
-    AbstractMixin_MD5,
-    AbstractMixin_NormalizeValue,
 )
+from ..abcs.mixins import AbstractMixin_MD5, AbstractMixin_NormalizeValue
 from .base import (
     Database,
     BaseDialect,
