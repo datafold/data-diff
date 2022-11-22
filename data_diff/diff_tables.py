@@ -78,6 +78,13 @@ class ThreadBase:
             for f in futures:
                 f.result()
 
+@dataclass
+class DiffStats:
+    diff_by_sign: dict[str, int]
+    table1_count: int
+    table2_count: int
+    unchanged: int
+    diff_percent: float
 
 @dataclass
 class DiffResultWrapper:
@@ -91,7 +98,7 @@ class DiffResultWrapper:
             self.result_list.append(i)
             yield i
 
-    def get_stats(self):
+    def _get_stats(self) -> DiffStats:
 
         diff_by_key = {}
         if len(self.result_list) > 0:
@@ -111,38 +118,47 @@ class DiffResultWrapper:
             table2_count = self.info_tree.info.rowcounts[2]
             unchanged = table1_count - diff_by_sign["-"] - diff_by_sign["!"]
             diff_percent = 1 - unchanged / max(table1_count, table2_count)
-
-
-            json_output = {
-                    "rows_A": table1_count,
-                    "rows_B": table2_count,
-                    "exclusive_A": diff_by_sign["-"],
-                    "exclusive_B": diff_by_sign["+"],
-                    "updated": diff_by_sign["!"],
-                    "unchanged": unchanged,
-                    "total": sum(diff_by_sign.values()),
-                    "stats": self.stats,
-                }
-
-            string_output = ""
-            string_output += f"{table1_count} rows in table A\n"
-            string_output += f"{table2_count} rows in table B\n"
-            string_output += f"{diff_by_sign['-']} rows exclusive to table A (not present in B)\n"
-            string_output += f"{diff_by_sign['+']} rows exclusive to table B (not present in A)\n"
-            string_output += f"{diff_by_sign['!']} rows updated\n"
-            string_output += f"{unchanged} rows unchanged\n"
-            string_output += f"{100*diff_percent:.2f}% difference score\n"
-
-            if self.stats:
-                string_output += "\nExtra-Info:\n"
-                for k, v in sorted(self.stats.items()):
-                    string_output += f"  {k} = {v}\n"
         else:
             raise RuntimeError(
                 "result_list is empty, consume the diff iterator to populate values: e.g. \ndiff_iter = diff_tables(...) \ndiff_list = list(diff_iter) \ndiff_iter.print_stats(json_output)"
             )
 
-        return json_output, string_output
+        return DiffStats(diff_by_sign, table1_count, table2_count, unchanged, diff_percent)
+
+    def get_stats_string(self):
+
+        diff_stats = self._get_stats()
+        string_output = ""
+        string_output += f"{diff_stats.table1_count} rows in table A\n"
+        string_output += f"{diff_stats.table2_count} rows in table B\n"
+        string_output += f"{diff_stats.diff_by_sign['-']} rows exclusive to table A (not present in B)\n"
+        string_output += f"{diff_stats.diff_by_sign['+']} rows exclusive to table B (not present in A)\n"
+        string_output += f"{diff_stats.diff_by_sign['!']} rows updated\n"
+        string_output += f"{diff_stats.unchanged} rows unchanged\n"
+        string_output += f"{100*diff_stats.diff_percent:.2f}% difference score\n"
+
+        if self.stats:
+            string_output += "\nExtra-Info:\n"
+            for k, v in sorted(self.stats.items()):
+                string_output += f"  {k} = {v}\n"
+
+        return string_output
+
+    def get_stats_json(self):
+
+        diff_stats = self._get_stats()
+        json_output = {
+                    "rows_A": diff_stats.table1_count,
+                    "rows_B": diff_stats.table2_count,
+                    "exclusive_A": diff_stats.diff_by_sign["-"],
+                    "exclusive_B": diff_stats.diff_by_sign["+"],
+                    "updated": diff_stats.diff_by_sign["!"],
+                    "unchanged": diff_stats.unchanged,
+                    "total": sum(diff_stats.diff_by_sign.values()),
+                    "stats": self.stats,
+                }
+
+        return json_output
 
 class TableDiffer(ThreadBase, ABC):
     bisection_factor = 32

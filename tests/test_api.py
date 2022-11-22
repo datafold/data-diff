@@ -76,17 +76,30 @@ class TestApi(unittest.TestCase):
         t1.database.close()
         t2.database.close()
 
-    def test_api_get_stats(self):
+    def test_api_get_stats_string(self):
         expected_string = "5 rows in table A\n4 rows in table B\n1 rows exclusive to table A (not present in B)\n0 rows exclusive to table B (not present in A)\n0 rows updated\n4 rows unchanged\n20.00% difference score\n\nExtra-Info:\n  rows_downloaded = 5\n"
+        t1 = connect_to_table(TEST_MYSQL_CONN_STRING, self.table_src_name)
+        t2 = connect_to_table(TEST_MYSQL_CONN_STRING, self.table_dst_name)
+        diff = diff_tables(t1, t2)
+        diff_list = list(diff)
+        output = diff.get_stats_string()
+
+        self.assertEqual(expected_string, output)
+        self.assertIsNotNone(diff)
+        assert len(diff_list) == 1
+
+        t1.database.close()
+        t2.database.close()
+    
+    def test_api_get_stats_json(self):
         expected_dict = {'rows_A': 5, 'rows_B': 4, 'exclusive_A': 1, 'exclusive_B': 0, 'updated': 0, 'unchanged': 4, 'total': 1, 'stats': {'rows_downloaded': 5}}
         t1 = connect_to_table(TEST_MYSQL_CONN_STRING, self.table_src_name)
         t2 = connect_to_table(TEST_MYSQL_CONN_STRING, self.table_dst_name)
         diff = diff_tables(t1, t2)
         diff_list = list(diff)
-        output = diff.get_stats()
+        output = diff.get_stats_json()
 
-        self.assertEqual(expected_dict, output[0])
-        self.assertEqual(expected_string, output[1])
+        self.assertEqual(expected_dict, output)
         self.assertIsNotNone(diff)
         assert len(diff_list) == 1
 
@@ -99,7 +112,7 @@ class TestApi(unittest.TestCase):
         diff = diff_tables(t1, t2)
 
         with self.assertRaises(RuntimeError):
-            diff.get_stats()
+            diff.get_stats_string()
 
         t1.database.close()
         t2.database.close()

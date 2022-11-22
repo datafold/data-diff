@@ -410,11 +410,10 @@ def _main(
     if stats:
         # required to create this variable before get_stats
         diff_list = list(diff_iter)
-        stats_output = diff_iter.get_stats()
         if json_output:
-            rich.print(json.dumps(stats_output[0]))
+            rich.print(json.dumps(diff_iter.get_stats_json()))
         else:
-            rich.print(stats_output[1])
+            rich.print(diff_iter.get_stats_string())
 
     else:
         for op, values in diff_iter:
