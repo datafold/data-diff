@@ -14,7 +14,7 @@ from .sqeleton.databases import Database, MySQL, BigQuery, Presto, Oracle, Snowf
 from .sqeleton.abcs.database_types import DbPath, NumericType
 from .sqeleton.queries import table, sum_, min_, max_, avg
 from .sqeleton.queries.api import and_, if_, or_, outerjoin, leftjoin, rightjoin, this, ITable
-from .sqeleton.queries.ast_classes import Concat, Count, Expr, Random, TablePath
+from .sqeleton.queries.ast_classes import Concat, Count, Expr, Random, TablePath, Code
 from .sqeleton.queries.compiler import Compiler
 from .sqeleton.queries.extras import NormalizeAsString
 
@@ -333,7 +333,7 @@ class JoinDiffer(TableDiffer):
             c = Compiler(db)
             name = c.new_unique_table_name("temp_table")
             exclusive_rows = table(name, schema=expr.source_table.schema)
-            yield create_temp_table(c, exclusive_rows, expr.limit(self.table_write_limit))
+            yield Code(create_temp_table(c, exclusive_rows, expr.limit(self.table_write_limit)))
 
             count = yield exclusive_rows.count()
             self.stats["exclusive_count"] = self.stats.get("exclusive_count", 0) + count[0][0]

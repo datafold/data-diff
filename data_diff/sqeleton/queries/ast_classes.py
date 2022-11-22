@@ -177,7 +177,7 @@ class Concat(ExprNode):
 
     def compile(self, c: Compiler) -> str:
         # We coalesce because on some DBs (e.g. MySQL) concat('a', NULL) is NULL
-        items = [f"coalesce({c.compile(c.dialect.to_string(c.compile(expr)))}, '<null>')" for expr in self.exprs]
+        items = [f"coalesce({c.compile(Code(c.dialect.to_string(c.compile(expr))))}, '<null>')" for expr in self.exprs]
         assert items
         if len(items) == 1:
             return items[0]
@@ -524,7 +524,7 @@ class GroupBy(ExprNode, ITable):
             return c.compile(
                 self.table.replace(
                     columns=columns,
-                    group_by_exprs=keys,  # XXX pass Expr instances, not strings (Code)
+                    group_by_exprs=[Code(k) for k in keys],
                     having_exprs=self.having_exprs,
                 )
             )

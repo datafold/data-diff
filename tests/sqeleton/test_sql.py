@@ -3,7 +3,7 @@ import unittest
 from ..common import TEST_MYSQL_CONN_STRING
 
 from data_diff.sqeleton import connect
-from data_diff.sqeleton.queries import Compiler, Count, Explain, Select, table, In, BinOp
+from data_diff.sqeleton.queries import Compiler, Count, Explain, Select, table, In, BinOp, Code
 
 
 class TestSQL(unittest.TestCase):
@@ -12,7 +12,7 @@ class TestSQL(unittest.TestCase):
         self.compiler = Compiler(self.mysql)
 
     def test_compile_string(self):
-        self.assertEqual("SELECT 1", self.compiler.compile("SELECT 1"))
+        self.assertEqual("SELECT 1", self.compiler.compile(Code("SELECT 1")))
 
     def test_compile_int(self):
         self.assertEqual("1", self.compiler.compile(1))
@@ -27,7 +27,7 @@ class TestSQL(unittest.TestCase):
             self.compiler.compile(
                 Select(
                     table("marine_mammals", "walrus"),
-                    ["name"],
+                    [Code("name")],
                 )
             ),
         )
@@ -63,8 +63,8 @@ class TestSQL(unittest.TestCase):
             self.compiler.compile(
                 Select(
                     table("marine_mammals", "walrus"),
-                    ["name"],
-                    [BinOp("<=", ["id", "1000"]), BinOp(">", ["id", "1"])],
+                    [Code("name")],
+                    [BinOp("<=", [Code("id"), Code("1000")]), BinOp(">", [Code("id"), Code("1")])],
                 )
             ),
         )
@@ -73,21 +73,21 @@ class TestSQL(unittest.TestCase):
         expected_sql = "SELECT name FROM `marine_mammals`.`walrus` WHERE (id IN (1, 2, 3))"
         self.assertEqual(
             expected_sql,
-            self.compiler.compile(Select(table("marine_mammals", "walrus"), ["name"], [In("id", [1, 2, 3])])),
+            self.compiler.compile(Select(table("marine_mammals", "walrus"), [Code("name")], [In(Code("id"), [1, 2, 3])])),
         )
 
     def test_count(self):
         expected_sql = "SELECT count(*) FROM `marine_mammals`.`walrus` WHERE (id IN (1, 2, 3))"
         self.assertEqual(
             expected_sql,
-            self.compiler.compile(Select(table("marine_mammals", "walrus"), [Count()], [In("id", [1, 2, 3])])),
+            self.compiler.compile(Select(table("marine_mammals", "walrus"), [Count()], [In(Code("id"), [1, 2, 3])])),
         )
 
     def test_count_with_column(self):
         expected_sql = "SELECT count(id) FROM `marine_mammals`.`walrus` WHERE (id IN (1, 2, 3))"
         self.assertEqual(
             expected_sql,
-            self.compiler.compile(Select(table("marine_mammals", "walrus"), [Count("id")], [In("id", [1, 2, 3])])),
+            self.compiler.compile(Select(table("marine_mammals", "walrus"), [Count(Code("id"))], [In(Code("id"), [1, 2, 3])])),
         )
 
     def test_explain(self):
@@ -95,6 +95,6 @@ class TestSQL(unittest.TestCase):
         self.assertEqual(
             expected_sql,
             self.compiler.compile(
-                Explain(Select(table("marine_mammals", "walrus"), [Count("id")], [In("id", [1, 2, 3])]))
+                Explain(Select(table("marine_mammals", "walrus"), [Count(Code("id"))], [In(Code("id"), [1, 2, 3])]))
             ),
         )

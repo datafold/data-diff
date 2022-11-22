@@ -46,7 +46,7 @@ class Compiler(AbstractCompiler):
         elif isinstance(elem, Compilable):
             return elem.compile(self.replace(root=False))
         elif isinstance(elem, str):
-            return elem
+            return f"'{elem}'"
         elif isinstance(elem, int):
             return str(elem)
         elif isinstance(elem, datetime):

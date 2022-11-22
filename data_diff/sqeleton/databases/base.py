@@ -250,9 +250,12 @@ class Database(AbstractDatabase):
                 self.query(i)
             return self.query(sql_ast[-1], res_type)
         else:
-            sql_code = compiler.compile(sql_ast)
-            if sql_code is SKIP:
-                return SKIP
+            if isinstance(sql_ast, str):
+                sql_code = sql_ast
+            else:
+                sql_code = compiler.compile(sql_ast)
+                if sql_code is SKIP:
+                    return SKIP
 
             logger.debug("Running SQL (%s): %s", self.name, sql_code)
 
@@ -350,8 +353,8 @@ class Database(AbstractDatabase):
         if not text_columns:
             return
 
-        fields = [self.dialect.normalize_uuid(self.dialect.quote(c), String_UUID()) for c in text_columns]
-        samples_by_row = self.query(table(*table_path).select(*fields).where(where or SKIP).limit(sample_size), list)
+        fields = [Code(self.dialect.normalize_uuid(self.dialect.quote(c), String_UUID())) for c in text_columns]
+        samples_by_row = self.query(table(*table_path).select(*fields).where(Code(where) if where else SKIP).limit(sample_size), list)
         if not samples_by_row:
             raise ValueError(f"Table {table_path} is empty.")
 
