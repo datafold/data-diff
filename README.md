@@ -9,6 +9,10 @@ data-diff is a **free, open-source tool** that enables data professionals to det
 
 _Are you a developer with a deep understanding of databases and solid Python knowledge? [We're hiring!](https://www.datafold.com/careers)_
 
+## Documentation
+
+[**🗎 Documentation website**](https://docs.datafold.com/os_diff/about) - our detailed documentation has everything you need to start diffing.
+
 ### Databases we support
 
 - PostgreSQL >=10
@@ -22,18 +26,13 @@ _Are you a developer with a deep understanding of databases and solid Python kno
 - Trino
 - Clickhouse
 - Vertica
-- DuckDB
+- DuckDB >=0.6
 - SQLite (coming soon)
 
-#### Detailed information on database connections
-Ready to connect? Check out [our documentation](https://docs.datafold.com/os_diff/databases_we_support).
+For their corresponding connection strings, check out our [detailed table](https://docs.datafold.com/os_diff/databases_we_support).
 
 #### Looking for a database not on the list?
-If a database is not on the list, we'd still love to support it. [Please open an issue](https://github.com/datafold/data-diff/issues) to discuss it.
-
-## Documentation
-
-[**Our detailed documentation**](https://docs.datafold.com/os_diff/about) has everything you need to start diffing.
+If a database is not on the list, we'd still love to support it. [Please open an issue](https://github.com/datafold/data-diff/issues) to discuss it, or vote on existing requests to push them up our todo list.
 
 ## Use cases
 
