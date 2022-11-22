@@ -5,8 +5,9 @@ from typing import Any, Generator, List, Optional, Sequence, Tuple, Union
 from runtype import dataclass
 
 from ..utils import join_iter, ArithString
+from ..abcs import Compilable
 
-from .compiler import Compilable, Compiler, cv_params
+from .compiler import Compiler, cv_params
 from .base import SKIP, CompileError, DbPath, Schema, args_as_tuple
 
 

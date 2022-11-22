@@ -1,12 +1,11 @@
 import random
-from abc import ABC, abstractmethod
 from datetime import datetime
 from typing import Any, Dict, Sequence, List
 
 from runtype import dataclass
 
 from ..utils import ArithString
-from ..databases import AbstractDatabase, AbstractDialect, DbPath
+from ..abcs import AbstractDatabase, AbstractDialect, DbPath, AbstractCompiler, Compilable
 
 import contextvars
 
@@ -14,7 +13,7 @@ cv_params = contextvars.ContextVar("params")
 
 
 @dataclass
-class Compiler:
+class Compiler(AbstractCompiler):
     database: AbstractDatabase
     params: dict = {}
     in_select: bool = False  # Compilation runtime flag
@@ -72,8 +71,3 @@ class Compiler:
     def quote(self, s: str):
         return self.dialect.quote(s)
 
-
-class Compilable(ABC):
-    @abstractmethod
-    def compile(self, c: Compiler) -> str:
-        ...

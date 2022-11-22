@@ -1,12 +1,8 @@
 from datetime import datetime
 from typing import List, Optional
 import unittest
-from data_diff.sqeleton.databases.database_types import (
-    AbstractDatabase,
-    AbstractDialect,
-    CaseInsensitiveDict,
-    CaseSensitiveDict,
-)
+from data_diff.sqeleton.abcs import AbstractDatabase, AbstractDialect
+from data_diff.sqeleton.utils import CaseInsensitiveDict, CaseSensitiveDict
 
 from data_diff.sqeleton.queries import this, table, Compiler, outerjoin, cte, when, coalesce
 from data_diff.sqeleton.queries.ast_classes import Random

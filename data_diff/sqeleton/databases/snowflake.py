@@ -1,7 +1,7 @@
 from typing import Union, List
 import logging
 
-from .database_types import (
+from ..abcs.database_types import (
     Timestamp,
     TimestampTZ,
     Decimal,

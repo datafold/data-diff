@@ -12,7 +12,7 @@ import decimal
 
 from ..utils import is_uuid, safezip
 from ..queries import Expr, Compiler, table, Select, SKIP, Explain, Code
-from .database_types import (
+from ..abcs.database_types import (
     AbstractDatabase,
     AbstractDialect,
     ColType,
