@@ -31,8 +31,8 @@ class SegmentInfo:
         self.is_diff = any(c.is_diff for c in child_infos)
 
         self.rowcounts = {
-            1: sum(c.rowcounts[1] for c in child_infos),
-            2: sum(c.rowcounts[2] for c in child_infos),
+            1: sum(c.rowcounts[1] for c in child_infos if c.rowcounts),
+            2: sum(c.rowcounts[2] for c in child_infos if c.rowcounts),
         }
 
 
