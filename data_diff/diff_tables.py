@@ -78,6 +78,7 @@ class ThreadBase:
             for f in futures:
                 f.result()
 
+
 @dataclass
 class DiffStats:
     diff_by_sign: dict[str, int]
@@ -85,6 +86,7 @@ class DiffStats:
     table2_count: int
     unchanged: int
     diff_percent: float
+
 
 @dataclass
 class DiffResultWrapper:
@@ -145,17 +147,18 @@ class DiffResultWrapper:
 
         diff_stats = self._get_stats()
         json_output = {
-                    "rows_A": diff_stats.table1_count,
-                    "rows_B": diff_stats.table2_count,
-                    "exclusive_A": diff_stats.diff_by_sign["-"],
-                    "exclusive_B": diff_stats.diff_by_sign["+"],
-                    "updated": diff_stats.diff_by_sign["!"],
-                    "unchanged": diff_stats.unchanged,
-                    "total": sum(diff_stats.diff_by_sign.values()),
-                    "stats": self.stats,
-                }
+            "rows_A": diff_stats.table1_count,
+            "rows_B": diff_stats.table2_count,
+            "exclusive_A": diff_stats.diff_by_sign["-"],
+            "exclusive_B": diff_stats.diff_by_sign["+"],
+            "updated": diff_stats.diff_by_sign["!"],
+            "unchanged": diff_stats.unchanged,
+            "total": sum(diff_stats.diff_by_sign.values()),
+            "stats": self.stats,
+        }
 
         return json_output
+
 
 class TableDiffer(ThreadBase, ABC):
     bisection_factor = 32

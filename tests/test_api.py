@@ -89,9 +89,18 @@ class TestApi(unittest.TestCase):
 
         t1.database.close()
         t2.database.close()
-    
+
     def test_api_get_stats_dict(self):
-        expected_dict = {'rows_A': 5, 'rows_B': 4, 'exclusive_A': 1, 'exclusive_B': 0, 'updated': 0, 'unchanged': 4, 'total': 1, 'stats': {'rows_downloaded': 5}}
+        expected_dict = {
+            "rows_A": 5,
+            "rows_B": 4,
+            "exclusive_A": 1,
+            "exclusive_B": 0,
+            "updated": 0,
+            "unchanged": 4,
+            "total": 1,
+            "stats": {"rows_downloaded": 5},
+        }
         t1 = connect_to_table(TEST_MYSQL_CONN_STRING, self.table_src_name)
         t2 = connect_to_table(TEST_MYSQL_CONN_STRING, self.table_dst_name)
         diff = diff_tables(t1, t2)

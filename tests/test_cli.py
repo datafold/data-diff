@@ -68,7 +68,9 @@ class TestCLI(unittest.TestCase):
         return super().tearDown()
 
     def test_basic(self):
-        diff = run_datadiff_cli(TEST_MYSQL_CONN_STRING, self.table_src_name, TEST_MYSQL_CONN_STRING, self.table_dst_name)
+        diff = run_datadiff_cli(
+            TEST_MYSQL_CONN_STRING, self.table_src_name, TEST_MYSQL_CONN_STRING, self.table_dst_name
+        )
         assert len(diff) == 1
 
     def test_options(self):
@@ -95,13 +97,13 @@ class TestCLI(unittest.TestCase):
             TEST_MYSQL_CONN_STRING, self.table_src_name, TEST_MYSQL_CONN_STRING, self.table_dst_name, "-s"
         )
         assert len(diff_output) == 11
-    
+
     def test_stats_json(self):
         diff_output = run_datadiff_cli(
             TEST_MYSQL_CONN_STRING, self.table_src_name, TEST_MYSQL_CONN_STRING, self.table_dst_name, "-s", "--json"
         )
         assert len(diff_output) == 2
-    
+
     def test_stats_no_diff(self):
         diff_output = run_datadiff_cli(
             TEST_MYSQL_CONN_STRING, self.table_src_name, TEST_MYSQL_CONN_STRING, self.table_src_name, "-s"
