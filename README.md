@@ -7,7 +7,29 @@
 ## What is `data-diff`?
 data-diff is a **free, open-source tool** that enables data professionals to detect differences in values between any two tables. It's fast, easy to use, and reliable. Even at massive scale.
 
-_Are you a developer with a deep understanding of databases and solid Python knowledge? [We're hiring!](https://www.datafold.com/careers)_
+_Are you a developer with a deep understanding of databases and solid Python knowledge? [We're hiring. Please apply today!](https://www.datafold.com/careers)_
+
+### Databases we support
+
+- PostgreSQL >=10
+- MySQL
+- Snowflake
+- BigQuery
+- Redshift
+- Oracle
+- Presto
+- Databricks
+- Trino
+- Clickhouse
+- Vertica
+- DuckDB
+- SQLite (coming soon)
+
+#### Detailed information on database connections
+Ready to connect? Check out [our documentation](https://docs.datafold.com/os_diff/databases_we_support).
+
+#### Looking for a database not on the list?
+If a database is not on the list, we'd still love to support it. [Please open an issue](https://github.com/datafold/data-diff/issues) to discuss it.
 
 ## Documentation
 
