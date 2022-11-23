@@ -86,7 +86,8 @@ class Databricks(ThreadedDatabase):
         logging.getLogger("databricks.sql").setLevel(logging.WARNING)
 
         self._args = kw
-        self.default_schema = kw.get("schema", "hive_metastore")
+        self.default_schema = kw.get("schema", "default")
+        self.catalog = self._args.get("catalog", "hive_metastore")
         super().__init__(thread_count=thread_count)
 
     def create_connection(self):
@@ -97,7 +98,7 @@ class Databricks(ThreadedDatabase):
                 server_hostname=self._args["server_hostname"],
                 http_path=self._args["http_path"],
                 access_token=self._args["access_token"],
-                catalog=self._args["catalog"],
+                catalog=self.catalog,
             )
         except databricks.sql.exc.Error as e:
             raise ConnectionError(*e.args) from e
@@ -111,7 +112,7 @@ class Databricks(ThreadedDatabase):
 
         schema, table = self._normalize_table_path(path)
         with conn.cursor() as cursor:
-            cursor.columns(catalog_name=self._args["catalog"], schema_name=schema, table_name=table)
+            cursor.columns(catalog_name=self.catalog, schema_name=schema, table_name=table)
             try:
                 rows = cursor.fetchall()
             finally:
