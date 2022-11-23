@@ -314,7 +314,7 @@ class TestDiffTables(TestPerDatabase):
             ]
         )
 
-        differ = HashDiffer()
+        differ = HashDiffer(bisection_factor=2)
         diff = set(differ.diff_tables(self.table, self.table2))
         expected = {
             ("-", ("2", time2 + ".000000")),
@@ -368,7 +368,7 @@ class TestDiffTables2(TestPerDatabase):
         table1 = _table_segment(self.connection, self.table_src_path, "id", "timestamp", case_sensitive=False)
         table2 = _table_segment(self.connection, self.table_dst_path, "id2", "timestamp2", case_sensitive=False)
 
-        differ = HashDiffer()
+        differ = HashDiffer(bisection_factor=2)
         diff = list(differ.diff_tables(table1, table2))
         assert diff == []
 
@@ -392,22 +392,22 @@ class TestUUIDs(TestPerDatabase):
             ]
         )
 
-        self.a = _table_segment(self.connection, self.table_src_path, "id", "text_comment", case_sensitive=False)
-        self.b = _table_segment(self.connection, self.table_dst_path, "id", "text_comment", case_sensitive=False)
+        self.a = _table_segment(self.connection, self.table_src_path, "id", extra_columns=("text_comment",), case_sensitive=False).with_schema()
+        self.b = _table_segment(self.connection, self.table_dst_path, "id", extra_columns=("text_comment",), case_sensitive=False).with_schema()
 
     def test_string_keys(self):
-        differ = HashDiffer()
+        differ = HashDiffer(bisection_factor=2)
         diff = list(differ.diff_tables(self.a, self.b))
         self.assertEqual(diff, [("-", (str(self.new_uuid), "This one is different"))])
 
+        # At this point the tables should already have a schema, to ensure the column is detected as UUID and not alpanum
         self.connection.query(self.src_table.insert_row("unexpected", "<-- this bad value should not break us"))
-
         self.assertRaises(ValueError, list, differ.diff_tables(self.a, self.b))
 
     def test_where_sampling(self):
         a = self.a.replace(where="1=1")
 
-        differ = HashDiffer()
+        differ = HashDiffer(bisection_factor=2)
         diff = list(differ.diff_tables(a, self.b))
         self.assertEqual(diff, [("-", (str(self.new_uuid), "This one is different"))])
 
@@ -501,7 +501,7 @@ class TestVaryingAlphanumericKeys(TestPerDatabase):
         for a in alphanums:
             assert a - a == 0
 
-        differ = HashDiffer()
+        differ = HashDiffer(bisection_factor=2)
         diff = list(differ.diff_tables(self.a, self.b))
         self.assertEqual(diff, [("-", (str(self.new_alphanum), "This one is different"))])
 
@@ -577,7 +577,7 @@ class TestTableUUID(TestPerDatabase):
         self.b = _table_segment(self.connection, self.table_dst_path, "id", "text_comment", case_sensitive=False)
 
     def test_uuid_column_with_nulls(self):
-        differ = HashDiffer()
+        differ = HashDiffer(bisection_factor=2)
         diff = list(differ.diff_tables(self.a, self.b))
         self.assertEqual(diff, [("-", (str(self.null_uuid), None))])
 
@@ -717,7 +717,7 @@ class TestTableTableEmpty(TestPerDatabase):
             [self.src_table.create(), self.dst_table.create(), self.src_table.insert_rows(self.diffs), commit]
         )
 
-        differ = HashDiffer()
+        differ = HashDiffer(bisection_factor=2)
         self.assertRaises(ValueError, list, differ.diff_tables(self.a, self.b))
 
     def test_left_table_empty(self):
@@ -725,7 +725,7 @@ class TestTableTableEmpty(TestPerDatabase):
             [self.src_table.create(), self.dst_table.create(), self.dst_table.insert_rows(self.diffs), commit]
         )
 
-        differ = HashDiffer()
+        differ = HashDiffer(bisection_factor=2)
         self.assertRaises(ValueError, list, differ.diff_tables(self.a, self.b))
 
 

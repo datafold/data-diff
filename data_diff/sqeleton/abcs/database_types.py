@@ -77,6 +77,7 @@ class Decimal(FractionalType, IKey):  # Snowflake may use Decimal as a key
         return decimal.Decimal
 
 
+@dataclass
 class StringType(ColType):
     pass
 
