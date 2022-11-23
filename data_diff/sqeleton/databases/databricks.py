@@ -13,6 +13,7 @@ from ..abcs.database_types import (
     DbPath,
     ColType,
     UnknownColType,
+    Boolean
 )
 from ..abcs.mixins import AbstractMixin_MD5, AbstractMixin_NormalizeValue
 from .base import MD5_HEXDIGITS, CHECKSUM_HEXDIGITS, BaseDialect, ThreadedDatabase, import_helper, parse_table_name
@@ -47,6 +48,9 @@ class Mixin_NormalizeValue(AbstractMixin_NormalizeValue):
             value = f"format_number({value}, {coltype.precision})"
         return f"replace({self.to_string(value)}, ',', '')"
 
+    def normalize_boolean(self, value: str, coltype: Boolean) -> str:
+        return self.to_string(f"cast ({value} as int)")
+
 
 class Dialect(BaseDialect):
     name = "Databricks"
@@ -64,6 +68,8 @@ class Dialect(BaseDialect):
         "TIMESTAMP": Timestamp,
         # Text
         "STRING": Text,
+        # Boolean
+        "BOOLEAN": Boolean,
     }
 
     def quote(self, s: str):
