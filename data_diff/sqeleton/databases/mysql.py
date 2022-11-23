@@ -17,7 +17,7 @@ from .base import (
     ConnectError,
     BaseDialect,
 )
-from .base import MD5_HEXDIGITS, CHECKSUM_HEXDIGITS, TIMESTAMP_PRECISION_POS
+from .base import MD5_HEXDIGITS, CHECKSUM_HEXDIGITS, TIMESTAMP_PRECISION_POS, Mixin_Schema
 
 
 @import_helper("mysql")
@@ -47,7 +47,7 @@ class Mixin_NormalizeValue(AbstractMixin_NormalizeValue):
         return f"TRIM(CAST({value} AS char))"
 
 
-class Dialect(BaseDialect):
+class Dialect(BaseDialect, Mixin_Schema):
     name = "MySQL"
     ROUNDS_ON_PREC_LOSS = True
     SUPPORTS_PRIMARY_KEY = True

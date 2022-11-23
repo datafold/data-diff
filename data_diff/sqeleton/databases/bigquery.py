@@ -11,7 +11,9 @@ from ..abcs.database_types import (
     TemporalType,
     Boolean,
 )
-from ..abcs.mixins import AbstractMixin_MD5, AbstractMixin_NormalizeValue
+from ..abcs.mixins import AbstractMixin_MD5, AbstractMixin_NormalizeValue, AbstractMixin_Schema
+from ..abcs import Compilable
+from ..queries import this, table, SKIP
 from .base import BaseDialect, Database, import_helper, parse_table_name, ConnectError, apply_query
 from .base import TIMESTAMP_PRECISION_POS, ThreadLocalInterpreter
 
@@ -51,7 +53,20 @@ class Mixin_NormalizeValue(AbstractMixin_NormalizeValue):
         return self.to_string(f"cast({value} as int)")
 
 
-class Dialect(BaseDialect):
+class Mixin_Schema(AbstractMixin_Schema):
+    def list_tables(self, table_schema: str, like: Compilable = None) -> Compilable:
+        return (
+            table(table_schema, "INFORMATION_SCHEMA", "TABLES")
+            .where(
+                this.table_schema == table_schema,
+                this.table_name.like(like) if like is not None else SKIP,
+                this.table_type == "BASE TABLE",
+            )
+            .select(this.table_name)
+        )
+
+
+class Dialect(BaseDialect, Mixin_Schema):
     name = "BigQuery"
     ROUNDS_ON_PREC_LOSS = False  # Technically BigQuery doesn't allow implicit rounding or truncation
     TYPE_CLASSES = {

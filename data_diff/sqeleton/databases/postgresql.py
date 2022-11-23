@@ -11,12 +11,7 @@ from ..abcs.database_types import (
     Boolean,
 )
 from ..abcs.mixins import AbstractMixin_MD5, AbstractMixin_NormalizeValue
-from .base import (
-    BaseDialect,
-    ThreadedDatabase,
-    import_helper,
-    ConnectError,
-)
+from .base import BaseDialect, ThreadedDatabase, import_helper, ConnectError, Mixin_Schema
 from .base import MD5_HEXDIGITS, CHECKSUM_HEXDIGITS, _CHECKSUM_BITSIZE, TIMESTAMP_PRECISION_POS
 
 SESSION_TIME_ZONE = None  # Changed by the tests
@@ -53,7 +48,7 @@ class Mixin_NormalizeValue(AbstractMixin_NormalizeValue):
         return self.to_string(f"{value}::int")
 
 
-class PostgresqlDialect(BaseDialect):
+class PostgresqlDialect(BaseDialect, Mixin_Schema):
     name = "PostgreSQL"
     ROUNDS_ON_PREC_LOSS = True
     SUPPORTS_PRIMARY_KEY = True

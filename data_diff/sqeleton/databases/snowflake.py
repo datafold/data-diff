@@ -12,7 +12,9 @@ from ..abcs.database_types import (
     DbPath,
     Boolean,
 )
-from ..abcs.mixins import AbstractMixin_MD5, AbstractMixin_NormalizeValue
+from ..abcs.mixins import AbstractMixin_MD5, AbstractMixin_NormalizeValue, AbstractMixin_Schema
+from ..abcs import Compilable
+from data_diff.sqeleton.queries import table, this, SKIP
 from .base import BaseDialect, ConnectError, Database, import_helper, CHECKSUM_MASK, ThreadLocalInterpreter
 
 
@@ -46,7 +48,23 @@ class Mixin_NormalizeValue(AbstractMixin_NormalizeValue):
         return self.to_string(f"{value}::int")
 
 
-class Dialect(BaseDialect):
+class Mixin_Schema(AbstractMixin_Schema):
+    def table_information(self) -> Compilable:
+        return table("INFORMATION_SCHEMA", "TABLES")
+
+    def list_tables(self, table_schema: str, like: Compilable = None) -> Compilable:
+        return (
+            self.table_information()
+            .where(
+                this.TABLE_SCHEMA == table_schema,
+                this.TABLE_NAME.like(like) if like is not None else SKIP,
+                this.TABLE_TYPE == "BASE TABLE",
+            )
+            .select(table_name=this.TABLE_NAME)
+        )
+
+
+class Dialect(BaseDialect, Mixin_Schema):
     name = "Snowflake"
     ROUNDS_ON_PREC_LOSS = False
     TYPE_CLASSES = {
@@ -71,6 +89,9 @@ class Dialect(BaseDialect):
 
     def to_string(self, s: str):
         return f"cast({s} as string)"
+
+    def table_information(self) -> Compilable:
+        return table("INFORMATION_SCHEMA", "TABLES")
 
 
 class Snowflake(Database):

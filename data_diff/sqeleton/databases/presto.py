@@ -19,7 +19,7 @@ from ..abcs.database_types import (
     Boolean,
 )
 from ..abcs.mixins import AbstractMixin_MD5, AbstractMixin_NormalizeValue
-from .base import BaseDialect, Database, import_helper, ThreadLocalInterpreter
+from .base import BaseDialect, Database, import_helper, ThreadLocalInterpreter, Mixin_Schema
 from .base import (
     MD5_HEXDIGITS,
     CHECKSUM_HEXDIGITS,
@@ -69,7 +69,7 @@ class Mixin_NormalizeValue(AbstractMixin_NormalizeValue):
         return self.to_string(f"cast ({value} as int)")
 
 
-class Dialect(BaseDialect):
+class Dialect(BaseDialect, Mixin_Schema):
     name = "Presto"
     ROUNDS_ON_PREC_LOSS = True
     TYPE_CLASSES = {

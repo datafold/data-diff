@@ -24,7 +24,9 @@ from ..abcs.database_types import (
     Boolean,
     ColType_UUID,
 )
-from ..abcs.mixins import AbstractMixin_MD5, AbstractMixin_NormalizeValue
+from ..abcs.mixins import AbstractMixin_MD5, AbstractMixin_NormalizeValue, AbstractMixin_Schema
+from ..abcs import Compilable
+from ..queries import table, this, SKIP
 
 
 @import_helper("vertica")
@@ -60,7 +62,22 @@ class Mixin_NormalizeValue(AbstractMixin_NormalizeValue):
         return self.to_string(f"cast ({value} as int)")
 
 
-class Dialect(BaseDialect):
+class Mixin_Schema(AbstractMixin_Schema):
+    def table_information(self) -> Compilable:
+        return table("v_catalog", "tables")
+
+    def list_tables(self, table_schema: str, like: Compilable = None) -> Compilable:
+        return (
+            self.table_information()
+            .where(
+                this.table_schema == table_schema,
+                this.table_name.like(like) if like is not None else SKIP,
+            )
+            .select(this.table_name)
+        )
+
+
+class Dialect(BaseDialect, Mixin_Schema):
     name = "Vertica"
     ROUNDS_ON_PREC_LOSS = True
 
