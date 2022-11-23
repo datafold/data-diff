@@ -14,8 +14,10 @@ from ..abcs.database_types import (
     TimestampTZ,
     FractionalType,
 )
-from ..abcs.mixins import AbstractMixin_MD5, AbstractMixin_NormalizeValue
-from .base import BaseDialect, ThreadedDatabase, import_helper, ConnectError, QueryError
+from ..abcs.mixins import AbstractMixin_MD5, AbstractMixin_NormalizeValue, AbstractMixin_Schema
+from ..abcs import Compilable
+from ..queries import this, table, SKIP
+from .base import BaseDialect, ThreadedDatabase, import_helper, ConnectError, QueryError, Mixin_Schema
 from .base import TIMESTAMP_PRECISION_POS
 
 SESSION_TIME_ZONE = None  # Changed by the tests
@@ -57,8 +59,19 @@ class Mixin_NormalizeValue(AbstractMixin_NormalizeValue):
             format_str += "0." + "9" * (coltype.precision - 1) + "0"
         return f"to_char({value}, '{format_str}')"
 
+class Mixin_Schema(AbstractMixin_Schema):
+    def list_tables(self, table_schema: str, like: Compilable = None) -> Compilable:
+        return (
+            table('ALL_TABLES')
+            .where(
+                this.OWNER == table_schema,
+                this.TABLE_NAME.like(like) if like is not None else SKIP,
+            )
+            .select(table_name = this.TABLE_NAME)
+        )
 
-class Dialect(BaseDialect):
+
+class Dialect(BaseDialect, Mixin_Schema):
     name = "Oracle"
     SUPPORTS_PRIMARY_KEY = True
     TYPE_CLASSES: Dict[str, type] = {
@@ -73,7 +86,7 @@ class Dialect(BaseDialect):
     ROUNDS_ON_PREC_LOSS = True
 
     def quote(self, s: str):
-        return f"{s}"
+        return f'"{s}"'
 
     def to_string(self, s: str):
         return f"cast({s} as varchar(1024))"
@@ -143,7 +156,7 @@ class Oracle(ThreadedDatabase):
     def __init__(self, *, host, database, thread_count, **kw):
         self.kwargs = dict(dsn=f"{host}/{database}" if database else host, **kw)
 
-        self.default_schema = kw.get("user")
+        self.default_schema = kw.get("user").upper()
 
         super().__init__(thread_count=thread_count)
 
@@ -168,5 +181,5 @@ class Oracle(ThreadedDatabase):
 
         return (
             f"SELECT column_name, data_type, 6 as datetime_precision, data_precision as numeric_precision, data_scale as numeric_scale"
-            f" FROM ALL_TAB_COLUMNS WHERE table_name = '{table.upper()}' AND owner = '{schema.upper()}'"
+            f" FROM ALL_TAB_COLUMNS WHERE table_name = '{table}' AND owner = '{schema}'"
         )

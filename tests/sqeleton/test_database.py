@@ -15,8 +15,8 @@ from data_diff.databases import connect
 TEST_DATABASES = {
     dbs.MySQL,
     dbs.PostgreSQL,
-    # dbs.Oracle,
-    # dbs.Redshift,
+    dbs.Oracle,
+    dbs.Redshift,
     dbs.Snowflake,
     dbs.DuckDB,
     dbs.BigQuery,
@@ -61,7 +61,7 @@ class TestSchema(TestPerDatabase):
         assert not db.query(q)
 
         db.query(tbl.create())
-        assert db.query(q, List[str] ) == [name]
+        self.assertEqual( db.query(q, List[str] ), [name])
 
         db.query( tbl.drop() )
         assert not db.query(q)
