@@ -121,6 +121,7 @@ class Mixin_Schema(AbstractMixin_Schema):
 
 class BaseDialect(AbstractDialect):
     SUPPORTS_PRIMARY_KEY = False
+    SUPPORTS_INDEXES = False
     TYPE_CLASSES: Dict[str, type] = {}
 
     def offset_limit(self, offset: Optional[int] = None, limit: Optional[int] = None):

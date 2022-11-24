@@ -592,37 +592,9 @@ def _insert_to_table(conn, table_path, values, type):
     conn.query(commit)
 
 
-def _create_indexes(conn, table):
-    # It is unfortunate that Presto doesn't support creating indexes...
-    # Technically we could create it in the backing Postgres behind the scenes.
-    if isinstance(
-        conn, (db.Snowflake, db.Redshift, db.Presto, db.BigQuery, db.Databricks, db.Trino, db.Clickhouse, db.Vertica)
-    ):
-        return
-
-    try:
-        quote = conn.dialect.quote
-        conn.query(
-            f"CREATE INDEX xa_{table[1:-1]} ON {table} ({quote('id')}, {quote('col')})",
-            None,
-        )
-        conn.query(
-            f"CREATE INDEX xb_{table[1:-1]} ON {table} ({quote('id')})",
-            None,
-        )
-    except Exception as err:
-        if "Duplicate key name" in str(err):  #  mysql
-            pass
-        elif "such column list already indexed" in str(err):  #  oracle
-            pass
-        elif "name is already used" in str(err):  #  oracle
-            pass
-        else:
-            raise (err)
-
-
 def _create_table_with_indexes(conn, table_path, type_):
-    table_name = ".".join(map(conn.dialect.quote, table_path))
+    quote = conn.dialect.quote
+    table_name = ".".join(map(quote, table_path))
 
     tbl = table(
         table_path,
@@ -637,7 +609,11 @@ def _create_table_with_indexes(conn, table_path, type_):
     else:
         conn.query(tbl.create())
 
-    _create_indexes(conn, table_name)
+    if conn.dialect.SUPPORTS_INDEXES:
+        index_id ,= table_path
+        conn.query(f"CREATE INDEX xa_{index_id} ON {table_name} ({quote('id')}, {quote('col')})")
+        conn.query(f"CREATE INDEX xb_{index_id} ON {table_name} ({quote('id')})")
+
     conn.query(commit)
 
 

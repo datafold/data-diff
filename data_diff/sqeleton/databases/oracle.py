@@ -74,6 +74,7 @@ class Mixin_Schema(AbstractMixin_Schema):
 class Dialect(BaseDialect, Mixin_Schema):
     name = "Oracle"
     SUPPORTS_PRIMARY_KEY = True
+    SUPPORTS_INDEXES = True
     TYPE_CLASSES: Dict[str, type] = {
         "NUMBER": Decimal,
         "FLOAT": Float,
