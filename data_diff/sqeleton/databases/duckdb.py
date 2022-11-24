@@ -58,6 +58,7 @@ class Dialect(BaseDialect, Mixin_Schema):
     name = "DuckDB"
     ROUNDS_ON_PREC_LOSS = False
     SUPPORTS_PRIMARY_KEY = True
+    SUPPORTS_INDEXES = True
 
     TYPE_CLASSES = {
         # Timestamps

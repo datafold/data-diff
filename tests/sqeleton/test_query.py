@@ -74,8 +74,7 @@ class TestQuery(unittest.TestCase):
         assert c.compile(t) == "SELECT * FROM point WHERE (x = 1) AND (y = 2)"
 
         t = table("person").where(this.name == "Albert")
-        self.assertEqual( c.compile(t), "SELECT * FROM person WHERE (name = 'Albert')" )
-
+        self.assertEqual(c.compile(t), "SELECT * FROM person WHERE (name = 'Albert')")
 
     def test_outerjoin(self):
         c = Compiler(MockDatabase())

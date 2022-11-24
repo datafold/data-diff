@@ -7,7 +7,7 @@ from data_diff.table_segment import TableSegment
 from data_diff import databases as db
 from data_diff.joindiff_tables import JoinDiffer
 
-from .test_diff_tables import TestPerDatabase
+from .test_diff_tables import DiffTestCase
 
 from .common import (
     random_table_suffix,
@@ -31,20 +31,12 @@ test_each_database = test_each_database_in_list(TEST_DATABASES)
 
 
 @test_each_database_in_list({db.Snowflake, db.BigQuery})
-class TestCompositeKey(TestPerDatabase):
+class TestCompositeKey(DiffTestCase):
+    src_schema = {"id": int, "userid": int, "movieid": int, "rating": float, "timestamp": datetime}
+    dst_schema = {"id": int, "userid": int, "movieid": int, "rating": float, "timestamp": datetime}
+
     def setUp(self):
         super().setUp()
-
-        self.src_table = table(
-            self.table_src_path,
-            schema={"id": int, "userid": int, "movieid": int, "rating": float, "timestamp": datetime},
-        )
-        self.dst_table = table(
-            self.table_dst_path,
-            schema={"id": int, "userid": int, "movieid": int, "rating": float, "timestamp": datetime},
-        )
-
-        self.connection.query([self.src_table.create(), self.dst_table.create(), commit])
 
         self.differ = JoinDiffer()
 
@@ -82,20 +74,12 @@ class TestCompositeKey(TestPerDatabase):
 
 
 @test_each_database
-class TestJoindiff(TestPerDatabase):
+class TestJoindiff(DiffTestCase):
+    src_schema = {"id": int, "userid": int, "movieid": int, "rating": float, "timestamp": datetime}
+    dst_schema = {"id": int, "userid": int, "movieid": int, "rating": float, "timestamp": datetime}
+
     def setUp(self):
         super().setUp()
-
-        self.src_table = table(
-            self.table_src_path,
-            schema={"id": int, "userid": int, "movieid": int, "rating": float, "timestamp": datetime},
-        )
-        self.dst_table = table(
-            self.table_dst_path,
-            schema={"id": int, "userid": int, "movieid": int, "rating": float, "timestamp": datetime},
-        )
-
-        self.connection.query([self.src_table.create(), self.dst_table.create(), commit])
 
         self.table = TableSegment(self.connection, self.table_src_path, ("id",), "timestamp", case_sensitive=False)
         self.table2 = TableSegment(self.connection, self.table_dst_path, ("id",), "timestamp", case_sensitive=False)
@@ -282,7 +266,7 @@ class TestJoindiff(TestPerDatabase):
 
 
 @test_each_database_in_list(d for d in TEST_DATABASES if d.dialect.SUPPORTS_PRIMARY_KEY and d.SUPPORTS_UNIQUE_CONSTAINT)
-class TestUniqueConstraint(TestPerDatabase):
+class TestUniqueConstraint(DiffTestCase):
     def setUp(self):
         super().setUp()
 

@@ -13,7 +13,7 @@ from data_diff.table_segment import TableSegment, split_space
 from data_diff import databases as db
 from data_diff.sqeleton.utils import ArithAlphanumeric, numberToAlphanum
 
-from .common import str_to_checksum, test_each_database_in_list, TestPerDatabase, get_conn, random_table_suffix
+from .common import str_to_checksum, test_each_database_in_list, DiffTestCase, get_conn, random_table_suffix
 
 
 TEST_DATABASES = {
@@ -47,12 +47,13 @@ class TestUtils(unittest.TestCase):
 
 
 @test_each_database
-class TestDates(TestPerDatabase):
+class TestDates(DiffTestCase):
+    src_schema = {"id": int, "datetime": datetime, "text_comment": str}
+
     def setUp(self):
         super().setUp()
 
-        src_table = table(self.table_src_path, schema={"id": int, "datetime": datetime, "text_comment": str})
-        self.connection.query(src_table.create())
+        src_table = self.src_table
         self.now = now = arrow.get()
 
         rows = [
@@ -143,20 +144,12 @@ class TestDates(TestPerDatabase):
 
 
 @test_each_database
-class TestDiffTables(TestPerDatabase):
+class TestDiffTables(DiffTestCase):
+    src_schema = {"id": int, "userid": int, "movieid": int, "rating": float, "timestamp": datetime}
+    dst_schema = {"id": int, "userid": int, "movieid": int, "rating": float, "timestamp": datetime}
+
     def setUp(self):
         super().setUp()
-
-        self.src_table = table(
-            self.table_src_path,
-            schema={"id": int, "userid": int, "movieid": int, "rating": float, "timestamp": datetime},
-        )
-        self.dst_table = table(
-            self.table_dst_path,
-            schema={"id": int, "userid": int, "movieid": int, "rating": float, "timestamp": datetime},
-        )
-
-        self.connection.query([self.src_table.create(), self.dst_table.create(), commit])
 
         self.table = _table_segment(self.connection, self.table_src_path, "id", "timestamp", case_sensitive=False)
         self.table2 = _table_segment(self.connection, self.table_dst_path, "id", "timestamp", case_sensitive=False)
@@ -326,14 +319,11 @@ class TestDiffTables(TestPerDatabase):
 
 
 @test_each_database
-class TestDiffTables2(TestPerDatabase):
+class TestDiffTables2(DiffTestCase):
+    src_schema = {"id": int, "rating": float, "timestamp": datetime}
+    dst_schema = {"id2": int, "rating2": float, "timestamp2": datetime}
+
     def test_diff_column_names(self):
-
-        self.src_table = table(self.table_src_path, schema={"id": int, "rating": float, "timestamp": datetime})
-        self.dst_table = table(self.table_dst_path, schema={"id2": int, "rating2": float, "timestamp2": datetime})
-
-        self.connection.query([self.src_table.create(), self.dst_table.create(), commit])
-
         time = "2022-01-01 00:00:00"
         time2 = "2021-01-01 00:00:00"
 
@@ -374,17 +364,18 @@ class TestDiffTables2(TestPerDatabase):
 
 
 @test_each_database
-class TestUUIDs(TestPerDatabase):
+class TestUUIDs(DiffTestCase):
+    src_schema = {"id": str, "text_comment": str}
+
     def setUp(self):
         super().setUp()
 
-        self.src_table = src_table = table(self.table_src_path, schema={"id": str, "text_comment": str})
+        src_table = self.src_table
 
         self.new_uuid = uuid.uuid1(32132131)
 
         self.connection.query(
             [
-                src_table.create(),
                 src_table.insert_rows((uuid.uuid1(i), str(i)) for i in range(100)),
                 table(self.table_dst_path).create(src_table),
                 src_table.insert_row(self.new_uuid, "This one is different"),
@@ -392,8 +383,12 @@ class TestUUIDs(TestPerDatabase):
             ]
         )
 
-        self.a = _table_segment(self.connection, self.table_src_path, "id", extra_columns=("text_comment",), case_sensitive=False).with_schema()
-        self.b = _table_segment(self.connection, self.table_dst_path, "id", extra_columns=("text_comment",), case_sensitive=False).with_schema()
+        self.a = _table_segment(
+            self.connection, self.table_src_path, "id", extra_columns=("text_comment",), case_sensitive=False
+        ).with_schema()
+        self.b = _table_segment(
+            self.connection, self.table_dst_path, "id", extra_columns=("text_comment",), case_sensitive=False
+        ).with_schema()
 
     def test_string_keys(self):
         differ = HashDiffer(bisection_factor=2)
@@ -416,11 +411,13 @@ class TestUUIDs(TestPerDatabase):
 
 
 @test_each_database_in_list(TEST_DATABASES - {db.MySQL})
-class TestAlphanumericKeys(TestPerDatabase):
+class TestAlphanumericKeys(DiffTestCase):
+    src_schema = {"id": str, "text_comment": str}
+
     def setUp(self):
         super().setUp()
 
-        self.src_table = src_table = table(self.table_src_path, schema={"id": str, "text_comment": str})
+        src_table = self.src_table
         self.new_alphanum = "aBcDeFgHiz"
 
         values = []
@@ -433,7 +430,6 @@ class TestAlphanumericKeys(TestPerDatabase):
             values.append((str(a), str(i)))
 
         queries = [
-            src_table.create(),
             src_table.insert_rows(values),
             table(self.table_dst_path).create(src_table),
             src_table.insert_row(self.new_alphanum, "This one is different"),
@@ -461,11 +457,13 @@ class TestAlphanumericKeys(TestPerDatabase):
 
 
 @test_each_database_in_list(TEST_DATABASES - {db.MySQL})
-class TestVaryingAlphanumericKeys(TestPerDatabase):
+class TestVaryingAlphanumericKeys(DiffTestCase):
+    src_schema = {"id": str, "text_comment": str}
+
     def setUp(self):
         super().setUp()
 
-        self.src_table = src_table = table(self.table_src_path, schema={"id": str, "text_comment": str})
+        src_table = self.src_table
 
         values = []
         for i in range(0, 10000, 1000):
@@ -479,7 +477,6 @@ class TestVaryingAlphanumericKeys(TestPerDatabase):
         self.new_alphanum = "aBcDeFgHiJ"
 
         queries = [
-            src_table.create(),
             src_table.insert_rows(values),
             table(self.table_dst_path).create(src_table),
             src_table.insert_row(self.new_alphanum, "This one is different"),
@@ -517,7 +514,7 @@ class TestVaryingAlphanumericKeys(TestPerDatabase):
 
 
 @test_each_database
-class TestTableSegment(TestPerDatabase):
+class TestTableSegment(DiffTestCase):
     def setUp(self) -> None:
         super().setUp()
         self.table = _table_segment(self.connection, self.table_src_path, "id", "timestamp", case_sensitive=False)
@@ -550,11 +547,13 @@ class TestTableSegment(TestPerDatabase):
 
 
 @test_each_database
-class TestTableUUID(TestPerDatabase):
+class TestTableUUID(DiffTestCase):
+    src_schema = {"id": str, "text_comment": str}
+
     def setUp(self):
         super().setUp()
 
-        src_table = table(self.table_src_path, schema={"id": str, "text_comment": str})
+        src_table = self.src_table
 
         values = []
         for i in range(10):
@@ -565,7 +564,6 @@ class TestTableUUID(TestPerDatabase):
 
         self.connection.query(
             [
-                src_table.create(),
                 src_table.insert_rows(values),
                 table(self.table_dst_path).create(src_table),
                 src_table.insert_row(self.null_uuid, None),
@@ -583,16 +581,17 @@ class TestTableUUID(TestPerDatabase):
 
 
 @test_each_database
-class TestTableNullRowChecksum(TestPerDatabase):
+class TestTableNullRowChecksum(DiffTestCase):
+    src_schema = {"id": str, "text_comment": str}
+
     def setUp(self):
         super().setUp()
 
-        src_table = table(self.table_src_path, schema={"id": str, "text_comment": str})
+        src_table = self.src_table
 
         self.null_uuid = uuid.uuid1(1)
         self.connection.query(
             [
-                src_table.create(),
                 src_table.insert_row(uuid.uuid1(1), "1"),
                 table(self.table_dst_path).create(src_table),
                 src_table.insert_row(self.null_uuid, None),  # Add a row where a column has NULL value
@@ -630,12 +629,12 @@ class TestTableNullRowChecksum(TestPerDatabase):
 
 
 @test_each_database
-class TestConcatMultipleColumnWithNulls(TestPerDatabase):
+class TestConcatMultipleColumnWithNulls(DiffTestCase):
+    src_schema = {"id": str, "c1": str, "c2": str}
+    dst_schema = {"id": str, "c1": str, "c2": str}
+
     def setUp(self):
         super().setUp()
-
-        src_table = table(self.table_src_path, schema={"id": str, "c1": str, "c2": str})
-        dst_table = table(self.table_dst_path, schema={"id": str, "c1": str, "c2": str})
 
         src_values = []
         dst_values = []
@@ -654,10 +653,8 @@ class TestConcatMultipleColumnWithNulls(TestPerDatabase):
 
         self.connection.query(
             [
-                src_table.create(),
-                dst_table.create(),
-                src_table.insert_rows(src_values),
-                dst_table.insert_rows(dst_values),
+                self.src_table.insert_rows(src_values),
+                self.dst_table.insert_rows(dst_values),
                 commit,
             ]
         )
@@ -698,12 +695,12 @@ class TestConcatMultipleColumnWithNulls(TestPerDatabase):
 
 
 @test_each_database
-class TestTableTableEmpty(TestPerDatabase):
+class TestTableTableEmpty(DiffTestCase):
+    src_schema = {"id": str, "text_comment": str}
+    dst_schema = {"id": str, "text_comment": str}
+
     def setUp(self):
         super().setUp()
-
-        self.src_table = table(self.table_src_path, schema={"id": str, "text_comment": str})
-        self.dst_table = table(self.table_dst_path, schema={"id": str, "text_comment": str})
 
         self.null_uuid = uuid.uuid1(1)
 
@@ -713,50 +710,33 @@ class TestTableTableEmpty(TestPerDatabase):
         self.b = _table_segment(self.connection, self.table_dst_path, "id", "text_comment", case_sensitive=False)
 
     def test_right_table_empty(self):
-        self.connection.query(
-            [self.src_table.create(), self.dst_table.create(), self.src_table.insert_rows(self.diffs), commit]
-        )
+        self.connection.query([self.src_table.insert_rows(self.diffs), commit])
 
         differ = HashDiffer(bisection_factor=2)
         self.assertRaises(ValueError, list, differ.diff_tables(self.a, self.b))
 
     def test_left_table_empty(self):
-        self.connection.query(
-            [self.src_table.create(), self.dst_table.create(), self.dst_table.insert_rows(self.diffs), commit]
-        )
+        self.connection.query([self.dst_table.insert_rows(self.diffs), commit])
 
         differ = HashDiffer(bisection_factor=2)
         self.assertRaises(ValueError, list, differ.diff_tables(self.a, self.b))
 
 
-class TestInfoTree(unittest.TestCase):
+class TestInfoTree(DiffTestCase):
+    db_cls = db.MySQL
+    src_schema = dst_schema = dict(id=int)
+
     def test_info_tree_root(self):
-        try:
-            self.db = get_conn(db.DuckDB)
-        except KeyError:  # ddb not defined
-            self.db = get_conn(db.MySQL)
-
-        table_suffix = random_table_suffix()
-        self.table_src_name = f"src{table_suffix}"
-        self.table_dst_name = f"dst{table_suffix}"
-
-        schema = dict(
-            id=int,
+        db = self.connection
+        db.query(
+            [
+                self.src_table.insert_rows([i] for i in range(1000)),
+                self.dst_table.insert_rows([i] for i in range(2000)),
+            ]
         )
-        self.table1 = table(self.table_src_name, schema=schema)
-        self.table2 = table(self.table_dst_name, schema=schema)
 
-        queries = [
-            self.table1.create(),
-            self.table2.create(),
-            self.table1.insert_rows([i] for i in range(1000)),
-            self.table2.insert_rows([i] for i in range(2000)),
-        ]
-        for q in queries:
-            self.db.query(q)
-
-        ts1 = TableSegment(self.db, self.table1.path, ("id",))
-        ts2 = TableSegment(self.db, self.table2.path, ("id",))
+        ts1 = TableSegment(db, self.src_table.path, ("id",))
+        ts2 = TableSegment(db, self.dst_table.path, ("id",))
 
         for differ in (HashDiffer(bisection_threshold=64), JoinDiffer(True)):
             diff_res = differ.diff_tables(ts1, ts2)

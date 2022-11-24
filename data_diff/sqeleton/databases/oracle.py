@@ -59,21 +59,23 @@ class Mixin_NormalizeValue(AbstractMixin_NormalizeValue):
             format_str += "0." + "9" * (coltype.precision - 1) + "0"
         return f"to_char({value}, '{format_str}')"
 
+
 class Mixin_Schema(AbstractMixin_Schema):
     def list_tables(self, table_schema: str, like: Compilable = None) -> Compilable:
         return (
-            table('ALL_TABLES')
+            table("ALL_TABLES")
             .where(
                 this.OWNER == table_schema,
                 this.TABLE_NAME.like(like) if like is not None else SKIP,
             )
-            .select(table_name = this.TABLE_NAME)
+            .select(table_name=this.TABLE_NAME)
         )
 
 
 class Dialect(BaseDialect, Mixin_Schema):
     name = "Oracle"
     SUPPORTS_PRIMARY_KEY = True
+    SUPPORTS_INDEXES = True
     TYPE_CLASSES: Dict[str, type] = {
         "NUMBER": Decimal,
         "FLOAT": Float,

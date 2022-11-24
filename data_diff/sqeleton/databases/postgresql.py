@@ -52,6 +52,7 @@ class PostgresqlDialect(BaseDialect, Mixin_Schema):
     name = "PostgreSQL"
     ROUNDS_ON_PREC_LOSS = True
     SUPPORTS_PRIMARY_KEY = True
+    SUPPORTS_INDEXES = True
 
     TYPE_CLASSES = {
         # Timestamps

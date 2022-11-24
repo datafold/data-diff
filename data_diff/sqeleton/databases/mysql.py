@@ -51,6 +51,7 @@ class Dialect(BaseDialect, Mixin_Schema):
     name = "MySQL"
     ROUNDS_ON_PREC_LOSS = True
     SUPPORTS_PRIMARY_KEY = True
+    SUPPORTS_INDEXES = True
     TYPE_CLASSES = {
         # Dates
         "datetime": Datetime,
