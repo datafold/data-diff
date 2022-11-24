@@ -2,7 +2,7 @@ from typing import Callable, List
 import unittest
 
 from ..common import str_to_checksum, TEST_MYSQL_CONN_STRING
-from ..common import str_to_checksum, test_each_database_in_list, TestPerDatabase, get_conn, random_table_suffix
+from ..common import str_to_checksum, test_each_database_in_list, DiffTestCase, get_conn, random_table_suffix
 # from data_diff.sqeleton import databases as db
 # from data_diff.sqeleton import connect
 
@@ -52,10 +52,11 @@ class TestConnect(unittest.TestCase):
 
 
 @test_each_database
-class TestSchema(TestPerDatabase):
+class TestSchema(unittest.TestCase):
+
     def test_table_list(self):
-        name = self.table_src_name
-        db = self.connection
+        name = 'tbl_' + random_table_suffix()
+        db = get_conn(self.db_cls)
         tbl = table(db.parse_table_name(name), schema={'id': int})
         q = db.dialect.list_tables(db.default_schema, name)
         assert not db.query(q)

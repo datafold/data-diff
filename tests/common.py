@@ -129,8 +129,11 @@ def str_to_checksum(str: str):
     return int(md5[half_pos:], 16)
 
 
-class TestPerDatabase(unittest.TestCase):
+class DiffTestCase(unittest.TestCase):
+    "Sets up two tables for diffing (doesn't create them)"
     db_cls = None
+    src_schema = None
+    dst_schema = None
 
     def setUp(self):
         assert self.db_cls, self.db_cls
@@ -144,11 +147,15 @@ class TestPerDatabase(unittest.TestCase):
         self.table_src_path = self.connection.parse_table_name(self.table_src_name)
         self.table_dst_path = self.connection.parse_table_name(self.table_dst_name)
 
-        self.table_src = ".".join(map(self.connection.dialect.quote, self.table_src_path))
-        self.table_dst = ".".join(map(self.connection.dialect.quote, self.table_dst_path))
-
         drop_table(self.connection, self.table_src_path)
         drop_table(self.connection, self.table_dst_path)
+
+        if self.src_schema:
+            self.src_table = table(self.table_src_path, schema=self.src_schema)
+            self.connection.query( self.src_table.create() )
+        if self.dst_schema:
+            self.dst_table = table(self.table_dst_path, schema=self.dst_schema)
+            self.connection.query( self.dst_table.create() )
 
         return super().setUp()
 
