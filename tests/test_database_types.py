@@ -601,14 +601,13 @@ def _create_indexes(conn, table):
         return
 
     try:
-        if_not_exists = "IF NOT EXISTS" if not isinstance(conn, (db.MySQL, db.Oracle)) else ""
         quote = conn.dialect.quote
         conn.query(
-            f"CREATE INDEX {if_not_exists} xa_{table[1:-1]} ON {table} ({quote('id')}, {quote('col')})",
+            f"CREATE INDEX xa_{table[1:-1]} ON {table} ({quote('id')}, {quote('col')})",
             None,
         )
         conn.query(
-            f"CREATE INDEX {if_not_exists} xb_{table[1:-1]} ON {table} ({quote('id')})",
+            f"CREATE INDEX xb_{table[1:-1]} ON {table} ({quote('id')})",
             None,
         )
     except Exception as err:
@@ -633,14 +632,10 @@ def _create_table_with_indexes(conn, table_path, type_):
         },
     )
 
-    if isinstance(conn, db.Oracle):
-        already_exists = conn.query(f"SELECT COUNT(*) from tab where tname='{table_name.upper()}'", int) > 0
-        if not already_exists:
-            conn.query(tbl.create())
-    elif isinstance(conn, db.Clickhouse):
+    if isinstance(conn, db.Clickhouse):
         conn.query(f"CREATE TABLE {table_name}(id int, col {type_}) engine = Memory;", None)
     else:
-        conn.query(tbl.create(if_not_exists=True))
+        conn.query(tbl.create())
 
     _create_indexes(conn, table_name)
     conn.query(commit)
