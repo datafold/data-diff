@@ -383,8 +383,12 @@ class TestUUIDs(DiffTestCase):
             ]
         )
 
-        self.a = _table_segment(self.connection, self.table_src_path, "id", extra_columns=("text_comment",), case_sensitive=False).with_schema()
-        self.b = _table_segment(self.connection, self.table_dst_path, "id", extra_columns=("text_comment",), case_sensitive=False).with_schema()
+        self.a = _table_segment(
+            self.connection, self.table_src_path, "id", extra_columns=("text_comment",), case_sensitive=False
+        ).with_schema()
+        self.b = _table_segment(
+            self.connection, self.table_dst_path, "id", extra_columns=("text_comment",), case_sensitive=False
+        ).with_schema()
 
     def test_string_keys(self):
         differ = HashDiffer(bisection_factor=2)
@@ -706,17 +710,13 @@ class TestTableTableEmpty(DiffTestCase):
         self.b = _table_segment(self.connection, self.table_dst_path, "id", "text_comment", case_sensitive=False)
 
     def test_right_table_empty(self):
-        self.connection.query(
-            [self.src_table.insert_rows(self.diffs), commit]
-        )
+        self.connection.query([self.src_table.insert_rows(self.diffs), commit])
 
         differ = HashDiffer(bisection_factor=2)
         self.assertRaises(ValueError, list, differ.diff_tables(self.a, self.b))
 
     def test_left_table_empty(self):
-        self.connection.query(
-            [self.dst_table.insert_rows(self.diffs), commit]
-        )
+        self.connection.query([self.dst_table.insert_rows(self.diffs), commit])
 
         differ = HashDiffer(bisection_factor=2)
         self.assertRaises(ValueError, list, differ.diff_tables(self.a, self.b))
@@ -728,10 +728,12 @@ class TestInfoTree(DiffTestCase):
 
     def test_info_tree_root(self):
         db = self.connection
-        db.query([
-            self.src_table.insert_rows([i] for i in range(1000)),
-            self.dst_table.insert_rows([i] for i in range(2000)),
-        ])
+        db.query(
+            [
+                self.src_table.insert_rows([i] for i in range(1000)),
+                self.dst_table.insert_rows([i] for i in range(2000)),
+            ]
+        )
 
         ts1 = TableSegment(db, self.src_table.path, ("id",))
         ts2 = TableSegment(db, self.dst_table.path, ("id",))

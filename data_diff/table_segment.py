@@ -100,7 +100,9 @@ class TableSegment:
         return table(*self.table_path, schema=self._schema)
 
     def make_select(self):
-        return self.source_table.where(*self._make_key_range(), *self._make_update_range(), Code(self.where) if self.where else SKIP)
+        return self.source_table.where(
+            *self._make_key_range(), *self._make_update_range(), Code(self.where) if self.where else SKIP
+        )
 
     def get_values(self) -> list:
         "Download all the relevant values of the segment from the database"

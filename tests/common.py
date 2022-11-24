@@ -152,10 +152,10 @@ class DiffTestCase(unittest.TestCase):
 
         if self.src_schema:
             self.src_table = table(self.table_src_path, schema=self.src_schema)
-            self.connection.query( self.src_table.create() )
+            self.connection.query(self.src_table.create())
         if self.dst_schema:
             self.dst_table = table(self.table_dst_path, schema=self.dst_schema)
-            self.connection.query( self.dst_table.create() )
+            self.connection.query(self.dst_table.create())
 
         return super().setUp()
 

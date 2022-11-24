@@ -13,7 +13,7 @@ from ..abcs.database_types import (
     DbPath,
     ColType,
     UnknownColType,
-    Boolean
+    Boolean,
 )
 from ..abcs.mixins import AbstractMixin_MD5, AbstractMixin_NormalizeValue
 from .base import MD5_HEXDIGITS, CHECKSUM_HEXDIGITS, BaseDialect, ThreadedDatabase, import_helper, parse_table_name
