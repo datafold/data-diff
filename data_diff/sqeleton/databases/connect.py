@@ -93,6 +93,8 @@ DATABASE_BY_SCHEME = {
 
 
 class Connect:
+    """Provides methods for connecting to a supported database using a URL or connection dict."""
+
     def __init__(self, database_by_scheme: Dict[str, Database]):
         self.database_by_scheme = database_by_scheme
         self.match_uri_path = {
@@ -172,9 +174,11 @@ class Connect:
         kw = {k: v for k, v in kw.items() if v is not None}
 
         if issubclass(cls, ThreadedDatabase):
-            return cls(thread_count=thread_count, **kw)
+            db = cls(thread_count=thread_count, **kw)
+        else:
+            db = cls(**kw)
 
-        return cls(**kw)
+        return self._connection_created(db)
 
     def connect_with_dict(self, d, thread_count):
         d = dict(d)
@@ -186,9 +190,15 @@ class Connect:
 
         cls = matcher.database_cls
         if issubclass(cls, ThreadedDatabase):
-            return cls(thread_count=thread_count, **d)
+            db = cls(thread_count=thread_count, **d)
+        else:
+            db = cls(**d)
 
-        return cls(**d)
+        return self._connection_created(db)
+
+    def _connection_created(self, db):
+        "Nop function to be overridden by subclasses."
+        return db
 
     def __call__(self, db_conf: Union[str, dict], thread_count: Optional[int] = 1) -> Database:
         """Connect to a database using the given database configuration.

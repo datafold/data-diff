@@ -82,6 +82,9 @@ class Dialect(BaseDialect):
         # Subtracting 2 due to wierd precision issues
         return max(super()._convert_db_precision_to_digits(p) - 2, 0)
 
+    def set_timezone_to_utc(self) -> str:
+        return "SET TIME ZONE 'UTC'"
+
 
 class Databricks(ThreadedDatabase):
     dialect = Dialect()

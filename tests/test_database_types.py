@@ -41,14 +41,6 @@ def init_conns():
         return
 
     CONNS = {cls: get_conn(cls) for cls in CONN_STRINGS}
-    if db.MySQL in CONNS:
-        CONNS[db.MySQL].query("SET @@session.time_zone='+00:00'")
-    if db.PostgreSQL:
-        CONNS[db.PostgreSQL].query("SET TIME ZONE 'UTC';")
-    if db.DuckDB in CONNS:
-        CONNS[db.DuckDB].query("SET GLOBAL TimeZone='UTC'")
-    if db.Oracle in CONNS:
-        CONNS[db.Oracle].query("ALTER SESSION SET TIME_ZONE = 'UTC'")
 
 
 DATABASE_TYPES = {

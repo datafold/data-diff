@@ -87,6 +87,9 @@ class PostgresqlDialect(BaseDialect, Mixin_Schema):
         # Subtracting 2 due to wierd precision issues in PostgreSQL
         return super()._convert_db_precision_to_digits(p) - 2
 
+    def set_timezone_to_utc(self) -> str:
+        return "SET TIME ZONE 'UTC'"
+
 
 class PostgreSQL(ThreadedDatabase):
     dialect = PostgresqlDialect()

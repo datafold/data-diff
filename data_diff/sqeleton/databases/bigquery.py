@@ -101,6 +101,9 @@ class Dialect(BaseDialect, Mixin_Schema):
         except KeyError:
             return super().type_repr(t)
 
+    def set_timezone_to_utc(self) -> str:
+        raise NotImplementedError()
+
 
 class BigQuery(Database):
     CONNECT_URI_HELP = "bigquery://<project>/<dataset>"

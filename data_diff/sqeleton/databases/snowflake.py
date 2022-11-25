@@ -93,6 +93,9 @@ class Dialect(BaseDialect, Mixin_Schema):
     def table_information(self) -> Compilable:
         return table("INFORMATION_SCHEMA", "TABLES")
 
+    def set_timezone_to_utc(self) -> str:
+        return "ALTER SESSION SET TIMEZONE = 'UTC'"
+
 
 class Snowflake(Database):
     dialect = Dialect()

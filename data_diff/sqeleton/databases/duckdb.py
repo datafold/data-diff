@@ -108,6 +108,9 @@ class Dialect(BaseDialect, Mixin_Schema):
 
         return super().parse_type(table_path, col_name, type_repr, datetime_precision, numeric_precision, numeric_scale)
 
+    def set_timezone_to_utc(self) -> str:
+        return "SET GLOBAL TimeZone='UTC'"
+
 
 class DuckDB(Database):
     dialect = Dialect()

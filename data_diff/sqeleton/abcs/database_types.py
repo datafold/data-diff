@@ -203,6 +203,9 @@ class AbstractDialect(ABC):
         "Provide SQL for the given timestamp value"
         ...
 
+    @abstractmethod
+    def set_timezone_to_utc(self) -> str:
+        "Provide SQL for setting the session timezone to UTC"
 
     @abstractmethod
     def parse_type(

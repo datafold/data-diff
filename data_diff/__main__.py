@@ -317,6 +317,7 @@ def _main(
         logging.error(e)
         return
 
+
     now: datetime = db1.query(current_timestamp(), datetime)
     now = now.replace(tzinfo=None)
     try:
