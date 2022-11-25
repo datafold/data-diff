@@ -745,3 +745,47 @@ class TestInfoTree(DiffTestCase):
             assert info_tree.info.is_diff
             assert info_tree.info.diff_count == 1000
             self.assertEqual(info_tree.info.rowcounts, {1: 1000, 2: 2000})
+
+
+class TestDuplicateTables(DiffTestCase):
+    db_cls = db.MySQL
+
+    src_schema = {"id": int, "data": str}
+    dst_schema = {"id": int, "data": str}
+
+    def setUp(self):
+        """
+        table 1:
+            (12, 'ABCDE'),
+            (12, 'ABCDE');
+        table 2:
+            (4,'ABCDEF'),
+            (4,'ABCDE'),
+            (4,'ABCDE'),
+            (6,'ABCDE'),
+            (6,'ABCDE'),
+            (6,'ABCDE');
+        """
+
+        super().setUp()
+
+        src_values = [(12, "ABCDE"), (12, "ABCDE")]
+        dst_values = [(4, "ABCDEF"), (4, "ABCDE"), (4, "ABCDE"), (6, "ABCDE"), (6, "ABCDE"), (6, "ABCDE")]
+
+        self.diffs = [("-", (str(r[0]), r[1])) for r in src_values] + [("+", (str(r[0]), r[1])) for r in dst_values]
+
+        self.connection.query([self.src_table.insert_rows(src_values), self.dst_table.insert_rows(dst_values), commit])
+
+        self.a = _table_segment(
+            self.connection, self.table_src_path, "id", extra_columns=("data",), case_sensitive=False
+        )
+        self.b = _table_segment(
+            self.connection, self.table_dst_path, "id", extra_columns=("data",), case_sensitive=False
+        )
+
+    def test_duplicates(self):
+        """If there are duplicates in data, we want to return them as well"""
+
+        differ = HashDiffer(bisection_factor=2, bisection_threshold=4)
+        diff = list(differ.diff_tables(self.a, self.b))
+        self.assertEqual(diff, self.diffs)

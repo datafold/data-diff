@@ -25,15 +25,18 @@ logger = logging.getLogger("hashdiff_tables")
 
 
 def diff_sets(a: set, b: set) -> Iterator:
-    s1 = set(a)
-    s2 = set(b)
-    d = defaultdict(list)
+    sa = set(a)
+    sb = set(b)
 
     # The first item is always the key (see TableDiffer.relevant_columns)
-    for i in s1 - s2:
-        d[i[0]].append(("-", i))
-    for i in s2 - s1:
-        d[i[0]].append(("+", i))
+    # TODO update when we add compound keys to hashdiff
+    d = defaultdict(list)
+    for row in a:
+        if row not in sb:
+            d[row[0]].append(("-", row))
+    for row in b:
+        if row not in sa:
+            d[row[0]].append(("+", row))
 
     for _k, v in sorted(d.items(), key=lambda i: i[0]):
         yield from v
