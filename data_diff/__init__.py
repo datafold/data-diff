@@ -8,6 +8,7 @@ from .hashdiff_tables import HashDiffer, DEFAULT_BISECTION_THRESHOLD, DEFAULT_BI
 from .joindiff_tables import JoinDiffer
 from .table_segment import TableSegment
 
+__version__ = "0.3.0rc4"
 
 def connect_to_table(
     db_info: Union[str, dict],
