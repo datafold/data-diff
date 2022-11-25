@@ -10,15 +10,27 @@ from itertools import chain
 
 from runtype import dataclass
 
-from .sqeleton.databases import Database, MySQL, BigQuery, Presto, Oracle, Snowflake
-from .sqeleton.abcs.database_types import DbPath, NumericType
-from .sqeleton.queries import table, sum_, min_, max_, avg
-from .sqeleton.queries.api import and_, if_, or_, outerjoin, leftjoin, rightjoin, this, ITable
-from .sqeleton.queries.ast_classes import Concat, Count, Expr, Random, TablePath, Code
-from .sqeleton.queries.compiler import Compiler
+from .sqeleton.databases import Database, MySQL, BigQuery, Presto, Oracle, Snowflake, DbPath
+from .sqeleton.abcs import NumericType
+from .sqeleton.queries import (
+    table,
+    sum_,
+    min_,
+    max_,
+    avg,
+    and_,
+    if_,
+    or_,
+    outerjoin,
+    leftjoin,
+    rightjoin,
+    this,
+    Compiler,
+)
+from .sqeleton.queries.ast_classes import Concat, Count, Expr, Random, TablePath, Code, ITable
 from .sqeleton.queries.extras import NormalizeAsString
 
-from .info_tree import InfoTree, SegmentInfo
+from .info_tree import InfoTree
 
 from .query_utils import append_to_table, drop_table
 from .utils import safezip

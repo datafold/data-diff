@@ -1,5 +1,6 @@
 from .base import MD5_HEXDIGITS, CHECKSUM_HEXDIGITS, QueryError, ConnectError, BaseDialect, Database
-from ..abcs import DbPath, DbKey
+from ..abcs import DbPath, DbKey, DbTime
+from .connect import Connect
 
 from .postgresql import PostgreSQL
 from .mysql import MySQL

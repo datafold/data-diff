@@ -1,4 +1,4 @@
-from data_diff.sqeleton.databases.connect import Connect
+from data_diff.sqeleton.databases import Connect
 
 from .postgresql import PostgreSQL
 from .mysql import MySQL

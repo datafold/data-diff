@@ -4,9 +4,6 @@ import unittest
 from ..common import str_to_checksum, TEST_MYSQL_CONN_STRING
 from ..common import str_to_checksum, test_each_database_in_list, DiffTestCase, get_conn, random_table_suffix
 
-# from data_diff.sqeleton import databases as db
-# from data_diff.sqeleton import connect
-
 from data_diff.sqeleton.queries import table
 
 from data_diff import databases as dbs
