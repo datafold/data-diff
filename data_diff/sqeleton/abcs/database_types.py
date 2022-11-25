@@ -185,6 +185,10 @@ class AbstractDialect(ABC):
         "Provide SQL for generating a random number betweein 0..1"
 
     @abstractmethod
+    def current_timestamp(self) -> str:
+        "Provide SQL for returning the current timestamp, aka now"
+
+    @abstractmethod
     def offset_limit(self, offset: Optional[int] = None, limit: Optional[int] = None):
         "Provide SQL fragment for limit and offset inside a select"
         ...
@@ -198,6 +202,10 @@ class AbstractDialect(ABC):
     def timestamp_value(self, t: datetime) -> str:
         "Provide SQL for the given timestamp value"
         ...
+
+    @abstractmethod
+    def set_timezone_to_utc(self) -> str:
+        "Provide SQL for setting the session timezone to UTC"
 
     @abstractmethod
     def parse_type(

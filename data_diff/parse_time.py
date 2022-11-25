@@ -70,5 +70,5 @@ def parse_time_delta(t: str):
     return timedelta(**time_dict)
 
 
-def parse_time_before_now(t: str):
-    return datetime.now() - parse_time_delta(t)
+def parse_time_before(time: datetime, delta: str):
+    return time - parse_time_delta(delta)

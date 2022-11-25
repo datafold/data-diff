@@ -8,7 +8,7 @@ from ..utils import join_iter, ArithString
 from ..abcs import Compilable
 from ..schema import Schema
 
-from .compiler import Compiler, cv_params
+from .compiler import Compiler, cv_params, Root
 from .base import SKIP, CompileError, DbPath, args_as_tuple
 
 
@@ -47,7 +47,7 @@ Expr = Union[ExprNode, str, bool, int, datetime, ArithString, None]
 
 
 @dataclass
-class Code(ExprNode):
+class Code(ExprNode, Root):
     code: str
 
     def compile(self, c: Compiler) -> str:
@@ -434,7 +434,7 @@ class TableAlias(ExprNode, ITable):
 
 
 @dataclass
-class Join(ExprNode, ITable):
+class Join(ExprNode, ITable, Root):
     source_tables: Sequence[ITable]
     op: str = None
     on_exprs: Sequence[Expr] = None
@@ -499,7 +499,7 @@ class Join(ExprNode, ITable):
 
 
 @dataclass
-class GroupBy(ExprNode, ITable):
+class GroupBy(ExprNode, ITable, Root):
     table: ITable
     keys: Sequence[Expr] = None  # IKey?
     values: Sequence[Expr] = None
@@ -540,7 +540,7 @@ class GroupBy(ExprNode, ITable):
 
 
 @dataclass
-class TableOp(ExprNode, ITable):
+class TableOp(ExprNode, ITable, Root):
     op: str
     table1: ITable
     table2: ITable
@@ -571,7 +571,7 @@ class TableOp(ExprNode, ITable):
 
 
 @dataclass
-class Select(ExprNode, ITable):
+class Select(ExprNode, ITable, Root):
     table: Expr = None
     columns: Sequence[Expr] = None
     where_exprs: Sequence[Expr] = None
@@ -771,7 +771,7 @@ class ConstantTable(ExprNode):
 
 
 @dataclass
-class Explain(ExprNode):
+class Explain(ExprNode, Root):
     select: Select
 
     type = str
@@ -780,10 +780,16 @@ class Explain(ExprNode):
         return c.dialect.explain_as_text(c.compile(self.select))
 
 
+class CurrentTimestamp(ExprNode):
+    type = datetime
+
+    def compile(self, c: Compiler) -> str:
+        return c.dialect.current_timestamp()
+
 # DDL
 
 
-class Statement(Compilable):
+class Statement(Compilable, Root):
     type = None
 
 

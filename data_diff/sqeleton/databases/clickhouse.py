@@ -150,6 +150,9 @@ class Dialect(BaseDialect):
     #     # return f"'{t}'"
     #     return f"'{str(t)[:19]}'"
 
+    def set_timezone_to_utc(self) -> str:
+        raise NotImplementedError()
+
 
 class Clickhouse(ThreadedDatabase):
     dialect = Dialect()

@@ -149,6 +149,9 @@ class Dialect(BaseDialect, Mixin_Schema):
 
         return super().parse_type(table_path, col_name, type_repr, datetime_precision, numeric_precision, numeric_scale)
 
+    def set_timezone_to_utc(self) -> str:
+        return "ALTER SESSION SET TIME_ZONE = 'UTC'"
+
 
 class Oracle(ThreadedDatabase):
     dialect = Dialect()

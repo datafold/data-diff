@@ -142,7 +142,10 @@ class BaseDialect(AbstractDialect):
         return f"'{t.isoformat()}'"
 
     def random(self) -> str:
-        return "RANDOM()"
+        return "random()"
+
+    def current_timestamp(self) -> str:
+        return "current_timestamp()"
 
     def explain_as_text(self, query: str) -> str:
         return f"EXPLAIN {query}"

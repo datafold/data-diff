@@ -95,4 +95,8 @@ def insert_rows_in_batches(db, table: TablePath, rows, *, columns=None, batch_si
         db.query(table.insert_rows(batch, columns=columns))
 
 
+def current_timestamp():
+    return CurrentTimestamp()
+
+
 commit = Commit()

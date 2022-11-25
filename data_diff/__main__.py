@@ -1,4 +1,5 @@
 from copy import deepcopy
+from datetime import datetime
 import sys
 import time
 import json
@@ -15,8 +16,9 @@ from .hashdiff_tables import HashDiffer, DEFAULT_BISECTION_THRESHOLD, DEFAULT_BI
 from .joindiff_tables import TABLE_WRITE_LIMIT, JoinDiffer
 from .table_segment import TableSegment
 from .sqeleton.schema import create_schema
+from .sqeleton.queries.api import current_timestamp
 from .databases import connect
-from .parse_time import parse_time_before_now, UNITS_STR, ParseError
+from .parse_time import parse_time_before, UNITS_STR, ParseError
 from .config import apply_config_from_file
 from .tracking import disable_tracking
 from . import __version__
@@ -299,17 +301,6 @@ def _main(
 
     start = time.monotonic()
 
-    try:
-        options = dict(
-            min_update=max_age and parse_time_before_now(max_age),
-            max_update=min_age and parse_time_before_now(min_age),
-            case_sensitive=case_sensitive,
-            where=where,
-        )
-    except ParseError as e:
-        logging.error(f"Error while parsing age expression: {e}")
-        return
-
     if database1 is None or database2 is None:
         logging.error(
             f"Error: Databases not specified. Got {database1} and {database2}. Use --help for more information."
@@ -324,6 +315,20 @@ def _main(
             db2 = connect(database2, threads2 or threads)
     except Exception as e:
         logging.error(e)
+        return
+
+
+    now: datetime = db1.query(current_timestamp(), datetime)
+    now = now.replace(tzinfo=None)
+    try:
+        options = dict(
+            min_update=max_age and parse_time_before(now, max_age),
+            max_update=min_age and parse_time_before(now, min_age),
+            case_sensitive=case_sensitive,
+            where=where,
+        )
+    except ParseError as e:
+        logging.error(f"Error while parsing age expression: {e}")
         return
 
     dbs = db1, db2
