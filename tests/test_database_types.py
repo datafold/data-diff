@@ -14,7 +14,6 @@ from itertools import islice, repeat, chain
 from parameterized import parameterized
 
 from data_diff import databases as db
-from data_diff.databases import postgresql, oracle, duckdb
 from data_diff.query_utils import drop_table
 from data_diff.utils import accumulate
 from data_diff.sqeleton.utils import number_to_human

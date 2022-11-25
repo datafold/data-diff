@@ -11,7 +11,7 @@ from data_diff.info_tree import InfoTree
 
 from .utils import safezip
 from .thread_utils import ThreadedYielder
-from .sqeleton.abcs.database_types import ColType_UUID, NumericType, PrecisionType, StringType
+from .sqeleton.abcs import ColType_UUID, NumericType, PrecisionType, StringType
 from .table_segment import TableSegment
 
 from .diff_tables import TableDiffer
