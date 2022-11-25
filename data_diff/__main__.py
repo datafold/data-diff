@@ -19,6 +19,7 @@ from .databases import connect
 from .parse_time import parse_time_before_now, UNITS_STR, ParseError
 from .config import apply_config_from_file
 from .tracking import disable_tracking
+from . import __version__
 
 
 LOG_FORMAT = "[%(asctime)s] %(levelname)s - %(message)s"
@@ -76,7 +77,7 @@ class MyHelpFormatter(click.HelpFormatter):
         self.indent_increment = 6
 
     def write_usage(self, prog: str, args: str = "", prefix: Optional[str] = None) -> None:
-        self.write("data-diff - efficiently diff rows across database tables.\n\n")
+        self.write(f"data-diff v{__version__} - efficiently diff rows across database tables.\n\n")
         self.write("Usage:\n")
         self.write(f"  * In-db diff:    {prog} <database1> <table1> <table2> [OPTIONS]\n")
         self.write(f"  * Cross-db diff: {prog} <database1> <table1> <database2> <table2> [OPTIONS]\n")
@@ -140,6 +141,7 @@ click.Context.formatter_class = MyHelpFormatter
 @click.option("-d", "--debug", is_flag=True, help="Print debug info")
 @click.option("--json", "json_output", is_flag=True, help="Print JSONL output for machine readability")
 @click.option("-v", "--verbose", is_flag=True, help="Print extra info")
+@click.option("--version", is_flag=True, help="Print version info and exit")
 @click.option("-i", "--interactive", is_flag=True, help="Confirm queries, implies --debug")
 @click.option("--no-tracking", is_flag=True, help="data-diff sends home anonymous usage data. Use this to disable it.")
 @click.option(
@@ -233,6 +235,7 @@ def _main(
     stats,
     debug,
     verbose,
+    version,
     interactive,
     no_tracking,
     threads,
@@ -248,6 +251,9 @@ def _main(
     threads2=None,
     __conf__=None,
 ):
+    if version:
+        print(f"v{__version__}")
+        return
 
     if no_tracking:
         disable_tracking()
