@@ -29,10 +29,13 @@ def diff_sets(a: set, b: set) -> Iterator:
     s2 = set(b)
     d = defaultdict(list)
 
+    diff_ab = (row for row in a if row in s1 - s2)
+    diff_ba = (row for row in b if row in s2 - s1)
+
     # The first item is always the key (see TableDiffer.relevant_columns)
-    for i in s1 - s2:
+    for i in diff_ab:
         d[i[0]].append(("-", i))
-    for i in s2 - s1:
+    for i in diff_ba:
         d[i[0]].append(("+", i))
 
     for _k, v in sorted(d.items(), key=lambda i: i[0]):
