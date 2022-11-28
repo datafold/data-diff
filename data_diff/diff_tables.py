@@ -7,7 +7,7 @@ from abc import ABC, abstractmethod
 from enum import Enum
 from contextlib import contextmanager
 from operator import methodcaller
-from typing import Iterable, Tuple, Iterator, Optional
+from typing import Dict, Iterable, Tuple, Iterator, Optional
 from concurrent.futures import ThreadPoolExecutor, as_completed
 
 from runtype import dataclass
@@ -81,7 +81,7 @@ class ThreadBase:
 
 @dataclass
 class DiffStats:
-    diff_by_sign: dict[str, int]
+    diff_by_sign: Dict[str, int]
     table1_count: int
     table2_count: int
     unchanged: int
