@@ -11,7 +11,6 @@ from typing import Dict, Iterable, Tuple, Iterator, Optional
 from concurrent.futures import ThreadPoolExecutor, as_completed
 
 from runtype import dataclass
-from dataclasses import field
 
 from data_diff.info_tree import InfoTree, SegmentInfo
 
@@ -93,7 +92,7 @@ class DiffResultWrapper:
     diff: iter  # DiffResult
     info_tree: InfoTree
     stats: dict
-    result_list: list = field(default_factory=list)
+    result_list: list = []
 
     def __iter__(self):
         yield from self.result_list
@@ -102,8 +101,8 @@ class DiffResultWrapper:
             yield i
 
     def _get_stats(self) -> DiffStats:
+        list(self)  # Consume the iterator into result_list, if we haven't already
 
-        list(self)
         diff_by_key = {}
         for sign, values in self.result_list:
             k = values[: len(self.info_tree.info.tables[0].key_columns)]
@@ -179,7 +178,7 @@ class TableDiffer(ThreadBase, ABC):
         """
         if info_tree is None:
             info_tree = InfoTree(SegmentInfo([table1, table2]))
-        return DiffResultWrapper(self._diff_tables_wrapper(table1, table2, info_tree), info_tree, self.stats, [])
+        return DiffResultWrapper(self._diff_tables_wrapper(table1, table2, info_tree), info_tree, self.stats)
 
     def _diff_tables_wrapper(self, table1: TableSegment, table2: TableSegment, info_tree: InfoTree) -> DiffResult:
         if is_tracking_enabled():

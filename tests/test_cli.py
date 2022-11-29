@@ -1,18 +1,12 @@
 import logging
-import unittest
-import arrow
 import subprocess
 import sys
 from datetime import datetime, timedelta
 
 from data_diff.databases import MySQL
-from data_diff.sqeleton.queries import table, commit
+from data_diff.sqeleton.queries import commit
 
-from .common import TEST_MYSQL_CONN_STRING, get_conn, random_table_suffix
-
-
-def _commit(conn):
-    conn.query(commit)
+from .common import TEST_MYSQL_CONN_STRING, DiffTestCase
 
 
 def run_datadiff_cli(*args):
@@ -26,23 +20,14 @@ def run_datadiff_cli(*args):
     return stdout.splitlines()
 
 
-class TestCLI(unittest.TestCase):
+class TestCLI(DiffTestCase):
+    db_cls = MySQL
+    src_schema = {"id": int, "datetime": datetime, "text_comment": str}
+
     def setUp(self) -> None:
-        self.conn = get_conn(MySQL)
+        super().setUp()
 
-        suffix = random_table_suffix()
-        self.table_src_name = f"test_api{suffix}"
-        self.table_dst_name = f"test_api_2{suffix}"
-
-        self.table_src = table(self.table_src_name)
-        self.table_dst = table(self.table_dst_name)
-        self.conn.query(self.table_src.drop(True))
-        self.conn.query(self.table_dst.drop(True))
-
-        src_table = table(self.table_src_name, schema={"id": int, "datetime": datetime, "text_comment": str})
-        self.conn.query(src_table.create())
-        self.conn.query("SET @@session.time_zone='+00:00'")
-        now = self.conn.query("select now()", datetime)
+        now = self.connection.query("select now()", datetime)
 
         rows = [
             (now, "now"),
@@ -51,21 +36,14 @@ class TestCLI(unittest.TestCase):
             (now - timedelta(seconds=6), "c"),
         ]
 
-        self.conn.query(src_table.insert_rows((i, ts, s) for i, (ts, s) in enumerate(rows)))
-        _commit(self.conn)
-
-        self.conn.query(self.table_dst.create(self.table_src))
-        _commit(self.conn)
-
-        self.conn.query(src_table.insert_row(len(rows), now - timedelta(seconds=3), "3 seconds ago"))
-        _commit(self.conn)
-
-    def tearDown(self) -> None:
-        self.conn.query(self.table_src.drop(True))
-        self.conn.query(self.table_dst.drop(True))
-        _commit(self.conn)
-
-        return super().tearDown()
+        self.connection.query(
+            [
+                self.src_table.insert_rows((i, ts, s) for i, (ts, s) in enumerate(rows)),
+                self.dst_table.create(self.src_table),
+                self.src_table.insert_row(len(rows), now - timedelta(seconds=3), "3 seconds ago"),
+                commit,
+            ]
+        )
 
     def test_basic(self):
         diff = run_datadiff_cli(
@@ -91,21 +69,3 @@ class TestCLI(unittest.TestCase):
             "1h",
         )
         assert len(diff) == 1
-
-    def test_stats(self):
-        diff_output = run_datadiff_cli(
-            TEST_MYSQL_CONN_STRING, self.table_src_name, TEST_MYSQL_CONN_STRING, self.table_dst_name, "-s"
-        )
-        assert len(diff_output) == 11
-
-    def test_stats_json(self):
-        diff_output = run_datadiff_cli(
-            TEST_MYSQL_CONN_STRING, self.table_src_name, TEST_MYSQL_CONN_STRING, self.table_dst_name, "-s", "--json"
-        )
-        assert len(diff_output) == 2
-
-    def test_stats_no_diff(self):
-        diff_output = run_datadiff_cli(
-            TEST_MYSQL_CONN_STRING, self.table_src_name, TEST_MYSQL_CONN_STRING, self.table_src_name, "-s"
-        )
-        assert len(diff_output) == 11

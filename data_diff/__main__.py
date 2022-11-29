@@ -317,7 +317,6 @@ def _main(
         logging.error(e)
         return
 
-
     now: datetime = db1.query(current_timestamp(), datetime)
     now = now.replace(tzinfo=None)
     try:
@@ -405,6 +404,7 @@ def _main(
     diff_iter = differ.diff_tables(*segments)
 
     if limit:
+        assert not stats
         diff_iter = islice(diff_iter, int(limit))
 
     if stats:
