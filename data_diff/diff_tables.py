@@ -7,7 +7,7 @@ from abc import ABC, abstractmethod
 from enum import Enum
 from contextlib import contextmanager
 from operator import methodcaller
-from typing import Iterable, Tuple, Iterator, Optional
+from typing import Dict, Iterable, Tuple, Iterator, Optional
 from concurrent.futures import ThreadPoolExecutor, as_completed
 
 from runtype import dataclass
@@ -79,12 +79,84 @@ class ThreadBase:
 
 
 @dataclass
+class DiffStats:
+    diff_by_sign: Dict[str, int]
+    table1_count: int
+    table2_count: int
+    unchanged: int
+    diff_percent: float
+
+
+@dataclass
 class DiffResultWrapper:
     diff: iter  # DiffResult
     info_tree: InfoTree
+    stats: dict
+    result_list: list = []
 
     def __iter__(self):
-        return iter(self.diff)
+        yield from self.result_list
+        for i in self.diff:
+            self.result_list.append(i)
+            yield i
+
+    def _get_stats(self) -> DiffStats:
+        list(self)  # Consume the iterator into result_list, if we haven't already
+
+        diff_by_key = {}
+        for sign, values in self.result_list:
+            k = values[: len(self.info_tree.info.tables[0].key_columns)]
+            if k in diff_by_key:
+                assert sign != diff_by_key[k]
+                diff_by_key[k] = "!"
+            else:
+                diff_by_key[k] = sign
+
+        diff_by_sign = {k: 0 for k in "+-!"}
+        for sign in diff_by_key.values():
+            diff_by_sign[sign] += 1
+
+        table1_count = self.info_tree.info.rowcounts[1]
+        table2_count = self.info_tree.info.rowcounts[2]
+        unchanged = table1_count - diff_by_sign["-"] - diff_by_sign["!"]
+        diff_percent = 1 - unchanged / max(table1_count, table2_count)
+
+        return DiffStats(diff_by_sign, table1_count, table2_count, unchanged, diff_percent)
+
+    def get_stats_string(self):
+
+        diff_stats = self._get_stats()
+        string_output = ""
+        string_output += f"{diff_stats.table1_count} rows in table A\n"
+        string_output += f"{diff_stats.table2_count} rows in table B\n"
+        string_output += f"{diff_stats.diff_by_sign['-']} rows exclusive to table A (not present in B)\n"
+        string_output += f"{diff_stats.diff_by_sign['+']} rows exclusive to table B (not present in A)\n"
+        string_output += f"{diff_stats.diff_by_sign['!']} rows updated\n"
+        string_output += f"{diff_stats.unchanged} rows unchanged\n"
+        string_output += f"{100*diff_stats.diff_percent:.2f}% difference score\n"
+
+        if self.stats:
+            string_output += "\nExtra-Info:\n"
+            for k, v in sorted(self.stats.items()):
+                string_output += f"  {k} = {v}\n"
+
+        return string_output
+
+    def get_stats_dict(self):
+
+        diff_stats = self._get_stats()
+        json_output = {
+            "rows_A": diff_stats.table1_count,
+            "rows_B": diff_stats.table2_count,
+            "exclusive_A": diff_stats.diff_by_sign["-"],
+            "exclusive_B": diff_stats.diff_by_sign["+"],
+            "updated": diff_stats.diff_by_sign["!"],
+            "unchanged": diff_stats.unchanged,
+            "total": sum(diff_stats.diff_by_sign.values()),
+            "stats": self.stats,
+        }
+
+        return json_output
 
 
 class TableDiffer(ThreadBase, ABC):
@@ -106,7 +178,7 @@ class TableDiffer(ThreadBase, ABC):
         """
         if info_tree is None:
             info_tree = InfoTree(SegmentInfo([table1, table2]))
-        return DiffResultWrapper(self._diff_tables_wrapper(table1, table2, info_tree), info_tree)
+        return DiffResultWrapper(self._diff_tables_wrapper(table1, table2, info_tree), info_tree, self.stats)
 
     def _diff_tables_wrapper(self, table1: TableSegment, table2: TableSegment, info_tree: InfoTree) -> DiffResult:
         if is_tracking_enabled():
@@ -177,6 +249,8 @@ class TableDiffer(ThreadBase, ABC):
             raise NotImplementedError("Composite key not supported yet!")
         if len(table2.key_columns) > 1:
             raise NotImplementedError("Composite key not supported yet!")
+        if len(table1.key_columns) != len(table2.key_columns):
+            raise ValueError("Tables should have an equivalent number of key columns!")
         (key1,) = table1.key_columns
         (key2,) = table2.key_columns
 

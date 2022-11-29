@@ -141,3 +141,6 @@ benchmark_*.png
 
 # IntelliJ
 .idea
+
+# VSCode
+.vscode
