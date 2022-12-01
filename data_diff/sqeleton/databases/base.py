@@ -251,6 +251,7 @@ class Database(AbstractDatabase):
     CONNECT_URI_KWPARAMS = []
 
     _interactive = False
+    is_closed = False
 
     @property
     def name(self):
@@ -440,6 +441,10 @@ class Database(AbstractDatabase):
         callback = partial(self._query_cursor, c)
         return apply_query(callback, sql_code)
 
+    def close(self):
+        self.is_closed = True
+        return super().close()
+
 
 class ThreadedDatabase(Database):
     """Access the database through singleton threads.
@@ -476,6 +481,7 @@ class ThreadedDatabase(Database):
         ...
 
     def close(self):
+        super().close()
         self._queue.shutdown()
 
     @property

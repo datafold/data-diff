@@ -1,7 +1,7 @@
 import arrow
 from datetime import datetime
 
-from data_diff import diff_tables, connect_to_table
+from data_diff import diff_tables, connect_to_table, Algorithm
 from data_diff.databases import MySQL
 from data_diff.sqeleton.queries import table, commit
 
@@ -36,13 +36,17 @@ class TestApi(DiffTestCase):
         )
 
     def test_api(self):
+        # test basic
         t1 = connect_to_table(TEST_MYSQL_CONN_STRING, self.table_src_name)
         t2 = connect_to_table(TEST_MYSQL_CONN_STRING, (self.table_dst_name,))
-        diff = list(diff_tables(t1, t2))
+        diff = list(diff_tables(t1, t2, algorithm=Algorithm.JOINDIFF))
         assert len(diff) == 1
 
-        t1.database.close()
-        t2.database.close()
+        # test algorithm
+        # (also tests shared connection on connect_to_table)
+        for algo in (Algorithm.HASHDIFF, Algorithm.JOINDIFF):
+            diff = list(diff_tables(t1, t2, algorithm=algo))
+            assert len(diff) == 1
 
         # test where
         diff_id = diff[0][1][0]
@@ -52,9 +56,6 @@ class TestApi(DiffTestCase):
         t2 = connect_to_table(TEST_MYSQL_CONN_STRING, self.table_dst_name, where=where)
         diff = list(diff_tables(t1, t2))
         assert len(diff) == 0
-
-        t1.database.close()
-        t2.database.close()
 
     def test_api_get_stats_dict(self):
         # XXX Likely to change in the future
@@ -76,6 +77,3 @@ class TestApi(DiffTestCase):
         self.assertEqual(expected_dict, output)
         self.assertIsNotNone(diff)
         assert len(list(diff)) == 1
-
-        t1.database.close()
-        t2.database.close()

@@ -284,6 +284,11 @@ class AbstractDatabase:
         "Close connection(s) to the database instance. Querying will stop functioning."
         ...
 
+    @property
+    @abstractmethod
+    def is_closed(self) -> bool:
+        "Return whether or not the connection has been closed"
+
     @abstractmethod
     def _normalize_table_path(self, path: DbPath) -> DbPath:
         ...

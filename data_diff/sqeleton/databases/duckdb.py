@@ -132,6 +132,7 @@ class DuckDB(Database):
         return self._query_conn(self._conn, sql_code)
 
     def close(self):
+        super().close()
         self._conn.close()
 
     def create_connection(self):

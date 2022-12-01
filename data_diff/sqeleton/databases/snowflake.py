@@ -134,6 +134,7 @@ class Snowflake(Database):
         self.default_schema = schema
 
     def close(self):
+        super().close()
         self._conn.close()
 
     def _query(self, sql_code: Union[str, ThreadLocalInterpreter]):
