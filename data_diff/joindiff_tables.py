@@ -123,16 +123,18 @@ class JoinDiffer(TableDiffer):
         max_threadpool_size (int): Maximum size of each threadpool. ``None`` means auto.
                                    Only relevant when `threaded` is ``True``.
                                    There may be many pools, so number of actual threads can be a lot higher.
-        validate_unique_key (bool): Enable/disable validating that the key columns are unique.
-                                    Single query, and can't be threaded, so it's very slow on non-cloud dbs.
-                                    Future versions will detect UNIQUE constraints in the schema.
-        sample_exclusive_rows (bool): Enable/disable sampling of exclusive rows. Creates a temporary table.
+        validate_unique_key (bool): Enable/disable validating that the key columns are unique. (default: True)
+                                    If there are no UNIQUE constraints in the schema, it is done in a single query,
+                                    and can't be threaded, so it's very slow on non-cloud dbs.
+        sample_exclusive_rows (bool): Enable/disable sampling of exclusive rows. (default: False)
+                                      Creates a temporary table.
         materialize_to_table (DbPath, optional): Path of new table to write diff results to. Disabled if not provided.
+        materialize_all_rows (bool): Materialize every row, not just those that are different. (default: False)
         table_write_limit (int): Maximum number of rows to write when materializing, per thread.
     """
 
     validate_unique_key: bool = True
-    sample_exclusive_rows: bool = True
+    sample_exclusive_rows: bool = False
     materialize_to_table: DbPath = None
     materialize_all_rows: bool = False
     table_write_limit: int = TABLE_WRITE_LIMIT
