@@ -67,13 +67,14 @@ class TestApi(DiffTestCase):
             "updated": 0,
             "unchanged": 4,
             "total": 1,
-            "stats": {"rows_downloaded": 5},
+            # "stats": {"rows_downloaded": 5},
         }
         t1 = connect_to_table(TEST_MYSQL_CONN_STRING, self.table_src_name)
         t2 = connect_to_table(TEST_MYSQL_CONN_STRING, self.table_dst_name)
         diff = diff_tables(t1, t2)
-        output = diff.get_stats_dict()
 
+        output = diff.get_stats_dict()
+        output.pop('stats')
         self.assertEqual(expected_dict, output)
         self.assertIsNotNone(diff)
         assert len(list(diff)) == 1
