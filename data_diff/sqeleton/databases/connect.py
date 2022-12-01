@@ -1,9 +1,11 @@
 from typing import Type, List, Optional, Union, Dict
 from itertools import zip_longest
 import dsnparse
+from contextlib import suppress
 
 from runtype import dataclass
 
+from ..utils import WeakCache
 from .base import Database, ThreadedDatabase
 from .postgresql import PostgreSQL
 from .mysql import MySQL
@@ -19,12 +21,13 @@ from .vertica import Vertica
 from .duckdb import DuckDB
 
 
+
 @dataclass
 class MatchUriPath:
     database_cls: Type[Database]
     params: List[str]
     kwparams: List[str] = []
-    help_str: str
+    help_str: str = "<unspecified>"
 
     def __post_init__(self):
         assert self.params == self.database_cls.CONNECT_URI_PARAMS, self.params
@@ -101,6 +104,7 @@ class Connect:
             name: MatchUriPath(cls, cls.CONNECT_URI_PARAMS, cls.CONNECT_URI_KWPARAMS, help_str=cls.CONNECT_URI_HELP)
             for name, cls in database_by_scheme.items()
         }
+        self.conn_cache = WeakCache()
 
     def connect_to_uri(self, db_uri: str, thread_count: Optional[int] = 1) -> Database:
         """Connect to the given database uri
@@ -200,7 +204,7 @@ class Connect:
         "Nop function to be overridden by subclasses."
         return db
 
-    def __call__(self, db_conf: Union[str, dict], thread_count: Optional[int] = 1) -> Database:
+    def __call__(self, db_conf: Union[str, dict], thread_count: Optional[int] = 1, shared: bool = True) -> Database:
         """Connect to a database using the given database configuration.
 
         Configuration can be given either as a URI string, or as a dict of {option: value}.
@@ -213,6 +217,7 @@ class Connect:
         Parameters:
             db_conf (str | dict): The configuration for the database to connect. URI or dict.
             thread_count (int, optional): Size of the threadpool. Ignored by cloud databases. (default: 1)
+            shared (bool): Whether to cache and return the same connection for the same db_conf. (default: True)
 
         Note: For non-cloud databases, a low thread-pool size may be a performance bottleneck.
 
@@ -235,8 +240,19 @@ class Connect:
             >>> connect({"driver": "mysql", "host": "localhost", "database": "db"})
             <data_diff.databases.mysql.MySQL object at 0x0000025DB3F94820>
         """
+        if shared:
+            with suppress(KeyError):
+                conn = self.conn_cache.get(db_conf)
+                if not conn.is_closed:
+                    return conn
+
         if isinstance(db_conf, str):
-            return self.connect_to_uri(db_conf, thread_count)
+            conn = self.connect_to_uri(db_conf, thread_count)
         elif isinstance(db_conf, dict):
-            return self.connect_with_dict(db_conf, thread_count)
-        raise TypeError(f"db configuration must be a URI string or a dictionary. Instead got '{db_conf}'.")
+            conn = self.connect_with_dict(db_conf, thread_count)
+        else:
+            raise TypeError(f"db configuration must be a URI string or a dictionary. Instead got '{db_conf}'.")
+
+        if shared:
+            self.conn_cache.add(db_conf, conn)
+        return conn

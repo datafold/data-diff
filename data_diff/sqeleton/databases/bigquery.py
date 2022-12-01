@@ -141,6 +141,7 @@ class BigQuery(Database):
         return apply_query(self._query_atom, sql_code)
 
     def close(self):
+        super().close()
         self._client.close()
 
     def select_table_schema(self, path: DbPath) -> str:

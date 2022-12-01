@@ -171,6 +171,7 @@ class Presto(Database):
         return query_cursor(c, sql_code)
 
     def close(self):
+        super().close()
         self._conn.close()
 
     def select_table_schema(self, path: DbPath) -> str:
