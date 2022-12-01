@@ -63,7 +63,7 @@ def diff_tables(
     # There may be many pools, so number of actual threads can be a lot higher.
     max_threadpool_size: Optional[int] = 1,
     # Algorithm
-    algorithm: Algorithm = Algorithm.HASHDIFF,
+    algorithm: Algorithm = Algorithm.AUTO,
     # Into how many segments to bisect per iteration (hashdiff only)
     bisection_factor: int = DEFAULT_BISECTION_FACTOR,
     # When should we stop bisecting and compare locally (in row count; hashdiff only)
@@ -94,7 +94,7 @@ def diff_tables(
         max_threadpool_size (int): Maximum size of each threadpool. ``None`` means auto.
                                    Only relevant when `threaded` is ``True``.
                                    There may be many pools, so number of actual threads can be a lot higher.
-        algorithm (:class:`Algorithm`): Which diffing algorithm to use (`HASHDIFF` or `JOINDIFF`)
+        algorithm (:class:`Algorithm`): Which diffing algorithm to use (`HASHDIFF` or `JOINDIFF`. Default=`AUTO`)
         bisection_factor (int): Into how many segments to bisect per iteration. (Used when algorithm is `HASHDIFF`)
         bisection_threshold (Number): Minimal row count of segment to bisect, otherwise download
                                       and compare locally. (Used when algorithm is `HASHDIFF`).
@@ -144,6 +144,9 @@ def diff_tables(
     segments = [t.new(**override_attrs) for t in tables] if override_attrs else tables
 
     algorithm = Algorithm(algorithm)
+    if algorithm == Algorithm.AUTO:
+        algorithm = Algorithm.JOINDIFF if table1.database is table2.database else Algorithm.HASHDIFF
+
     if algorithm == Algorithm.HASHDIFF:
         differ = HashDiffer(
             bisection_factor=bisection_factor,
