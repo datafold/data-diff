@@ -307,15 +307,11 @@ def _main(
         )
         return
 
-    try:
-        db1 = connect(database1, threads1 or threads)
-        if database1 == database2:
-            db2 = db1
-        else:
-            db2 = connect(database2, threads2 or threads)
-    except Exception as e:
-        logging.error(e)
-        return
+    db1 = connect(database1, threads1 or threads)
+    if database1 == database2:
+        db2 = db1
+    else:
+        db2 = connect(database2, threads2 or threads)
 
     now: datetime = db1.query(current_timestamp(), datetime)
     now = now.replace(tzinfo=None)

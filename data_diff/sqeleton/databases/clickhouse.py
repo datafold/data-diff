@@ -23,6 +23,7 @@ from ..abcs.database_types import (
 )
 from ..abcs.mixins import AbstractMixin_MD5, AbstractMixin_NormalizeValue
 
+DEFAULT_DATABASE = "default"    # https://clickhouse.com/docs/en/operations/server-configuration-parameters/settings/#default-database
 
 @import_helper("clickhouse")
 def import_clickhouse():
@@ -164,7 +165,7 @@ class Clickhouse(ThreadedDatabase):
 
         self._args = kw
         # In Clickhouse database and schema are the same
-        self.default_schema = kw["database"]
+        self.default_schema = kw.get("database", DEFAULT_DATABASE)
 
     def create_connection(self):
         clickhouse = import_clickhouse()
