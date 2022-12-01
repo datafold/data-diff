@@ -31,7 +31,6 @@ TEST_DATABASES = {
 test_each_database: Callable = test_each_database_in_list(TEST_DATABASES)
 
 
-
 class TestUtils(unittest.TestCase):
     def test_split_space(self):
         for i in range(0, 10):
@@ -90,24 +89,16 @@ class TestDates(DiffTestCase):
     def test_offset(self):
         differ = HashDiffer(bisection_factor=2, bisection_threshold=10)
         sec1 = self.now.shift(seconds=-3).datetime
-        a = table_segment(
-            self.connection, self.table_src_path, "id", "datetime", max_update=sec1, case_sensitive=False
-        )
-        b = table_segment(
-            self.connection, self.table_dst_path, "id", "datetime", max_update=sec1, case_sensitive=False
-        )
+        a = table_segment(self.connection, self.table_src_path, "id", "datetime", max_update=sec1, case_sensitive=False)
+        b = table_segment(self.connection, self.table_dst_path, "id", "datetime", max_update=sec1, case_sensitive=False)
         assert a.count() == 4, a.count()
         assert b.count() == 3
 
         assert not list(differ.diff_tables(a, a))
         self.assertEqual(len(list(differ.diff_tables(a, b))), 1)
 
-        a = table_segment(
-            self.connection, self.table_src_path, "id", "datetime", min_update=sec1, case_sensitive=False
-        )
-        b = table_segment(
-            self.connection, self.table_dst_path, "id", "datetime", min_update=sec1, case_sensitive=False
-        )
+        a = table_segment(self.connection, self.table_src_path, "id", "datetime", min_update=sec1, case_sensitive=False)
+        b = table_segment(self.connection, self.table_dst_path, "id", "datetime", min_update=sec1, case_sensitive=False)
         assert a.count() == 2
         assert b.count() == 2
         assert not list(differ.diff_tables(a, b))

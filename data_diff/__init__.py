@@ -5,10 +5,12 @@ from .databases import connect
 from .sqeleton.abcs import DbKey, DbTime, DbPath
 from .diff_tables import Algorithm
 from .hashdiff_tables import HashDiffer, DEFAULT_BISECTION_THRESHOLD, DEFAULT_BISECTION_FACTOR
-from .joindiff_tables import JoinDiffer
+from .joindiff_tables import JoinDiffer, TABLE_WRITE_LIMIT
 from .table_segment import TableSegment
+from .utils import eval_name_template
 
 __version__ = "0.3.0rc4"
+
 
 def connect_to_table(
     db_info: Union[str, dict],
@@ -55,17 +57,27 @@ def diff_tables(
     # Start/end update_column values, used to restrict the segment
     min_update: DbTime = None,
     max_update: DbTime = None,
-    # Algorithm
-    algorithm: Algorithm = Algorithm.HASHDIFF,
-    # Into how many segments to bisect per iteration (hashdiff only)
-    bisection_factor: int = DEFAULT_BISECTION_FACTOR,
-    # When should we stop bisecting and compare locally (in row count; hashdiff only)
-    bisection_threshold: int = DEFAULT_BISECTION_THRESHOLD,
     # Enable/disable threaded diffing. Needed to take advantage of database threads.
     threaded: bool = True,
     # Maximum size of each threadpool. None = auto. Only relevant when threaded is True.
     # There may be many pools, so number of actual threads can be a lot higher.
     max_threadpool_size: Optional[int] = 1,
+    # Algorithm
+    algorithm: Algorithm = Algorithm.AUTO,
+    # Into how many segments to bisect per iteration (hashdiff only)
+    bisection_factor: int = DEFAULT_BISECTION_FACTOR,
+    # When should we stop bisecting and compare locally (in row count; hashdiff only)
+    bisection_threshold: int = DEFAULT_BISECTION_THRESHOLD,
+    # Enable/disable validating that the key columns are unique. (joindiff only)
+    validate_unique_key: bool = True,
+    # Enable/disable sampling of exclusive rows. Creates a temporary table. (joindiff only)
+    sample_exclusive_rows: bool = False,
+    # Path of new table to write diff results to. Disabled if not provided. (joindiff only)
+    materialize_to_table: Union[str, DbPath] = None,
+    # Materialize every row, not just those that are different. (joindiff only)
+    materialize_all_rows: bool = False,
+    # Maximum number of rows to write when materializing, per thread. (joindiff only)
+    table_write_limit: int = TABLE_WRITE_LIMIT,
 ) -> Iterator:
     """Finds the diff between table1 and table2.
 
@@ -78,14 +90,21 @@ def diff_tables(
         max_key (:data:`DbKey`, optional): Highest key value, used to restrict the segment
         min_update (:data:`DbTime`, optional): Lowest update_column value, used to restrict the segment
         max_update (:data:`DbTime`, optional): Highest update_column value, used to restrict the segment
-        algorithm (:class:`Algorithm`): Which diffing algorithm to use (`HASHDIFF` or `JOINDIFF`)
-        bisection_factor (int): Into how many segments to bisect per iteration. (Used when algorithm is `HASHDIFF`)
-        bisection_threshold (Number): Minimal row count of segment to bisect, otherwise download
-                                      and compare locally. (Used when algorithm is `HASHDIFF`).
         threaded (bool): Enable/disable threaded diffing. Needed to take advantage of database threads.
         max_threadpool_size (int): Maximum size of each threadpool. ``None`` means auto.
                                    Only relevant when `threaded` is ``True``.
                                    There may be many pools, so number of actual threads can be a lot higher.
+        algorithm (:class:`Algorithm`): Which diffing algorithm to use (`HASHDIFF` or `JOINDIFF`. Default=`AUTO`)
+        bisection_factor (int): Into how many segments to bisect per iteration. (Used when algorithm is `HASHDIFF`)
+        bisection_threshold (Number): Minimal row count of segment to bisect, otherwise download
+                                      and compare locally. (Used when algorithm is `HASHDIFF`).
+        validate_unique_key (bool): Enable/disable validating that the key columns are unique. (used for `JOINDIFF`. default: True)
+                                    Single query, and can't be threaded, so it's very slow on non-cloud dbs.
+                                    Future versions will detect UNIQUE constraints in the schema.
+        sample_exclusive_rows (bool): Enable/disable sampling of exclusive rows. Creates a temporary table. (used for `JOINDIFF`. default: False)
+        materialize_to_table (Union[str, DbPath], optional): Path of new table to write diff results to. Disabled if not provided. Used for `JOINDIFF`.
+        materialize_all_rows (bool): Materialize every row, not just those that are different. (used for `JOINDIFF`. default: False)
+        table_write_limit (int): Maximum number of rows to write when materializing, per thread.
 
     Note:
         The following parameters are used to override the corresponding attributes of the given :class:`TableSegment` instances:
@@ -125,6 +144,9 @@ def diff_tables(
     segments = [t.new(**override_attrs) for t in tables] if override_attrs else tables
 
     algorithm = Algorithm(algorithm)
+    if algorithm == Algorithm.AUTO:
+        algorithm = Algorithm.JOINDIFF if table1.database is table2.database else Algorithm.HASHDIFF
+
     if algorithm == Algorithm.HASHDIFF:
         differ = HashDiffer(
             bisection_factor=bisection_factor,
@@ -133,9 +155,16 @@ def diff_tables(
             max_threadpool_size=max_threadpool_size,
         )
     elif algorithm == Algorithm.JOINDIFF:
+        if isinstance(materialize_to_table, str):
+            materialize_to_table = table1.database.parse_table_name(eval_name_template(materialize_to_table))
         differ = JoinDiffer(
             threaded=threaded,
             max_threadpool_size=max_threadpool_size,
+            validate_unique_key=validate_unique_key,
+            sample_exclusive_rows=sample_exclusive_rows,
+            materialize_to_table=materialize_to_table,
+            materialize_all_rows=materialize_all_rows,
+            table_write_limit=table_write_limit,
         )
     else:
         raise ValueError(f"Unknown algorithm: {algorithm}")

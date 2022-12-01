@@ -786,6 +786,7 @@ class CurrentTimestamp(ExprNode):
     def compile(self, c: Compiler) -> str:
         return c.dialect.current_timestamp()
 
+
 # DDL
 
 
