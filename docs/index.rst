@@ -1,16 +1,12 @@
 .. toctree::
    :maxdepth: 2
-   :caption: Reference
+   :caption: API Reference
    :hidden:
 
-   supported-databases
-   how-to-use
    python-api
-   technical-explanation
-   new-database-driver-guide
 
-Introduction
-------------
+data-diff
+---------
 
 **Data-diff** is a command-line tool and Python library to efficiently diff
 rows across two different databases.
@@ -27,45 +23,13 @@ rows across two different databases.
 
 For more information, `See our README <https://github.com/datafold/data-diff#readme>`_
 
-How to install
---------------
-
-Requires Python 3.7+ with pip.
-
-::
-
-    pip install data-diff
-
-For installing with 3rd-party database connectors, use the following syntax:
-
-::
-
-    pip install "data-diff[db1,db2]"
-
-    e.g.
-    pip install "data-diff[mysql,postgresql]"
-
-Supported connectors:
-
-- mysql
-- postgresql
-- snowflake
-- presto
-- oracle
-- trino
-- clickhouse
-- vertica
-
 
 
 Resources
 ---------
 
-- Users
-    - Source code (git): `<https://github.com/datafold/data-diff>`_
-    - :doc:`supported-databases`
-    - :doc:`how-to-use`
-    - :doc:`python-api`
-    - :doc:`technical-explanation`
-- Contributors
-   - :doc:`new-database-driver-guide`
+- Source code (git): `<https://github.com/datafold/data-diff>`_
+- :doc:`python-api`
+- The rest of the `documentation`_
+
+.. _documentation: https://docs.datafold.com/os_diff/about/
