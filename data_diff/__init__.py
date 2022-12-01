@@ -10,6 +10,7 @@ from .table_segment import TableSegment
 
 __version__ = "0.3.0rc4"
 
+
 def connect_to_table(
     db_info: Union[str, dict],
     table_name: Union[DbPath, str],
@@ -76,7 +77,6 @@ def diff_tables(
     materialize_all_rows: bool = False,
     # Maximum number of rows to write when materializing, per thread. (joindiff only)
     table_write_limit: int = TABLE_WRITE_LIMIT,
-
 ) -> Iterator:
     """Finds the diff between table1 and table2.
 
@@ -160,7 +160,7 @@ def diff_tables(
             sample_exclusive_rows=sample_exclusive_rows,
             materialize_to_table=materialize_to_table,
             materialize_all_rows=materialize_all_rows,
-            table_write_limit=table_write_limit
+            table_write_limit=table_write_limit,
         )
     else:
         raise ValueError(f"Unknown algorithm: {algorithm}")

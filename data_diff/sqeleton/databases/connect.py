@@ -21,7 +21,6 @@ from .vertica import Vertica
 from .duckdb import DuckDB
 
 
-
 @dataclass
 class MatchUriPath:
     database_cls: Type[Database]
