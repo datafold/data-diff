@@ -111,7 +111,10 @@ class MySQL(ThreadedDatabase):
         super().__init__(thread_count=thread_count)
 
         # In MySQL schema and database are synonymous
-        self.default_schema = kw["database"]
+        try:
+            self.default_schema = kw["database"]
+        except KeyError:
+            raise ValueError("MySQL URL must specify a database")
 
     def create_connection(self):
         mysql = import_mysql()
