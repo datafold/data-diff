@@ -7,6 +7,7 @@ from .diff_tables import Algorithm
 from .hashdiff_tables import HashDiffer, DEFAULT_BISECTION_THRESHOLD, DEFAULT_BISECTION_FACTOR
 from .joindiff_tables import JoinDiffer, TABLE_WRITE_LIMIT
 from .table_segment import TableSegment
+from .utils import eval_name_template
 
 __version__ = "0.3.0rc4"
 
@@ -152,7 +153,7 @@ def diff_tables(
         )
     elif algorithm == Algorithm.JOINDIFF:
         if isinstance(materialize_to_table, str):
-            materialize_to_table = table1.database.parse_table_name(materialize_to_table)
+            materialize_to_table = table1.database.parse_table_name(eval_name_template(materialize_to_table))
         differ = JoinDiffer(
             threaded=threaded,
             max_threadpool_size=max_threadpool_size,

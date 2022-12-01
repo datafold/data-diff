@@ -123,7 +123,7 @@ click.Context.formatter_class = MyHelpFormatter
 )
 @click.option(
     "-m",
-    "--materialize",
+    "--materialize-to-table",
     default=None,
     metavar="TABLE_NAME",
     help="(joindiff only) Materialize the diff results into a new table in the database. If a table exists by that name, it will be replaced.",
@@ -248,7 +248,7 @@ def _main(
     sample_exclusive_rows,
     materialize_all_rows,
     table_write_limit,
-    materialize,
+    materialize_to_table,
     threads1=None,
     threads2=None,
     __conf__=None,
@@ -344,7 +344,7 @@ def _main(
             sample_exclusive_rows=sample_exclusive_rows,
             materialize_all_rows=materialize_all_rows,
             table_write_limit=table_write_limit,
-            materialize_to_table=materialize and db1.parse_table_name(eval_name_template(materialize)),
+            materialize_to_table=materialize_to_table and db1.parse_table_name(eval_name_template(materialize_to_table)),
         )
     else:
         assert algorithm == Algorithm.HASHDIFF
