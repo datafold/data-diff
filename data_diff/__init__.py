@@ -9,6 +9,7 @@ from .joindiff_tables import JoinDiffer, TABLE_WRITE_LIMIT
 from .table_segment import TableSegment
 from .utils import eval_name_template
 
+
 def connect_to_table(
     db_info: Union[str, dict],
     table_name: Union[DbPath, str],

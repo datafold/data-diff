@@ -22,7 +22,9 @@ from ..abcs.database_types import (
 )
 from ..abcs.mixins import AbstractMixin_MD5, AbstractMixin_NormalizeValue
 
-DEFAULT_DATABASE = "default"    # https://clickhouse.com/docs/en/operations/server-configuration-parameters/settings/#default-database
+# https://clickhouse.com/docs/en/operations/server-configuration-parameters/settings/#default-database
+DEFAULT_DATABASE = "default"
+
 
 @import_helper("clickhouse")
 def import_clickhouse():

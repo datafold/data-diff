@@ -92,10 +92,7 @@ class Connect:
 
     def __init__(self, database_by_scheme: Dict[str, Database]):
         self.database_by_scheme = database_by_scheme
-        self.match_uri_path = {
-            name: MatchUriPath(cls)
-            for name, cls in database_by_scheme.items()
-        }
+        self.match_uri_path = {name: MatchUriPath(cls) for name, cls in database_by_scheme.items()}
         self.conn_cache = WeakCache()
 
     def connect_to_uri(self, db_uri: str, thread_count: Optional[int] = 1) -> Database:
