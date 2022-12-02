@@ -87,7 +87,7 @@ CONN_STRINGS = {
 _database_instances = {}
 
 
-def get_conn(cls: type, shared: bool =True) -> Database:
+def get_conn(cls: type, shared: bool = True) -> Database:
     if shared:
         if cls not in _database_instances:
             _database_instances[cls] = get_conn(cls, shared=False)
@@ -180,6 +180,7 @@ def test_each_database_in_list(databases) -> Callable:
         return _parameterized_class_per_conn(databases)(cls)
 
     return _test_per_database
+
 
 def table_segment(database, table_path, key_columns, *args, **kw):
     if isinstance(key_columns, str):

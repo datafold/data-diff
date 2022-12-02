@@ -11,6 +11,7 @@ import contextvars
 
 cv_params = contextvars.ContextVar("params")
 
+
 class Root:
     "Nodes inheriting from Root can be used as root statements in SQL (e.g. SELECT yes, RANDOM() no)"
 
@@ -38,6 +39,7 @@ class Compiler(AbstractCompiler):
 
         if self.root and isinstance(elem, Compilable) and not isinstance(elem, Root):
             from .ast_classes import Select
+
             elem = Select(columns=[elem])
 
         res = self._compile(elem)
