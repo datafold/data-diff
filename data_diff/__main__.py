@@ -198,19 +198,13 @@ click.Context.formatter_class = MyHelpFormatter
     metavar="NAME",
 )
 def main(conf, run, **kw):
-    indb_syntax = False
     if kw["table2"] is None and kw["database2"]:
         # Use the "database table table" form
         kw["table2"] = kw["database2"]
         kw["database2"] = kw["database1"]
-        indb_syntax = True
 
     if conf:
         kw = apply_config_from_file(conf, run, kw)
-
-    kw["algorithm"] = Algorithm(kw["algorithm"])
-    if kw["algorithm"] == Algorithm.AUTO:
-        kw["algorithm"] = Algorithm.JOINDIFF if indb_syntax else Algorithm.HASHDIFF
 
     try:
         return _main(**kw)
@@ -336,6 +330,10 @@ def _main(
         for db in dbs:
             db.enable_interactive()
 
+    algorithm = Algorithm(algorithm)
+    if algorithm == Algorithm.AUTO:
+        algorithm = Algorithm.JOINDIFF if db1 == db2 else Algorithm.HASHDIFF
+
     if algorithm == Algorithm.JOINDIFF:
         differ = JoinDiffer(
             threaded=threaded,
@@ -344,7 +342,8 @@ def _main(
             sample_exclusive_rows=sample_exclusive_rows,
             materialize_all_rows=materialize_all_rows,
             table_write_limit=table_write_limit,
-            materialize_to_table=materialize_to_table and db1.parse_table_name(eval_name_template(materialize_to_table)),
+            materialize_to_table=materialize_to_table
+            and db1.parse_table_name(eval_name_template(materialize_to_table)),
         )
     else:
         assert algorithm == Algorithm.HASHDIFF
@@ -381,7 +380,7 @@ def _main(
 
     columns = tuple(expanded_columns - {*key_columns, update_column})
 
-    if db1 is db2:
+    if db1 == db2:
         diff_schemas(
             table_names[0],
             table_names[1],
@@ -394,7 +393,8 @@ def _main(
             ),
         )
 
-    logging.info(f"Diffing using columns: key={key_columns} update={update_column} extra={columns}")
+    logging.info(f"Diffing using columns: key={key_columns} update={update_column} extra={columns}.")
+    logging.info(f"Using algorithm '{algorithm.name.lower()}'.")
 
     segments = [
         TableSegment(db, table_path, key_columns, update_column, columns, **options)._with_raw_schema(raw_schema)

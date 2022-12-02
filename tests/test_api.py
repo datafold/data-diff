@@ -74,7 +74,7 @@ class TestApi(DiffTestCase):
         diff = diff_tables(t1, t2)
 
         output = diff.get_stats_dict()
-        output.pop('stats')
+        output.pop("stats")
         self.assertEqual(expected_dict, output)
         self.assertIsNotNone(diff)
         assert len(list(diff)) == 1
