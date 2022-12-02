@@ -7,7 +7,7 @@ from abc import ABC, abstractmethod
 from enum import Enum
 from contextlib import contextmanager
 from operator import methodcaller
-from typing import Dict, Iterable, Tuple, Iterator, Optional
+from typing import Dict, Tuple, Iterator, Optional
 from concurrent.futures import ThreadPoolExecutor, as_completed
 
 from runtype import dataclass

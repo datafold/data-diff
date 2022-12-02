@@ -44,7 +44,7 @@ class Mixin_NormalizeValue(AbstractMixin_NormalizeValue):
     def normalize_number(self, value: str, coltype: FractionalType) -> str:
         return self.to_string(f"cast({value} as decimal(38, {coltype.precision}))")
 
-    def normalize_boolean(self, value: str, coltype: Boolean) -> str:
+    def normalize_boolean(self, value: str, _coltype: Boolean) -> str:
         return self.to_string(f"{value}::int")
 
 
@@ -142,8 +142,8 @@ class Snowflake(Database):
         return self._query_conn(self._conn, sql_code)
 
     def select_table_schema(self, path: DbPath) -> str:
-        schema, table = self._normalize_table_path(path)
-        return super().select_table_schema((schema, table))
+        schema, name = self._normalize_table_path(path)
+        return super().select_table_schema((schema, name))
 
     @property
     def is_autocommit(self) -> bool:

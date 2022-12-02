@@ -162,23 +162,19 @@ class AbstractDialect(ABC):
     @abstractmethod
     def quote(self, s: str):
         "Quote SQL name"
-        ...
 
     @abstractmethod
     def concat(self, items: List[str]) -> str:
         "Provide SQL for concatenating a bunch of columns into a string"
-        ...
 
     @abstractmethod
     def is_distinct_from(self, a: str, b: str) -> str:
         "Provide SQL for a comparison where NULL = NULL is true"
-        ...
 
     @abstractmethod
     def to_string(self, s: str) -> str:
         # TODO rewrite using cast_to(x, str)
         "Provide SQL for casting a column to string"
-        ...
 
     @abstractmethod
     def random(self) -> str:
@@ -191,17 +187,14 @@ class AbstractDialect(ABC):
     @abstractmethod
     def offset_limit(self, offset: Optional[int] = None, limit: Optional[int] = None):
         "Provide SQL fragment for limit and offset inside a select"
-        ...
 
     @abstractmethod
     def explain_as_text(self, query: str) -> str:
         "Provide SQL for explaining a query, returned as table(varchar)"
-        ...
 
     @abstractmethod
     def timestamp_value(self, t: datetime) -> str:
         "Provide SQL for the given timestamp value"
-        ...
 
     @abstractmethod
     def set_timezone_to_utc(self) -> str:
@@ -239,7 +232,6 @@ class AbstractDatabase:
     @abstractmethod
     def _query(self, sql_code: str) -> list:
         "Send query to database and return result"
-        ...
 
     @abstractmethod
     def query_table_schema(self, path: DbPath) -> Dict[str, tuple]:
@@ -249,17 +241,14 @@ class AbstractDatabase:
         Note: This method exists instead of select_table_schema(), just because not all databases support
               accessing the schema using a SQL query.
         """
-        ...
 
     @abstractmethod
     def select_table_unique_columns(self, path: DbPath) -> str:
         "Provide SQL for selecting the names of unique columns in the table"
-        ...
 
     @abstractmethod
     def query_table_unique_columns(self, path: DbPath) -> List[str]:
         """Query the table for its unique columns for table in 'path', and return {column}"""
-        ...
 
     @abstractmethod
     def _process_table_schema(
@@ -277,21 +266,10 @@ class AbstractDatabase:
     @abstractmethod
     def parse_table_name(self, name: str) -> DbPath:
         "Parse the given table name into a DbPath"
-        ...
 
     @abstractmethod
     def close(self):
         "Close connection(s) to the database instance. Querying will stop functioning."
-        ...
-
-    @property
-    @abstractmethod
-    def is_closed(self) -> bool:
-        "Return whether or not the connection has been closed"
-
-    @abstractmethod
-    def _normalize_table_path(self, path: DbPath) -> DbPath:
-        ...
 
     @property
     @abstractmethod

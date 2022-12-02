@@ -49,7 +49,7 @@ class Mixin_NormalizeValue(AbstractMixin_NormalizeValue):
     def normalize_number(self, value: str, coltype: FractionalType) -> str:
         return f"format('%.{coltype.precision}f', {value})"
 
-    def normalize_boolean(self, value: str, coltype: Boolean) -> str:
+    def normalize_boolean(self, value: str, _coltype: Boolean) -> str:
         return self.to_string(f"cast({value} as int)")
 
 
@@ -145,11 +145,12 @@ class BigQuery(Database):
         self._client.close()
 
     def select_table_schema(self, path: DbPath) -> str:
-        schema, table = self._normalize_table_path(path)
+        schema, name = self._normalize_table_path(path)
 
         return (
-            f"SELECT column_name, data_type, 6 as datetime_precision, 38 as numeric_precision, 9 as numeric_scale FROM {schema}.INFORMATION_SCHEMA.COLUMNS "
-            f"WHERE table_name = '{table}' AND table_schema = '{schema}'"
+            "SELECT column_name, data_type, 6 as datetime_precision, 38 as numeric_precision, 9 as numeric_scale "
+            f"FROM {schema}.INFORMATION_SCHEMA.COLUMNS "
+            f"WHERE table_name = '{name}' AND table_schema = '{schema}'"
         )
 
     def query_table_unique_columns(self, path: DbPath) -> List[str]:

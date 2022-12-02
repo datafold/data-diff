@@ -54,11 +54,11 @@ class Mixin_NormalizeValue(AbstractMixin_NormalizeValue):
     def normalize_number(self, value: str, coltype: FractionalType) -> str:
         return self.to_string(f"CAST({value} AS NUMERIC(38, {coltype.precision}))")
 
-    def normalize_uuid(self, value: str, coltype: ColType_UUID) -> str:
+    def normalize_uuid(self, value: str, _coltype: ColType_UUID) -> str:
         # Trim doesn't work on CHAR type
         return f"TRIM(CAST({value} AS VARCHAR))"
 
-    def normalize_boolean(self, value: str, coltype: Boolean) -> str:
+    def normalize_boolean(self, value: str, _coltype: Boolean) -> str:
         return self.to_string(f"cast ({value} as int)")
 
 
@@ -167,10 +167,10 @@ class Vertica(ThreadedDatabase):
             raise ConnectError(*e.args) from e
 
     def select_table_schema(self, path: DbPath) -> str:
-        schema, table = self._normalize_table_path(path)
+        schema, name = self._normalize_table_path(path)
 
         return (
             "SELECT column_name, data_type, datetime_precision, numeric_precision, numeric_scale "
             "FROM V_CATALOG.COLUMNS "
-            f"WHERE table_name = '{table}' AND table_schema = '{schema}'"
+            f"WHERE table_name = '{name}' AND table_schema = '{schema}'"
         )

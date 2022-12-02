@@ -1,8 +1,6 @@
-from typing import Union, Dict, Any, Hashable
-from weakref import ref
-from typing import TypeVar
-from typing import Iterable, Iterator, MutableMapping, Union, Any, Sequence, Dict
+from typing import Iterable, Iterator, MutableMapping, Union, Any, Sequence, Dict, Hashable, TypeVar
 from abc import abstractmethod
+from weakref import ref
 import math
 import string
 import re
