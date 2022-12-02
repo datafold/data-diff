@@ -81,8 +81,8 @@ class MyHelpFormatter(click.HelpFormatter):
     def write_usage(self, prog: str, args: str = "", prefix: Optional[str] = None) -> None:
         self.write(f"data-diff v{__version__} - efficiently diff rows across database tables.\n\n")
         self.write("Usage:\n")
-        self.write(f"  * In-db diff:    {prog} <database1> <table1> <table2> [OPTIONS]\n")
-        self.write(f"  * Cross-db diff: {prog} <database1> <table1> <database2> <table2> [OPTIONS]\n")
+        self.write(f"  * In-db diff:    {prog} <database_a> <table_a> <table_b> [OPTIONS]\n")
+        self.write(f"  * Cross-db diff: {prog} <database_a> <table_a> <database_b> <table_b> [OPTIONS]\n")
         self.write(f"  * Using config:  {prog} --conf PATH [--run NAME] [OPTIONS]\n")
 
 

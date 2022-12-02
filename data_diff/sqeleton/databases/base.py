@@ -320,12 +320,12 @@ class Database(AbstractDatabase):
 
     def select_table_schema(self, path: DbPath) -> str:
         """Provide SQL for selecting the table schema as (name, type, date_prec, num_prec)"""
-        schema, table = self._normalize_table_path(path)
+        schema, name = self._normalize_table_path(path)
 
         return (
             "SELECT column_name, data_type, datetime_precision, numeric_precision, numeric_scale "
             "FROM information_schema.columns "
-            f"WHERE table_name = '{table}' AND table_schema = '{schema}'"
+            f"WHERE table_name = '{name}' AND table_schema = '{schema}'"
         )
 
     def query_table_schema(self, path: DbPath) -> Dict[str, tuple]:
@@ -338,12 +338,12 @@ class Database(AbstractDatabase):
         return d
 
     def select_table_unique_columns(self, path: DbPath) -> str:
-        schema, table = self._normalize_table_path(path)
+        schema, name = self._normalize_table_path(path)
 
         return (
             "SELECT column_name "
             "FROM information_schema.key_column_usage "
-            f"WHERE table_name = '{table}' AND table_schema = '{schema}'"
+            f"WHERE table_name = '{name}' AND table_schema = '{schema}'"
         )
 
     def query_table_unique_columns(self, path: DbPath) -> List[str]:
@@ -431,7 +431,7 @@ class Database(AbstractDatabase):
             c.execute(sql_code)
             if sql_code.lower().startswith(("select", "explain", "show")):
                 return c.fetchall()
-        except Exception as e:
+        except Exception as _e:
             # logger.exception(e)
             # logger.error(f'Caused by SQL: {sql_code}')
             raise
@@ -478,7 +478,6 @@ class ThreadedDatabase(Database):
     @abstractmethod
     def create_connection(self):
         "Return a connection instance, that supports the .cursor() method."
-        ...
 
     def close(self):
         super().close()

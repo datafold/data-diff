@@ -1,5 +1,4 @@
-from typing import Tuple, List, Dict
-from itertools import chain
+from typing import List, Dict
 
 from runtype import dataclass
 

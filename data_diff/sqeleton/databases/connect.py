@@ -1,7 +1,7 @@
-from typing import Type, List, Optional, Union, Dict
+from typing import Type, Optional, Union, Dict
 from itertools import zip_longest
-import dsnparse
 from contextlib import suppress
+import dsnparse
 
 from runtype import dataclass
 
@@ -24,24 +24,17 @@ from .duckdb import DuckDB
 @dataclass
 class MatchUriPath:
     database_cls: Type[Database]
-    params: List[str]
-    kwparams: List[str] = []
-    help_str: str = "<unspecified>"
-
-    def __post_init__(self):
-        assert self.params == self.database_cls.CONNECT_URI_PARAMS, self.params
-        assert self.help_str == self.database_cls.CONNECT_URI_HELP, "\n%s\n%s" % (
-            self.help_str,
-            self.database_cls.CONNECT_URI_HELP,
-        )
-        assert self.kwparams == self.database_cls.CONNECT_URI_KWPARAMS
 
     def match_path(self, dsn):
+        help_str = self.database_cls.CONNECT_URI_HELP
+        params = self.database_cls.CONNECT_URI_PARAMS
+        kwparams = self.database_cls.CONNECT_URI_KWPARAMS
+
         dsn_dict = dict(dsn.query)
         matches = {}
-        for param, arg in zip_longest(self.params, dsn.paths):
+        for param, arg in zip_longest(params, dsn.paths):
             if param is None:
-                raise ValueError(f"Too many parts to path. Expected format: {self.help_str}")
+                raise ValueError(f"Too many parts to path. Expected format: {help_str}")
 
             optional = param.endswith("?")
             param = param.rstrip("?")
@@ -51,18 +44,18 @@ class MatchUriPath:
                     arg = dsn_dict.pop(param)
                 except KeyError:
                     if not optional:
-                        raise ValueError(f"URI must specify '{param}'. Expected format: {self.help_str}")
+                        raise ValueError(f"URI must specify '{param}'. Expected format: {help_str}")
 
                     arg = None
 
             assert param and param not in matches
             matches[param] = arg
 
-        for param in self.kwparams:
+        for param in kwparams:
             try:
                 arg = dsn_dict.pop(param)
             except KeyError:
-                raise ValueError(f"URI must specify '{param}'. Expected format: {self.help_str}")
+                raise ValueError(f"URI must specify '{param}'. Expected format: {help_str}")
 
             assert param and arg and param not in matches, (param, arg, matches.keys())
             matches[param] = arg
@@ -70,7 +63,7 @@ class MatchUriPath:
         for param, value in dsn_dict.items():
             if param in matches:
                 raise ValueError(
-                    f"Parameter '{param}' already provided as positional argument. Expected format: {self.help_str}"
+                    f"Parameter '{param}' already provided as positional argument. Expected format: {help_str}"
                 )
 
             matches[param] = value
@@ -100,7 +93,7 @@ class Connect:
     def __init__(self, database_by_scheme: Dict[str, Database]):
         self.database_by_scheme = database_by_scheme
         self.match_uri_path = {
-            name: MatchUriPath(cls, cls.CONNECT_URI_PARAMS, cls.CONNECT_URI_KWPARAMS, help_str=cls.CONNECT_URI_HELP)
+            name: MatchUriPath(cls)
             for name, cls in database_by_scheme.items()
         }
         self.conn_cache = WeakCache()

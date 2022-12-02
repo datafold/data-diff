@@ -14,7 +14,6 @@ class AbstractMixin_NormalizeValue(ABC):
 
         Precision of dates should be rounded up/down according to coltype.rounds
         """
-        ...
 
     @abstractmethod
     def normalize_number(self, value: str, coltype: FractionalType) -> str:
@@ -35,17 +34,8 @@ class AbstractMixin_NormalizeValue(ABC):
         it's the same as ``numeric_scale``, and for floats, who use binary precision,
         it can be calculated as ``log10(2**numeric_precision)``.
         """
-        ...
 
-    @abstractmethod
-    def normalize_uuid(self, value: str, coltype: ColType_UUID) -> str:
-        """Creates an SQL expression, that converts 'value' to a normalized uuid.
-
-        i.e. just makes sure there is no trailing whitespace.
-        """
-        ...
-
-    def normalize_boolean(self, value: str, coltype: Boolean) -> str:
+    def normalize_boolean(self, value: str, _coltype: Boolean) -> str:
         """Creates an SQL expression, that converts 'value' to either '0' or '1'."""
         return self.to_string(value)
 
@@ -88,7 +78,6 @@ class AbstractMixin_MD5(ABC):
     @abstractmethod
     def md5_as_int(self, s: str) -> str:
         "Provide SQL for computing md5 and returning an int"
-        ...
 
 
 class AbstractMixin_Schema(ABC):

@@ -50,7 +50,7 @@ class Mixin_NormalizeValue(AbstractMixin_NormalizeValue):
     def normalize_number(self, value: str, coltype: FractionalType) -> str:
         return self.to_string(f"{value}::DECIMAL(38, {coltype.precision})")
 
-    def normalize_boolean(self, value: str, coltype: Boolean) -> str:
+    def normalize_boolean(self, value: str, _coltype: Boolean) -> str:
         return self.to_string(f"{value}::INTEGER")
 
 
@@ -114,7 +114,7 @@ class Dialect(BaseDialect, Mixin_Schema):
 
 class DuckDB(Database):
     dialect = Dialect()
-    SUPPORTS_UNIQUE_CONSTAINT = False  # XXX Temporary, until implemented
+    SUPPORTS_UNIQUE_CONSTAINT = False  # Temporary, until we implement it
     default_schema = "main"
     CONNECT_URI_HELP = "duckdb://<database>@<dbpath>"
     CONNECT_URI_PARAMS = ["database", "dbpath"]

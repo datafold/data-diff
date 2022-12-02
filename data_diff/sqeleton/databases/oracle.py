@@ -17,7 +17,7 @@ from ..abcs.database_types import (
 from ..abcs.mixins import AbstractMixin_MD5, AbstractMixin_NormalizeValue, AbstractMixin_Schema
 from ..abcs import Compilable
 from ..queries import this, table, SKIP
-from .base import BaseDialect, ThreadedDatabase, import_helper, ConnectError, QueryError, Mixin_Schema
+from .base import BaseDialect, ThreadedDatabase, import_helper, ConnectError, QueryError
 from .base import TIMESTAMP_PRECISION_POS
 
 SESSION_TIME_ZONE = None  # Changed by the tests
@@ -182,9 +182,9 @@ class Oracle(ThreadedDatabase):
             raise QueryError(e)
 
     def select_table_schema(self, path: DbPath) -> str:
-        schema, table = self._normalize_table_path(path)
+        schema, name = self._normalize_table_path(path)
 
         return (
             f"SELECT column_name, data_type, 6 as datetime_precision, data_precision as numeric_precision, data_scale as numeric_scale"
-            f" FROM ALL_TAB_COLUMNS WHERE table_name = '{table}' AND owner = '{schema}'"
+            f" FROM ALL_TAB_COLUMNS WHERE table_name = '{name}' AND owner = '{schema}'"
         )

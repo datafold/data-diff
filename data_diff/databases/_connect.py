@@ -1,5 +1,6 @@
-from data_diff.sqeleton.databases import Connect, Database
 import logging
+
+from data_diff.sqeleton.databases import Connect
 
 from .postgresql import PostgreSQL
 from .mysql import MySQL

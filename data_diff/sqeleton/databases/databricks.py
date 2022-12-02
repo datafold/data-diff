@@ -48,7 +48,7 @@ class Mixin_NormalizeValue(AbstractMixin_NormalizeValue):
             value = f"format_number({value}, {coltype.precision})"
         return f"replace({self.to_string(value)}, ',', '')"
 
-    def normalize_boolean(self, value: str, coltype: Boolean) -> str:
+    def normalize_boolean(self, value: str, _coltype: Boolean) -> str:
         return self.to_string(f"cast ({value} as int)")
 
 

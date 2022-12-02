@@ -1,6 +1,6 @@
 from dataclasses import field
 from datetime import datetime
-from typing import Any, Generator, List, Optional, Sequence, Tuple, Union
+from typing import Any, Generator, List, Optional, Sequence, Union
 
 from runtype import dataclass
 
@@ -846,7 +846,7 @@ class InsertToTable(Statement):
         else:
             expr = c.compile(self.expr)
 
-        columns = f"(%s)" % ", ".join(map(c.quote, self.columns)) if self.columns is not None else ""
+        columns = "(%s)" % ", ".join(map(c.quote, self.columns)) if self.columns is not None else ""
 
         return f"INSERT INTO {c.compile(self.path)}{columns} {expr}"
 

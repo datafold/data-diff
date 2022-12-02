@@ -65,7 +65,7 @@ class Mixin_NormalizeValue(AbstractMixin_NormalizeValue):
     def normalize_number(self, value: str, coltype: FractionalType) -> str:
         return self.to_string(f"cast({value} as decimal(38,{coltype.precision}))")
 
-    def normalize_boolean(self, value: str, coltype: Boolean) -> str:
+    def normalize_boolean(self, value: str, _coltype: Boolean) -> str:
         return self.to_string(f"cast ({value} as int)")
 
 
@@ -113,7 +113,7 @@ class Dialect(BaseDialect, Mixin_Schema):
         type_repr: str,
         datetime_precision: int = None,
         numeric_precision: int = None,
-        numeric_scale: int = None,
+        _numeric_scale: int = None,
     ) -> ColType:
         timestamp_regexps = {
             r"timestamp\((\d)\)": Timestamp,

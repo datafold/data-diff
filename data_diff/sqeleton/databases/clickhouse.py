@@ -8,7 +8,6 @@ from .base import (
     ThreadedDatabase,
     import_helper,
     ConnectError,
-    DbTime,
 )
 from ..abcs.database_types import (
     ColType,

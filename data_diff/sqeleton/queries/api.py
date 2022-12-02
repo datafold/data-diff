@@ -77,8 +77,8 @@ def if_(cond: Expr, then: Expr, else_: Optional[Expr] = None):
     return when(cond).then(then).else_(else_)
 
 
-def when(*when: Expr):
-    return CaseWhen([]).when(*when)
+def when(*when_exprs: Expr):
+    return CaseWhen([]).when(*when_exprs)
 
 
 def coalesce(*exprs):
@@ -86,13 +86,13 @@ def coalesce(*exprs):
     return Func("COALESCE", exprs)
 
 
-def insert_rows_in_batches(db, table: TablePath, rows, *, columns=None, batch_size=1024 * 8):
+def insert_rows_in_batches(db, tbl: TablePath, rows, *, columns=None, batch_size=1024 * 8):
     assert batch_size > 0
     rows = list(rows)
 
     while rows:
         batch, rows = rows[:batch_size], rows[batch_size:]
-        db.query(table.insert_rows(batch, columns=columns))
+        db.query(tbl.insert_rows(batch, columns=columns))
 
 
 def current_timestamp():

@@ -41,4 +41,7 @@ class Trino(presto.Presto):
     def __init__(self, **kw):
         trino = import_trino()
 
+        if kw.get("schema"):
+            self.default_schema = kw.get("schema")
+
         self._conn = trino.dbapi.connect(**kw)
