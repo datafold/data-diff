@@ -21,7 +21,7 @@ from .databases import connect
 from .parse_time import parse_time_before, UNITS_STR, ParseError
 from .config import apply_config_from_file
 from .tracking import disable_tracking
-from . import __version__
+from .version import __version__
 
 
 LOG_FORMAT = "[%(asctime)s] %(levelname)s - %(message)s"

@@ -10,8 +10,9 @@ from time import time
 from typing import Any, Dict, Optional
 import urllib.request
 from uuid import uuid4
-
 import toml
+
+from .version import __version__
 
 TRACK_URL = "https://hosted.rudderlabs.com/v1/track"
 START_EVENT = "os_diff_run_start"
@@ -68,6 +69,7 @@ def create_start_event_json(diff_options: Dict[str, Any]):
             "os_version": platform.platform(),
             "python_version": f"{platform.python_version()}/{platform.python_implementation()}",
             "diff_options": diff_options,
+            "data_diff_version:": __version__,
         },
     }
 
@@ -96,6 +98,7 @@ def create_end_event_json(
             "table_2_rows_cnt": table2_count,
             "diff_rows_cnt": diff_count,
             "error_message": error,
+            "data_diff_version:": __version__,
         },
     }
 
@@ -104,7 +107,10 @@ def send_event_json(event_json):
     if not g_tracking_enabled:
         raise RuntimeError("Won't send; tracking is disabled!")
 
-    headers = {"Content-Type": "application/json", "Authorization": "Basic MkhndE00SGNxOUJtZWlDcU5ZaHo3Tzl0a2pNOg=="}
+    headers = {
+        "Content-Type": "application/json",
+        "Authorization": "Basic MkhndE00SGNxOUJtZWlDcU5ZaHo3Tzl0a2pNOg==",
+    }
     data = json.dumps(event_json).encode()
     try:
         req = urllib.request.Request(TRACK_URL, data=data, headers=headers)
