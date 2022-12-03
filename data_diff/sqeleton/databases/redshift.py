@@ -48,6 +48,7 @@ class Dialect(PostgresqlDialect):
         "double": Float,
         "real": Float,
     }
+    SUPPORTS_INDEXES = False
 
     def concat(self, items: List[str]) -> str:
         joined_exprs = " || ".join(items)
