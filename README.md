@@ -100,7 +100,7 @@ Once you've installed `data-diff`, you can run it from the command line.
 data-diff DB1_URI TABLE1_NAME DB2_URI TABLE2_NAME [OPTIONS]
 ```
 
-Be sure to read [the docs](https://docs.datafold.com/os_diff/how_to_use) for detailed instructions how to build one of these commands depending on your database setup.
+Be sure to read [the docs](https://docs.datafold.com/os_diff/about) for detailed instructions how to build one of these commands depending on your database setup.
 
 #### Code Example: Diff Tables Between Databases
 Here's an example command for your copy/pasting, taken from the screenshot above when we diffed data between Snowflake and Postgres.
