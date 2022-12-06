@@ -24,7 +24,7 @@ TEST_MYSQL_CONN_STRING: str = "mysql://mysql:Password1@localhost/mysql"
 TEST_POSTGRESQL_CONN_STRING: str = "postgresql://postgres:Password1@localhost/postgres"
 TEST_SNOWFLAKE_CONN_STRING: str = os.environ.get("DATADIFF_SNOWFLAKE_URI") or None
 TEST_PRESTO_CONN_STRING: str = os.environ.get("DATADIFF_PRESTO_URI") or None
-TEST_BIGQUERY_CONN_STRING: str = None
+TEST_BIGQUERY_CONN_STRING: str = os.environ.get("DATADIFF_BIGQUERY_URI") or None
 TEST_REDSHIFT_CONN_STRING: str = None
 TEST_ORACLE_CONN_STRING: str = None
 TEST_DATABRICKS_CONN_STRING: str = os.environ.get("DATADIFF_DATABRICKS_URI")
@@ -97,7 +97,7 @@ def _print_used_dbs():
     used = {k.__name__ for k, v in CONN_STRINGS.items() if v is not None}
     unused = {k.__name__ for k, v in CONN_STRINGS.items() if v is None}
 
-    logging.info(f"Testing databases: {', '.join(used)}")
+    print(f"Testing databases: {', '.join(used)}")
     if unused:
         logging.info(f"Connection not configured; skipping tests for: {', '.join(unused)}")
     if TEST_ACROSS_ALL_DBS:
