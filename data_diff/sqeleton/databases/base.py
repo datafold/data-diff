@@ -415,12 +415,11 @@ class Database(AbstractDatabase):
 
     def _normalize_table_path(self, path: DbPath) -> DbPath:
         if len(path) == 1:
-            if self.default_schema:
-                return self.default_schema, path[0]
-        elif len(path) != 2:
-            raise ValueError(f"{self.name}: Bad table path for {self}: '{'.'.join(path)}'. Expected form: schema.table")
+            return self.default_schema, path[0]
+        elif len(path) == 2:
+            return path
 
-        return path
+        raise ValueError(f"{self.name}: Bad table path for {self}: '{'.'.join(path)}'. Expected form: schema.table")
 
     def parse_table_name(self, name: str) -> DbPath:
         return parse_table_name(name)
