@@ -142,8 +142,29 @@ class Snowflake(Database):
         return self._query_conn(self._conn, sql_code)
 
     def select_table_schema(self, path: DbPath) -> str:
-        schema, name = self._normalize_table_path(path)
-        return super().select_table_schema((schema, name))
+        """Provide SQL for selecting the table schema as (name, type, date_prec, num_prec)"""
+        database, schema, name = self._normalize_table_path(path)
+        info_schema_path = ['information_schema','columns']
+        if database:
+            info_schema_path.insert(0, database)
+
+        return (
+            "SELECT column_name, data_type, datetime_precision, numeric_precision, numeric_scale "
+            f"FROM {'.'.join(info_schema_path)} "
+            f"WHERE table_name = '{name}' AND table_schema = '{schema}'"
+        )
+
+    def _normalize_table_path(self, path: DbPath) -> DbPath:
+        if len(path) == 1:
+            return None, self.default_schema, path[0]
+        elif len(path) == 2:
+            return None, path[0], path[1]
+        elif len(path) == 3:
+            return path
+
+        raise ValueError(
+            f"{self.name}: Bad table path for {self}: '{'.'.join(path)}'. Expected format: table, schema.table, or database.schema.table"
+        )
 
     @property
     def is_autocommit(self) -> bool:
