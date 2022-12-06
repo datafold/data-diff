@@ -70,9 +70,7 @@ class TestDates(DiffTestCase):
         a = table_segment(
             self.connection, self.table_src_path, "id", "datetime", max_update=self.now, case_sensitive=False
         )
-        self.assertRaises(
-            ValueError, table_segment, self.connection, self.table_src_path, "id", max_update=self.now
-        )
+        self.assertRaises(ValueError, table_segment, self.connection, self.table_src_path, "id", max_update=self.now)
 
     def test_basic(self):
         differ = HashDiffer(bisection_factor=10, bisection_threshold=100)

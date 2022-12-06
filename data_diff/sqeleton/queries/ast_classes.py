@@ -604,7 +604,6 @@ class Select(ExprNode, ITable, Root):
         elif c.dialect.PLACEHOLDER_TABLE:
             select += f" FROM {c.dialect.PLACEHOLDER_TABLE}"
 
-
         if self.where_exprs:
             select += " WHERE " + " AND ".join(map(c.compile, self.where_exprs))
 

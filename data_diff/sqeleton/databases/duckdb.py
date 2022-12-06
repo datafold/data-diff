@@ -114,6 +114,7 @@ class Dialect(BaseDialect, Mixin_Schema):
     def current_timestamp(self) -> str:
         return "current_timestamp"
 
+
 class DuckDB(Database):
     dialect = Dialect()
     SUPPORTS_UNIQUE_CONSTAINT = False  # Temporary, until we implement it

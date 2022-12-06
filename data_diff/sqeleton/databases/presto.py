@@ -140,6 +140,7 @@ class Dialect(BaseDialect, Mixin_Schema):
     def current_timestamp(self) -> str:
         return "current_timestamp"
 
+
 class Presto(Database):
     dialect = Dialect()
     CONNECT_URI_HELP = "presto://<user>@<host>/<catalog>/<schema>"
