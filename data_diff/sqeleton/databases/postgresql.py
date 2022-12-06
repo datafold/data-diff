@@ -90,6 +90,9 @@ class PostgresqlDialect(BaseDialect, Mixin_Schema):
     def set_timezone_to_utc(self) -> str:
         return "SET TIME ZONE 'UTC'"
 
+    def current_timestamp(self) -> str:
+        return "current_timestamp"
+
 
 class PostgreSQL(ThreadedDatabase):
     dialect = PostgresqlDialect()

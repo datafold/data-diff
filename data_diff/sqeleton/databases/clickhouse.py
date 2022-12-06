@@ -155,6 +155,9 @@ class Dialect(BaseDialect):
     def set_timezone_to_utc(self) -> str:
         raise NotImplementedError()
 
+    def current_timestamp(self) -> str:
+        return "now()"
+
 
 class Clickhouse(ThreadedDatabase):
     dialect = Dialect()

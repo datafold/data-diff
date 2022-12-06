@@ -302,7 +302,9 @@ class Database(AbstractDatabase):
             return int(res)
         elif res_type is datetime:
             res = _one(_one(res))
-            return res  # XXX parse timestamp?
+            if isinstance(res, str):
+                res = datetime.fromisoformat(res[:23])  # TODO use a better parsing method
+            return res
         elif res_type is tuple:
             assert len(res) == 1, (sql_code, res)
             return res[0]

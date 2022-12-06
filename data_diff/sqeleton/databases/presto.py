@@ -137,6 +137,8 @@ class Dialect(BaseDialect, Mixin_Schema):
     def set_timezone_to_utc(self) -> str:
         return "SET TIME ZONE '+00:00'"
 
+    def current_timestamp(self) -> str:
+        return "current_timestamp"
 
 class Presto(Database):
     dialect = Dialect()

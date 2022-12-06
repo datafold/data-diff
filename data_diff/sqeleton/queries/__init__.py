@@ -18,6 +18,7 @@ from .api import (
     or_,
     leftjoin,
     rightjoin,
+    current_timestamp
 )
 from .ast_classes import Expr, ExprNode, Select, Count, BinOp, Explain, In, Code, Column
 from .extras import Checksum, NormalizeAsString, ApplyFuncAndNormalizeAsString
