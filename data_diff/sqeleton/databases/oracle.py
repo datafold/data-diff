@@ -86,6 +86,7 @@ class Dialect(BaseDialect, Mixin_Schema):
         "VARCHAR2": Text,
     }
     ROUNDS_ON_PREC_LOSS = True
+    PLACEHOLDER_TABLE = "DUAL"
 
     def quote(self, s: str):
         return f'"{s}"'
@@ -151,6 +152,9 @@ class Dialect(BaseDialect, Mixin_Schema):
 
     def set_timezone_to_utc(self) -> str:
         return "ALTER SESSION SET TIME_ZONE = 'UTC'"
+
+    def current_timestamp(self) -> str:
+        return "LOCALTIMESTAMP"
 
 
 class Oracle(ThreadedDatabase):

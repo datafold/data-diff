@@ -1,10 +1,11 @@
 from typing import Callable, List
+from datetime import datetime
 import unittest
 
 from ..common import str_to_checksum, TEST_MYSQL_CONN_STRING
 from ..common import str_to_checksum, test_each_database_in_list, DiffTestCase, get_conn, random_table_suffix
 
-from data_diff.sqeleton.queries import table
+from data_diff.sqeleton.queries import table, current_timestamp
 
 from data_diff import databases as dbs
 from data_diff.databases import connect
@@ -63,3 +64,12 @@ class TestSchema(unittest.TestCase):
 
         db.query(tbl.drop())
         assert not db.query(q)
+
+
+@test_each_database
+class TestQueries(unittest.TestCase):
+
+    def test_current_timestamp(self):
+        db = get_conn(self.db_cls)
+        res = db.query(current_timestamp(), datetime)
+        assert isinstance(res, datetime), (res, type(res))
