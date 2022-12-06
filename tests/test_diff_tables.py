@@ -1,9 +1,7 @@
-from datetime import datetime
+from datetime import datetime, timedelta
 from typing import Callable
 import uuid
 import unittest
-
-import arrow  # comes with preql
 
 from data_diff.sqeleton.queries import table, this, commit
 from data_diff.sqeleton.utils import ArithAlphanumeric, numberToAlphanum
@@ -48,32 +46,32 @@ class TestDates(DiffTestCase):
         super().setUp()
 
         src_table = self.src_table
-        self.now = now = arrow.get()
+        self.now = now = datetime.now()
 
         rows = [
-            (now.shift(days=-50), "50 days ago"),
-            (now.shift(hours=-3), "3 hours ago"),
-            (now.shift(minutes=-10), "10 mins ago"),
-            (now.shift(seconds=-1), "1 second ago"),
+            (now - timedelta(days=50), "50 days ago"),
+            (now - timedelta(hours=3), "3 hours ago"),
+            (now - timedelta(minutes=10), "10 mins ago"),
+            (now - timedelta(seconds=1), "1 second ago"),
             (now, "now"),
         ]
 
         self.connection.query(
             [
-                src_table.insert_rows((i, ts.datetime, s) for i, (ts, s) in enumerate(rows)),
+                src_table.insert_rows((i, ts, s) for i, (ts, s) in enumerate(rows)),
                 table(self.table_dst_path).create(src_table),
                 commit,
-                src_table.insert_row(len(rows), self.now.shift(seconds=-5).datetime, "5 seconds ago"),
+                src_table.insert_row(len(rows), self.now - timedelta(seconds=5), "5 seconds ago"),
                 commit,
             ]
         )
 
     def test_init(self):
         a = table_segment(
-            self.connection, self.table_src_path, "id", "datetime", max_update=self.now.datetime, case_sensitive=False
+            self.connection, self.table_src_path, "id", "datetime", max_update=self.now, case_sensitive=False
         )
         self.assertRaises(
-            ValueError, table_segment, self.connection, self.table_src_path, "id", max_update=self.now.datetime
+            ValueError, table_segment, self.connection, self.table_src_path, "id", max_update=self.now
         )
 
     def test_basic(self):
@@ -88,7 +86,7 @@ class TestDates(DiffTestCase):
 
     def test_offset(self):
         differ = HashDiffer(bisection_factor=2, bisection_threshold=10)
-        sec1 = self.now.shift(seconds=-3).datetime
+        sec1 = self.now - timedelta(seconds=3)
         a = table_segment(self.connection, self.table_src_path, "id", "datetime", max_update=sec1, case_sensitive=False)
         b = table_segment(self.connection, self.table_dst_path, "id", "datetime", max_update=sec1, case_sensitive=False)
         assert a.count() == 4, a.count()
@@ -103,7 +101,7 @@ class TestDates(DiffTestCase):
         assert b.count() == 2
         assert not list(differ.diff_tables(a, b))
 
-        day1 = self.now.shift(days=-1).datetime
+        day1 = self.now - timedelta(days=1)
 
         a = table_segment(
             self.connection,

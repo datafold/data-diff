@@ -1,5 +1,4 @@
-import arrow
-from datetime import datetime
+from datetime import datetime, timedelta
 
 from data_diff import diff_tables, connect_to_table, Algorithm
 from data_diff.databases import MySQL
@@ -17,20 +16,20 @@ class TestApi(DiffTestCase):
 
         self.conn = self.connection
 
-        self.now = now = arrow.get()
+        self.now = now = datetime.now()
 
         rows = [
             (now, "now"),
-            (self.now.shift(seconds=-10), "a"),
-            (self.now.shift(seconds=-7), "b"),
-            (self.now.shift(seconds=-6), "c"),
+            (self.now - timedelta(seconds=10), "a"),
+            (self.now - timedelta(seconds=7), "b"),
+            (self.now - timedelta(seconds=6), "c"),
         ]
 
         self.conn.query(
             [
-                self.src_table.insert_rows((i, ts.datetime, s) for i, (ts, s) in enumerate(rows)),
+                self.src_table.insert_rows((i, ts, s) for i, (ts, s) in enumerate(rows)),
                 self.dst_table.create(self.src_table),
-                self.src_table.insert_row(len(rows), self.now.shift(seconds=-3).datetime, "3 seconds ago"),
+                self.src_table.insert_row(len(rows), self.now - timedelta(seconds=3), "3 seconds ago"),
                 commit,
             ]
         )
