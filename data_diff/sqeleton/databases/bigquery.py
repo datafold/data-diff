@@ -158,7 +158,7 @@ class BigQuery(Database):
 
     def parse_table_name(self, name: str) -> DbPath:
         path = parse_table_name(name)
-        return self._normalize_table_path(path)
+        return tuple(i for i in self._normalize_table_path(path) if i is not None)
 
     @property
     def is_autocommit(self) -> bool:
