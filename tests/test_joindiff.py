@@ -232,7 +232,7 @@ class TestJoindiff(DiffTestCase):
         }
         self.assertEqual(expected, set(diff))
         keys = [k for _, (k, _) in diff]
-        assert keys[0] == keys[1] and keys[2] == keys[3]    # same keys
+        assert keys[0] == keys[1] and keys[2] == keys[3]  # same keys
 
     def test_dup_pks(self):
         time = "2022-01-01 00:00:00"

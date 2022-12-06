@@ -124,7 +124,7 @@ class BaseDialect(AbstractDialect):
     SUPPORTS_INDEXES = False
     TYPE_CLASSES: Dict[str, type] = {}
 
-    PLACEHOLDER_TABLE = None        # Used for Oracle
+    PLACEHOLDER_TABLE = None  # Used for Oracle
 
     def offset_limit(self, offset: Optional[int] = None, limit: Optional[int] = None):
         if offset:

@@ -307,18 +307,22 @@ def _main(
     else:
         db2 = connect(database2, threads2 or threads)
 
-    now: datetime = db1.query(current_timestamp(), datetime)
-    now = now.replace(tzinfo=None)
-    try:
-        options = dict(
-            min_update=max_age and parse_time_before(now, max_age),
-            max_update=min_age and parse_time_before(now, min_age),
-            case_sensitive=case_sensitive,
-            where=where,
-        )
-    except ParseError as e:
-        logging.error(f"Error while parsing age expression: {e}")
-        return
+    options = dict(
+        case_sensitive=case_sensitive,
+        where=where,
+    )
+
+    if min_age or max_age:
+        now: datetime = db1.query(current_timestamp(), datetime)
+        now = now.replace(tzinfo=None)
+        try:
+            if max_age:
+                options["min_update"] = parse_time_before(now, max_age)
+            if min_age:
+                options["max_update"] = parse_time_before(now, min_age)
+        except ParseError as e:
+            logging.error(f"Error while parsing age expression: {e}")
+            return
 
     dbs = db1, db2
 

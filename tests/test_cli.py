@@ -3,10 +3,10 @@ import subprocess
 import sys
 from datetime import datetime, timedelta
 
-from data_diff.databases import MySQL
-from data_diff.sqeleton.queries import commit
+from data_diff.sqeleton.queries import commit, current_timestamp
 
-from .common import TEST_MYSQL_CONN_STRING, DiffTestCase
+from .common import DiffTestCase, CONN_STRINGS
+from .test_diff_tables import test_each_database
 
 
 def run_datadiff_cli(*args):
@@ -20,14 +20,14 @@ def run_datadiff_cli(*args):
     return stdout.splitlines()
 
 
+@test_each_database
 class TestCLI(DiffTestCase):
-    db_cls = MySQL
     src_schema = {"id": int, "datetime": datetime, "text_comment": str}
 
     def setUp(self) -> None:
         super().setUp()
 
-        now = self.connection.query("select now()", datetime)
+        now = self.connection.query(current_timestamp(), datetime)
 
         rows = [
             (now, "now"),
@@ -46,16 +46,16 @@ class TestCLI(DiffTestCase):
         )
 
     def test_basic(self):
-        diff = run_datadiff_cli(
-            TEST_MYSQL_CONN_STRING, self.table_src_name, TEST_MYSQL_CONN_STRING, self.table_dst_name
-        )
+        conn_str = CONN_STRINGS[self.db_cls]
+        diff = run_datadiff_cli(conn_str, self.table_src_name, conn_str, self.table_dst_name)
         assert len(diff) == 1
 
     def test_options(self):
+        conn_str = CONN_STRINGS[self.db_cls]
         diff = run_datadiff_cli(
-            TEST_MYSQL_CONN_STRING,
+            conn_str,
             self.table_src_name,
-            TEST_MYSQL_CONN_STRING,
+            conn_str,
             self.table_dst_name,
             "--bisection-factor",
             "16",
@@ -68,4 +68,4 @@ class TestCLI(DiffTestCase):
             "--max-age",
             "1h",
         )
-        assert len(diff) == 1
+        assert len(diff) == 1, diff

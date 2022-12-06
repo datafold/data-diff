@@ -68,7 +68,6 @@ class TestSchema(unittest.TestCase):
 
 @test_each_database
 class TestQueries(unittest.TestCase):
-
     def test_current_timestamp(self):
         db = get_conn(self.db_cls)
         res = db.query(current_timestamp(), datetime)
