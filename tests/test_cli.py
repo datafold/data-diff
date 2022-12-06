@@ -68,4 +68,4 @@ class TestCLI(DiffTestCase):
             "--max-age",
             "1h",
         )
-        assert len(diff) == 1
+        assert len(diff) == 1, diff
