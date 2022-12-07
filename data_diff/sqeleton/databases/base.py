@@ -298,7 +298,12 @@ class Database(AbstractDatabase):
 
         res = self._query(sql_code)
         if res_type is int:
-            res = _one(_one(res))
+            if not res:
+                raise ValueError("Query returned 0 rows, expected 1")
+            row = _one(res)
+            if not row:
+                raise ValueError("Row is empty, expected 1 column")
+            res = _one(row)
             if res is None:  # May happen due to sum() of 0 items
                 return None
             return int(res)

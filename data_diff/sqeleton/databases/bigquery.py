@@ -37,7 +37,7 @@ class Mixin_NormalizeValue(AbstractMixin_NormalizeValue):
             return f"FORMAT_TIMESTAMP('%F %H:%M:%E6S', {timestamp})"
 
         if coltype.precision == 0:
-            return f"FORMAT_TIMESTAMP('%F %H:%M:%S.000000, {value})"
+            return f"FORMAT_TIMESTAMP('%F %H:%M:%S.000000', {value})"
         elif coltype.precision == 6:
             return f"FORMAT_TIMESTAMP('%F %H:%M:%E6S', {value})"
 
