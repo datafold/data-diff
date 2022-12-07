@@ -65,9 +65,6 @@ try:
 except ImportError:
     pass  # No local settings
 
-if TEST_BIGQUERY_CONN_STRING and TEST_SNOWFLAKE_CONN_STRING:
-    # TODO Fix this. Seems to have something to do with pyarrow
-    raise RuntimeError("Using BigQuery at the same time as Snowflake causes an error!!")
 
 CONN_STRINGS = {
     db.BigQuery: TEST_BIGQUERY_CONN_STRING,
