@@ -65,4 +65,4 @@ jobs:
             DATADIFF_BIGQUERY_URI: '${{ secrets.DATADIFF_BIGQUERY_URI }}'
         run: |
           chmod +x tests/waiting_for_stack_up.sh
-          ./tests/waiting_for_stack_up.sh && TEST_ACROSS_ALL_DBS=full poetry run unittest-parallel -j 16
+          ./tests/waiting_for_stack_up.sh && poetry run unittest-parallel -j 16
