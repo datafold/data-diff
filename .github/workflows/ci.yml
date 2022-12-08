@@ -1,11 +1,11 @@
 name: CI-COVER-VERSIONS
 
 on:
-  push:
-    paths:
-      - '**.py'
-      - '.github/workflows/**'
-      - '!dev/**'
+#   push:
+#     paths:
+#       - '**.py'
+#       - '.github/workflows/**'
+#       - '!dev/**'
   pull_request:
     branches: [ master ]
 
@@ -42,11 +42,29 @@ jobs:
       - name: Install package
         run: "poetry install"
 
+      # BigQuery start
+      - id: 'auth'
+        uses: 'google-github-actions/auth@v1'
+        with:
+          credentials_json: '${{ secrets.GOOGLE_CREDENTIALS }}'
+
+      - name: 'Set up BigQuery Cloud SDK'
+        uses: 'google-github-actions/setup-gcloud@v1'
+
+    #   - name: 'Use gcloud CLI'
+    #     run: "gcloud config configurations list"
+
+      - name: "Install BigQuery for Python"
+        run: poetry add google-cloud-bigquery
+
+      # BigQuery end
+
       - name: Run unit tests
         env:
             DATADIFF_SNOWFLAKE_URI: '${{ secrets.DATADIFF_SNOWFLAKE_URI }}'
             DATADIFF_PRESTO_URI: '${{ secrets.DATADIFF_PRESTO_URI }}'
             DATADIFF_TRINO_URI: '${{ secrets.DATADIFF_TRINO_URI }}'
+            DATADIFF_BIGQUERY_URI: '${{ secrets.DATADIFF_BIGQUERY_URI }}'
             DATADIFF_CLICKHOUSE_URI: 'clickhouse://clickhouse:Password1@localhost:9000/clickhouse'
             DATADIFF_VERTICA_URI: 'vertica://vertica:Password1@localhost:5433/vertica'
         run: |

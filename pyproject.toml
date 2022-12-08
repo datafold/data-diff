@@ -51,6 +51,7 @@ presto-python-client = "*"
 clickhouse-driver = "*"
 vertica-python = "*"
 duckdb = "^0.6.0"
+# google-cloud-bigquery = "*"
 # databricks-sql-connector = "*"
 
 [tool.poetry.extras]
