@@ -39,12 +39,16 @@ jobs:
       - name: Install package
         run: "poetry install"
 
+      - name: Install Databricks connector
+        run: poetry add databricks-sql-connector
+
       - name: Run unit tests
         env:
             DATADIFF_SNOWFLAKE_URI: '${{ secrets.DATADIFF_SNOWFLAKE_URI }}'
             DATADIFF_PRESTO_URI: '${{ secrets.DATADIFF_PRESTO_URI }}'
             DATADIFF_CLICKHOUSE_URI: 'clickhouse://clickhouse:Password1@localhost:9000/clickhouse'
             DATADIFF_VERTICA_URI: 'vertica://vertica:Password1@localhost:5433/vertica'
+            DATADIFF_DATABRICKS_URI: '${{ secrets.DATADIFF_DATABRICKS_URI }}'
         run: |
           chmod +x tests/waiting_for_stack_up.sh
           ./tests/waiting_for_stack_up.sh && TEST_ACROSS_ALL_DBS=full poetry run unittest-parallel -j 16

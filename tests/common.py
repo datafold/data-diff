@@ -97,7 +97,7 @@ def _print_used_dbs():
     used = {k.__name__ for k, v in CONN_STRINGS.items() if v is not None}
     unused = {k.__name__ for k, v in CONN_STRINGS.items() if v is None}
 
-    logging.info(f"Testing databases: {', '.join(used)}")
+    print(f"Testing databases: {', '.join(used)}")
     if unused:
         logging.info(f"Connection not configured; skipping tests for: {', '.join(unused)}")
     if TEST_ACROSS_ALL_DBS:
