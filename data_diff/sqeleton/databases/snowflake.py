@@ -144,7 +144,7 @@ class Snowflake(Database):
     def select_table_schema(self, path: DbPath) -> str:
         """Provide SQL for selecting the table schema as (name, type, date_prec, num_prec)"""
         database, schema, name = self._normalize_table_path(path)
-        info_schema_path = ['information_schema','columns']
+        info_schema_path = ["information_schema", "columns"]
         if database:
             info_schema_path.insert(0, database)
 
