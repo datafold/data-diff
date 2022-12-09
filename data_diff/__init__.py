@@ -62,6 +62,8 @@ def diff_tables(
     max_threadpool_size: Optional[int] = 1,
     # Algorithm
     algorithm: Algorithm = Algorithm.AUTO,
+    # An additional 'where' expression to restrict the search space.
+    where: str = None
     # Into how many segments to bisect per iteration (hashdiff only)
     bisection_factor: int = DEFAULT_BISECTION_FACTOR,
     # When should we stop bisecting and compare locally (in row count; hashdiff only)
