@@ -70,3 +70,18 @@ class Redshift(PostgreSQL):
             "SELECT column_name, data_type, datetime_precision, numeric_precision, numeric_scale FROM information_schema.columns "
             f"WHERE table_name = '{table.lower()}' AND table_schema = '{schema.lower()}'"
         )
+
+    def select_external_table_schema(self, path: DbPath) -> str:
+        schema, table = self._normalize_table_path(path)
+
+        return (
+            f"""SELECT
+                columnname AS column_name
+                , CASE WHEN external_type = 'string' THEN 'varchar' ELSE external_type END AS data_type
+                , NULL AS datetime_precision
+                , NULL AS numeric_precision
+                , NULL AS numeric_scale
+            FROM svv_external_columns
+                WHERE tablename = '{table.lower()}' AND schemaname = '{schema.lower()}'
+            """
+        )
