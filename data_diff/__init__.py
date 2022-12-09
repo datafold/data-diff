@@ -65,7 +65,7 @@ def diff_tables(
     # An additional 'where' expression to restrict the search space.
     where: str = None,
     # Into how many segments to bisect per iteration (hashdiff only)
-    bisection_factor: int = DEFAULT_BISECTION_FACTOR
+    bisection_factor: int = DEFAULT_BISECTION_FACTOR,
     # When should we stop bisecting and compare locally (in row count; hashdiff only)
     bisection_threshold: int = DEFAULT_BISECTION_THRESHOLD,
     # Enable/disable validating that the key columns are unique. (joindiff only)
