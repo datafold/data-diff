@@ -40,6 +40,8 @@ def _load_profile():
 g_tracking_enabled = True
 g_anonymous_id = None
 
+entrypoint_name = "Python API"
+
 
 def disable_tracking():
     global g_tracking_enabled
@@ -48,6 +50,11 @@ def disable_tracking():
 
 def is_tracking_enabled():
     return g_tracking_enabled
+
+
+def set_entrypoint_name(s):
+    global entrypoint_name
+    entrypoint_name = s
 
 
 def get_anonymous_id():
@@ -70,6 +77,7 @@ def create_start_event_json(diff_options: Dict[str, Any]):
             "python_version": f"{platform.python_version()}/{platform.python_implementation()}",
             "diff_options": diff_options,
             "data_diff_version:": __version__,
+            "entrypoint_name": entrypoint_name,
         },
     }
 
@@ -99,6 +107,7 @@ def create_end_event_json(
             "diff_rows_cnt": diff_count,
             "error_message": error,
             "data_diff_version:": __version__,
+            "entrypoint_name": entrypoint_name,
         },
     }
 
