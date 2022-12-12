@@ -145,16 +145,30 @@ class BigQuery(Database):
         self._client.close()
 
     def select_table_schema(self, path: DbPath) -> str:
-        schema, name = self._normalize_table_path(path)
-
+        project, schema, name = self._normalize_table_path(path)
         return (
             "SELECT column_name, data_type, 6 as datetime_precision, 38 as numeric_precision, 9 as numeric_scale "
-            f"FROM {schema}.INFORMATION_SCHEMA.COLUMNS "
+            f"FROM `{project}`.`{schema}`.INFORMATION_SCHEMA.COLUMNS "
             f"WHERE table_name = '{name}' AND table_schema = '{schema}'"
         )
 
     def query_table_unique_columns(self, path: DbPath) -> List[str]:
         return []
+
+    def _normalize_table_path(self, path: DbPath) -> DbPath:
+        if len(path) == 0:
+            raise ValueError(f"{self.name}: Bad table path for {self}: ()")
+        elif len(path) == 1:
+            if self.default_schema:
+                return [self.project, self.default_schema, path[0]]
+            else:
+                return path
+        elif len(path) == 2:
+            return [self.project] + path
+        elif len(path) == 3:
+            return path
+        else:
+            raise ValueError(f"{self.name}: Bad table path for {self}: '{'.'.join(path)}'. Expected form: [project.]schema.table")
 
     def parse_table_name(self, name: str) -> DbPath:
         path = parse_table_name(name)
