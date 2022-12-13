@@ -159,16 +159,15 @@ class BigQuery(Database):
         if len(path) == 0:
             raise ValueError(f"{self.name}: Bad table path for {self}: ()")
         elif len(path) == 1:
-            if self.default_schema:
-                return [self.project, self.default_schema, path[0]]
-            else:
-                return path
+            return (self.project, self.default_schema, path[0])
         elif len(path) == 2:
-            return [self.project] + path
+            return (self.project,) + path
         elif len(path) == 3:
             return path
         else:
-            raise ValueError(f"{self.name}: Bad table path for {self}: '{'.'.join(path)}'. Expected form: [project.]schema.table")
+            raise ValueError(
+                f"{self.name}: Bad table path for {self}: '{'.'.join(path)}'. Expected form: [project.]schema.table"
+            )
 
     def parse_table_name(self, name: str) -> DbPath:
         path = parse_table_name(name)
