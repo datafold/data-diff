@@ -1,4 +1,4 @@
-from typing import List
+from typing import List, Dict
 from ..abcs.database_types import Float, TemporalType, FractionalType, DbPath
 from ..abcs.mixins import AbstractMixin_MD5
 from .postgresql import (
@@ -70,3 +70,31 @@ class Redshift(PostgreSQL):
             "SELECT column_name, data_type, datetime_precision, numeric_precision, numeric_scale FROM information_schema.columns "
             f"WHERE table_name = '{table.lower()}' AND table_schema = '{schema.lower()}'"
         )
+
+    def select_external_table_schema(self, path: DbPath) -> str:
+        schema, table = self._normalize_table_path(path)
+
+        return f"""SELECT
+                columnname AS column_name
+                , CASE WHEN external_type = 'string' THEN 'varchar' ELSE external_type END AS data_type
+                , NULL AS datetime_precision
+                , NULL AS numeric_precision
+                , NULL AS numeric_scale
+            FROM svv_external_columns
+                WHERE tablename = '{table.lower()}' AND schemaname = '{schema.lower()}'
+            """
+
+    def query_external_table_schema(self, path: DbPath) -> Dict[str, tuple]:
+        rows = self.query(self.select_external_table_schema(path), list)
+        if not rows:
+            raise RuntimeError(f"{self.name}: Table '{'.'.join(path)}' does not exist, or has no columns")
+
+        d = {r[0]: r for r in rows}
+        assert len(d) == len(rows)
+        return d
+
+    def query_table_schema(self, path: DbPath) -> Dict[str, tuple]:
+        try:
+            return super().query_table_schema(path)
+        except RuntimeError:
+            return self.query_external_table_schema(path)
