@@ -1,4 +1,4 @@
-from typing import List
+from typing import List, Dict
 from ..abcs.database_types import Float, TemporalType, FractionalType, DbPath
 from ..abcs.mixins import AbstractMixin_MD5
 from .postgresql import (
@@ -85,3 +85,18 @@ class Redshift(PostgreSQL):
                 WHERE tablename = '{table.lower()}' AND schemaname = '{schema.lower()}'
             """
         )
+
+    def query_external_table_schema(self, path: DbPath) -> Dict[str, tuple]:
+        rows = self.query(self.select_external_table_schema(path), list)
+        if not rows:
+            raise RuntimeError(f"{self.name}: Table '{'.'.join(path)}' does not exist, or has no columns")
+
+        d = {r[0]: r for r in rows}
+        assert len(d) == len(rows)
+        return d
+
+    def query_table_schema(self, path: DbPath) -> Dict[str, tuple]:
+        try:
+            return super().query_table_schema(path)
+        except RuntimeError:
+            return self.query_external_table_schema(path)

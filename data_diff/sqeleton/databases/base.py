@@ -339,8 +339,6 @@ class Database(AbstractDatabase):
 
     def query_table_schema(self, path: DbPath) -> Dict[str, tuple]:
         rows = self.query(self.select_table_schema(path), list)
-        if not rows and self.name == 'Redshift':
-            rows = self.query(self.select_external_table_schema(path), list)
         if not rows:
             raise RuntimeError(f"{self.name}: Table '{'.'.join(path)}' does not exist, or has no columns")
 
