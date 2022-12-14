@@ -26,7 +26,7 @@ TEST_SNOWFLAKE_CONN_STRING: str = os.environ.get("DATADIFF_SNOWFLAKE_URI") or No
 TEST_PRESTO_CONN_STRING: str = os.environ.get("DATADIFF_PRESTO_URI") or None
 TEST_BIGQUERY_CONN_STRING: str = os.environ.get("DATADIFF_BIGQUERY_URI") or None
 TEST_REDSHIFT_CONN_STRING: str = os.environ.get("DATADIFF_REDSHIFT_URI") or None
-TEST_ORACLE_CONN_STRING: str = None
+TEST_ORACLE_CONN_STRING: str = os.environ.get("DATADIFF_ORACLE_URI") or None
 TEST_DATABRICKS_CONN_STRING: str = os.environ.get("DATADIFF_DATABRICKS_URI")
 TEST_TRINO_CONN_STRING: str = os.environ.get("DATADIFF_TRINO_URI") or None
 # clickhouse uri for provided docker - "clickhouse://clickhouse:Password1@localhost:9000/clickhouse"
