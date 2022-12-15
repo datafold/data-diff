@@ -27,8 +27,7 @@ def help():
     rich.print("Otherwise, runs regular SQL query")
 
 
-def main():
-    uri = sys.argv[1]
+def repl(uri):
     db = connect(uri)
     db_name = db.name
 
@@ -60,6 +59,9 @@ def main():
                 if res:
                     print_table(res, [str(i) for i in range(len(res[0]))], q)
 
+def main():
+    uri = sys.argv[1]
+    return repl(uri)
 
 if __name__ == "__main__":
     main()
