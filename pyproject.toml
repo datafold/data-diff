@@ -1,0 +1,72 @@
+[tool.poetry]
+name = "sqeleton"
+version = "0.0.1"
+description = "Python library for querying SQL databases"
+authors = ["Erez Shinan <erezshin@gmail.com>"]
+license = "MIT"
+readme = "README.md"
+repository = "https://github.com/datafold/sqeleton"
+documentation = ""
+classifiers = [
+    "Intended Audience :: Developers",
+    "Intended Audience :: Information Technology",
+    "Intended Audience :: System Administrators",
+    "Programming Language :: Python :: 3.7",
+    "Programming Language :: Python :: 3.8",
+    "Programming Language :: Python :: 3.9",
+    "Programming Language :: Python :: 3.10",
+    "Development Status :: 2 - Pre-Alpha",
+    "Environment :: Console",
+    "Topic :: Database :: Database Engines/Servers",
+    "Typing :: Typed"
+]
+packages = [{ include = "sqeleton" }]
+
+[tool.poetry.dependencies]
+python = "^3.7"
+runtype = "^0.2.6"
+dsnparse = "*"
+click = "^8.1"
+rich = "*"
+toml = "^0.10.2"
+mysql-connector-python = {version="8.0.29", optional=true}
+psycopg2 = {version="*", optional=true}
+snowflake-connector-python = {version="^2.7.2", optional=true}
+cryptography = {version="*", optional=true}
+trino = {version="^0.314.0", optional=true}
+presto-python-client = {version="*", optional=true}
+clickhouse-driver = {version="*", optional=true}
+duckdb = {version="^0.6.0", optional=true}
+
+[tool.poetry.dev-dependencies]
+parameterized = "*"
+unittest-parallel = "*"
+
+duckdb = "^0.6.0"
+mysql-connector-python = "*"
+psycopg2 = "*"
+snowflake-connector-python = "^2.7.2"
+cryptography = "*"
+trino = "^0.314.0"
+presto-python-client = "*"
+clickhouse-driver = "*"
+vertica-python = "*"
+
+[tool.poetry.extras]
+mysql = ["mysql-connector-python"]
+postgresql = ["psycopg2"]
+snowflake = ["snowflake-connector-python", "cryptography"]
+presto = ["presto-python-client"]
+oracle = ["cx_Oracle"]
+# databricks = ["databricks-sql-connector"]
+trino = ["trino"]
+clickhouse = ["clickhouse-driver"]
+vertica = ["vertica-python"]
+duckdb = ["duckdb"]
+
+[build-system]
+requires = ["poetry-core>=1.0.0"]
+build-backend = "poetry.core.masonry.api"
+
+[tool.poetry.scripts]
+sqeleton = 'sqeleton.__main__:main'

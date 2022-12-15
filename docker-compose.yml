@@ -1,0 +1,130 @@
+version: "3.8"
+
+services:
+    postgres:
+      container_name: dd-postgresql
+      image: postgres:14.1-alpine
+      # work_mem: less tmp files
+      # maintenance_work_mem: improve table-level op perf
+      # max_wal_size: allow more time before merging to heap
+      command: >
+        -c work_mem=1GB
+        -c maintenance_work_mem=1GB
+        -c max_wal_size=8GB
+      restart: always
+      volumes:
+        - postgresql-data:/var/lib/postgresql/data:delegated
+      ports:
+        - '5432:5432'
+      expose:
+        - '5432'
+      env_file:
+        - dev/dev.env
+      tty: true
+      networks:
+        - local
+
+    mysql:
+      container_name: dd-mysql
+      image: mysql:oracle
+      # fsync less aggressively for insertion perf for test setup
+      command: >
+        --default-authentication-plugin=mysql_native_password
+        --binlog-cache-size=16M
+        --key_buffer_size=0
+        --max_connections=1000
+        --innodb_flush_log_at_trx_commit=2
+        --innodb_flush_log_at_timeout=10
+        --innodb_log_compressed_pages=OFF
+        --sync_binlog=0
+      restart: always
+      volumes:
+        - mysql-data:/var/lib/mysql:delegated
+      user: mysql
+      ports:
+        - '3306:3306'
+      expose:
+        - '3306'
+      env_file:
+        - dev/dev.env
+      tty: true
+      networks:
+        - local
+
+    clickhouse:
+      container_name: dd-clickhouse
+      image: clickhouse/clickhouse-server:21.12.3.32
+      restart: always
+      volumes:
+          - clickhouse-data:/var/lib/clickhouse:delegated
+      ulimits:
+        nproc: 65535
+        nofile:
+          soft: 262144
+          hard: 262144
+      ports:
+        - '8123:8123'
+        - '9000:9000'
+      expose:
+        - '8123'
+        - '9000'
+      env_file:
+        - dev/dev.env
+      tty: true
+      networks:
+      - local
+
+    # prestodb.dbapi.connect(host="127.0.0.1", user="presto").cursor().execute('SELECT * FROM system.runtime.nodes')
+    presto:
+        container_name: dd-presto
+        build:
+            context: ./dev
+            dockerfile: ./Dockerfile.prestosql.340
+        volumes:
+            - ./dev/presto-conf/standalone:/opt/presto/etc:ro
+        ports:
+            - '8080:8080'
+        tty: true
+        networks:
+            - local
+
+    trino:
+        container_name: dd-trino
+        image: 'trinodb/trino:389'
+        hostname: trino
+        ports:
+            - '8081:8080'
+        volumes:
+            - ./dev/trino-conf/etc:/etc/trino:ro
+        networks:
+            - local
+
+    vertica:
+      container_name: dd-vertica
+      image: vertica/vertica-ce:12.0.0-0
+      restart: always
+      volumes:
+          - vertica-data:/data:delegated
+      ports:
+        - '5433:5433'
+        - '5444:5444'
+      expose:
+        - '5433'
+        - '5444'
+      env_file:
+        - dev/dev.env
+      tty: true
+      networks:
+      - local
+
+
+
+volumes:
+  postgresql-data:
+  mysql-data:
+  clickhouse-data:
+  vertica-data:
+
+networks:
+  local:
+    driver: bridge
