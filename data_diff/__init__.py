@@ -62,6 +62,8 @@ def diff_tables(
     max_threadpool_size: Optional[int] = 1,
     # Algorithm
     algorithm: Algorithm = Algorithm.AUTO,
+    # An additional 'where' expression to restrict the search space.
+    where: str = None,
     # Into how many segments to bisect per iteration (hashdiff only)
     bisection_factor: int = DEFAULT_BISECTION_FACTOR,
     # When should we stop bisecting and compare locally (in row count; hashdiff only)
@@ -92,6 +94,7 @@ def diff_tables(
         max_threadpool_size (int): Maximum size of each threadpool. ``None`` means auto.
                                    Only relevant when `threaded` is ``True``.
                                    There may be many pools, so number of actual threads can be a lot higher.
+        where (str, optional): An additional 'where' expression to restrict the search space.                   
         algorithm (:class:`Algorithm`): Which diffing algorithm to use (`HASHDIFF` or `JOINDIFF`. Default=`AUTO`)
         bisection_factor (int): Into how many segments to bisect per iteration. (Used when algorithm is `HASHDIFF`)
         bisection_threshold (Number): Minimal row count of segment to bisect, otherwise download
@@ -106,7 +109,7 @@ def diff_tables(
 
     Note:
         The following parameters are used to override the corresponding attributes of the given :class:`TableSegment` instances:
-        `key_columns`, `update_column`, `extra_columns`, `min_key`, `max_key`.
+        `key_columns`, `update_column`, `extra_columns`, `min_key`, `max_key`, `where`.
         If different values are needed per table, it's possible to omit them here, and instead set
         them directly when creating each :class:`TableSegment`.
 
@@ -135,6 +138,7 @@ def diff_tables(
             max_key=max_key,
             min_update=min_update,
             max_update=max_update,
+            where=where,
         ).items()
         if v is not None
     }

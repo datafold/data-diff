@@ -50,8 +50,8 @@ class TableSegment:
     max_key: DbKey = None
     min_update: DbTime = None
     max_update: DbTime = None
-
     where: str = None
+    
     case_sensitive: bool = True
     _schema: Schema = None
 
