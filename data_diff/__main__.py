@@ -10,13 +10,14 @@ from typing import Optional
 import rich
 import click
 
+from sqeleton.schema import create_schema
+from sqeleton.queries.api import current_timestamp
+
 from .utils import eval_name_template, remove_password_from_url, safezip, match_like
 from .diff_tables import Algorithm
 from .hashdiff_tables import HashDiffer, DEFAULT_BISECTION_THRESHOLD, DEFAULT_BISECTION_FACTOR
 from .joindiff_tables import TABLE_WRITE_LIMIT, JoinDiffer
 from .table_segment import TableSegment
-from .sqeleton.schema import create_schema
-from .sqeleton.queries.api import current_timestamp
 from .databases import connect
 from .parse_time import parse_time_before, UNITS_STR, ParseError
 from .config import apply_config_from_file

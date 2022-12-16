@@ -1,4 +1,4 @@
-from data_diff.sqeleton.databases import MD5_HEXDIGITS, CHECKSUM_HEXDIGITS, QueryError, ConnectError
+from sqeleton.databases import MD5_HEXDIGITS, CHECKSUM_HEXDIGITS, QueryError, ConnectError
 
 from .postgresql import PostgreSQL
 from .mysql import MySQL

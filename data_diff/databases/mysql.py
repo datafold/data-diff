@@ -1,4 +1,4 @@
-from data_diff.sqeleton.databases import mysql
+from sqeleton.databases import mysql
 from .base import DatadiffDialect
 
 

@@ -1,4 +1,4 @@
-from data_diff.sqeleton.databases import vertica
+from sqeleton.databases import vertica
 from .base import DatadiffDialect
 
 
