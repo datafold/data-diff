@@ -1,4 +1,4 @@
-from data_diff.sqeleton.databases import postgresql as pg
+from sqeleton.databases import postgresql as pg
 from .base import DatadiffDialect
 
 

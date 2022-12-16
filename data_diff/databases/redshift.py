@@ -1,4 +1,4 @@
-from data_diff.sqeleton.databases import redshift
+from sqeleton.databases import redshift
 from .base import DatadiffDialect
 
 

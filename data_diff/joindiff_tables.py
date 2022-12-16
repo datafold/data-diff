@@ -10,9 +10,9 @@ from itertools import chain
 
 from runtype import dataclass
 
-from .sqeleton.databases import Database, MySQL, BigQuery, Presto, Oracle, Snowflake, DbPath
-from .sqeleton.abcs import NumericType
-from .sqeleton.queries import (
+from sqeleton.databases import Database, MySQL, BigQuery, Presto, Oracle, Snowflake, DbPath
+from sqeleton.abcs import NumericType
+from sqeleton.queries import (
     table,
     sum_,
     min_,
@@ -27,8 +27,8 @@ from .sqeleton.queries import (
     this,
     Compiler,
 )
-from .sqeleton.queries.ast_classes import Concat, Count, Expr, Random, TablePath, Code, ITable
-from .sqeleton.queries.extras import NormalizeAsString
+from sqeleton.queries.ast_classes import Concat, Count, Expr, Random, TablePath, Code, ITable
+from sqeleton.queries.extras import NormalizeAsString
 
 from .info_tree import InfoTree
 

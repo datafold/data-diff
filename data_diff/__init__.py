@@ -1,8 +1,9 @@
 from typing import Sequence, Tuple, Iterator, Optional, Union
 
+from sqeleton.abcs import DbKey, DbTime, DbPath
+
 from .tracking import disable_tracking
 from .databases import connect
-from .sqeleton.abcs import DbKey, DbTime, DbPath
 from .diff_tables import Algorithm
 from .hashdiff_tables import HashDiffer, DEFAULT_BISECTION_THRESHOLD, DEFAULT_BISECTION_FACTOR
 from .joindiff_tables import JoinDiffer, TABLE_WRITE_LIMIT
@@ -94,7 +95,7 @@ def diff_tables(
         max_threadpool_size (int): Maximum size of each threadpool. ``None`` means auto.
                                    Only relevant when `threaded` is ``True``.
                                    There may be many pools, so number of actual threads can be a lot higher.
-        where (str, optional): An additional 'where' expression to restrict the search space.                   
+        where (str, optional): An additional 'where' expression to restrict the search space.
         algorithm (:class:`Algorithm`): Which diffing algorithm to use (`HASHDIFF` or `JOINDIFF`. Default=`AUTO`)
         bisection_factor (int): Into how many segments to bisect per iteration. (Used when algorithm is `HASHDIFF`)
         bisection_threshold (Number): Minimal row count of segment to bisect, otherwise download

@@ -4,11 +4,11 @@ import logging
 
 from runtype import dataclass
 
-from .sqeleton.utils import ArithString, split_space
-from .sqeleton.databases import Database, DbPath, DbKey, DbTime
-from .sqeleton.schema import Schema, create_schema
-from .sqeleton.queries import Count, Checksum, SKIP, table, this, Expr, min_, max_, Code
-from .sqeleton.queries.extras import ApplyFuncAndNormalizeAsString, NormalizeAsString
+from sqeleton.utils import ArithString, split_space
+from sqeleton.databases import Database, DbPath, DbKey, DbTime
+from sqeleton.schema import Schema, create_schema
+from sqeleton.queries import Count, Checksum, SKIP, table, this, Expr, min_, max_, Code
+from sqeleton.queries.extras import ApplyFuncAndNormalizeAsString, NormalizeAsString
 
 logger = logging.getLogger("table_segment")
 
@@ -51,7 +51,7 @@ class TableSegment:
     min_update: DbTime = None
     max_update: DbTime = None
     where: str = None
-    
+
     case_sensitive: bool = True
     _schema: Schema = None
 

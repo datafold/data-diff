@@ -9,12 +9,13 @@ import subprocess
 
 from parameterized import parameterized_class
 
+from sqeleton.queries import table
+from sqeleton.databases import Database
+
 from data_diff import databases as db
 from data_diff import tracking
 from data_diff import connect
-from data_diff.sqeleton.queries import table
 from data_diff.table_segment import TableSegment
-from data_diff.sqeleton.databases import Database
 from data_diff.query_utils import drop_table
 
 tracking.disable_tracking()
@@ -131,7 +132,7 @@ def str_to_checksum(str: str):
 
 
 class DiffTestCase(unittest.TestCase):
-    "Sets up two tables for diffing (doesn't create them)"
+    "Sets up two tables for diffing"
     db_cls = None
     src_schema = None
     dst_schema = None

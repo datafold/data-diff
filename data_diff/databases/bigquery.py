@@ -1,4 +1,4 @@
-from data_diff.sqeleton.databases import bigquery
+from sqeleton.databases import bigquery
 from .base import DatadiffDialect
 
 
