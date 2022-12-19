@@ -14,7 +14,7 @@ Run the following command:
 
 Where DB is either a database URL that's compatible with SQLAlchemy, or the name of a database specified in a configuration file.
 
-We recommend using a configuration file, with the ``--conf`` switch, to keep the command simple and managable.
+We recommend using a configuration file, with the ``--conf`` switch, to keep the command simple and manageable.
 
 For a list of example URLs, see [list of supported databases](supported-databases.md).
 
@@ -150,7 +150,7 @@ We capture two events: one when the data-diff run starts, and one when it is fin
 - Types of databases used (postgresql, mysql, etc.)
 - Sizes of tables diffed, run time, and diff row count (numbers only)
 - Error message, if any, truncated to the first 20 characters.
-- A persistent UUID to indentify the session, stored in `~/.datadiff.toml`
+- A persistent UUID to identify the session, stored in `~/.datadiff.toml`
 
 If you do not wish to participate, the tracking can be easily disabled with one of the following methods:
 

@@ -1,4 +1,4 @@
-// This is a Preql file, used for setting up a database for developement and testing
+// This is a Preql file, used for setting up a database for development and testing
 //
 // In loads a "rating" dataset and generates a set of tables from it, with various modifications.
 

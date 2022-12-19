@@ -1,4 +1,4 @@
-// This is a Preql file, used for setting up a database for developement and testing
+// This is a Preql file, used for setting up a database for development and testing
 //
 // It generates tables with various gaps in them, based on the "rating" dataset.
 // Assumes prepare_db.pql has already been run.
