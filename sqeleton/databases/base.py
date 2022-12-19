@@ -453,6 +453,9 @@ class Database(AbstractDatabase):
         self.is_closed = True
         return super().close()
 
+    def list_tables(self, tables_like, schema=None):
+        return self.query(self.dialect.list_tables(schema or self.default_schema, tables_like))
+
 
 class ThreadedDatabase(Database):
     """Access the database through singleton threads.

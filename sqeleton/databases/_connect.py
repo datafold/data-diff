@@ -130,7 +130,7 @@ class Connect:
         try:
             matcher = self.match_uri_path[scheme]
         except KeyError:
-            raise NotImplementedError(f"Scheme {scheme} currently not supported")
+            raise NotImplementedError(f"Scheme '{scheme}' currently not supported")
 
         cls = matcher.database_cls
 
@@ -179,7 +179,7 @@ class Connect:
         try:
             matcher = self.match_uri_path[driver]
         except KeyError:
-            raise NotImplementedError(f"Driver {driver} currently not supported")
+            raise NotImplementedError(f"Driver '{driver}' currently not supported")
 
         cls = matcher.database_cls
         if issubclass(cls, ThreadedDatabase):
