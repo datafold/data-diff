@@ -29,7 +29,7 @@ def _apply_config(config: Dict[str, Any], run_name: str, kw: Dict[str, Any]):
     if kw.get("database1") is not None:
         for attr in ("table1", "database2", "table2"):
             if kw[attr] is None:
-                raise ValueError(f"Specified database1 but not {attr}. Must specify all 4 arguments, or niether.")
+                raise ValueError(f"Specified database1 but not {attr}. Must specify all 4 arguments, or neither.")
 
         for index in "12":
             run_args[index] = {attr: kw.pop(f"{attr}{index}") for attr in ("database", "table")}
