@@ -32,7 +32,10 @@ def repl(uri):
     db_name = db.name
 
     while True:
-        q = input(f"{db_name}> ").strip()
+        try:
+            q = input(f"{db_name}> ").strip()
+        except EOFError:
+            return
         if not q:
             continue
         if q.startswith("*"):

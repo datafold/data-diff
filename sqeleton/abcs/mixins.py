@@ -1,6 +1,7 @@
 from abc import ABC, abstractmethod
 from .database_types import TemporalType, FractionalType, ColType_UUID, Boolean, ColType, String_UUID
 from .compiler import Compilable
+from ..abcs.database_types import AbstractTable
 
 
 class AbstractMixin_NormalizeValue(ABC):
@@ -96,3 +97,26 @@ class AbstractMixin_Schema(ABC):
 
         If 'like' is specified, the value is applied to the table name, using the 'like' operator.
         """
+
+class AbstractMixin_Regex(ABC):
+    @abstractmethod
+    def test_regex(self, string: Compilable, pattern: Compilable) -> Compilable:
+        """Tests whether the regex pattern matches the string. Returns a bool expression.
+        """
+
+class AbstractMixin_RandomSample(ABC):
+    @abstractmethod
+    def random_sample_n(self, table: AbstractTable, size: int) -> AbstractTable:
+        """Take a random sample of the given size, i.e. return 'size' amount of rows
+        """
+
+    @abstractmethod
+    def random_sample_ratio_approx(self, table: AbstractTable, ratio: float) -> AbstractTable:
+        """Take a random sample of the approximate size determined by the ratio (0..1), where 0 means no rows, and 1 means all rows
+
+        i.e. the actual mount of rows returned may vary by standard deviation.
+        """
+
+    # def random_sample_ratio(self, table: AbstractTable, ratio: float):
+    #     """Take a random sample of the size determined by the ratio (0..1), where 0 means no rows, and 1 means all rows
+    #     """

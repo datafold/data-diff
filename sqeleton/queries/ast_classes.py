@@ -6,6 +6,8 @@ from runtype import dataclass
 
 from ..utils import join_iter, ArithString
 from ..abcs import Compilable
+from ..abcs.database_types import AbstractTable
+from ..abcs.mixins import AbstractMixin_Regex
 from ..schema import Schema
 
 from .compiler import Compiler, cv_params, Root
@@ -43,7 +45,7 @@ class ExprNode(Compilable):
         return Cast(self, to)
 
 
-Expr = Union[ExprNode, str, bool, int, datetime, ArithString, None]
+Expr = Union[ExprNode, str, bool, int, float, datetime, ArithString, None]
 
 
 @dataclass
@@ -81,7 +83,8 @@ def _drop_skips_dict(exprs_dict):
     return {k: v for k, v in exprs_dict.items() if v is not SKIP}
 
 
-class ITable:
+
+class ITable(AbstractTable):
     source_table: Any
     schema: Schema = None
 
@@ -135,10 +138,6 @@ class ITable:
         resolve_names(self.source_table, values)
 
         return GroupBy(self, keys, values)
-
-    def with_schema(self):
-        # TODO
-        raise NotImplementedError()
 
     def _get_column(self, name: str):
         if self.schema:
@@ -241,8 +240,23 @@ class LazyOps:
     def like(self, other):
         return BinBoolOp("LIKE", [self, other])
 
+    def test_regex(self, other):
+        return TestRegex(self, other)
+
     def sum(self):
         return Func("SUM", [self])
+
+
+@dataclass
+class TestRegex(ExprNode, LazyOps):
+    string: Expr
+    pattern: Expr
+
+    def compile(self, c: Compiler) -> str:
+        if not isinstance(c.dialect, AbstractMixin_Regex):
+            raise NotImplementedError(f"No regex implementation for database '{c.database}'")
+        regex = c.dialect.test_regex(self.string, self.pattern)
+        return c.compile(regex)
 
 
 @dataclass
@@ -754,7 +768,7 @@ class Cast(ExprNode):
 
 
 @dataclass
-class Random(ExprNode):
+class Random(ExprNode, LazyOps):
     type = float
 
     def compile(self, c: Compiler) -> str:

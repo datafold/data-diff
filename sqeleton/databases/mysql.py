@@ -10,14 +10,16 @@ from ..abcs.database_types import (
     ColType_UUID,
     Boolean,
 )
-from ..abcs.mixins import AbstractMixin_MD5, AbstractMixin_NormalizeValue
+from ..abcs.mixins import AbstractMixin_MD5, AbstractMixin_NormalizeValue, AbstractMixin_Regex, AbstractMixin_RandomSample
 from .base import (
     ThreadedDatabase,
     import_helper,
     ConnectError,
     BaseDialect,
+    Compilable
 )
-from .base import MD5_HEXDIGITS, CHECKSUM_HEXDIGITS, TIMESTAMP_PRECISION_POS, Mixin_Schema
+from .base import MD5_HEXDIGITS, CHECKSUM_HEXDIGITS, TIMESTAMP_PRECISION_POS, Mixin_Schema, Mixin_RandomSample
+from ..queries.ast_classes import BinBoolOp
 
 
 @import_helper("mysql")
@@ -45,6 +47,11 @@ class Mixin_NormalizeValue(AbstractMixin_NormalizeValue):
 
     def normalize_uuid(self, value: str, coltype: ColType_UUID) -> str:
         return f"TRIM(CAST({value} AS char))"
+
+
+class Mixin_Regex(AbstractMixin_Regex):
+    def test_regex(self, string: Compilable, pattern: Compilable) -> Compilable:
+        return BinBoolOp("REGEXP", [string, pattern])
 
 
 class Dialect(BaseDialect, Mixin_Schema):

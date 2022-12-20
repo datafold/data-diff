@@ -12,9 +12,11 @@ import decimal
 
 from ..utils import is_uuid, safezip
 from ..queries import Expr, Compiler, table, Select, SKIP, Explain, Code, this
+from ..queries.ast_classes import Random
 from ..abcs.database_types import (
     AbstractDatabase,
     AbstractDialect,
+    AbstractTable,
     ColType,
     Integer,
     Decimal,
@@ -31,7 +33,7 @@ from ..abcs.database_types import (
     Boolean,
 )
 from ..abcs.mixins import Compilable
-from ..abcs.mixins import AbstractMixin_Schema
+from ..abcs.mixins import AbstractMixin_Schema, AbstractMixin_RandomSample
 
 logger = logging.getLogger("database")
 
@@ -117,6 +119,15 @@ class Mixin_Schema(AbstractMixin_Schema):
             )
             .select(this.table_name)
         )
+
+
+class Mixin_RandomSample(AbstractMixin_RandomSample):
+    def random_sample_n(self, table: AbstractTable, size: int) -> AbstractTable:
+        # TODO use a more efficient algorithm, when the table count is known
+        return table.order_by(Random()).limit(size)
+
+    def random_sample_ratio_approx(self, table: AbstractTable, ratio: float) -> AbstractTable:
+        return table.where(Random() < ratio)
 
 
 class BaseDialect(AbstractDialect):
@@ -362,13 +373,15 @@ class Database(AbstractDatabase):
         return list(res)
 
     def _process_table_schema(
-        self, path: DbPath, raw_schema: Dict[str, tuple], filter_columns: Sequence[str], where: str = None
+        self, path: DbPath, raw_schema: Dict[str, tuple], filter_columns: Sequence[str] = None, where: str = None
     ):
-        accept = {i.lower() for i in filter_columns}
+        if filter_columns is None:
+            filtered_schema = raw_schema
+        else:
+            accept = {i.lower() for i in filter_columns}
+            filtered_schema =  {name: row for name, row in raw_schema.items() if name.lower() in accept}
 
-        col_dict = {
-            row[0]: self.dialect.parse_type(path, *row) for name, row in raw_schema.items() if name.lower() in accept
-        }
+        col_dict = {row[0]: self.dialect.parse_type(path, *row) for _name, row in filtered_schema.items()}
 
         self._refine_coltypes(path, col_dict, where)
 

@@ -56,7 +56,7 @@ class Compiler(AbstractCompiler):
             return elem.compile(self.replace(root=False))
         elif isinstance(elem, str):
             return f"'{elem}'"
-        elif isinstance(elem, int):
+        elif isinstance(elem, (int, float)):
             return str(elem)
         elif isinstance(elem, datetime):
             return self.dialect.timestamp_value(elem)

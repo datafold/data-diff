@@ -54,7 +54,7 @@ class FractionalType(NumericType):
 
 
 class Float(FractionalType):
-    pass
+    python_type = float
 
 
 class IKey(ABC):
@@ -275,3 +275,27 @@ class AbstractDatabase:
     @abstractmethod
     def is_autocommit(self) -> bool:
         "Return whether the database autocommits changes. When false, COMMIT statements are skipped."
+
+
+class AbstractTable(ABC):
+
+    @abstractmethod
+    def select(self, *exprs, distinct=False, **named_exprs) -> "AbstractTable":
+        """Choose new columns, based on the old ones. (aka Projection)
+        """
+        # XXX distinct=SKIP
+
+    def where(self, *exprs) -> "AbstractTable":
+        """Filter the rows, based on the given predicates. (aka Selection)
+        """
+
+    def order_by(self, *exprs) -> "AbstractTable":
+        """Order the rows lexicographically, according to the given expressions.
+        """
+
+    def limit(self, limit: int) -> "AbstractTable":
+        """Stop yielding rows after the given limit. i.e. take the first 'n=limit' rows
+        """
+
+
+    # TODO declare the rest
