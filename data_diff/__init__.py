@@ -10,6 +10,25 @@ from .joindiff_tables import JoinDiffer, TABLE_WRITE_LIMIT
 from .table_segment import TableSegment
 from .utils import eval_name_template
 
+### Temporary patch
+import sqeleton.utils
+
+new_base = ''.join([chr(x) for x in range(32,127)])
+n2a = sqeleton.utils.numberToAlphanum
+a2n = sqeleton.utils.alphanumToNumber
+
+def numberToAlphanum(num: int):
+    return n2a(num, base=new_base)
+
+def alphanumToNumber(alphanum: str) -> int:
+    return a2n(alphanum, base=new_base)
+
+sqeleton.utils.numberToAlphanum = numberToAlphanum
+sqeleton.utils.alphanumToNumber = alphanumToNumber
+###
+
+
+
 
 def connect_to_table(
     db_info: Union[str, dict],
