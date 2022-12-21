@@ -13,7 +13,7 @@ from .utils import eval_name_template
 ### Temporary patch
 import sqeleton.utils
 
-new_base = ''.join([chr(x) for x in range(32,127)])
+new_base = ''.join([chr(x) for x in range(32,127)]).replace("'", "")
 n2a = sqeleton.utils.numberToAlphanum
 a2n = sqeleton.utils.alphanumToNumber
 
@@ -25,6 +25,8 @@ def alphanumToNumber(alphanum: str) -> int:
 
 sqeleton.utils.numberToAlphanum = numberToAlphanum
 sqeleton.utils.alphanumToNumber = alphanumToNumber
+sqeleton.utils.alphanums = new_base
+
 ###
 
 
