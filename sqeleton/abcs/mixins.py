@@ -106,12 +106,12 @@ class AbstractMixin_Regex(ABC):
 
 class AbstractMixin_RandomSample(ABC):
     @abstractmethod
-    def random_sample_n(self, table: AbstractTable, size: int) -> AbstractTable:
+    def random_sample_n(self, tbl: str, size: int) -> str:
         """Take a random sample of the given size, i.e. return 'size' amount of rows
         """
 
     @abstractmethod
-    def random_sample_ratio_approx(self, table: AbstractTable, ratio: float) -> AbstractTable:
+    def random_sample_ratio_approx(self, tbl: str, ratio: float) -> str:
         """Take a random sample of the approximate size determined by the ratio (0..1), where 0 means no rows, and 1 means all rows
 
         i.e. the actual mount of rows returned may vary by standard deviation.

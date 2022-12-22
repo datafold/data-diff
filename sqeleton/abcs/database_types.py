@@ -79,7 +79,7 @@ class Decimal(FractionalType, IKey):  # Snowflake may use Decimal as a key
 
 @dataclass
 class StringType(ColType):
-    pass
+    python_type = str
 
 
 class ColType_UUID(ColType, IKey):

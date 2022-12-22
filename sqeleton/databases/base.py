@@ -33,7 +33,7 @@ from ..abcs.database_types import (
     Boolean,
 )
 from ..abcs.mixins import Compilable
-from ..abcs.mixins import AbstractMixin_Schema, AbstractMixin_RandomSample
+from ..abcs.mixins import AbstractMixin_Schema, AbstractMixin_RandomSample, AbstractMixin_NormalizeValue
 
 logger = logging.getLogger("database")
 
@@ -122,12 +122,12 @@ class Mixin_Schema(AbstractMixin_Schema):
 
 
 class Mixin_RandomSample(AbstractMixin_RandomSample):
-    def random_sample_n(self, table: AbstractTable, size: int) -> AbstractTable:
+    def random_sample_n(self, tbl: AbstractTable, size: int) -> AbstractTable:
         # TODO use a more efficient algorithm, when the table count is known
-        return table.order_by(Random()).limit(size)
+        return tbl.order_by(Random()).limit(size)
 
-    def random_sample_ratio_approx(self, table: AbstractTable, ratio: float) -> AbstractTable:
-        return table.where(Random() < ratio)
+    def random_sample_ratio_approx(self, tbl: AbstractTable, ratio: float) -> AbstractTable:
+        return tbl.where(Random() < ratio)
 
 
 class BaseDialect(AbstractDialect):
@@ -398,7 +398,11 @@ class Database(AbstractDatabase):
         if not text_columns:
             return
 
-        fields = [Code(self.dialect.normalize_uuid(self.dialect.quote(c), String_UUID())) for c in text_columns]
+        if isinstance(self.dialect, AbstractMixin_NormalizeValue):
+            fields = [Code(self.dialect.normalize_uuid(self.dialect.quote(c), String_UUID())) for c in text_columns]
+        else:
+            fields = this[text_columns]
+
         samples_by_row = self.query(
             table(*table_path).select(*fields).where(Code(where) if where else SKIP).limit(sample_size), list
         )

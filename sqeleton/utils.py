@@ -78,6 +78,9 @@ class CaseAwareMapping(MutableMapping[str, V]):
     def get_key(self, key: str) -> str:
         ...
 
+    def new(self, initial=()):
+        return type(self)(initial)
+
 
 class CaseInsensitiveDict(CaseAwareMapping):
     def __init__(self, initial):

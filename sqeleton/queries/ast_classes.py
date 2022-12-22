@@ -1,6 +1,6 @@
 from dataclasses import field
 from datetime import datetime
-from typing import Any, Generator, List, Optional, Sequence, Union
+from typing import Any, Generator, List, Optional, Sequence, Union, Dict
 
 from runtype import dataclass
 
@@ -51,10 +51,14 @@ Expr = Union[ExprNode, str, bool, int, float, datetime, ArithString, None]
 @dataclass
 class Code(ExprNode, Root):
     code: str
+    args: Dict[str, Expr] = None
 
     def compile(self, c: Compiler) -> str:
-        return self.code
+        if not self.args:
+            return self.code
 
+        args = {k: c.compile(v) for k, v in self.args.items()}
+        return self.code.format(**args)
 
 def _expr_type(e: Expr) -> type:
     if isinstance(e, ExprNode):

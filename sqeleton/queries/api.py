@@ -99,5 +99,7 @@ def current_timestamp():
     return CurrentTimestamp()
 
 
+def code(code: str, **kw: Dict[str, Expr]) -> Code:
+    return Code(code, kw)
 
 commit = Commit()
