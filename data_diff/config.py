@@ -1,3 +1,5 @@
+import re
+import os
 from typing import Any, Dict
 import toml
 
@@ -11,6 +13,8 @@ def is_uri(s: str) -> bool:
 
 
 def _apply_config(config: Dict[str, Any], run_name: str, kw: Dict[str, Any]):
+    _resolve_env(config)
+
     # Load config
     databases = config.pop("database", {})
     runs = config.pop("run", {})
@@ -75,6 +79,32 @@ def _apply_config(config: Dict[str, Any], run_name: str, kw: Dict[str, Any]):
     new_kw["__conf__"] = run_args
 
     return new_kw
+
+
+# There are no strict requirements for the environment variable name format.
+# But most shells only allow alphanumeric characters and underscores.
+# https://pubs.opengroup.org/onlinepubs/000095399/basedefs/xbd_chap08.html
+# "Environment variable names (...) consist solely of uppercase letters, digits, and the '_' (underscore)"
+_ENV_VAR_PATTERN = r"\$\{([A-Za-z0-9_]+)\}"
+
+
+def _resolve_env(config: Dict[str, Any]):
+    """
+    Resolve environment variables referenced as ${ENV_VAR_NAME}.
+    Missing environment variables are replaced with an empty string.
+    """
+    for key, value in config.items():
+        if isinstance(value, dict):
+            _resolve_env(value)
+        elif isinstance(value, str):
+            config[key] = re.sub(_ENV_VAR_PATTERN, _replace_match, value)
+
+
+def _replace_match(match: re.Match) -> str:
+    # Lookup referenced variable in environment.
+    # Replace with empty string if not found
+    referenced_var = match.group(1)  # group(0) is the whole string
+    return os.environ.get(referenced_var, "")
 
 
 def apply_config_from_file(path: str, run_name: str, kw: Dict[str, Any]):

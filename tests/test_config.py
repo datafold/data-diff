@@ -1,3 +1,4 @@
+import os
 import unittest
 
 from data_diff.config import apply_config_from_string, ConfigParseError
@@ -59,3 +60,46 @@ class TestConfig(unittest.TestCase):
             expected = url.replace("PASS", replace_with)
             removed = remove_password_from_url(url, replace_with)
             self.assertEqual(removed, expected)
+
+    def test_embed_env(self):
+        env = {
+            "DRIVER": "postgresql",
+            "USER": "postgres",
+            "PASSWORD": "Password1",
+            "RUN_PG_1_DATABASE": "test_postgresql",
+            "RUN_PG_1_TABLE": "rating",
+            "RUN_PG_2_DATABASE": "postgresql://postgres:Password1@/",
+            "RUN_PG_2_TABLE": "rating_del1",
+        }
+        config = r"""
+            [database.test_postgresql]
+            driver = "${DRIVER}"
+            user = "${USER}"
+            password = "${PASSWORD}"
+
+            [run.default]
+            update_column = "${UPDATE_COLUMN}"
+            verbose = true
+            threads = 2
+
+            [run.pg_pg]
+            threads = 4
+            1.database = "${RUN_PG_1_DATABASE}"
+            1.table = "${RUN_PG_1_TABLE}"
+            1.threads = 11
+            2.database = "${RUN_PG_2_DATABASE}"
+            2.table = "${RUN_PG_2_TABLE}"
+            2.threads = 22
+        """
+
+        os.environ.update(env)
+        res = apply_config_from_string(config, "pg_pg", {})
+        assert res["update_column"] == ""  # missing env var
+        assert res["verbose"] is True
+        assert res["threads"] == 4  # overwritten by pg_pg
+        assert res["database1"] == {"driver": "postgresql", "user": "postgres", "password": "Password1"}
+        assert res["database2"] == "postgresql://postgres:Password1@/"
+        assert res["table1"] == "rating"
+        assert res["table2"] == "rating_del1"
+        assert res["threads1"] == 11
+        assert res["threads2"] == 22
