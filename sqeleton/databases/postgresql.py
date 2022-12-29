@@ -59,6 +59,7 @@ class PostgresqlDialect(BaseDialect, Mixin_Schema):
         "timestamp with time zone": TimestampTZ,
         "timestamp without time zone": Timestamp,
         "timestamp": Timestamp,
+        "date": Timestamp,
         # Numbers
         "double precision": Float,
         "real": Float,
