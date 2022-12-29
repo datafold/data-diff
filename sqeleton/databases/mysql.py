@@ -56,17 +56,24 @@ class Dialect(BaseDialect, Mixin_Schema):
         # Dates
         "datetime": Datetime,
         "timestamp": Timestamp,
+        "date": Datetime,
         # Numbers
         "double": Float,
         "float": Float,
         "decimal": Decimal,
         "int": Integer,
         "bigint": Integer,
+        "smallint": Integer,
+        "tinyint": Integer,
         # Text
         "varchar": Text,
         "char": Text,
         "varbinary": Text,
         "binary": Text,
+        "text": Text,
+        "mediumtext": Text,
+        "longtext": Text,
+        "tinytext": Text,
         # Boolean
         "boolean": Boolean,
     }
