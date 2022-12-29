@@ -225,9 +225,9 @@ class Connect:
 
         Example:
             >>> connect("mysql://localhost/db")
-            # TODO
+            <sqeleton.databases.mysql.MySQL object at ...>
             >>> connect({"driver": "mysql", "host": "localhost", "database": "db"})
-            # TODO
+            <sqeleton.databases.mysql.MySQL object at ...>
         """
         if shared:
             with suppress(KeyError):

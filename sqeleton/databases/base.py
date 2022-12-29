@@ -270,7 +270,7 @@ class Database(AbstractDatabase):
     def name(self):
         return type(self).__name__
 
-    def query(self, sql_ast: Union[Expr, Generator], res_type: type = list):
+    def query(self, sql_ast: Union[Expr, Generator], res_type: type = None):
         """Query the given SQL code/AST, and attempt to convert the result to type 'res_type'
 
         If given a generator, it will execute all the yielded sql queries with the same thread and cursor.
@@ -289,6 +289,8 @@ class Database(AbstractDatabase):
             if isinstance(sql_ast, str):
                 sql_code = sql_ast
             else:
+                if res_type is None:
+                    res_type = sql_ast.type
                 sql_code = compiler.compile(sql_ast)
                 if sql_code is SKIP:
                     return SKIP
@@ -306,6 +308,7 @@ class Database(AbstractDatabase):
             answer = input("Continue? [y/n] ")
             if answer.lower() not in ["y", "yes"]:
                 sys.exit(1)
+
 
         res = self._query(sql_code)
         if res_type is int:

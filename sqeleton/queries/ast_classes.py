@@ -132,7 +132,7 @@ class ITable(AbstractTable):
         raise NotImplementedError()
 
     def join(self, target):
-        return Join(self, target)
+        return Join([self, target])
 
     def group_by(self, *, keys=None, values=None):
         keys = _drop_skips(keys)
@@ -663,7 +663,7 @@ class Select(ExprNode, ITable, Root):
         if table.limit_expr or table.group_by_exprs:
             return cls(table, **kwargs)
 
-        # Fill in missing attributes, instead of creating a new instance.
+        # Fill in missing attributes, instead of nesting instances
         for k, v in kwargs.items():
             if getattr(table, k) is not None:
                 if k == "where_exprs":  # Additive attribute
@@ -859,6 +859,7 @@ class InsertToTable(Statement):
     path: TablePath
     expr: Expr
     columns: List[str] = None
+    returning_exprs: List[str] = None
 
     def compile(self, c: Compiler) -> str:
         if isinstance(self.expr, ConstantTable):
@@ -869,6 +870,18 @@ class InsertToTable(Statement):
         columns = "(%s)" % ", ".join(map(c.quote, self.columns)) if self.columns is not None else ""
 
         return f"INSERT INTO {c.compile(self.path)}{columns} {expr}"
+
+    def returning(self, *exprs):
+        if self.returning_exprs:
+            raise ValueError("A returning clause is already specified")
+
+        exprs = args_as_tuple(exprs)
+        exprs = _drop_skips(exprs)
+        if not exprs:
+            return self
+
+        resolve_names(self.path, exprs)
+        return self.replace(returning_exprs=exprs)
 
 
 @dataclass

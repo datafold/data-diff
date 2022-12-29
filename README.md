@@ -2,7 +2,7 @@
 
 **Under construction!**
 
-Python library for querying SQL databases.
+Sqeleton is a Python library for querying SQL databases.
 
 It consists of -
 
@@ -10,7 +10,32 @@ It consists of -
 
 - A modular database interface, with drivers for a long list of SQL databases.
 
-### Databases we support
+It is comparable to other libraries such as SQLAlchemy or PyPika, in terms of API and intended audience. However there are several notable ways in which it is different.
+
+### Built for performance
+
+- Multi-threaded by default -
+    The same connection object can be used from multiple threads without any additional setup.
+
+- No ORM
+    ORMs are easy and familiar, but they encourage bad and slow code. Sqeleton is designed to push the compute to SQL.
+
+- Fast query-builder
+    Sqeleton's query-builder runs about 4 times faster than SQLAlchemy's.
+
+### Type-aware
+
+Sqeleton has a built-in feature to query the schemas of the databases it supports.
+
+This feature can be also used to inform the query-builder, either as an alternative to defining the tables yourself, or to validate that your definitions match the actual schema.
+
+The schema is used for validation when building expressions, making sure the names are correct, and that the data-types align.
+
+### Multi-database access
+
+Sqeleton is designed to work with several databases at the same time. Its API abstracts away as many implementation details as possible.
+
+Databases we support:
 
 - PostgreSQL >=10
 - MySQL
@@ -26,18 +51,35 @@ It consists of -
 - DuckDB >=0.6
 - SQLite (coming soon)
 
+### Basic usage
 
-### Built for performance
+```python
+from sqeleton import connect, table, this
 
-- Multi-threaded by default - introduce ThreadLocalInterpreter
+# Create a new database connection
+ddb = connect("duckdb://:memory:")
 
-- No ORM - Nice for beginners, but encourages bad behavior
+# Define a table with one int column
+tbl = table('my_list', schema={'item': int})
 
-## Type-aware
+# Make a bunch of queries
+queries = [
+    # Create table 'my_list'
+    tbl.create(),
 
-Type validation when building expressions (and make sure columns exist)
+    # Insert 100 numbers
+    tbl.insert_rows([x] for x in range(100)),
 
-Allows type introspection
+    # Get the sum of the numbers
+    tbl.select(this.item.sum())
+]
+# Query in order, and return the last result as an int
+result = ddb.query(queries, int)    
+
+# Prints: Total sum of 0..100 = 4950
+print(f"Total sum of 0..100 = {result}")
+```
+
 
 # TODO
 
@@ -51,7 +93,7 @@ Allows type introspection
 
 ## Possible plans for the future (not determined yet)
 
-- Cache compilation of repetitive queries for even faster query-building
+- Cache the compilation of repetitive queries for even faster query-building
 
 - Compile control flow, functions
 
