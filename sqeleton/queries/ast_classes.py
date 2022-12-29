@@ -134,14 +134,14 @@ class ITable(AbstractTable):
     def join(self, target):
         return Join([self, target])
 
-    def group_by(self, *, keys=None, values=None):
+    def group_by(self, *keys):
         keys = _drop_skips(keys)
         resolve_names(self.source_table, keys)
 
-        values = _drop_skips(values)
-        resolve_names(self.source_table, values)
+        # values = _drop_skips(values)
+        # resolve_names(self.source_table, values)
 
-        return GroupBy(self, keys, values)
+        return GroupBy(self, keys)
 
     def _get_column(self, name: str):
         if self.schema:
@@ -535,7 +535,16 @@ class GroupBy(ExprNode, ITable, Root):
         resolve_names(self.table, exprs)
         return self.replace(having_exprs=(self.having_exprs or []) + exprs)
 
+    def agg(self, *exprs):
+        exprs = args_as_tuple(exprs)
+        exprs = _drop_skips(exprs)
+        resolve_names(self.table, exprs)
+        return self.replace(values=(self.values or []) + exprs)
+
     def compile(self, c: Compiler) -> str:
+        if self.values is None:
+            raise CompileError(".group_by() must be followed by a call to .agg()")
+
         keys = [str(i + 1) for i in range(len(self.keys))]
         columns = (self.keys or []) + (self.values or [])
         if isinstance(self.table, Select) and self.table.columns is None and self.table.group_by_exprs is None:

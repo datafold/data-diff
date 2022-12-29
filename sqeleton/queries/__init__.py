@@ -1,3 +1,4 @@
+from .base import CompileError
 from .compiler import Compiler
 from .api import (
     this,

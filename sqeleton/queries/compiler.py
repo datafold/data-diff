@@ -12,6 +12,7 @@ import contextvars
 cv_params = contextvars.ContextVar("params")
 
 
+
 class Root:
     "Nodes inheriting from Root can be used as root statements in SQL (e.g. SELECT yes, RANDOM() no)"
 

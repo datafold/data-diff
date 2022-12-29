@@ -4,7 +4,7 @@ import unittest
 from sqeleton.abcs import AbstractDatabase, AbstractDialect
 from sqeleton.utils import CaseInsensitiveDict, CaseSensitiveDict
 
-from sqeleton.queries import this, table, Compiler, outerjoin, cte, when, coalesce
+from sqeleton.queries import this, table, Compiler, outerjoin, cte, when, coalesce, CompileError
 from sqeleton.queries.ast_classes import Random
 
 
@@ -220,25 +220,33 @@ class TestQuery(unittest.TestCase):
         c = Compiler(MockDatabase())
         t = table("a")
 
-        q = c.compile(t.group_by(keys=[this.b], values=[this.c]))
+        q = c.compile(t.group_by(this.b).agg(this.c))
         self.assertEqual(q, "SELECT b, c FROM a GROUP BY 1")
 
-        q = c.compile(t.where(this.b > 1).group_by(keys=[this.b], values=[this.c]))
+        q = c.compile(t.where(this.b > 1).group_by(this.b).agg(this.c))
         self.assertEqual(q, "SELECT b, c FROM a WHERE (b > 1) GROUP BY 1")
 
-        q = c.compile(t.select(this.b).group_by(keys=[this.b], values=[]))
+        self.assertRaises(CompileError, c.compile, t.select(this.b).group_by(this.b))
+
+        q = c.compile(t.select(this.b).group_by(this.b).agg())
         self.assertEqual(q, "SELECT b FROM (SELECT b FROM a) tmp1 GROUP BY 1")
 
+        q = c.compile(t.group_by(this.b, this.c).agg(this.d, this.e))
+        self.assertEqual(q, "SELECT b, c, d, e FROM a GROUP BY 1, 2")
+
         # Having
-        q = c.compile(t.group_by(keys=[this.b], values=[this.c]).having(this.b > 1))
+        q = c.compile(t.group_by(this.b).agg(this.c).having(this.b > 1))
         self.assertEqual(q, "SELECT b, c FROM a GROUP BY 1 HAVING (b > 1)")
 
-        q = c.compile(t.select(this.b).group_by(keys=[this.b], values=[]).having(this.b > 1))
+        q = c.compile(t.group_by(this.b).having(this.b > 1).agg(this.c))
+        self.assertEqual(q, "SELECT b, c FROM a GROUP BY 1 HAVING (b > 1)")
+
+        q = c.compile(t.select(this.b).group_by(this.b).agg().having(this.b > 1))
         self.assertEqual(q, "SELECT b FROM (SELECT b FROM a) tmp2 GROUP BY 1 HAVING (b > 1)")
 
         # Having sum
-        q = c.compile(t.group_by(keys=[this.b], values=[this.c]).having(this.b.sum() > 1))
-        self.assertEqual(q, "SELECT b, c FROM a GROUP BY 1 HAVING (SUM(b) > 1)")
+        q = c.compile(t.group_by(this.b).agg(this.c, this.d).having(this.b.sum() > 1))
+        self.assertEqual(q, "SELECT b, c, d FROM a GROUP BY 1 HAVING (SUM(b) > 1)")
 
     def test_case_when(self):
         c = Compiler(MockDatabase())
