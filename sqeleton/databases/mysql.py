@@ -56,7 +56,7 @@ class Dialect(BaseDialect, Mixin_Schema):
         # Dates
         "datetime": Datetime,
         "timestamp": Timestamp,
-        "date": Datetime,
+        "date": Date,
         # Numbers
         "double": Float,
         "float": Float,
