@@ -298,6 +298,10 @@ class CaseWhen(ExprNode):
         return t
 
     def when(self, *whens: Expr) -> "QB_When":
+        """Add a new 'when' clause to the case expression
+
+        Must be followed by a call to `.then()`
+        """
         whens = args_as_tuple(whens)
         whens = _drop_skips(whens)
         if not whens:
@@ -309,6 +313,10 @@ class CaseWhen(ExprNode):
         return QB_When(self, BinBoolOp("AND", whens))
 
     def else_(self, then: Expr):
+        """Add an 'else' clause to the case expression.
+
+        Can only be called once!
+        """
         if self.else_expr is not None:
             raise QueryBuilderError(f"Else clause already specified in {self}")
 
@@ -322,6 +330,7 @@ class QB_When:
     when: Expr
 
     def then(self, then: Expr) -> CaseWhen:
+        """Add a 'then' clause after a 'when' was added."""
         case = WhenThen(self.when, then)
         return self.casewhen.replace(cases=self.casewhen.cases + [case])
 
@@ -409,7 +418,15 @@ class TablePath(ExprNode, ITable):
         return ".".join(map(c.quote, path))
 
     # Statement shorthands
-    def create(self, source_table: ITable = None, *, if_not_exists=False, primary_keys=None):
+    def create(self, source_table: ITable = None, *, if_not_exists: bool = False, primary_keys: List[str] = None):
+        """Returns a query expression to create a new table.
+
+        Parameters:
+            source_table: a table expression to use for initializing the table.
+                          If not provided, the table must have a schema specified.
+            if_not_exists: Add a 'if not exists' clause or not. (note: not all dbs support it!)
+            primary_keys: List of column names which define the primary key
+        """
 
         if source_table is None and not self.schema:
             raise ValueError("Either schema or source table needed to create table")
@@ -418,19 +435,41 @@ class TablePath(ExprNode, ITable):
         return CreateTable(self, source_table, if_not_exists=if_not_exists, primary_keys=primary_keys)
 
     def drop(self, if_exists=False):
+        """Returns a query expression to delete the table.
+
+        Parameters:
+            if_not_exists: Add a 'if not exists' clause or not. (note: not all dbs support it!)
+        """
         return DropTable(self, if_exists=if_exists)
 
     def truncate(self):
+        """Returns a query expression to truncate the table. (remove all rows)"""
         return TruncateTable(self)
 
-    def insert_rows(self, rows, *, columns=None):
+    def insert_rows(self, rows: Sequence, *, columns: List[str] = None):
+        """Returns a query expression to insert rows to the table, given as Python values.
+
+        Parameters:
+            rows: A list of tuples. Must all have the same width.
+            columns: Names of columns being populated. If specified, must have the same length as the tuples.
+        """
         rows = list(rows)
         return InsertToTable(self, ConstantTable(rows), columns=columns)
 
-    def insert_row(self, *values, columns=None):
+    def insert_row(self, *values, columns: List[str] = None):
+        """Returns a query expression to insert a single row to the table, given as Python values.
+
+        Parameters:
+            columns: Names of columns being populated. If specified, must have the same length as 'values'
+        """
         return InsertToTable(self, ConstantTable([values]), columns=columns)
 
     def insert_expr(self, expr: Expr):
+        """Returns a query expression to insert rows to the table, given as a query expression.
+
+        Parameters:
+            expr: query expression to from which to read the rows
+        """
         if isinstance(expr, TablePath):
             expr = expr.select()
         return InsertToTable(self, expr)
@@ -463,6 +502,7 @@ class Join(ExprNode, ITable, Root):
         return type(s)({c.name: c.type for c in self.columns})
 
     def on(self, *exprs):
+        """Add an ON clause, for filtering the result of the cartesian product (i.e. the JOIN)"""
         if len(exprs) == 1:
             (e,) = exprs
             if isinstance(e, Generator):
@@ -475,6 +515,10 @@ class Join(ExprNode, ITable, Root):
         return self.replace(on_exprs=(self.on_exprs or []) + exprs)
 
     def select(self, *exprs, **named_exprs):
+        """Select fields to return from the JOIN operation
+
+        See Also: ``ITable.select()``
+        """
         if self.columns is not None:
             # join-select already applied
             return super().select(*exprs, **named_exprs)
@@ -525,6 +569,7 @@ class GroupBy(ExprNode, ITable, Root):
         assert self.keys or self.values
 
     def having(self, *exprs):
+        """Add a 'HAVING' clause to the group-by"""
         exprs = args_as_tuple(exprs)
         exprs = _drop_skips(exprs)
         if not exprs:
@@ -534,6 +579,7 @@ class GroupBy(ExprNode, ITable, Root):
         return self.replace(having_exprs=(self.having_exprs or []) + exprs)
 
     def agg(self, *exprs):
+        """Select aggregated fields for the group-by."""
         exprs = args_as_tuple(exprs)
         exprs = _drop_skips(exprs)
         resolve_names(self.table, exprs)
@@ -890,6 +936,10 @@ class InsertToTable(Statement):
         return f"INSERT INTO {c.compile(self.path)}{columns} {expr}"
 
     def returning(self, *exprs):
+        """Add a 'RETURNING' clause to the insert expression.
+
+        Note: Not all databases support this feature!
+        """
         if self.returning_exprs:
             raise ValueError("A returning clause is already specified")
 
@@ -904,6 +954,8 @@ class InsertToTable(Statement):
 
 @dataclass
 class Commit(Statement):
+    """Generate a COMMIT statement, if we're in the middle of a transaction, or in auto-commit. Otherwise SKIP."""
+
     def compile(self, c: Compiler) -> str:
         return "COMMIT" if not c.database.is_autocommit else SKIP
 

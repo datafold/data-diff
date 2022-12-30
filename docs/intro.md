@@ -99,7 +99,7 @@ To query tables, users create a table instance, and use chain methods to build t
 ```python
 >>> from sqeleton import table
 
-# Query everything in table 'tmp'
+# SELECT * FROM tmp -- Query everything in table 'tmp'
 >>> expr = table('tmp').select() 
 >>> db.query(expr)
 [(0,), (1,), (2,), (3,), ...]
@@ -161,6 +161,17 @@ rows = (table('tmp')
         .where(this.age > 18 if only_adults else SKIP)
         .limit(limit if limit is not None else SKIP)
        )
+```
+
+To alias columns in `.select()`, use keyword arguments:
+
+```python
+# SELECT id, (first || ' ' || last) AS full_name, (age >= 18) AS is_adult FROM person 
+table('person').select(
+        this.id,
+        full_name = this.first + " " + this.last,
+        is_adult = self.age >= 18
+    )
 ```
 
 - **Generators**

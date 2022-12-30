@@ -280,7 +280,15 @@ class AbstractDatabase:
 class AbstractTable(ABC):
     @abstractmethod
     def select(self, *exprs, distinct=False, **named_exprs) -> "AbstractTable":
-        """Choose new columns, based on the old ones. (aka Projection)"""
+        """Choose new columns, based on the old ones. (aka Projection)
+
+        Parameters:
+            exprs - List of expressions to constitute the columns of the new table.
+                    If not provided, returns all columns in source table (select *)
+            distinct - 'select' or 'select distinct'
+            named_exprs - More expressions to constitute the columns of the new table, aliased to keyword name.
+
+        """
         # XXX distinct=SKIP
 
     @abstractmethod
