@@ -123,13 +123,7 @@ class ITable(AbstractTable):
 
         return Select.make(self, limit_expr=limit)
 
-    def at(self, *exprs):
-        # TODO
-        exprs = _drop_skips(exprs)
-        if not exprs:
-            return self
-
-        raise NotImplementedError()
+    # def at(self, *exprs): # TODO
 
     def join(self, target):
         return Join([self, target])
@@ -157,19 +151,24 @@ class ITable(AbstractTable):
         return self._get_column(column)
 
     def count(self):
+        """SELECT count() FROM self"""
         return Select(self, [Count()])
 
     def union(self, other: "ITable"):
+        """SELECT * FROM self UNION other"""
         return TableOp("UNION", self, other)
 
     def union_all(self, other: "ITable"):
+        """SELECT * FROM self UNION ALL other"""
         return TableOp("UNION ALL", self, other)
 
     def minus(self, other: "ITable"):
+        """SELECT * FROM self EXCEPT other"""
         # aka
         return TableOp("EXCEPT", self, other)
 
     def intersect(self, other: "ITable"):
+        """SELECT * FROM self INTERSECT other"""
         return TableOp("INTERSECT", self, other)
 
 
@@ -460,12 +459,12 @@ class Join(ExprNode, ITable, Root):
 
     @property
     def source_table(self):
-        return self  # TODO is this right?
+        return self
 
     @property
     def schema(self):
         assert self.columns  # TODO Implement SELECT *
-        s = self.source_tables[0].schema  # XXX
+        s = self.source_tables[0].schema  # TODO validate types match between both tables 
         return type(s)({c.name: c.type for c in self.columns})
 
     def on(self, *exprs):
@@ -523,6 +522,10 @@ class GroupBy(ExprNode, ITable, Root):
     values: Sequence[Expr] = None
     having_exprs: Sequence[Expr] = None
 
+    @property
+    def source_table(self):
+        return self
+
     def __post_init__(self):
         assert self.keys or self.values
 
@@ -561,9 +564,15 @@ class GroupBy(ExprNode, ITable, Root):
         having_str = (
             " HAVING " + " AND ".join(map(c.compile, self.having_exprs)) if self.having_exprs is not None else ""
         )
-        return (
+        select = (
             f"SELECT {columns_str} FROM {c.replace(in_select=True).compile(self.table)} GROUP BY {keys_str}{having_str}"
         )
+
+        if c.in_select:
+            select = f"({select}) {c.new_unique_name()}"
+        elif c.in_join:
+            select = f"({select})"
+        return select
 
 
 @dataclass
@@ -574,10 +583,11 @@ class TableOp(ExprNode, ITable, Root):
 
     @property
     def source_table(self):
-        return self  # TODO is this right?
+        return self
 
     @property
     def type(self):
+        # TODO ensure types of both tables are compatible
         return self.table1.type
 
     @property
@@ -864,7 +874,6 @@ class TruncateTable(Statement):
 
 @dataclass
 class InsertToTable(Statement):
-    # TODO Support insert for only some columns
     path: TablePath
     expr: Expr
     columns: List[str] = None

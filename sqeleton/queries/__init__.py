@@ -20,6 +20,7 @@ from .api import (
     leftjoin,
     rightjoin,
     current_timestamp,
+    code,
 )
 from .ast_classes import Expr, ExprNode, Select, Count, BinOp, Explain, In, Code, Column
 from .extras import Checksum, NormalizeAsString, ApplyFuncAndNormalizeAsString
