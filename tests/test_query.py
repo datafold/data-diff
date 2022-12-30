@@ -97,7 +97,6 @@ class TestQuery(unittest.TestCase):
             c.compile(j), "SELECT * FROM a tmp1 FULL OUTER JOIN b tmp2 ON (tmp1.x = tmp2.x) AND (tmp1.y = tmp2.y)"
         )
 
-
     def test_schema(self):
         c = Compiler(MockDatabase())
         schema = dict(id="int", comment="varchar")
@@ -253,7 +252,6 @@ class TestQuery(unittest.TestCase):
         q = c.compile(t.select(this.a).group_by(this.b).agg(this.c).select(this.c + 1))
         self.assertEqual(q, "SELECT (c + 1) FROM (SELECT b, c FROM (SELECT a FROM a) tmp3 GROUP BY 1) tmp4")
 
-
     def test_case_when(self):
         c = Compiler(MockDatabase())
         t = table("a")
@@ -264,13 +262,19 @@ class TestQuery(unittest.TestCase):
         q = c.compile(t.select(when(this.b).then(this.c).else_(this.d)))
         self.assertEqual(q, "SELECT CASE WHEN b THEN c ELSE d END FROM a")
 
-        q = c.compile( t.select(
-                when(this.type == 'text').then(this.text)
-                .when(this.type == 'number').then(this.number)
-                .else_('unknown type')
-            ))
-        self.assertEqual(q, "SELECT CASE WHEN (type = 'text') THEN text WHEN (type = 'number') THEN number ELSE 'unknown type' END FROM a")
-
+        q = c.compile(
+            t.select(
+                when(this.type == "text")
+                .then(this.text)
+                .when(this.type == "number")
+                .then(this.number)
+                .else_("unknown type")
+            )
+        )
+        self.assertEqual(
+            q,
+            "SELECT CASE WHEN (type = 'text') THEN text WHEN (type = 'number') THEN number ELSE 'unknown type' END FROM a",
+        )
 
     def test_code(self):
         c = Compiler(MockDatabase())
@@ -281,7 +285,8 @@ class TestQuery(unittest.TestCase):
 
         def tablesample(t, size):
             return code("{t} TABLESAMPLE BERNOULLI ({size})", t=t, size=size)
-        nonzero = table('points').where(this.x > 0, this.y > 0)
+
+        nonzero = table("points").where(this.x > 0, this.y > 0)
 
         q = c.compile(tablesample(nonzero, 10))
         self.assertEqual(q, "SELECT * FROM points WHERE (x > 0) AND (y > 0) TABLESAMPLE BERNOULLI (10)")

@@ -16,7 +16,12 @@ from ..abcs.database_types import (
     Boolean,
     AbstractTable,
 )
-from ..abcs.mixins import AbstractMixin_MD5, AbstractMixin_NormalizeValue, AbstractMixin_RandomSample, AbstractMixin_Regex
+from ..abcs.mixins import (
+    AbstractMixin_MD5,
+    AbstractMixin_NormalizeValue,
+    AbstractMixin_RandomSample,
+    AbstractMixin_Regex,
+)
 from .base import (
     Database,
     BaseDialect,
@@ -62,11 +67,12 @@ class Mixin_RandomSample(AbstractMixin_RandomSample):
         return code("SELECT * FROM ({tbl}) USING SAMPLE {size};", tbl=tbl, size=size)
 
     def random_sample_ratio_approx(self, tbl: AbstractTable, ratio: float) -> AbstractTable:
-        return code("SELECT * FROM ({tbl}) USING SAMPLE {percent}%;", tbl=tbl, percent=int(100*ratio))
+        return code("SELECT * FROM ({tbl}) USING SAMPLE {percent}%;", tbl=tbl, percent=int(100 * ratio))
+
 
 class Mixin_Regex(AbstractMixin_Regex):
     def test_regex(self, string: Compilable, pattern: Compilable) -> Compilable:
-        return Func('regexp_matches', [string, pattern])
+        return Func("regexp_matches", [string, pattern])
 
 
 class Dialect(BaseDialect, Mixin_Schema):

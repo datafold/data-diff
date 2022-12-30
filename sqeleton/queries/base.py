@@ -12,9 +12,9 @@ class _SKIP:
 SKIP = _SKIP()
 
 
-
 class SqeletonError(Exception):
     pass
+
 
 def args_as_tuple(exprs):
     if len(exprs) == 1:

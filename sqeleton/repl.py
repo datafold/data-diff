@@ -62,9 +62,11 @@ def repl(uri):
                 if res:
                     print_table(res, [str(i) for i in range(len(res[0]))], q)
 
+
 def main():
     uri = sys.argv[1]
     return repl(uri)
+
 
 if __name__ == "__main__":
     main()

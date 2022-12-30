@@ -310,7 +310,6 @@ class Database(AbstractDatabase):
             if answer.lower() not in ["y", "yes"]:
                 sys.exit(1)
 
-
         res = self._query(sql_code)
         if res_type is int:
             if not res:
@@ -383,7 +382,7 @@ class Database(AbstractDatabase):
             filtered_schema = raw_schema
         else:
             accept = {i.lower() for i in filter_columns}
-            filtered_schema =  {name: row for name, row in raw_schema.items() if name.lower() in accept}
+            filtered_schema = {name: row for name, row in raw_schema.items() if name.lower() in accept}
 
         col_dict = {row[0]: self.dialect.parse_type(path, *row) for _name, row in filtered_schema.items()}
 

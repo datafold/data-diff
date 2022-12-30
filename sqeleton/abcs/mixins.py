@@ -98,17 +98,17 @@ class AbstractMixin_Schema(ABC):
         If 'like' is specified, the value is applied to the table name, using the 'like' operator.
         """
 
+
 class AbstractMixin_Regex(ABC):
     @abstractmethod
     def test_regex(self, string: Compilable, pattern: Compilable) -> Compilable:
-        """Tests whether the regex pattern matches the string. Returns a bool expression.
-        """
+        """Tests whether the regex pattern matches the string. Returns a bool expression."""
+
 
 class AbstractMixin_RandomSample(ABC):
     @abstractmethod
     def random_sample_n(self, tbl: str, size: int) -> str:
-        """Take a random sample of the given size, i.e. return 'size' amount of rows
-        """
+        """Take a random sample of the given size, i.e. return 'size' amount of rows"""
 
     @abstractmethod
     def random_sample_ratio_approx(self, tbl: str, ratio: float) -> str:

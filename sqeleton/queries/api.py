@@ -52,8 +52,7 @@ def outerjoin(*tables: ITable):
 
 
 def cte(expr: Expr, *, name: Optional[str] = None, params: Sequence[str] = None):
-    """Define a CTE
-    """
+    """Define a CTE"""
     return Cte(expr, name, params)
 
 
@@ -75,8 +74,7 @@ def table(*path: str, schema: Union[dict, CaseAwareMapping] = None) -> TablePath
 
 
 def or_(*exprs: Expr):
-    """Apply OR between a sequence of boolean expressions
-    """
+    """Apply OR between a sequence of boolean expressions"""
     exprs = args_as_tuple(exprs)
     if len(exprs) == 1:
         return exprs[0]
@@ -84,8 +82,7 @@ def or_(*exprs: Expr):
 
 
 def and_(*exprs: Expr):
-    """Apply AND between a sequence of boolean expressions
-    """
+    """Apply AND between a sequence of boolean expressions"""
     exprs = args_as_tuple(exprs)
     if len(exprs) == 1:
         return exprs[0]
@@ -93,8 +90,7 @@ def and_(*exprs: Expr):
 
 
 def sum_(expr: Expr):
-    """Call SUM(expr)
-    """
+    """Call SUM(expr)"""
     return Func("sum", [expr])
 
 
@@ -114,14 +110,12 @@ def max_(expr: Expr):
 
 
 def if_(cond: Expr, then: Expr, else_: Optional[Expr] = None):
-    """Conditional expression, shortcut to when-then-else.
-    """
+    """Conditional expression, shortcut to when-then-else."""
     return when(cond).then(then).else_(else_)
 
 
 def when(*when_exprs: Expr):
-    """Start a when-then expression
-    """
+    """Start a when-then expression"""
     return CaseWhen([]).when(*when_exprs)
 
 
@@ -149,8 +143,8 @@ def code(code: str, **kw: Dict[str, Expr]) -> Code:
     """Inline raw SQL code.
 
     It allows users to use features and syntax that Sqeleton doesn't yet support.
-    
-    It's the user's responsibility to make sure the contents of the string given to `code()` are correct and safe for execution. 
+
+    It's the user's responsibility to make sure the contents of the string given to `code()` are correct and safe for execution.
 
     Strings given to `code()` are actually templates, and can embed query expressions given as arguments:
 
@@ -161,7 +155,7 @@ def code(code: str, **kw: Dict[str, Expr]) -> Code:
     Examples:
         ::
             # SELECT b, <x> FROM tmp WHERE <y>
-            table('tmp').select(this.b, code("<x>")).where(code("<y>")) 
+            table('tmp').select(this.b, code("<x>")).where(code("<y>"))
 
         ::
             def tablesample(tbl, size):
@@ -173,5 +167,6 @@ def code(code: str, **kw: Dict[str, Expr]) -> Code:
             sample_expr = tablesample(nonzero)
     """
     return Code(code, kw)
+
 
 commit = Commit()

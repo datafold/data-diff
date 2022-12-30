@@ -14,7 +14,6 @@ from .compiler import Compiler, cv_params, Root, CompileError
 from .base import SKIP, DbPath, args_as_tuple, SqeletonError
 
 
-
 class QueryBuilderError(SqeletonError):
     pass
 
@@ -60,6 +59,7 @@ class Code(ExprNode, Root):
         args = {k: c.compile(v) for k, v in self.args.items()}
         return self.code.format(**args)
 
+
 def _expr_type(e: Expr) -> type:
     if isinstance(e, ExprNode):
         return e.type
@@ -85,7 +85,6 @@ def _drop_skips(exprs):
 
 def _drop_skips_dict(exprs_dict):
     return {k: v for k, v in exprs_dict.items() if v is not SKIP}
-
 
 
 class ITable(AbstractTable):
@@ -460,7 +459,7 @@ class Join(ExprNode, ITable, Root):
     @property
     def schema(self):
         assert self.columns  # TODO Implement SELECT *
-        s = self.source_tables[0].schema  # TODO validate types match between both tables 
+        s = self.source_tables[0].schema  # TODO validate types match between both tables
         return type(s)({c.name: c.type for c in self.columns})
 
     def on(self, *exprs):
@@ -760,6 +759,7 @@ class This:
 
     Automatically evaluates to the the 'top-most' table during compilation.
     """
+
     def __getattr__(self, name):
         return _ResolveColumn(name)
 

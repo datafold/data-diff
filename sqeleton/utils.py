@@ -276,6 +276,7 @@ def remove_passwords_in_dict(d: dict):
         elif k.startswith("database"):
             d[k] = remove_password_from_url(v)
 
+
 def _join_if_any(sym, args):
     args = list(args)
     if not args:

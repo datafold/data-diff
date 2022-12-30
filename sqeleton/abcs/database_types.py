@@ -278,32 +278,27 @@ class AbstractDatabase:
 
 
 class AbstractTable(ABC):
-
     @abstractmethod
     def select(self, *exprs, distinct=False, **named_exprs) -> "AbstractTable":
-        """Choose new columns, based on the old ones. (aka Projection)
-        """
+        """Choose new columns, based on the old ones. (aka Projection)"""
         # XXX distinct=SKIP
 
     @abstractmethod
     def where(self, *exprs) -> "AbstractTable":
-        """Filter the rows, based on the given predicates. (aka Selection)
-        """
+        """Filter the rows, based on the given predicates. (aka Selection)"""
 
     @abstractmethod
     def order_by(self, *exprs) -> "AbstractTable":
-        """Order the rows lexicographically, according to the given expressions.
-        """
+        """Order the rows lexicographically, according to the given expressions."""
 
     @abstractmethod
     def limit(self, limit: int) -> "AbstractTable":
-        """Stop yielding rows after the given limit. i.e. take the first 'n=limit' rows
-        """
+        """Stop yielding rows after the given limit. i.e. take the first 'n=limit' rows"""
 
     @abstractmethod
     def join(self, target) -> "AbstractTable":
         """Join the current table with the target table, returning a new table containing both side-by-side.
-        
+
         When joining, it's recommended to use explicit tables names, instead of `this`, in order to avoid potential name collisions.
 
         Example:
@@ -323,7 +318,7 @@ class AbstractTable(ABC):
     def group_by(self, *keys):
         """Behaves like in SQL, except for a small change in syntax:
 
-        A call to `.agg()` must follow every call to `.group_by()`.  
+        A call to `.agg()` must follow every call to `.group_by()`.
 
         Example:
             ::
