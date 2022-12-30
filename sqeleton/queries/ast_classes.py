@@ -10,12 +10,9 @@ from ..abcs.database_types import AbstractTable
 from ..abcs.mixins import AbstractMixin_Regex
 from ..schema import Schema
 
-from .compiler import Compiler, cv_params, Root
-from .base import SKIP, CompileError, DbPath, args_as_tuple
+from .compiler import Compiler, cv_params, Root, CompileError
+from .base import SKIP, DbPath, args_as_tuple, SqeletonError
 
-
-class SqeletonError(Exception):
-    pass
 
 
 class QueryBuilderError(SqeletonError):
@@ -27,6 +24,8 @@ class QB_TypeError(QueryBuilderError):
 
 
 class ExprNode(Compilable):
+    "Base class for query expression nodes"
+
     type: Any = None
 
     def _dfs_values(self):
@@ -45,6 +44,7 @@ class ExprNode(Compilable):
         return Cast(self, to)
 
 
+# Query expressions can only interact with objects that are an instance of 'Expr'
 Expr = Union[ExprNode, str, bool, int, float, datetime, ArithString, None]
 
 
@@ -128,12 +128,9 @@ class ITable(AbstractTable):
     def join(self, target):
         return Join([self, target])
 
-    def group_by(self, *keys):
+    def group_by(self, *keys) -> "GroupBy":
         keys = _drop_skips(keys)
         resolve_names(self.source_table, keys)
-
-        # values = _drop_skips(values)
-        # resolve_names(self.source_table, values)
 
         return GroupBy(self, keys)
 
@@ -151,7 +148,6 @@ class ITable(AbstractTable):
         return self._get_column(column)
 
     def count(self):
-        """SELECT count() FROM self"""
         return Select(self, [Count()])
 
     def union(self, other: "ITable"):
@@ -760,6 +756,10 @@ class _ResolveColumn(ExprNode, LazyOps):
 
 
 class This:
+    """Builder object for accessing table attributes.
+
+    Automatically evaluates to the the 'top-most' table during compilation.
+    """
     def __getattr__(self, name):
         return _ResolveColumn(name)
 

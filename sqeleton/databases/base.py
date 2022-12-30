@@ -34,6 +34,7 @@ from ..abcs.database_types import (
 )
 from ..abcs.mixins import Compilable
 from ..abcs.mixins import AbstractMixin_Schema, AbstractMixin_RandomSample, AbstractMixin_NormalizeValue
+from ..bound_exprs import bound_table
 
 logger = logging.getLogger("database")
 
@@ -475,6 +476,9 @@ class Database(AbstractDatabase):
 
     def list_tables(self, tables_like, schema=None):
         return self.query(self.dialect.list_tables(schema or self.default_schema, tables_like))
+
+    def table(self, *path, **kw):
+        return bound_table(self, path, **kw)
 
 
 class ThreadedDatabase(Database):

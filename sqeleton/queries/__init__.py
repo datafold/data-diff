@@ -1,5 +1,4 @@
-from .base import CompileError
-from .compiler import Compiler
+from .compiler import Compiler, CompileError
 from .api import (
     this,
     join,

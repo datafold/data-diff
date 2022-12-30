@@ -258,14 +258,19 @@ class TestQuery(unittest.TestCase):
         c = Compiler(MockDatabase())
         t = table("a")
 
-        z = when(this.b).then(this.c)
-        y = t.select(z)
-
         q = c.compile(t.select(when(this.b).then(this.c)))
         self.assertEqual(q, "SELECT CASE WHEN b THEN c END FROM a")
 
         q = c.compile(t.select(when(this.b).then(this.c).else_(this.d)))
         self.assertEqual(q, "SELECT CASE WHEN b THEN c ELSE d END FROM a")
+
+        q = c.compile( t.select(
+                when(this.type == 'text').then(this.text)
+                .when(this.type == 'number').then(this.number)
+                .else_('unknown type')
+            ))
+        self.assertEqual(q, "SELECT CASE WHEN (type = 'text') THEN text WHEN (type = 'number') THEN number ELSE 'unknown type' END FROM a")
+
 
     def test_code(self):
         c = Compiler(MockDatabase())
