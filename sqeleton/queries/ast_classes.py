@@ -7,7 +7,7 @@ from runtype import dataclass
 from ..utils import join_iter, ArithString
 from ..abcs import Compilable
 from ..abcs.database_types import AbstractTable
-from ..abcs.mixins import AbstractMixin_Regex
+from ..abcs.mixins import AbstractMixin_Regex, AbstractMixin_TimeTravel
 from ..schema import Schema
 
 from .compiler import Compiler, cv_params, Root, CompileError
@@ -121,8 +121,6 @@ class ITable(AbstractTable):
             return self
 
         return Select.make(self, limit_expr=limit)
-
-    # def at(self, *exprs): # TODO
 
     def join(self, target):
         return Join([self, target])
@@ -473,6 +471,26 @@ class TablePath(ExprNode, ITable):
         if isinstance(expr, TablePath):
             expr = expr.select()
         return InsertToTable(self, expr)
+
+    def time_travel(
+        self, *, before: bool = False, timestamp: datetime = None, offset: int = None, statement: str = None
+    ) -> Compilable:
+        """Selects historical data from the table
+
+        Parameters:
+            before - If false, inclusive of the specified point in time.
+                     If True, only return the time before it. (at/before)
+            timestamp - A constant timestamp
+            offset - the time 'offset' seconds before now
+            statement - identifier for statement, e.g. query ID
+
+        Must specify exactly one of `timestamp`, `offset` or `statement`.
+        """
+        if sum(int(i is not None) for i in (timestamp, offset, statement)) != 1:
+            raise ValueError("Must specify exactly one of `timestamp`, `offset` or `statement`.")
+
+        if timestamp is not None:
+            assert offset is None and statement is None
 
 
 @dataclass
@@ -870,6 +888,23 @@ class CurrentTimestamp(ExprNode):
 
     def compile(self, c: Compiler) -> str:
         return c.dialect.current_timestamp()
+
+
+@dataclass
+class TimeTravel(ITable):
+    table: TablePath
+    before: bool = False
+    timestamp: datetime = None
+    offset: int = None
+    statement: str = None
+
+    def compile(self, c: Compiler) -> str:
+        assert isinstance(c, AbstractMixin_TimeTravel)
+        return c.compile(
+            c.time_travel(
+                self.table, before=self.before, timestamp=self.timestamp, offset=self.offset, statement=self.statement
+            )
+        )
 
 
 # DDL

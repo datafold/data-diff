@@ -5,6 +5,8 @@ from ..abcs.database_types import AbstractTable
 
 
 class AbstractMixin_NormalizeValue(ABC):
+    NAME = "normalize_value"
+
     @abstractmethod
     def normalize_timestamp(self, value: str, coltype: TemporalType) -> str:
         """Creates an SQL expression, that converts 'value' to a normalized timestamp.
@@ -76,6 +78,8 @@ class AbstractMixin_NormalizeValue(ABC):
 class AbstractMixin_MD5(ABC):
     """Methods for calculating an MD6 hash as an integer."""
 
+    NAME = "md5"
+
     @abstractmethod
     def md5_as_int(self, s: str) -> str:
         "Provide SQL for computing md5 and returning an int"
@@ -86,6 +90,8 @@ class AbstractMixin_Schema(ABC):
 
     TODO: Move AbstractDatabase.query_table_schema() and friends over here
     """
+
+    NAME = "schema"
 
     def table_information(self) -> Compilable:
         "Query to return a table of schema information about existing tables"
@@ -100,12 +106,16 @@ class AbstractMixin_Schema(ABC):
 
 
 class AbstractMixin_Regex(ABC):
+    NAME = "regex"
+
     @abstractmethod
     def test_regex(self, string: Compilable, pattern: Compilable) -> Compilable:
         """Tests whether the regex pattern matches the string. Returns a bool expression."""
 
 
 class AbstractMixin_RandomSample(ABC):
+    NAME = "random_sample"
+
     @abstractmethod
     def random_sample_n(self, tbl: str, size: int) -> str:
         """Take a random sample of the given size, i.e. return 'size' amount of rows"""
@@ -120,3 +130,26 @@ class AbstractMixin_RandomSample(ABC):
     # def random_sample_ratio(self, table: AbstractTable, ratio: float):
     #     """Take a random sample of the size determined by the ratio (0..1), where 0 means no rows, and 1 means all rows
     #     """
+
+
+class AbstractMixin_TimeTravel(ABC):
+    NAME = "time_travel"
+
+    def time_travel(
+        self,
+        table: Compilable,
+        before: bool = False,
+        timestamp: Compilable = None,
+        offset: Compilable = None,
+        statement: Compilable = None,
+    ) -> Compilable:
+        """Selects historical data from a table
+
+        Parameters:
+            table - The name of the table whose history we're querying
+            timestamp - A constant timestamp
+            offset - the time 'offset' seconds before now
+            statement - identifier for statement, e.g. query ID
+
+        Must specify exactly one of `timestamp`, `offset` or `statement`.
+        """
