@@ -1,12 +1,12 @@
 from abc import ABC, abstractmethod
 from .database_types import TemporalType, FractionalType, ColType_UUID, Boolean, ColType, String_UUID
 from .compiler import Compilable
-from ..abcs.database_types import AbstractTable
+
+class AbstractMixin(ABC):
+    "A mixin for a database dialect"
 
 
-class AbstractMixin_NormalizeValue(ABC):
-    NAME = "normalize_value"
-
+class AbstractMixin_NormalizeValue(AbstractMixin):
     @abstractmethod
     def normalize_timestamp(self, value: str, coltype: TemporalType) -> str:
         """Creates an SQL expression, that converts 'value' to a normalized timestamp.
@@ -75,23 +75,19 @@ class AbstractMixin_NormalizeValue(ABC):
         return self.to_string(value)
 
 
-class AbstractMixin_MD5(ABC):
+class AbstractMixin_MD5(AbstractMixin):
     """Methods for calculating an MD6 hash as an integer."""
-
-    NAME = "md5"
 
     @abstractmethod
     def md5_as_int(self, s: str) -> str:
         "Provide SQL for computing md5 and returning an int"
 
 
-class AbstractMixin_Schema(ABC):
+class AbstractMixin_Schema(AbstractMixin):
     """Methods for querying the database schema
 
     TODO: Move AbstractDatabase.query_table_schema() and friends over here
     """
-
-    NAME = "schema"
 
     def table_information(self) -> Compilable:
         "Query to return a table of schema information about existing tables"
@@ -105,17 +101,13 @@ class AbstractMixin_Schema(ABC):
         """
 
 
-class AbstractMixin_Regex(ABC):
-    NAME = "regex"
-
+class AbstractMixin_Regex(AbstractMixin):
     @abstractmethod
     def test_regex(self, string: Compilable, pattern: Compilable) -> Compilable:
         """Tests whether the regex pattern matches the string. Returns a bool expression."""
 
 
-class AbstractMixin_RandomSample(ABC):
-    NAME = "random_sample"
-
+class AbstractMixin_RandomSample(AbstractMixin):
     @abstractmethod
     def random_sample_n(self, tbl: str, size: int) -> str:
         """Take a random sample of the given size, i.e. return 'size' amount of rows"""
@@ -132,9 +124,8 @@ class AbstractMixin_RandomSample(ABC):
     #     """
 
 
-class AbstractMixin_TimeTravel(ABC):
-    NAME = "time_travel"
-
+class AbstractMixin_TimeTravel(AbstractMixin):
+    @abstractmethod
     def time_travel(
         self,
         table: Compilable,

@@ -20,7 +20,7 @@ from ..abcs.mixins import (
 from ..abcs import Compilable
 from ..queries import this, table, SKIP, code
 from .base import BaseDialect, Database, import_helper, parse_table_name, ConnectError, apply_query
-from .base import TIMESTAMP_PRECISION_POS, ThreadLocalInterpreter
+from .base import TIMESTAMP_PRECISION_POS, ThreadLocalInterpreter, Mixin_RandomSample
 
 
 @import_helper(text="Please install BigQuery and configure your google-cloud access.")
@@ -117,6 +117,7 @@ class Dialect(BaseDialect, Mixin_Schema):
         # Boolean
         "BOOL": Boolean,
     }
+    MIXINS = {Mixin_Schema, Mixin_MD5, Mixin_NormalizeValue, Mixin_TimeTravel, Mixin_RandomSample}
 
     def random(self) -> str:
         return "RAND()"

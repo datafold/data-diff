@@ -2,7 +2,7 @@ from datetime import datetime
 import math
 import sys
 import logging
-from typing import Any, Callable, Dict, Generator, Tuple, Optional, Sequence, Type, List, Union
+from typing import Any, Callable, Dict, Generator, Tuple, Optional, Sequence, Type, List, Union, TypeVar, TYPE_CHECKING
 from functools import partial, wraps
 from concurrent.futures import ThreadPoolExecutor
 import threading
@@ -10,11 +10,12 @@ from abc import abstractmethod
 from uuid import UUID
 import decimal
 
-from ..utils import is_uuid, safezip
+from ..utils import is_uuid, safezip, Self
 from ..queries import Expr, Compiler, table, Select, SKIP, Explain, Code, this
 from ..queries.ast_classes import Random
 from ..abcs.database_types import (
     AbstractDatabase,
+    T_Dialect,
     AbstractDialect,
     AbstractTable,
     ColType,
@@ -135,6 +136,7 @@ class BaseDialect(AbstractDialect):
     SUPPORTS_PRIMARY_KEY = False
     SUPPORTS_INDEXES = False
     TYPE_CLASSES: Dict[str, type] = {}
+    MIXINS = frozenset()
 
     PLACEHOLDER_TABLE = None  # Used for Oracle
 
@@ -249,8 +251,21 @@ class BaseDialect(AbstractDialect):
         # See: https://en.wikipedia.org/wiki/Single-precision_floating-point_format
         return math.floor(math.log(2**p, 10))
 
+    @classmethod
+    def load_mixins(cls, *abstract_mixins) -> "Self":
+        mixins = {m for m in cls.MIXINS if issubclass(m, abstract_mixins)}
 
-class Database(AbstractDatabase):
+        class _DialectWithMixins(cls, *mixins, *abstract_mixins):
+            pass
+
+        _DialectWithMixins.__name__ = cls.__name__
+        return _DialectWithMixins()
+
+
+T = TypeVar("T", bound=BaseDialect)
+
+
+class Database(AbstractDatabase[T]):
     """Base abstract class for databases.
 
     Used for providing connection code and implementation specific SQL utilities.
@@ -478,6 +493,14 @@ class Database(AbstractDatabase):
 
     def table(self, *path, **kw):
         return bound_table(self, path, **kw)
+
+    @classmethod
+    def load_mixins(cls, *abstract_mixins) -> type:
+        class _DatabaseWithMixins(cls):
+            dialect = cls.dialect.load_mixins(*abstract_mixins)
+
+        _DatabaseWithMixins.__name__ = cls.__name__
+        return _DatabaseWithMixins
 
 
 class ThreadedDatabase(Database):

@@ -50,6 +50,9 @@ class MockDialect(AbstractDialect):
     def set_timezone_to_utc(self) -> str:
         return "set timezone 'UTC'"
 
+    def load_mixins(self):
+        raise NotImplementedError()
+
     parse_type = NotImplemented
 
 

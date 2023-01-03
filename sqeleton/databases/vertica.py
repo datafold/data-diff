@@ -11,6 +11,7 @@ from .base import (
     ColType,
     ThreadedDatabase,
     import_helper,
+    Mixin_RandomSample,
 )
 from ..abcs.database_types import (
     Decimal,
@@ -95,6 +96,7 @@ class Dialect(BaseDialect, Mixin_Schema):
         # Boolean
         "boolean": Boolean,
     }
+    MIXINS = {Mixin_Schema, Mixin_MD5, Mixin_NormalizeValue, Mixin_RandomSample}
 
     def quote(self, s: str):
         return f'"{s}"'

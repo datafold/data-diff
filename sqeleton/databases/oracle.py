@@ -17,7 +17,7 @@ from ..abcs.database_types import (
 from ..abcs.mixins import AbstractMixin_MD5, AbstractMixin_NormalizeValue, AbstractMixin_Schema
 from ..abcs import Compilable
 from ..queries import this, table, SKIP
-from .base import BaseDialect, ThreadedDatabase, import_helper, ConnectError, QueryError
+from .base import BaseDialect, ThreadedDatabase, import_helper, ConnectError, QueryError, Mixin_RandomSample
 from .base import TIMESTAMP_PRECISION_POS
 
 SESSION_TIME_ZONE = None  # Changed by the tests
@@ -87,6 +87,7 @@ class Dialect(BaseDialect, Mixin_Schema):
     }
     ROUNDS_ON_PREC_LOSS = True
     PLACEHOLDER_TABLE = "DUAL"
+    MIXINS = {Mixin_Schema, Mixin_MD5, Mixin_NormalizeValue, Mixin_RandomSample}
 
     def quote(self, s: str):
         return f'"{s}"'

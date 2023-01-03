@@ -1,10 +1,11 @@
-from typing import Type, Optional, Union, Dict
+from typing import Type, Optional, Union, Dict, Self
 from itertools import zip_longest
 from contextlib import suppress
 import dsnparse
 
 from runtype import dataclass
 
+from ..abcs.mixins import AbstractMixin
 from ..utils import WeakCache
 from .base import Database, ThreadedDatabase
 from .postgresql import PostgreSQL
@@ -94,6 +95,15 @@ class Connect:
         self.database_by_scheme = database_by_scheme
         self.match_uri_path = {name: MatchUriPath(cls) for name, cls in database_by_scheme.items()}
         self.conn_cache = WeakCache()
+
+    def for_databases(self, *dbs):
+        database_by_scheme = {k: db for k, db in self.database_by_scheme.items() if k in dbs}
+        return type(self)(database_by_scheme)
+
+    def load_mixins(self, *abstract_mixins: AbstractMixin) -> Self:
+        "Extend all the databases with a list of mixins that implement the given abstract mixins."
+        database_by_scheme = {k: db.load_mixins(*abstract_mixins) for k, db in self.database_by_scheme.items()}
+        return type(self)(database_by_scheme)
 
     def connect_to_uri(self, db_uri: str, thread_count: Optional[int] = 1) -> Database:
         """Connect to the given database uri

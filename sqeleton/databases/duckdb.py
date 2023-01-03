@@ -80,6 +80,7 @@ class Dialect(BaseDialect, Mixin_Schema):
     ROUNDS_ON_PREC_LOSS = False
     SUPPORTS_PRIMARY_KEY = True
     SUPPORTS_INDEXES = True
+    MIXINS = {Mixin_Schema, Mixin_MD5, Mixin_NormalizeValue, Mixin_RandomSample}
 
     TYPE_CLASSES = {
         # Timestamps

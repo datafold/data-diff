@@ -1,4 +1,4 @@
-from typing import Iterable, Iterator, MutableMapping, Union, Any, Sequence, Dict, Hashable, TypeVar
+from typing import Iterable, Iterator, MutableMapping, Union, Any, Sequence, Dict, Hashable, TypeVar, TYPE_CHECKING
 from abc import abstractmethod
 from weakref import ref
 import math
@@ -8,6 +8,11 @@ from uuid import UUID
 from urllib.parse import urlparse
 
 # -- Common --
+
+try:
+    from typing import Self
+except ImportError:
+    Self = Any
 
 
 class WeakCache:

@@ -5,7 +5,7 @@ from datetime import datetime
 
 from runtype import dataclass
 
-from ..utils import ArithAlphanumeric, ArithUUID
+from ..utils import ArithAlphanumeric, ArithUUID, Self
 
 
 DbPath = Tuple[str, ...]
@@ -154,6 +154,11 @@ class AbstractDialect(ABC):
     def name(self) -> str:
         "Name of the dialect"
 
+    @classmethod
+    @abstractmethod
+    def load_mixins(cls, *abstract_mixins) -> Self:
+        "Load a list of mixins that implement the given abstract mixins"
+
     @property
     @abstractmethod
     def ROUNDS_ON_PREC_LOSS(self) -> bool:
@@ -213,11 +218,21 @@ class AbstractDialect(ABC):
         "Parse type info as returned by the database"
 
 
-class AbstractDatabase:
+from typing import TypeVar, Generic
+
+T_Dialect = TypeVar("T_Dialect", bound=AbstractDialect)
+
+
+class AbstractDatabase(Generic[T_Dialect]):
     @property
     @abstractmethod
-    def dialect(self) -> AbstractDialect:
+    def dialect(self) -> T_Dialect:
         "The dialect of the database. Used internally by Database, and also available publicly."
+
+    @classmethod
+    @abstractmethod
+    def load_mixins(cls, *abstract_mixins) -> type:
+        "Extend the dialect with a list of mixins that implement the given abstract mixins."
 
     @property
     @abstractmethod

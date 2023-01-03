@@ -20,7 +20,15 @@ from ..abcs.mixins import (
 )
 from ..abcs import Compilable
 from sqeleton.queries import table, this, SKIP, code
-from .base import BaseDialect, ConnectError, Database, import_helper, CHECKSUM_MASK, ThreadLocalInterpreter
+from .base import (
+    BaseDialect,
+    ConnectError,
+    Database,
+    import_helper,
+    CHECKSUM_MASK,
+    ThreadLocalInterpreter,
+    Mixin_RandomSample,
+)
 
 
 @import_helper("snowflake")
@@ -111,6 +119,7 @@ class Dialect(BaseDialect, Mixin_Schema):
         # Boolean
         "BOOLEAN": Boolean,
     }
+    MIXINS = {Mixin_Schema, Mixin_MD5, Mixin_NormalizeValue, Mixin_TimeTravel, Mixin_RandomSample}
 
     def explain_as_text(self, query: str) -> str:
         return f"EXPLAIN USING TEXT {query}"

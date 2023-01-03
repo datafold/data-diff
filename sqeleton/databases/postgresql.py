@@ -12,7 +12,7 @@ from ..abcs.database_types import (
 )
 from ..abcs.mixins import AbstractMixin_MD5, AbstractMixin_NormalizeValue
 from .base import BaseDialect, ThreadedDatabase, import_helper, ConnectError, Mixin_Schema
-from .base import MD5_HEXDIGITS, CHECKSUM_HEXDIGITS, _CHECKSUM_BITSIZE, TIMESTAMP_PRECISION_POS
+from .base import MD5_HEXDIGITS, CHECKSUM_HEXDIGITS, _CHECKSUM_BITSIZE, TIMESTAMP_PRECISION_POS, Mixin_RandomSample
 
 SESSION_TIME_ZONE = None  # Changed by the tests
 
@@ -53,6 +53,7 @@ class PostgresqlDialect(BaseDialect, Mixin_Schema):
     ROUNDS_ON_PREC_LOSS = True
     SUPPORTS_PRIMARY_KEY = True
     SUPPORTS_INDEXES = True
+    MIXINS = {Mixin_Schema, Mixin_MD5, Mixin_NormalizeValue, Mixin_RandomSample}
 
     TYPE_CLASSES = {
         # Timestamps
