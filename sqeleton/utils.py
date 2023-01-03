@@ -272,14 +272,14 @@ def split_space(start, end, count):
     return list(range(start, end, (size + 1) // (count + 1)))[1 : count + 1]
 
 
-def remove_passwords_in_dict(d: dict):
+def remove_passwords_in_dict(d: dict, replace_with: str = "***"):
     for k, v in d.items():
         if k == "password":
-            d[k] = "*" * len(v)
+            d[k] = replace_with
         elif isinstance(v, dict):
-            remove_passwords_in_dict(v)
+            remove_passwords_in_dict(v, replace_with)
         elif k.startswith("database"):
-            d[k] = remove_password_from_url(v)
+            d[k] = remove_password_from_url(v, replace_with)
 
 
 def _join_if_any(sym, args):
