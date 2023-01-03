@@ -62,12 +62,6 @@ If a database is not on the list, we'd still love to support it. [Please open an
 pip install data-diff
 ```
 
-To try out bleeding-edge features, including materialization of results in your data warehouse:
-
-```
-pip install data-diff --pre
-```
-
 #### Then, install one or more driver(s) specific to the database(s) you want to connect to.
 
 - `pip install 'data-diff[mysql]'`
