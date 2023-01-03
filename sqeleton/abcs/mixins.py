@@ -2,6 +2,7 @@ from abc import ABC, abstractmethod
 from .database_types import TemporalType, FractionalType, ColType_UUID, Boolean, ColType, String_UUID
 from .compiler import Compilable
 
+
 class AbstractMixin(ABC):
     "A mixin for a database dialect"
 

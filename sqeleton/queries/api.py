@@ -15,6 +15,7 @@ def join(*tables: ITable):
 
     Example:
         ::
+
             person = table('person')
             city = table('city')
 
@@ -60,8 +61,8 @@ def table(*path: str, schema: Union[dict, CaseAwareMapping] = None) -> TablePath
     """Defines a table with a path (dotted name), and optionally a schema.
 
     Parameters:
-        path - A list of names that make up the path to the table.
-        schema - a dictionary of {name: type}
+        path: A list of names that make up the path to the table.
+        schema: a dictionary of {name: type}
     """
     if len(path) == 1 and isinstance(path[0], tuple):
         (path,) = path
@@ -149,15 +150,17 @@ def code(code: str, **kw: Dict[str, Expr]) -> Code:
     Strings given to `code()` are actually templates, and can embed query expressions given as arguments:
 
     Parameters:
-        code - template string of SQL code. Templated variables are signified with '{var}'.
-        kw - optional parameters for SQL template.
+        code: template string of SQL code. Templated variables are signified with '{var}'.
+        kw: optional parameters for SQL template.
 
     Examples:
         ::
+
             # SELECT b, <x> FROM tmp WHERE <y>
             table('tmp').select(this.b, code("<x>")).where(code("<y>"))
 
         ::
+
             def tablesample(tbl, size):
                 return code("SELECT * FROM {tbl} TABLESAMPLE BERNOULLI ({size})", tbl=tbl, size=size)
 

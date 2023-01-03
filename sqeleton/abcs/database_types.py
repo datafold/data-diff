@@ -298,10 +298,10 @@ class AbstractTable(ABC):
         """Choose new columns, based on the old ones. (aka Projection)
 
         Parameters:
-            exprs - List of expressions to constitute the columns of the new table.
-                    If not provided, returns all columns in source table (select *)
-            distinct - 'select' or 'select distinct'
-            named_exprs - More expressions to constitute the columns of the new table, aliased to keyword name.
+            exprs: List of expressions to constitute the columns of the new table.
+                    If not provided, returns all columns in source table (i.e. ``select *``)
+            distinct: 'select' or 'select distinct'
+            named_exprs: More expressions to constitute the columns of the new table, aliased to keyword name.
 
         """
         # XXX distinct=SKIP
@@ -326,6 +326,7 @@ class AbstractTable(ABC):
 
         Example:
             ::
+
                 person = table('person')
                 city = table('city')
 
@@ -345,6 +346,7 @@ class AbstractTable(ABC):
 
         Example:
             ::
+
                 # SELECT a, sum(b) FROM tmp GROUP BY 1
                 table('tmp').group_by(this.a).agg(this.b.sum())
 

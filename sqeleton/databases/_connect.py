@@ -1,4 +1,4 @@
-from typing import Type, Optional, Union, Dict, Self
+from typing import Type, Optional, Union, Dict
 from itertools import zip_longest
 from contextlib import suppress
 import dsnparse
@@ -6,7 +6,7 @@ import dsnparse
 from runtype import dataclass
 
 from ..abcs.mixins import AbstractMixin
-from ..utils import WeakCache
+from ..utils import WeakCache, Self
 from .base import Database, ThreadedDatabase
 from .postgresql import PostgreSQL
 from .mysql import MySQL

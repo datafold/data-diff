@@ -92,6 +92,7 @@ class ITable(AbstractTable):
     schema: Schema = None
 
     def select(self, *exprs, distinct=SKIP, **named_exprs):
+        """Create a new table with the specified fields"""
         exprs = args_as_tuple(exprs)
         exprs = _drop_skips(exprs)
         named_exprs = _drop_skips_dict(named_exprs)
@@ -122,10 +123,15 @@ class ITable(AbstractTable):
 
         return Select.make(self, limit_expr=limit)
 
-    def join(self, target):
+    def join(self, target: "ITable"):
+        """Join this table with the target table."""
         return Join([self, target])
 
     def group_by(self, *keys) -> "GroupBy":
+        """Group according to the given keys.
+
+        Must be followed by a call to :ref:``GroupBy.agg()``
+        """
         keys = _drop_skips(keys)
         resolve_names(self.source_table, keys)
 
@@ -478,11 +484,11 @@ class TablePath(ExprNode, ITable):
         """Selects historical data from the table
 
         Parameters:
-            before - If false, inclusive of the specified point in time.
+            before: If false, inclusive of the specified point in time.
                      If True, only return the time before it. (at/before)
-            timestamp - A constant timestamp
-            offset - the time 'offset' seconds before now
-            statement - identifier for statement, e.g. query ID
+            timestamp: A constant timestamp
+            offset: the time 'offset' seconds before now
+            statement: identifier for statement, e.g. query ID
 
         Must specify exactly one of `timestamp`, `offset` or `statement`.
         """
