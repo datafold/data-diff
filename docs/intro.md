@@ -428,6 +428,83 @@ Having bound tables, specifically, allow to add the useful `.query_schema()` API
 
 ### Dialect Mixins
 
+In Sqeleton, each dialect class represents a specific SQL dialect. Dialects are responsible for providing code fragments to the SQL compiler.
+
+Since Sqeleton aims to support a growing amount of features, and allow custom database implementations, extra features are provided through mixins. That way, when implementing a new database (either in Sqeleton, or in a private code-base), we can pick and choose which features we want to implement, and which ones we don't. Sqeleton will throw an error if the mixin we're trying to use isn't supported by one of the databases we're using.
+
+The simplest way to load mixins is to use the `Connect.load_mixins()` methods, and provide the abstract mixins you want to use:
+
+```python
+import sqeleton
+from sqeleton.abcs.mixins import AbstractMixin_NormalizeValue, AbstractMixin_RandomSample
+
+connect = sqeleton.connect.load_mixins(AbstractMixin_NormalizeValue)
+ddb = connect("duckdb://:memory:")
+print(ddb.dialect.normalize_boolean("bool", None) == "bool::INTEGER::VARCHAR")
+# Outputs:
+#   bool::INTEGER::VARCHAR
+```
+
+Each database is already aware of the available mixin implementation, because it was defined with the `MIXINS` attribute. We're only using the abstract mixins to select the mixins we want to use.
+
+#### List of mixins
+
+List of available abstract mixins:
+
+- `AbstractMixin_NormalizeValue`
+
+- `AbstractMixin_MD5`
+
+- `AbstractMixin_Schema`
+
+- `AbstractMixin_Regex`
+
+- `AbstractMixin_RandomSample`
+
+- `AbstractMixin_TimeTravel` - Only snowflake & bigquery
+
+#### Unimplemented Mixins
+
+Trying to load a mixin that isn't implemented by all databases, will fail:
+
+```python
+>>> from sqeleton.abcs.mixins import AbstractMixin_TimeTravel
+>>> connect.load_mixins(AbstractMixin_TimeTravel)
+Traceback (most recent call last):
+    ...
+TypeError: Can't instantiate abstract class PostgresqlDialect with abstract method time_travel
+```
+
+In such a case, it's possible to use `Connect.for_databases()` to only load for a subset of the available databases:
+
+```python
+# No problem, time travel is implemented in both
+# Trying to connect to other databases will fail
+connect = sqeleton.connect.for_databases('bigquery', 'snowflake').load_mixins(AbstractMixin_TimeTravel)
+```
+
+The `.load_mixins()` method is just a convenience method. It's possible to achieve the same functionality, and with more fine-grained control,
+using explicit inheritance, and finally creating a new `Connect` object.
+
+Note that both `.load_mixins()` and `.for_databases()` create new instances of `Connect`, and it's okay to have more than one at the same time.
+
+#### Type Inference, mypy, etc.
+
+Python's typing module doesn't yet support intersection / multiple-inheritance, and so `.load_mixins()` can't provide the necessary information for type-checking.
+
+The recommended solution is to override the type of the database returned from `connect()`:
+
+```python
+from sqeleton.abcs import AbstractDialect, AbstractDatabase
+
+class NewAbstractDialect(AbstractDialect, AbstractMixin_NormalizeValue, AbstractMixin_RandomSample):
+    pass
+
+connect = sqeleton.connect.load_mixins(AbstractMixin_NormalizeValue, AbstractMixin_RandomSample)
+ddb: AbstractDatabase[NewAbstractDialect] = connect("duckdb://:memory:")
+# ddb.dialect is now known to implement NewAbstractDialect.
+```
+
 ### Query params
 
 ### Query interpreter
