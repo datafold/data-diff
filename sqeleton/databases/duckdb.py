@@ -141,7 +141,7 @@ class DuckDB(Database):
     dialect = Dialect()
     SUPPORTS_UNIQUE_CONSTAINT = False  # Temporary, until we implement it
     default_schema = "main"
-    CONNECT_URI_HELP = "duckdb://<database>@<dbpath>"
+    CONNECT_URI_HELP = "duckdb://<dbname>@<filepath>"
     CONNECT_URI_PARAMS = ["database", "dbpath"]
 
     def __init__(self, **kw):

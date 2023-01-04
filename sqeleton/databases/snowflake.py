@@ -139,7 +139,7 @@ class Dialect(BaseDialect, Mixin_Schema):
 
 class Snowflake(Database):
     dialect = Dialect()
-    CONNECT_URI_HELP = "snowflake://<user>:<pass>@<account>/<database>/<SCHEMA>?warehouse=<WAREHOUSE>"
+    CONNECT_URI_HELP = "snowflake://<user>:<password>@<account>/<database>/<SCHEMA>?warehouse=<WAREHOUSE>"
     CONNECT_URI_PARAMS = ["database", "schema"]
     CONNECT_URI_KWPARAMS = ["warehouse"]
 

@@ -163,7 +163,7 @@ class Dialect(BaseDialect):
 
 class Clickhouse(ThreadedDatabase):
     dialect = Dialect()
-    CONNECT_URI_HELP = "clickhouse://<user>:<pass>@<host>/<database>"
+    CONNECT_URI_HELP = "clickhouse://<user>:<password>@<host>/<database>"
     CONNECT_URI_PARAMS = ["database?"]
 
     def __init__(self, *, thread_count: int, **kw):

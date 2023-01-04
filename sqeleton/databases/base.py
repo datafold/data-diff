@@ -537,7 +537,7 @@ class ThreadedDatabase(Database):
         assert not hasattr(self.thread_local, "conn")
         try:
             self.thread_local.conn = self.create_connection()
-        except ModuleNotFoundError as e:
+        except Exception as e:
             self._init_error = e
 
     def _query(self, sql_code: Union[str, ThreadLocalInterpreter]):

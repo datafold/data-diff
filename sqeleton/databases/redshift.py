@@ -60,7 +60,7 @@ class Dialect(PostgresqlDialect):
 
 class Redshift(PostgreSQL):
     dialect = Dialect()
-    CONNECT_URI_HELP = "redshift://<user>:<pass>@<host>/<database>"
+    CONNECT_URI_HELP = "redshift://<user>:<password>@<host>/<database>"
     CONNECT_URI_PARAMS = ["database?"]
 
     def select_table_schema(self, path: DbPath) -> str:

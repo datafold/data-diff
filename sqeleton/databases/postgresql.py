@@ -98,12 +98,13 @@ class PostgresqlDialect(BaseDialect, Mixin_Schema):
 class PostgreSQL(ThreadedDatabase):
     dialect = PostgresqlDialect()
     SUPPORTS_UNIQUE_CONSTAINT = True
-    CONNECT_URI_HELP = "postgresql://<user>:<pass>@<host>/<database>"
+    CONNECT_URI_HELP = "postgresql://<user>:<password>@<host>/<database>"
     CONNECT_URI_PARAMS = ["database?"]
 
     default_schema = "public"
 
     def __init__(self, *, thread_count, **kw):
+        print("###", kw)
         self._args = kw
 
         super().__init__(thread_count=thread_count)
