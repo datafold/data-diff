@@ -16,7 +16,15 @@ from ..abcs.database_types import (
     Boolean,
 )
 from ..abcs.mixins import AbstractMixin_MD5, AbstractMixin_NormalizeValue
-from .base import MD5_HEXDIGITS, CHECKSUM_HEXDIGITS, BaseDialect, ThreadedDatabase, import_helper, parse_table_name
+from .base import (
+    MD5_HEXDIGITS,
+    CHECKSUM_HEXDIGITS,
+    BaseDialect,
+    ThreadedDatabase,
+    import_helper,
+    parse_table_name,
+    Mixin_RandomSample,
+)
 
 
 @import_helper(text="You can install it using 'pip install databricks-sql-connector'")
@@ -71,6 +79,7 @@ class Dialect(BaseDialect):
         # Boolean
         "BOOLEAN": Boolean,
     }
+    MIXINS = {Mixin_MD5, Mixin_NormalizeValue, Mixin_RandomSample}
 
     def quote(self, s: str):
         return f"`{s}`"

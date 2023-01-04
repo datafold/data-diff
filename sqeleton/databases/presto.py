@@ -19,7 +19,7 @@ from ..abcs.database_types import (
     Boolean,
 )
 from ..abcs.mixins import AbstractMixin_MD5, AbstractMixin_NormalizeValue
-from .base import BaseDialect, Database, import_helper, ThreadLocalInterpreter, Mixin_Schema
+from .base import BaseDialect, Database, import_helper, ThreadLocalInterpreter, Mixin_Schema, Mixin_RandomSample
 from .base import (
     MD5_HEXDIGITS,
     CHECKSUM_HEXDIGITS,
@@ -87,6 +87,7 @@ class Dialect(BaseDialect, Mixin_Schema):
         # Boolean
         "boolean": Boolean,
     }
+    MIXINS = {Mixin_Schema, Mixin_MD5, Mixin_NormalizeValue, Mixin_RandomSample}
 
     def explain_as_text(self, query: str) -> str:
         return f"EXPLAIN (FORMAT TEXT) {query}"

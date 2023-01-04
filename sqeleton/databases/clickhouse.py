@@ -8,6 +8,7 @@ from .base import (
     ThreadedDatabase,
     import_helper,
     ConnectError,
+    Mixin_RandomSample,
 )
 from ..abcs.database_types import (
     ColType,
@@ -122,6 +123,7 @@ class Dialect(BaseDialect):
         "DateTime": Timestamp,
         "DateTime64": Timestamp,
     }
+    MIXINS = {Mixin_MD5, Mixin_NormalizeValue, Mixin_RandomSample}
 
     def quote(self, s: str) -> str:
         return f'"{s}"'

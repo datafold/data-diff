@@ -4,8 +4,9 @@ import unittest
 from sqeleton.abcs import AbstractDatabase, AbstractDialect
 from sqeleton.utils import CaseInsensitiveDict, CaseSensitiveDict
 
-from sqeleton.queries import this, table, Compiler, outerjoin, cte, when, coalesce
+from sqeleton.queries import this, table, Compiler, outerjoin, cte, when, coalesce, CompileError
 from sqeleton.queries.ast_classes import Random
+from sqeleton import code, this, table
 
 
 def normalize_spaces(s: str):
@@ -48,6 +49,9 @@ class MockDialect(AbstractDialect):
 
     def set_timezone_to_utc(self) -> str:
         return "set timezone 'UTC'"
+
+    def load_mixins(self):
+        raise NotImplementedError()
 
     parse_type = NotImplemented
 
@@ -95,7 +99,6 @@ class TestQuery(unittest.TestCase):
         self.assertEqual(
             c.compile(j), "SELECT * FROM a tmp1 FULL OUTER JOIN b tmp2 ON (tmp1.x = tmp2.x) AND (tmp1.y = tmp2.y)"
         )
-
 
     def test_schema(self):
         c = Compiler(MockDatabase())
@@ -220,35 +223,73 @@ class TestQuery(unittest.TestCase):
         c = Compiler(MockDatabase())
         t = table("a")
 
-        q = c.compile(t.group_by(keys=[this.b], values=[this.c]))
+        q = c.compile(t.group_by(this.b).agg(this.c))
         self.assertEqual(q, "SELECT b, c FROM a GROUP BY 1")
 
-        q = c.compile(t.where(this.b > 1).group_by(keys=[this.b], values=[this.c]))
+        q = c.compile(t.where(this.b > 1).group_by(this.b).agg(this.c))
         self.assertEqual(q, "SELECT b, c FROM a WHERE (b > 1) GROUP BY 1")
 
-        q = c.compile(t.select(this.b).group_by(keys=[this.b], values=[]))
+        self.assertRaises(CompileError, c.compile, t.select(this.b).group_by(this.b))
+
+        q = c.compile(t.select(this.b).group_by(this.b).agg())
         self.assertEqual(q, "SELECT b FROM (SELECT b FROM a) tmp1 GROUP BY 1")
 
+        q = c.compile(t.group_by(this.b, this.c).agg(this.d, this.e))
+        self.assertEqual(q, "SELECT b, c, d, e FROM a GROUP BY 1, 2")
+
         # Having
-        q = c.compile(t.group_by(keys=[this.b], values=[this.c]).having(this.b > 1))
+        q = c.compile(t.group_by(this.b).agg(this.c).having(this.b > 1))
         self.assertEqual(q, "SELECT b, c FROM a GROUP BY 1 HAVING (b > 1)")
 
-        q = c.compile(t.select(this.b).group_by(keys=[this.b], values=[]).having(this.b > 1))
+        q = c.compile(t.group_by(this.b).having(this.b > 1).agg(this.c))
+        self.assertEqual(q, "SELECT b, c FROM a GROUP BY 1 HAVING (b > 1)")
+
+        q = c.compile(t.select(this.b).group_by(this.b).agg().having(this.b > 1))
         self.assertEqual(q, "SELECT b FROM (SELECT b FROM a) tmp2 GROUP BY 1 HAVING (b > 1)")
 
         # Having sum
-        q = c.compile(t.group_by(keys=[this.b], values=[this.c]).having(this.b.sum() > 1))
-        self.assertEqual(q, "SELECT b, c FROM a GROUP BY 1 HAVING (SUM(b) > 1)")
+        q = c.compile(t.group_by(this.b).agg(this.c, this.d).having(this.b.sum() > 1))
+        self.assertEqual(q, "SELECT b, c, d FROM a GROUP BY 1 HAVING (SUM(b) > 1)")
+
+        # Select interaction
+        q = c.compile(t.select(this.a).group_by(this.b).agg(this.c).select(this.c + 1))
+        self.assertEqual(q, "SELECT (c + 1) FROM (SELECT b, c FROM (SELECT a FROM a) tmp3 GROUP BY 1) tmp4")
 
     def test_case_when(self):
         c = Compiler(MockDatabase())
         t = table("a")
-
-        z = when(this.b).then(this.c)
-        y = t.select(z)
 
         q = c.compile(t.select(when(this.b).then(this.c)))
         self.assertEqual(q, "SELECT CASE WHEN b THEN c END FROM a")
 
         q = c.compile(t.select(when(this.b).then(this.c).else_(this.d)))
         self.assertEqual(q, "SELECT CASE WHEN b THEN c ELSE d END FROM a")
+
+        q = c.compile(
+            t.select(
+                when(this.type == "text")
+                .then(this.text)
+                .when(this.type == "number")
+                .then(this.number)
+                .else_("unknown type")
+            )
+        )
+        self.assertEqual(
+            q,
+            "SELECT CASE WHEN (type = 'text') THEN text WHEN (type = 'number') THEN number ELSE 'unknown type' END FROM a",
+        )
+
+    def test_code(self):
+        c = Compiler(MockDatabase())
+        t = table("a")
+
+        q = c.compile(t.select(this.b, code("<x>")).where(code("<y>")))
+        self.assertEqual(q, "SELECT b, <x> FROM a WHERE <y>")
+
+        def tablesample(t, size):
+            return code("{t} TABLESAMPLE BERNOULLI ({size})", t=t, size=size)
+
+        nonzero = table("points").where(this.x > 0, this.y > 0)
+
+        q = c.compile(tablesample(nonzero, 10))
+        self.assertEqual(q, "SELECT * FROM points WHERE (x > 0) AND (y > 0) TABLESAMPLE BERNOULLI (10)")

@@ -11,11 +11,16 @@ from ..abcs.database_types import (
     TemporalType,
     Boolean,
 )
-from ..abcs.mixins import AbstractMixin_MD5, AbstractMixin_NormalizeValue, AbstractMixin_Schema
+from ..abcs.mixins import (
+    AbstractMixin_MD5,
+    AbstractMixin_NormalizeValue,
+    AbstractMixin_Schema,
+    AbstractMixin_TimeTravel,
+)
 from ..abcs import Compilable
-from ..queries import this, table, SKIP
+from ..queries import this, table, SKIP, code
 from .base import BaseDialect, Database, import_helper, parse_table_name, ConnectError, apply_query
-from .base import TIMESTAMP_PRECISION_POS, ThreadLocalInterpreter
+from .base import TIMESTAMP_PRECISION_POS, ThreadLocalInterpreter, Mixin_RandomSample
 
 
 @import_helper(text="Please install BigQuery and configure your google-cloud access.")
@@ -66,6 +71,33 @@ class Mixin_Schema(AbstractMixin_Schema):
         )
 
 
+class Mixin_TimeTravel(AbstractMixin_TimeTravel):
+    def time_travel(
+        self,
+        table: Compilable,
+        before: bool = False,
+        timestamp: Compilable = None,
+        offset: Compilable = None,
+        statement: Compilable = None,
+    ) -> Compilable:
+        if before:
+            raise NotImplementedError("before=True not supported for BigQuery time-travel")
+
+        if statement is not None:
+            raise NotImplementedError("BigQuery time-travel doesn't support querying by statement id")
+
+        if timestamp is not None:
+            assert offset is None
+            return code("{table} FOR SYSTEM_TIME AS OF {timestamp}", table=table, timestamp=timestamp)
+
+        assert offset is not None
+        return code(
+            "{table} FOR SYSTEM_TIME AS OF TIMESTAMP_SUB(CURRENT_TIMESTAMP(), INTERVAL {offset} HOUR);",
+            table=table,
+            offset=offset,
+        )
+
+
 class Dialect(BaseDialect, Mixin_Schema):
     name = "BigQuery"
     ROUNDS_ON_PREC_LOSS = False  # Technically BigQuery doesn't allow implicit rounding or truncation
@@ -85,6 +117,7 @@ class Dialect(BaseDialect, Mixin_Schema):
         # Boolean
         "BOOL": Boolean,
     }
+    MIXINS = {Mixin_Schema, Mixin_MD5, Mixin_NormalizeValue, Mixin_TimeTravel, Mixin_RandomSample}
 
     def random(self) -> str:
         return "RAND()"

@@ -12,7 +12,7 @@ class _SKIP:
 SKIP = _SKIP()
 
 
-class CompileError(Exception):
+class SqeletonError(Exception):
     pass
 
 

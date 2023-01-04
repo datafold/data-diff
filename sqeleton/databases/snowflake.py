@@ -12,10 +12,23 @@ from ..abcs.database_types import (
     DbPath,
     Boolean,
 )
-from ..abcs.mixins import AbstractMixin_MD5, AbstractMixin_NormalizeValue, AbstractMixin_Schema
+from ..abcs.mixins import (
+    AbstractMixin_MD5,
+    AbstractMixin_NormalizeValue,
+    AbstractMixin_Schema,
+    AbstractMixin_TimeTravel,
+)
 from ..abcs import Compilable
-from sqeleton.queries import table, this, SKIP
-from .base import BaseDialect, ConnectError, Database, import_helper, CHECKSUM_MASK, ThreadLocalInterpreter
+from sqeleton.queries import table, this, SKIP, code
+from .base import (
+    BaseDialect,
+    ConnectError,
+    Database,
+    import_helper,
+    CHECKSUM_MASK,
+    ThreadLocalInterpreter,
+    Mixin_RandomSample,
+)
 
 
 @import_helper("snowflake")
@@ -64,6 +77,32 @@ class Mixin_Schema(AbstractMixin_Schema):
         )
 
 
+class Mixin_TimeTravel(AbstractMixin_TimeTravel):
+    def time_travel(
+        self,
+        table: Compilable,
+        before: bool = False,
+        timestamp: Compilable = None,
+        offset: Compilable = None,
+        statement: Compilable = None,
+    ) -> Compilable:
+        at_or_before = "AT" if before else "BEFORE"
+        if timestamp is not None:
+            assert offset is None and statement is None
+            key = "timestamp"
+            value = timestamp
+        elif offset is not None:
+            assert statement is None
+            key = "offset"
+            value = offset
+        else:
+            assert statement is not None
+            key = "statement"
+            value = statement
+
+        return code(f"{{table}} {at_or_before}({key} => {{value}})", table=table, value=value)
+
+
 class Dialect(BaseDialect, Mixin_Schema):
     name = "Snowflake"
     ROUNDS_ON_PREC_LOSS = False
@@ -80,6 +119,7 @@ class Dialect(BaseDialect, Mixin_Schema):
         # Boolean
         "BOOLEAN": Boolean,
     }
+    MIXINS = {Mixin_Schema, Mixin_MD5, Mixin_NormalizeValue, Mixin_TimeTravel, Mixin_RandomSample}
 
     def explain_as_text(self, query: str) -> str:
         return f"EXPLAIN USING TEXT {query}"
@@ -144,7 +184,7 @@ class Snowflake(Database):
     def select_table_schema(self, path: DbPath) -> str:
         """Provide SQL for selecting the table schema as (name, type, date_prec, num_prec)"""
         database, schema, name = self._normalize_table_path(path)
-        info_schema_path = ['information_schema','columns']
+        info_schema_path = ["information_schema", "columns"]
         if database:
             info_schema_path.insert(0, database)
 

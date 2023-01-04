@@ -12,6 +12,10 @@ import contextvars
 cv_params = contextvars.ContextVar("params")
 
 
+class CompileError(Exception):
+    pass
+
+
 class Root:
     "Nodes inheriting from Root can be used as root statements in SQL (e.g. SELECT yes, RANDOM() no)"
 
@@ -56,7 +60,7 @@ class Compiler(AbstractCompiler):
             return elem.compile(self.replace(root=False))
         elif isinstance(elem, str):
             return f"'{elem}'"
-        elif isinstance(elem, int):
+        elif isinstance(elem, (int, float)):
             return str(elem)
         elif isinstance(elem, datetime):
             return self.dialect.timestamp_value(elem)

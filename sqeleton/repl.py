@@ -32,7 +32,10 @@ def repl(uri):
     db_name = db.name
 
     while True:
-        q = input(f"{db_name}> ").strip()
+        try:
+            q = input(f"{db_name}> ").strip()
+        except EOFError:
+            return
         if not q:
             continue
         if q.startswith("*"):
@@ -59,9 +62,11 @@ def repl(uri):
                 if res:
                     print_table(res, [str(i) for i in range(len(res[0]))], q)
 
+
 def main():
     uri = sys.argv[1]
     return repl(uri)
+
 
 if __name__ == "__main__":
     main()

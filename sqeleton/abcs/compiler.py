@@ -9,6 +9,7 @@ class AbstractCompiler(ABC):
 
 
 class Compilable(ABC):
+    # TODO generic syntax, so we can write Compilable[T] for expressions returning a value of type T
     @abstractmethod
     def compile(self, c: AbstractCompiler) -> str:
         ...

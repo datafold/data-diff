@@ -162,4 +162,3 @@ def test_each_database_in_list(databases) -> Callable:
         return _parameterized_class_per_conn(databases)(cls)
 
     return _test_per_database
-

@@ -1,4 +1,4 @@
-from .compiler import Compiler
+from .compiler import Compiler, CompileError
 from .api import (
     this,
     join,
@@ -19,6 +19,7 @@ from .api import (
     leftjoin,
     rightjoin,
     current_timestamp,
+    code,
 )
 from .ast_classes import Expr, ExprNode, Select, Count, BinOp, Explain, In, Code, Column
 from .extras import Checksum, NormalizeAsString, ApplyFuncAndNormalizeAsString

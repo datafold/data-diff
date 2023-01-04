@@ -3,7 +3,11 @@ from .database_types import TemporalType, FractionalType, ColType_UUID, Boolean,
 from .compiler import Compilable
 
 
-class AbstractMixin_NormalizeValue(ABC):
+class AbstractMixin(ABC):
+    "A mixin for a database dialect"
+
+
+class AbstractMixin_NormalizeValue(AbstractMixin):
     @abstractmethod
     def normalize_timestamp(self, value: str, coltype: TemporalType) -> str:
         """Creates an SQL expression, that converts 'value' to a normalized timestamp.
@@ -72,7 +76,7 @@ class AbstractMixin_NormalizeValue(ABC):
         return self.to_string(value)
 
 
-class AbstractMixin_MD5(ABC):
+class AbstractMixin_MD5(AbstractMixin):
     """Methods for calculating an MD6 hash as an integer."""
 
     @abstractmethod
@@ -80,7 +84,7 @@ class AbstractMixin_MD5(ABC):
         "Provide SQL for computing md5 and returning an int"
 
 
-class AbstractMixin_Schema(ABC):
+class AbstractMixin_Schema(AbstractMixin):
     """Methods for querying the database schema
 
     TODO: Move AbstractDatabase.query_table_schema() and friends over here
@@ -95,4 +99,49 @@ class AbstractMixin_Schema(ABC):
         """Query to select the list of tables in the schema. (query return type: table[str])
 
         If 'like' is specified, the value is applied to the table name, using the 'like' operator.
+        """
+
+
+class AbstractMixin_Regex(AbstractMixin):
+    @abstractmethod
+    def test_regex(self, string: Compilable, pattern: Compilable) -> Compilable:
+        """Tests whether the regex pattern matches the string. Returns a bool expression."""
+
+
+class AbstractMixin_RandomSample(AbstractMixin):
+    @abstractmethod
+    def random_sample_n(self, tbl: str, size: int) -> str:
+        """Take a random sample of the given size, i.e. return 'size' amount of rows"""
+
+    @abstractmethod
+    def random_sample_ratio_approx(self, tbl: str, ratio: float) -> str:
+        """Take a random sample of the approximate size determined by the ratio (0..1), where 0 means no rows, and 1 means all rows
+
+        i.e. the actual mount of rows returned may vary by standard deviation.
+        """
+
+    # def random_sample_ratio(self, table: AbstractTable, ratio: float):
+    #     """Take a random sample of the size determined by the ratio (0..1), where 0 means no rows, and 1 means all rows
+    #     """
+
+
+class AbstractMixin_TimeTravel(AbstractMixin):
+    @abstractmethod
+    def time_travel(
+        self,
+        table: Compilable,
+        before: bool = False,
+        timestamp: Compilable = None,
+        offset: Compilable = None,
+        statement: Compilable = None,
+    ) -> Compilable:
+        """Selects historical data from a table
+
+        Parameters:
+            table - The name of the table whose history we're querying
+            timestamp - A constant timestamp
+            offset - the time 'offset' seconds before now
+            statement - identifier for statement, e.g. query ID
+
+        Must specify exactly one of `timestamp`, `offset` or `statement`.
         """

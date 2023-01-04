@@ -14,8 +14,14 @@ from ..abcs.database_types import (
     Text,
     FractionalType,
     Boolean,
+    AbstractTable,
 )
-from ..abcs.mixins import AbstractMixin_MD5, AbstractMixin_NormalizeValue
+from ..abcs.mixins import (
+    AbstractMixin_MD5,
+    AbstractMixin_NormalizeValue,
+    AbstractMixin_RandomSample,
+    AbstractMixin_Regex,
+)
 from .base import (
     Database,
     BaseDialect,
@@ -25,6 +31,8 @@ from .base import (
     TIMESTAMP_PRECISION_POS,
 )
 from .base import MD5_HEXDIGITS, CHECKSUM_HEXDIGITS, Mixin_Schema
+from ..queries.ast_classes import Func, Compilable
+from ..queries.api import code
 
 
 @import_helper("duckdb")
@@ -54,11 +62,25 @@ class Mixin_NormalizeValue(AbstractMixin_NormalizeValue):
         return self.to_string(f"{value}::INTEGER")
 
 
+class Mixin_RandomSample(AbstractMixin_RandomSample):
+    def random_sample_n(self, tbl: AbstractTable, size: int) -> AbstractTable:
+        return code("SELECT * FROM ({tbl}) USING SAMPLE {size};", tbl=tbl, size=size)
+
+    def random_sample_ratio_approx(self, tbl: AbstractTable, ratio: float) -> AbstractTable:
+        return code("SELECT * FROM ({tbl}) USING SAMPLE {percent}%;", tbl=tbl, percent=int(100 * ratio))
+
+
+class Mixin_Regex(AbstractMixin_Regex):
+    def test_regex(self, string: Compilable, pattern: Compilable) -> Compilable:
+        return Func("regexp_matches", [string, pattern])
+
+
 class Dialect(BaseDialect, Mixin_Schema):
     name = "DuckDB"
     ROUNDS_ON_PREC_LOSS = False
     SUPPORTS_PRIMARY_KEY = True
     SUPPORTS_INDEXES = True
+    MIXINS = {Mixin_Schema, Mixin_MD5, Mixin_NormalizeValue, Mixin_RandomSample}
 
     TYPE_CLASSES = {
         # Timestamps

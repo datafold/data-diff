@@ -1,12 +1,18 @@
-from typing import Iterable, Iterator, MutableMapping, Union, Any, Sequence, Dict, Hashable, TypeVar
+from typing import Iterable, Iterator, MutableMapping, Union, Any, Sequence, Dict, Hashable, TypeVar, TYPE_CHECKING
 from abc import abstractmethod
 from weakref import ref
 import math
 import string
 import re
 from uuid import UUID
+from urllib.parse import urlparse
 
 # -- Common --
+
+try:
+    from typing import Self
+except ImportError:
+    Self = Any
 
 
 class WeakCache:
@@ -76,6 +82,9 @@ class CaseAwareMapping(MutableMapping[str, V]):
     @abstractmethod
     def get_key(self, key: str) -> str:
         ...
+
+    def new(self, initial=()):
+        return type(self)(initial)
 
 
 class CaseInsensitiveDict(CaseAwareMapping):
@@ -261,3 +270,38 @@ def split_space(start, end, count):
     size = end - start
     assert count <= size, (count, size)
     return list(range(start, end, (size + 1) // (count + 1)))[1 : count + 1]
+
+
+def remove_passwords_in_dict(d: dict, replace_with: str = "***"):
+    for k, v in d.items():
+        if k == "password":
+            d[k] = replace_with
+        elif isinstance(v, dict):
+            remove_passwords_in_dict(v, replace_with)
+        elif k.startswith("database"):
+            d[k] = remove_password_from_url(v, replace_with)
+
+
+def _join_if_any(sym, args):
+    args = list(args)
+    if not args:
+        return ""
+    return sym.join(str(a) for a in args if a)
+
+
+def remove_password_from_url(url: str, replace_with: str = "***") -> str:
+    parsed = urlparse(url)
+    account = parsed.username or ""
+    if parsed.password:
+        account += ":" + replace_with
+    host = _join_if_any(":", filter(None, [parsed.hostname, parsed.port]))
+    netloc = _join_if_any("@", filter(None, [account, host]))
+    replaced = parsed._replace(netloc=netloc)
+    return replaced.geturl()
+
+
+def match_like(pattern: str, strs: Sequence[str]) -> Iterable[str]:
+    reo = re.compile(pattern.replace("%", ".*").replace("?", ".") + "$")
+    for s in strs:
+        if reo.match(s):
+            yield s

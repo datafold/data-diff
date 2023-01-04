@@ -34,6 +34,7 @@ class TestDatabase(unittest.TestCase):
     def test_connect_to_db(self):
         self.assertEqual(1, self.mysql.query("SELECT 1", int))
 
+
 class TestMD5(unittest.TestCase):
     def test_md5_as_int(self):
         class MD5Dialect(dbs.mysql.Dialect, dbs.mysql.Mixin_MD5):

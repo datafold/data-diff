@@ -2,7 +2,7 @@ from datetime import datetime
 import math
 import sys
 import logging
-from typing import Any, Callable, Dict, Generator, Tuple, Optional, Sequence, Type, List, Union
+from typing import Any, Callable, Dict, Generator, Tuple, Optional, Sequence, Type, List, Union, TypeVar, TYPE_CHECKING
 from functools import partial, wraps
 from concurrent.futures import ThreadPoolExecutor
 import threading
@@ -10,11 +10,14 @@ from abc import abstractmethod
 from uuid import UUID
 import decimal
 
-from ..utils import is_uuid, safezip
+from ..utils import is_uuid, safezip, Self
 from ..queries import Expr, Compiler, table, Select, SKIP, Explain, Code, this
+from ..queries.ast_classes import Random
 from ..abcs.database_types import (
     AbstractDatabase,
+    T_Dialect,
     AbstractDialect,
+    AbstractTable,
     ColType,
     Integer,
     Decimal,
@@ -31,7 +34,8 @@ from ..abcs.database_types import (
     Boolean,
 )
 from ..abcs.mixins import Compilable
-from ..abcs.mixins import AbstractMixin_Schema
+from ..abcs.mixins import AbstractMixin_Schema, AbstractMixin_RandomSample, AbstractMixin_NormalizeValue
+from ..bound_exprs import bound_table
 
 logger = logging.getLogger("database")
 
@@ -119,10 +123,20 @@ class Mixin_Schema(AbstractMixin_Schema):
         )
 
 
+class Mixin_RandomSample(AbstractMixin_RandomSample):
+    def random_sample_n(self, tbl: AbstractTable, size: int) -> AbstractTable:
+        # TODO use a more efficient algorithm, when the table count is known
+        return tbl.order_by(Random()).limit(size)
+
+    def random_sample_ratio_approx(self, tbl: AbstractTable, ratio: float) -> AbstractTable:
+        return tbl.where(Random() < ratio)
+
+
 class BaseDialect(AbstractDialect):
     SUPPORTS_PRIMARY_KEY = False
     SUPPORTS_INDEXES = False
     TYPE_CLASSES: Dict[str, type] = {}
+    MIXINS = frozenset()
 
     PLACEHOLDER_TABLE = None  # Used for Oracle
 
@@ -237,8 +251,21 @@ class BaseDialect(AbstractDialect):
         # See: https://en.wikipedia.org/wiki/Single-precision_floating-point_format
         return math.floor(math.log(2**p, 10))
 
+    @classmethod
+    def load_mixins(cls, *abstract_mixins) -> "Self":
+        mixins = {m for m in cls.MIXINS if issubclass(m, abstract_mixins)}
 
-class Database(AbstractDatabase):
+        class _DialectWithMixins(cls, *mixins, *abstract_mixins):
+            pass
+
+        _DialectWithMixins.__name__ = cls.__name__
+        return _DialectWithMixins()
+
+
+T = TypeVar("T", bound=BaseDialect)
+
+
+class Database(AbstractDatabase[T]):
     """Base abstract class for databases.
 
     Used for providing connection code and implementation specific SQL utilities.
@@ -259,7 +286,7 @@ class Database(AbstractDatabase):
     def name(self):
         return type(self).__name__
 
-    def query(self, sql_ast: Union[Expr, Generator], res_type: type = list):
+    def query(self, sql_ast: Union[Expr, Generator], res_type: type = None):
         """Query the given SQL code/AST, and attempt to convert the result to type 'res_type'
 
         If given a generator, it will execute all the yielded sql queries with the same thread and cursor.
@@ -278,6 +305,8 @@ class Database(AbstractDatabase):
             if isinstance(sql_ast, str):
                 sql_code = sql_ast
             else:
+                if res_type is None:
+                    res_type = sql_ast.type
                 sql_code = compiler.compile(sql_ast)
                 if sql_code is SKIP:
                     return SKIP
@@ -362,13 +391,15 @@ class Database(AbstractDatabase):
         return list(res)
 
     def _process_table_schema(
-        self, path: DbPath, raw_schema: Dict[str, tuple], filter_columns: Sequence[str], where: str = None
+        self, path: DbPath, raw_schema: Dict[str, tuple], filter_columns: Sequence[str] = None, where: str = None
     ):
-        accept = {i.lower() for i in filter_columns}
+        if filter_columns is None:
+            filtered_schema = raw_schema
+        else:
+            accept = {i.lower() for i in filter_columns}
+            filtered_schema = {name: row for name, row in raw_schema.items() if name.lower() in accept}
 
-        col_dict = {
-            row[0]: self.dialect.parse_type(path, *row) for name, row in raw_schema.items() if name.lower() in accept
-        }
+        col_dict = {row[0]: self.dialect.parse_type(path, *row) for _name, row in filtered_schema.items()}
 
         self._refine_coltypes(path, col_dict, where)
 
@@ -385,7 +416,11 @@ class Database(AbstractDatabase):
         if not text_columns:
             return
 
-        fields = [Code(self.dialect.normalize_uuid(self.dialect.quote(c), String_UUID())) for c in text_columns]
+        if isinstance(self.dialect, AbstractMixin_NormalizeValue):
+            fields = [Code(self.dialect.normalize_uuid(self.dialect.quote(c), String_UUID())) for c in text_columns]
+        else:
+            fields = this[text_columns]
+
         samples_by_row = self.query(
             table(*table_path).select(*fields).where(Code(where) if where else SKIP).limit(sample_size), list
         )
@@ -452,6 +487,20 @@ class Database(AbstractDatabase):
     def close(self):
         self.is_closed = True
         return super().close()
+
+    def list_tables(self, tables_like, schema=None):
+        return self.query(self.dialect.list_tables(schema or self.default_schema, tables_like))
+
+    def table(self, *path, **kw):
+        return bound_table(self, path, **kw)
+
+    @classmethod
+    def load_mixins(cls, *abstract_mixins) -> type:
+        class _DatabaseWithMixins(cls):
+            dialect = cls.dialect.load_mixins(*abstract_mixins)
+
+        _DatabaseWithMixins.__name__ = cls.__name__
+        return _DatabaseWithMixins
 
 
 class ThreadedDatabase(Database):
