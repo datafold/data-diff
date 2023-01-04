@@ -111,12 +111,34 @@ def max_(expr: Expr):
 
 
 def if_(cond: Expr, then: Expr, else_: Optional[Expr] = None):
-    """Conditional expression, shortcut to when-then-else."""
+    """Conditional expression, shortcut to when-then-else.
+    
+    Example:
+        ::
+
+            # SELECT CASE WHEN b THEN c ELSE d END FROM foo
+            table('foo').select(if_(b, c, d))
+    """
     return when(cond).then(then).else_(else_)
 
 
 def when(*when_exprs: Expr):
-    """Start a when-then expression"""
+    """Start a when-then expression
+    
+    Example:
+        ::
+
+            # SELECT CASE
+            #   WHEN (type = 'text') THEN text
+            #   WHEN (type = 'number') THEN number
+            #   ELSE 'unknown type' END
+            # FROM foo
+            rows = table('foo').select(
+                    when(this.type == 'text').then(this.text)
+                    .when(this.type == 'number').then(this.number)
+                    .else_('unknown type')
+                )
+    """
     return CaseWhen([]).when(*when_exprs)
 
 
