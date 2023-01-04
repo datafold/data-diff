@@ -508,3 +508,32 @@ ddb: AbstractDatabase[NewAbstractDialect] = connect("duckdb://:memory:")
 ### Query params
 
 ### Query interpreter
+
+In addition to query expressions, `Database.query()` can accept a generator, which will behave as an "interpreter".
+
+The generater executes queries by yielding them.
+
+Using a query interpreter also guarantees that subsequent calls to `.query()` will run in the same session. That can be useful for using temporary tables, or session variables.
+
+Example:
+
+```python
+def sample_using_temp_table(db: Database, source_table: ITable, sample_size: int):
+    "This function creates a temporary table from a query and then samples rows from it"
+
+    results = []
+
+    def _sample_using_temp_table():
+        nonlocal results
+
+        yield code("CREATE TEMPORARY TABLE tmp1 AS {source_table}", source_table=source_table)
+
+        tbl = table('tmp1') 
+        try:
+            results += yield sample(tbl, sample_size)
+        finally:
+            yield tbl.drop()
+
+    db.query(_sample_using_temp_table())
+    return results
+```
