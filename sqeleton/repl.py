@@ -4,7 +4,6 @@ import logging
 # logging.basicConfig(level=logging.DEBUG)
 
 from . import connect
-from .queries import table
 
 import sys
 
@@ -54,13 +53,14 @@ def repl(uri):
             else:
                 print_table([(k, v[1]) for k, v in schema.items()], ["name", "type"], f"Table '{table_name}'")
         else:
+            # Normal SQL query
             try:
                 res = db.query(q)
             except Exception as e:
                 logging.error(e)
             else:
                 if res:
-                    print_table(res, [str(i) for i in range(len(res[0]))], q)
+                    print_table(res.rows, res.columns, None)
 
 
 def main():
