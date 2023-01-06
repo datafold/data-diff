@@ -505,6 +505,72 @@ ddb: AbstractDatabase[NewAbstractDialect] = connect("duckdb://:memory:")
 # ddb.dialect is now known to implement NewAbstractDialect.
 ```
 
+### Query interpreter
+
+In addition to query expressions, `Database.query()` can accept a generator, which will behave as an "interpreter".
+
+The generator executes queries by yielding them.
+
+Using a query interpreter also guarantees that subsequent calls to `.query()` will run in the same session. That can be useful for using temporary tables, or session variables.
+
+Example:
+
+```python
+def sample_using_temp_table(db: Database, source_table: ITable, sample_size: int):
+    "This function creates a temporary table from a query and then samples rows from it"
+
+    results = []
+
+    def _sample_using_temp_table():
+        nonlocal results
+
+        yield code("CREATE TEMPORARY TABLE tmp1 AS {source_table}", source_table=source_table)
+
+        tbl = table('tmp1') 
+        try:
+            results += yield sample(tbl, sample_size)
+        finally:
+            yield tbl.drop()
+
+    db.query(_sample_using_temp_table())
+    return results
+```
+
 ### Query params
 
-### Query interpreter
+TODO
+
+## Other features
+
+### SQL client
+
+Sqeleton comes with a simple built-in SQL client, in the form of a REPL, which accepts SQL commands, and a few special commands.
+
+It accepts any database URL that is supported by Sqeleton. That can be useful for querying databases that don't have established clients.
+
+You can call it using `sqeleton repl <url>`.
+
+Example:
+
+```bash
+# Start a REPL session
+$ sqeleton repl duckdb:///pii_test.ddb
+
+# Run SQL
+DuckDB> select (22::float / 7) as almost_pi
+┏━━━━━━━━━━━━━━━━━━━┓
+┃ almost_pi         ┃
+┡━━━━━━━━━━━━━━━━━━━┩
+│ 3.142857074737549 │
+└───────────────────┘
+       1 rows
+
+# Display help
+DuckDB> ?
+
+Commands:
+  ?mytable - shows schema of table 'mytable'
+  * - shows list of all tables
+  *pattern - shows list of all tables with name like pattern
+Otherwise, runs regular SQL query
+```

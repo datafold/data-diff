@@ -10,6 +10,8 @@ from abc import abstractmethod
 from uuid import UUID
 import decimal
 
+from runtype import dataclass
+
 from ..utils import is_uuid, safezip, Self
 from ..queries import Expr, Compiler, table, Select, SKIP, Explain, Code, this
 from ..queries.ast_classes import Random
@@ -265,6 +267,21 @@ class BaseDialect(AbstractDialect):
 T = TypeVar("T", bound=BaseDialect)
 
 
+@dataclass
+class QueryResult:
+    rows: list
+    columns: list = None
+
+    def __iter__(self):
+        return iter(self.rows)
+
+    def __len__(self):
+        return len(self.rows)
+
+    def __getitem__(self, i):
+        return self.rows[i]
+
+
 class Database(AbstractDatabase[T]):
     """Base abstract class for databases.
 
@@ -473,7 +490,8 @@ class Database(AbstractDatabase[T]):
         try:
             c.execute(sql_code)
             if sql_code.lower().startswith(("select", "explain", "show")):
-                return c.fetchall()
+                columns = [col[0] for col in c.description]
+                return QueryResult(c.fetchall(), columns)
         except Exception as _e:
             # logger.exception(e)
             # logger.error(f'Caused by SQL: {sql_code}')
@@ -519,7 +537,7 @@ class ThreadedDatabase(Database):
         assert not hasattr(self.thread_local, "conn")
         try:
             self.thread_local.conn = self.create_connection()
-        except ModuleNotFoundError as e:
+        except Exception as e:
             self._init_error = e
 
     def _query(self, sql_code: Union[str, ThreadLocalInterpreter]):

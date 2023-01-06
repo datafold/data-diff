@@ -152,7 +152,7 @@ class Dialect(BaseDialect, Mixin_Schema):
 
 class Vertica(ThreadedDatabase):
     dialect = Dialect()
-    CONNECT_URI_HELP = "vertica://<user>:<pass>@<host>/<database>"
+    CONNECT_URI_HELP = "vertica://<user>:<password>@<host>/<database>"
     CONNECT_URI_PARAMS = ["database?"]
 
     default_schema = "public"

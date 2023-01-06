@@ -51,6 +51,11 @@ Databases we support:
 - DuckDB >=0.6
 - SQLite (coming soon)
 
+
+### Documentation
+
+[Read the docs!](https://sqeleton.readthedocs.io)
+
 ### Basic usage
 
 ```python

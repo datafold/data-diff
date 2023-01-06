@@ -2,6 +2,7 @@ from typing import Type, Optional, Union, Dict
 from itertools import zip_longest
 from contextlib import suppress
 import dsnparse
+import toml
 
 from runtype import dataclass
 
@@ -136,6 +137,19 @@ class Connect:
         if len(dsn.schemes) > 1:
             raise NotImplementedError("No support for multiple schemes")
         (scheme,) = dsn.schemes
+
+        if scheme == "toml":
+            toml_path = dsn.path or dsn.host
+            database = dsn.fragment
+            if not database:
+                raise ValueError("Must specify a database name, e.g. 'toml://path#database'. ")
+            with open(toml_path) as f:
+                config = toml.load(f)
+            try:
+                conn_dict = config['database'][database]
+            except KeyError:
+                raise ValueError(f"Cannot find database config named '{database}'.")
+            return self.connect_with_dict(conn_dict, thread_count)
 
         try:
             matcher = self.match_uri_path[scheme]
