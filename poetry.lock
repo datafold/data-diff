@@ -503,7 +503,7 @@ secure-local-storage = ["keyring (!=16.1.0,<24.0.0)"]
 
 [[package]]
 name = "sqeleton"
-version = "0.0.2"
+version = "0.0.5"
 description = "Python library for querying SQL databases"
 category = "main"
 optional = false
@@ -524,6 +524,7 @@ postgresql = ["psycopg2"]
 presto = ["presto-python-client"]
 snowflake = ["cryptography", "snowflake-connector-python (>=2.7.2,<3.0.0)"]
 trino = ["trino (>=0.314.0,<0.315.0)"]
+tui = ["textual (>=0.9.1,<0.10.0)", "textual-select"]
 
 [[package]]
 name = "toml"
@@ -1212,8 +1213,8 @@ snowflake-connector-python = [
     {file = "snowflake_connector_python-2.9.0-cp39-cp39-win_amd64.whl", hash = "sha256:6994dca106e4fb2c26135e7d3d05fdbd927cee4e63f8d3f8167b43d5b3d2c9d3"},
 ]
 sqeleton = [
-    {file = "sqeleton-0.0.2-py3-none-any.whl", hash = "sha256:c2d1fb3b7fd3cc08c4e8730faf80ee54ca486b9c7532d481243b86a57a7de64e"},
-    {file = "sqeleton-0.0.2.tar.gz", hash = "sha256:801443619d99d14debe871a64d016faf552c3925c18b3a092f1f5b271bd3f64f"},
+    {file = "sqeleton-0.0.5-py3-none-any.whl", hash = "sha256:2d1b53632c2758b1317943a48f8c6e84833eb61515fccb3a8b5d6cce2d6647cd"},
+    {file = "sqeleton-0.0.5.tar.gz", hash = "sha256:049bd07dc4c20518e93f03acacc45103716ca9f499eea5ba4a78dc2abbb30b5e"},
 ]
 toml = [
     {file = "toml-0.10.2-py2.py3-none-any.whl", hash = "sha256:806143ae5bfb6a3c6e736a764057db0e6a0e05e338b5630894a5f779cabb4f9b"},
