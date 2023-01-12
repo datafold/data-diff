@@ -9,6 +9,7 @@ from ..abcs.database_types import (
     FractionalType,
     ColType_UUID,
     Boolean,
+    Date,
 )
 from ..abcs.mixins import (
     AbstractMixin_MD5,
