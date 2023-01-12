@@ -112,7 +112,7 @@ def max_(expr: Expr):
 
 def if_(cond: Expr, then: Expr, else_: Optional[Expr] = None):
     """Conditional expression, shortcut to when-then-else.
-    
+
     Example:
         ::
 
@@ -124,7 +124,7 @@ def if_(cond: Expr, then: Expr, else_: Optional[Expr] = None):
 
 def when(*when_exprs: Expr):
     """Start a when-then expression
-    
+
     Example:
         ::
 

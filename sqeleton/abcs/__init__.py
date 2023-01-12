@@ -9,5 +9,6 @@ from .database_types import (
     NumericType,
     PrecisionType,
     StringType,
+    Boolean,
 )
 from .compiler import AbstractCompiler, Compilable

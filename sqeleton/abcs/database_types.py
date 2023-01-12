@@ -24,7 +24,7 @@ class PrecisionType(ColType):
 
 
 class Boolean(ColType):
-    supported = True
+    precision = 0
 
 
 class TemporalType(PrecisionType):
@@ -41,6 +41,7 @@ class TimestampTZ(TemporalType):
 
 class Datetime(TemporalType):
     pass
+
 
 class Date(TemporalType):
     pass

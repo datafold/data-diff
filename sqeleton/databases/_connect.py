@@ -146,7 +146,7 @@ class Connect:
             with open(toml_path) as f:
                 config = toml.load(f)
             try:
-                conn_dict = config['database'][database]
+                conn_dict = config["database"][database]
             except KeyError:
                 raise ValueError(f"Cannot find database config named '{database}'.")
             return self.connect_with_dict(conn_dict, thread_count)
