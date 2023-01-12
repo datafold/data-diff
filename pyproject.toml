@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "sqeleton"
-version = "0.0.4"
+version = "0.0.5"
 description = "Python library for querying SQL databases"
 authors = ["Erez Shinan <erezshin@gmail.com>"]
 license = "MIT"
