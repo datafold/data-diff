@@ -42,6 +42,9 @@ class TimestampTZ(TemporalType):
 class Datetime(TemporalType):
     pass
 
+class Date(TemporalType):
+    pass
+
 
 @dataclass
 class NumericType(ColType):

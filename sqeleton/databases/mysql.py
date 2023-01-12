@@ -9,6 +9,7 @@ from ..abcs.database_types import (
     FractionalType,
     ColType_UUID,
     Boolean,
+    Date,
 )
 from ..abcs.mixins import (
     AbstractMixin_MD5,
@@ -62,17 +63,24 @@ class Dialect(BaseDialect, Mixin_Schema):
         # Dates
         "datetime": Datetime,
         "timestamp": Timestamp,
+        "date": Date,
         # Numbers
         "double": Float,
         "float": Float,
         "decimal": Decimal,
         "int": Integer,
         "bigint": Integer,
+        "smallint": Integer,
+        "tinyint": Integer,
         # Text
         "varchar": Text,
         "char": Text,
         "varbinary": Text,
         "binary": Text,
+        "text": Text,
+        "mediumtext": Text,
+        "longtext": Text,
+        "tinytext": Text,
         # Boolean
         "boolean": Boolean,
     }

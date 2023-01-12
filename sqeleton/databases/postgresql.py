@@ -9,6 +9,7 @@ from ..abcs.database_types import (
     Text,
     FractionalType,
     Boolean,
+    Date,
 )
 from ..abcs.mixins import AbstractMixin_MD5, AbstractMixin_NormalizeValue
 from .base import BaseDialect, ThreadedDatabase, import_helper, ConnectError, Mixin_Schema
@@ -60,6 +61,7 @@ class PostgresqlDialect(BaseDialect, Mixin_Schema):
         "timestamp with time zone": TimestampTZ,
         "timestamp without time zone": Timestamp,
         "timestamp": Timestamp,
+        "date": Date,
         # Numbers
         "double precision": Float,
         "real": Float,
