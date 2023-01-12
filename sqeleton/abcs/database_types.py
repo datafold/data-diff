@@ -97,11 +97,11 @@ class Native_UUID(ColType_UUID):
     pass
 
 
-class String_UUID(StringType, ColType_UUID):
+class String_UUID(ColType_UUID, StringType):
     pass
 
 
-class String_Alphanum(StringType, ColType_Alphanum):
+class String_Alphanum(ColType_Alphanum, StringType):
     @staticmethod
     def test_value(value: str) -> bool:
         try:
