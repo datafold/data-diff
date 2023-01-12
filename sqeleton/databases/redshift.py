@@ -55,7 +55,7 @@ class Dialect(PostgresqlDialect):
         return f"({joined_exprs})"
 
     def is_distinct_from(self, a: str, b: str) -> str:
-        return f"{a} IS NULL AND NOT {b} IS NULL OR {b} IS NULL OR {a}!={b}"
+        return f"({a} IS NULL != {b} IS NULL) OR ({a}!={b})"
 
 
 class Redshift(PostgreSQL):
