@@ -465,7 +465,7 @@ class Database(AbstractDatabase[T]):
                 alphanum_samples = [s for s in samples if String_Alphanum.test_value(s)]
                 if alphanum_samples:
                     if len(alphanum_samples) != len(samples):
-                        logger.warning(
+                        logger.debug(
                             f"Mixed Alphanum/Non-Alphanum values detected in column {'.'.join(table_path)}.{col_name}. It cannot be used as a key."
                         )
                     else:
