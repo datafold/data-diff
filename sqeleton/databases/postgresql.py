@@ -9,6 +9,7 @@ from ..abcs.database_types import (
     Text,
     FractionalType,
     Boolean,
+    Date,
 )
 from ..abcs.mixins import AbstractMixin_MD5, AbstractMixin_NormalizeValue
 from .base import BaseDialect, ThreadedDatabase, import_helper, ConnectError, Mixin_Schema
