@@ -104,7 +104,6 @@ class PostgreSQL(ThreadedDatabase):
     default_schema = "public"
 
     def __init__(self, *, thread_count, **kw):
-        print("###", kw)
         self._args = kw
 
         super().__init__(thread_count=thread_count)
