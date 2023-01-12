@@ -343,7 +343,9 @@ class Database(AbstractDatabase[T]):
                 sys.exit(1)
 
         res = self._query(sql_code)
-        if res_type is int:
+        if res_type is list:
+            return list(res)
+        elif res_type is int:
             if not res:
                 raise ValueError("Query returned 0 rows, expected 1")
             row = _one(res)
