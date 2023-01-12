@@ -20,6 +20,7 @@ from ..abcs.database_types import (
     TemporalType,
     Text,
     Timestamp,
+    Boolean,
 )
 from ..abcs.mixins import AbstractMixin_MD5, AbstractMixin_NormalizeValue
 
@@ -122,6 +123,7 @@ class Dialect(BaseDialect):
         "FixedString": Text,
         "DateTime": Timestamp,
         "DateTime64": Timestamp,
+        "Bool": Boolean,
     }
     MIXINS = {Mixin_MD5, Mixin_NormalizeValue, Mixin_RandomSample}
 
