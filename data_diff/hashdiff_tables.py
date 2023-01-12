@@ -7,7 +7,7 @@ from operator import attrgetter
 
 from runtype import dataclass
 
-from sqeleton.abcs import ColType_UUID, NumericType, PrecisionType, StringType
+from sqeleton.abcs import ColType_UUID, NumericType, PrecisionType, StringType, Boolean
 
 from .info_tree import InfoTree
 from .utils import safezip
@@ -94,8 +94,8 @@ class HashDiffer(TableDiffer):
                 table1._schema[c1] = col1.replace(precision=lowest.precision, rounds=lowest.rounds)
                 table2._schema[c2] = col2.replace(precision=lowest.precision, rounds=lowest.rounds)
 
-            elif isinstance(col1, NumericType):
-                if not isinstance(col2, NumericType):
+            elif isinstance(col1, (NumericType, Boolean)):
+                if not isinstance(col2, (NumericType, Boolean)):
                     raise TypeError(f"Incompatible types for column '{c1}':  {col1} <-> {col2}")
 
                 lowest = min(col1, col2, key=attrgetter("precision"))
@@ -103,8 +103,10 @@ class HashDiffer(TableDiffer):
                 if col1.precision != col2.precision:
                     logger.warning(f"Using reduced precision {lowest} for column '{c1}'. Types={col1}, {col2}")
 
-                table1._schema[c1] = col1.replace(precision=lowest.precision)
-                table2._schema[c2] = col2.replace(precision=lowest.precision)
+                if lowest.precision != col1.precision:
+                    table1._schema[c1] = col1.replace(precision=lowest.precision)
+                if lowest.precision != col2.precision:
+                    table2._schema[c2] = col2.replace(precision=lowest.precision)
 
             elif isinstance(col1, ColType_UUID):
                 if not isinstance(col2, ColType_UUID):

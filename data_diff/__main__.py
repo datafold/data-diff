@@ -35,6 +35,7 @@ COLOR_SCHEME = {
 
 set_entrypoint_name("CLI")
 
+
 def _remove_passwords_in_dict(d: dict):
     for k, v in d.items():
         if k == "password":
