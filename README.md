@@ -41,7 +41,7 @@ If a database is not on the list, we'd still love to support it. [Please open an
   <img alt="diff2" src="https://user-images.githubusercontent.com/1799931/196754998-a88c0a52-8751-443d-b052-26c03d99d9e5.png" />
 </p>
 
-### Diff Tables Within a Database (available in pre-release)
+### Diff Tables Within a Database
 #### Improve code reviews by identifying data problems you don't have tests for
 <p align="center">
   <a href=https://www.loom.com/share/682e4b7d74e84eb4824b983311f0a3b2 target="_blank">
@@ -108,7 +108,7 @@ data-diff \
   -w "event_timestamp < '2022-10-10'"
 ```
 
-#### Code Example: Diff Tables Within a Database (available in pre-release)
+#### Code Example: Diff Tables Within a Database
 
 Here's a code example from [the video](https://www.loom.com/share/682e4b7d74e84eb4824b983311f0a3b2), where we compare data between two Snowflake tables within one database.
 

@@ -43,13 +43,8 @@ it's recommended to surround them with quotes.
   - `-w`, `--where` - An additional 'where' expression to restrict the search space.
   - `--conf`, `--run` - Specify the run and configuration from a TOML file. (see below)
   - `--no-tracking` - data-diff sends home anonymous usage data. Use this to disable it.
-
-  **The following two options are not available when using the pre release In-DB feature:**
-
   - `--bisection-threshold` - Minimal size of segment to be split. Smaller segments will be downloaded and compared locally.
   - `--bisection-factor` - Segments per iteration. When set to 2, it performs binary search.
-
-**In-DB commands, available in pre release only:**
   - `-m`, `--materialize` - Materialize the diff results into a new table in the database.
                             If a table exists by that name, it will be replaced.
                             Use `%t` in the name to place a timestamp.
