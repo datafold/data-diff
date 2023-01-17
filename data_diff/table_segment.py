@@ -14,6 +14,19 @@ logger = logging.getLogger("table_segment")
 
 RECOMMENDED_CHECKSUM_DURATION = 20
 
+def split_key_space(min_key, max_key, count):
+    if max_key - min_key <= count:
+        count = 1
+
+    if isinstance(min_key, ArithString):
+        assert type(min_key) is type(max_key)
+        checkpoints = min_key.range(max_key, count)
+        assert all(min_key <= x <= max_key for x in checkpoints)
+        return checkpoints
+
+    return split_space(min_key, max_key, count)
+
+
 
 @dataclass
 class TableSegment:
@@ -117,17 +130,8 @@ class TableSegment:
     def choose_checkpoints(self, count: int) -> List[DbKey]:
         "Suggests a bunch of evenly-spaced checkpoints to split by (not including start, end)"
 
-        if self.max_key - self.min_key <= count:
-            count = 1
-
         assert self.is_bounded
-        if isinstance(self.min_key, ArithString):
-            assert type(self.min_key) is type(self.max_key)
-            checkpoints = self.min_key.range(self.max_key, count)
-            assert all(self.min_key <= x <= self.max_key for x in checkpoints)
-            return checkpoints
-
-        return split_space(self.min_key, self.max_key, count)
+        return split_key_space(self.min_key, self.max_key, count)
 
     def segment_by_checkpoints(self, checkpoints: List[DbKey]) -> List["TableSegment"]:
         "Split the current TableSegment to a bunch of smaller ones, separated by the given checkpoints"
