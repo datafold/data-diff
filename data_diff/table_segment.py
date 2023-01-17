@@ -67,8 +67,11 @@ class TableSegment:
                 f"Error: min_update expected to be smaller than max_update! ({self.min_update} >= {self.max_update})"
             )
 
+    def _where(self):
+        return f"({self.where})" if self.where else None
+
     def _with_raw_schema(self, raw_schema: dict) -> "TableSegment":
-        schema = self.database._process_table_schema(self.table_path, raw_schema, self.relevant_columns, self.where)
+        schema = self.database._process_table_schema(self.table_path, raw_schema, self.relevant_columns, self._where())
         return self.new(_schema=create_schema(self.database, self.table_path, schema, self.case_sensitive))
 
     def with_schema(self) -> "TableSegment":
@@ -100,7 +103,7 @@ class TableSegment:
 
     def make_select(self):
         return self.source_table.where(
-            *self._make_key_range(), *self._make_update_range(), Code(self.where) if self.where else SKIP
+            *self._make_key_range(), *self._make_update_range(), Code(self._where()) if self.where else SKIP
         )
 
     def get_values(self) -> list:

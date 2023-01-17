@@ -49,7 +49,7 @@ class TestApi(DiffTestCase):
 
         # test where
         diff_id = diff[0][1][0]
-        where = f"id != {diff_id}"
+        where = f"id != {diff_id} OR id = 90000000"
 
         t1 = connect_to_table(TEST_MYSQL_CONN_STRING, self.table_src_name, where=where)
         t2 = connect_to_table(TEST_MYSQL_CONN_STRING, self.table_dst_name, where=where)

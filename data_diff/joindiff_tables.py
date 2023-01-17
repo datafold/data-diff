@@ -253,7 +253,7 @@ class JoinDiffer(TableDiffer):
             q = t.select(*this[key_columns]).where(or_(this[k] == None for k in key_columns))
             nulls = ts.database.query(q, list)
             if nulls:
-                raise ValueError("NULL values in one or more primary keys")
+                raise ValueError(f"NULL values in one or more primary keys of {ts.table_path}")
 
     def _collect_stats(self, i, table_seg: TableSegment, info_tree: InfoTree):
         logger.debug(f"Collecting stats for table #{i}")
