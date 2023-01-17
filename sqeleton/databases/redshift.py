@@ -1,5 +1,14 @@
 from typing import List, Dict
-from ..abcs.database_types import Float, TemporalType, FractionalType, DbPath
+from ..abcs.database_types import (
+    Float,
+    TemporalType,
+    FractionalType,
+    DbPath,
+    RedShiftSuper,
+    ColType,
+    ColType_UUID,
+    Boolean
+)
 from ..abcs.mixins import AbstractMixin_MD5
 from .postgresql import (
     PostgreSQL,
@@ -40,6 +49,37 @@ class Mixin_NormalizeValue(Mixin_NormalizeValue):
     def normalize_number(self, value: str, coltype: FractionalType) -> str:
         return self.to_string(f"{value}::decimal(38,{coltype.precision})")
 
+    def normalize_super(self, value: str, _coltype: RedShiftSuper) -> str:
+        return f'nvl2({value}, json_serialize({value}), NULL)'  # only ::varchar causes redshift to return null
+
+    def normalize_value_by_type(self, value: str, coltype: ColType) -> str:
+        """Creates an SQL expression, that converts 'value' to a normalized representation.
+
+        The returned expression must accept any SQL value, and return a string.
+
+        The default implementation dispatches to a method according to `coltype`:
+
+        ::
+
+            TemporalType    -> normalize_timestamp()
+            FractionalType  -> normalize_number()
+            *else*          -> to_string()
+
+            (`Integer` falls in the *else* category)
+
+        """
+        if isinstance(coltype, TemporalType):
+            return self.normalize_timestamp(value, coltype)
+        elif isinstance(coltype, FractionalType):
+            return self.normalize_number(value, coltype)
+        elif isinstance(coltype, ColType_UUID):
+            return self.normalize_uuid(value, coltype)
+        elif isinstance(coltype, Boolean):
+            return self.normalize_boolean(value, coltype)
+        elif isinstance(coltype, RedShiftSuper):
+            return self.normalize_super(value, coltype)
+        return self.to_string(value)
+
 
 class Dialect(PostgresqlDialect):
     name = "Redshift"
@@ -47,6 +87,8 @@ class Dialect(PostgresqlDialect):
         **PostgresqlDialect.TYPE_CLASSES,
         "double": Float,
         "real": Float,
+        # JSON
+        "super": RedShiftSuper
     }
     SUPPORTS_INDEXES = False
 

@@ -134,6 +134,18 @@ class Text(StringType):
     supported = False
 
 
+class JSONType(ColType):
+    pass
+
+
+class RedShiftSuper(JSONType):
+    pass
+
+
+class PostgresqlJSON(JSONType):
+    pass
+
+
 @dataclass
 class Integer(NumericType, IKey):
     precision: int = 0

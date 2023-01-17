@@ -1,15 +1,18 @@
 from ..abcs.database_types import (
+    ColType,
     Timestamp,
     TimestampTZ,
     Float,
     Decimal,
     Integer,
     TemporalType,
+    ColType_UUID,
     Native_UUID,
     Text,
     FractionalType,
     Boolean,
     Date,
+    PostgresqlJSON
 )
 from ..abcs.mixins import AbstractMixin_MD5, AbstractMixin_NormalizeValue
 from .base import BaseDialect, ThreadedDatabase, import_helper, ConnectError, Mixin_Schema
@@ -48,6 +51,37 @@ class Mixin_NormalizeValue(AbstractMixin_NormalizeValue):
     def normalize_boolean(self, value: str, _coltype: Boolean) -> str:
         return self.to_string(f"{value}::int")
 
+    def normalize_json(self, value: str, _coltype: PostgresqlJSON) -> str:
+        return f"replace({value}::text, '\": \"', '\":\"')"  # minified json
+
+    def normalize_value_by_type(self, value: str, coltype: ColType) -> str:
+        """Creates an SQL expression, that converts 'value' to a normalized representation.
+
+        The returned expression must accept any SQL value, and return a string.
+
+        The default implementation dispatches to a method according to `coltype`:
+
+        ::
+
+            TemporalType    -> normalize_timestamp()
+            FractionalType  -> normalize_number()
+            *else*          -> to_string()
+
+            (`Integer` falls in the *else* category)
+
+        """
+        if isinstance(coltype, TemporalType):
+            return self.normalize_timestamp(value, coltype)
+        elif isinstance(coltype, FractionalType):
+            return self.normalize_number(value, coltype)
+        elif isinstance(coltype, ColType_UUID):
+            return self.normalize_uuid(value, coltype)
+        elif isinstance(coltype, Boolean):
+            return self.normalize_boolean(value, coltype)
+        elif isinstance(coltype, PostgresqlJSON):
+            return self.normalize_json(value, coltype)
+        return self.to_string(value)
+
 
 class PostgresqlDialect(BaseDialect, Mixin_Schema):
     name = "PostgreSQL"
@@ -74,6 +108,8 @@ class PostgresqlDialect(BaseDialect, Mixin_Schema):
         "character varying": Text,
         "varchar": Text,
         "text": Text,
+        # JSON
+        "json": PostgresqlJSON,
         # UUID
         "uuid": Native_UUID,
         # Boolean
