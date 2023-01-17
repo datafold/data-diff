@@ -14,17 +14,18 @@ logger = logging.getLogger("table_segment")
 
 RECOMMENDED_CHECKSUM_DURATION = 20
 
-def split_key_space(min_key, max_key, count):
+def split_key_space(min_key: DbKey, max_key: DbKey, count: int):
     if max_key - min_key <= count:
         count = 1
 
     if isinstance(min_key, ArithString):
         assert type(min_key) is type(max_key)
         checkpoints = min_key.range(max_key, count)
-        assert all(min_key <= x <= max_key for x in checkpoints)
-        return checkpoints
+    else:
+        checkpoints = split_space(min_key, max_key, count)
 
-    return split_space(min_key, max_key, count)
+    assert all(min_key < x < max_key for x in checkpoints)
+    return [min_key] + checkpoints + [max_key]
 
 
 
@@ -128,7 +129,7 @@ class TableSegment:
         return self.database.query(select, List[Tuple])
 
     def choose_checkpoints(self, count: int) -> List[DbKey]:
-        "Suggests a bunch of evenly-spaced checkpoints to split by (not including start, end)"
+        "Suggests a bunch of evenly-spaced checkpoints to split by, including start, end."
 
         assert self.is_bounded
         return split_key_space(self.min_key, self.max_key, count)
@@ -137,12 +138,10 @@ class TableSegment:
         "Split the current TableSegment to a bunch of smaller ones, separated by the given checkpoints"
 
         if self.min_key and self.max_key:
-            assert all(self.min_key <= c < self.max_key for c in checkpoints)
-        checkpoints.sort()
+            assert all(self.min_key <= c <= self.max_key for c in checkpoints)
 
         # Calculate sub-segments
-        positions = [self.min_key] + checkpoints + [self.max_key]
-        ranges = list(zip(positions[:-1], positions[1:]))
+        ranges = list(zip(checkpoints[:-1], checkpoints[1:]))
 
         # Create table segments
         tables = [self.new(min_key=s, max_key=e) for s, e in ranges]
