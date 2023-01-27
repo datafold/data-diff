@@ -64,7 +64,7 @@ class Redshift(PostgreSQL):
     CONNECT_URI_PARAMS = ["database?"]
 
     def select_table_schema(self, path: DbPath) -> str:
-        schema, table = self._normalize_table_path(path)
+        _, schema, table = self._normalize_table_path(path)
 
         return (
             "SELECT column_name, data_type, datetime_precision, numeric_precision, numeric_scale FROM information_schema.columns "
@@ -72,7 +72,7 @@ class Redshift(PostgreSQL):
         )
 
     def select_external_table_schema(self, path: DbPath) -> str:
-        schema, table = self._normalize_table_path(path)
+        _, schema, table = self._normalize_table_path(path)
 
         return f"""SELECT
                 columnname AS column_name
@@ -98,3 +98,15 @@ class Redshift(PostgreSQL):
             return super().query_table_schema(path)
         except RuntimeError:
             return self.query_external_table_schema(path)
+
+    def _normalize_table_path(self, path: DbPath) -> DbPath:
+        if len(path) == 1:
+            return None, self.default_schema, path[0]
+        elif len(path) == 2:
+            return None, path[0], path[1]
+        elif len(path) == 3:
+            return path
+
+        raise ValueError(
+            f"{self.name}: Bad table path for {self}: '{'.'.join(path)}'. Expected format: table, schema.table, or database.schema.table"
+        )
