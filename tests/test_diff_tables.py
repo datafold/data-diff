@@ -770,8 +770,8 @@ class TestDuplicateTables(DiffTestCase):
         self.assertEqual(diff, self.diffs)
 
 
+@test_each_database
 class TestCompoundKeySimple1(DiffTestCase):
-    db_cls = db.MySQL
     src_schema = {"id": int, "id2": int}
     dst_schema = {"id": int, "id2": int}
 
@@ -804,8 +804,8 @@ class TestCompoundKeySimple1(DiffTestCase):
         self.assertEqual(diff, expected)
 
 
+@test_each_database
 class TestCompoundKeySimple2(DiffTestCase):
-    db_cls = db.MySQL
     src_schema = {"id": int, "id2": int}
     dst_schema = {"id": int, "id2": int}
 
@@ -838,8 +838,42 @@ class TestCompoundKeySimple2(DiffTestCase):
         self.assertEqual(diff, expected)
 
 
+@test_each_database
+class TestCompoundKeySimple3(DiffTestCase):
+    src_schema = {"id": int, "id2": int}
+    dst_schema = {"id": int, "id2": int}
+
+    def test_negative_keys(self):
+        N = 1000
+        K = -N + 1
+        V1 = N + 1
+        V2 = -N * 1000 + 2
+
+        diffs = [(i, i + N) for i in range(N)]
+        self.connection.query(
+            [
+                self.src_table.insert_rows(diffs + [(K, V1)]),
+                self.dst_table.insert_rows(diffs + [(K, V2)]),
+                commit,
+            ]
+        )
+
+        expected = {("-", (str(K), str(V1))), ("+", (str(K), str(V2)))}
+        differ = HashDiffer()
+
+        a = TableSegment(self.connection, self.src_table.path, ("id",), extra_columns=("id2",))
+        b = TableSegment(self.connection, self.dst_table.path, ("id",), extra_columns=("id2",))
+        diff = set(differ.diff_tables(a, b))
+        self.assertEqual(diff, expected)
+
+        aa = TableSegment(self.connection, self.src_table.path, ("id", "id2"))
+        bb = TableSegment(self.connection, self.dst_table.path, ("id", "id2"))
+        diff = set(differ.diff_tables(aa, bb))
+        self.assertEqual(diff, expected)
+
+
+@test_each_database
 class TestCompoundKeyAlphanum(DiffTestCase):
-    db_cls = db.MySQL
     src_schema = {"id": str, "id2": int, "comment": str}
     dst_schema = {"id": str, "id2": int, "comment": str}
 
