@@ -243,13 +243,13 @@ class TableSegment:
             assert checksum, (count, checksum)
         return count or 0, int(checksum) if count else None
 
-    def query_key_range(self) -> Tuple[int, int]:
+    def query_key_range(self) -> Tuple[tuple, tuple]:
         """Query database for minimum and maximum key. This is used for setting the initial bounds."""
         # Normalizes the result (needed for UUIDs) after the min/max computation
         select = self.make_select().select(
             ApplyFuncAndNormalizeAsString(this[k], f) for k in self.key_columns for f in (min_, max_)
         )
-        result = self.database.query(select, tuple)
+        result = tuple(self.database.query(select, tuple))
 
         if any(i is None for i in result):
             raise ValueError("Table appears to be empty")

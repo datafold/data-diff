@@ -880,13 +880,14 @@ class TestCompoundKeyAlphanum(DiffTestCase):
     def setUp(self):
         super().setUp()
 
-        diffs = [(uuid.uuid1(i), str(i), str(i)) for i in range(100)]
+        rows = [(uuid.uuid1(i), i, str(i)) for i in range(100)]
+        rows2 = list(rows)
+        x = rows2[9]
+        rows2[9] = (x[0], 9000, x[2])
         self.connection.query(
             [
-                self.src_table.insert_rows(diffs),
-                commit,
-                self.dst_table.insert_expr(self.src_table),
-                code("UPDATE {tbl} SET id2 = 9000 WHERE id2 = 9", tbl=self.dst_table),
+                self.src_table.insert_rows(rows),
+                self.dst_table.insert_rows(rows2),
                 commit,
             ]
         )
