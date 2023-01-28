@@ -126,14 +126,14 @@ class DiffResultWrapper:
     def get_stats_string(self):
 
         diff_stats = self._get_stats()
-        string_output = ""
-        string_output += f"{diff_stats.table1_count} rows in table A\n"
-        string_output += f"{diff_stats.table2_count} rows in table B\n"
-        string_output += f"{diff_stats.diff_by_sign['-']} rows exclusive to table A (not present in B)\n"
-        string_output += f"{diff_stats.diff_by_sign['+']} rows exclusive to table B (not present in A)\n"
-        string_output += f"{diff_stats.diff_by_sign['!']} rows updated\n"
-        string_output += f"{diff_stats.unchanged} rows unchanged\n"
-        string_output += f"{100*diff_stats.diff_percent:.2f}% difference score\n"
+        string_output = "\n\t\t|\tTable A\t\t|\tTable B\n"
+        string_output += "------------------------------------------------------------\n"
+        string_output += f"Rows\t\t|\t{diff_stats.table1_count}\t\t|\t{diff_stats.table2_count}\n"
+        string_output += f"Exclusive PKs\t|\t{diff_stats.diff_by_sign['-']}\t\t|\t{diff_stats.diff_by_sign['+']}\n"
+        string_output += "------------------------------------------------------------\n\n"
+        string_output += f"Rows with value conflicts: {diff_stats.diff_by_sign['!']}\n"
+        string_output += f"Matching Rows: {diff_stats.unchanged}\n"
+        string_output += f"Difference Score: {100*diff_stats.diff_percent:.2f}%\n"
 
         if self.stats:
             string_output += "\nExtra-Info:\n"
