@@ -3,6 +3,8 @@
 
 import re
 import time
+import pandas as pd
+from tabulate import tabulate
 from abc import ABC, abstractmethod
 from enum import Enum
 from contextlib import contextmanager
@@ -100,11 +102,67 @@ class DiffResultWrapper:
             self.result_list.append(i)
             yield i
 
+        for sign, values in self.result_list:
+            store_extra_columns = self.info_tree.info.tables[0].extra_columns
+            if store_extra_columns != None:
+                break
+                
+        diff_output = self.result_list.copy()
+        additional_columns_to_diff = list(store_extra_columns)
+        primary_key = "org_id"
+
+        df_output = pd.DataFrame(diff_output, columns =['a', 'b'])
+        column_values = pd.DataFrame(df_output['b'].to_list(), columns = [primary_key] + additional_columns_to_diff)
+        all_columns_values_tall = pd.concat([df_output, column_values], axis=1).\
+        drop('b', axis=1)
+        all_columns_values_tall.loc[all_columns_values_tall['a'] == '-', 'a'] = 'Table A'
+        all_columns_values_tall.loc[all_columns_values_tall['a'] == '+', 'a'] = 'Table B'
+        all_columns_values_pivot = all_columns_values_tall.\
+            pivot(index=primary_key, columns='a',values=[primary_key] + additional_columns_to_diff)
+
+        all_columns = [primary_key] + additional_columns_to_diff
+        each_column_twice = [item for item in all_columns for _ in range(2)]
+        tuples = [(x, 'Table A' if idx % 2 == 0 else 'Table B') for idx, x in enumerate(each_column_twice)]
+        index = pd.MultiIndex.from_tuples(tuples, names=[None, "a"])
+        df_with_index = pd.DataFrame(columns=index)
+        all_columns_values_pivot_multiindex = pd.concat([df_with_index, all_columns_values_pivot])
+
+        all_columns_values_pivot_multiindex.columns = [': '.join(i) for i in all_columns_values_pivot_multiindex.columns]
+        matching_primary_key_rows = all_columns_values_pivot_multiindex.loc[all_columns_values_pivot_multiindex[primary_key+": Table A"] == \
+        all_columns_values_pivot_multiindex[primary_key+": Table B"]]
+
+        # Display missing primary keys
+        pks_missing_from_table_a = all_columns_values_pivot_multiindex[[primary_key+": Table A"]].isna().sum()[0]   
+        pks_missing_from_table_b = all_columns_values_pivot_multiindex[[primary_key+": Table B"]].isna().sum()[0]
+        primary_keys_df = pd.DataFrame([[pks_missing_from_table_a, pks_missing_from_table_b]], columns=['Primary Keys Missing from Table A', 'Primary Keys Missing from Table B'])
+        
+        #blankIndex=[''] * len(primary_keys_df)
+        #primary_keys_df.index=blankIndex
+        print(tabulate(primary_keys_df, headers='keys', tablefmt='psql', showindex=False))
+
+        # Display columns with conflicts
+        columns_with_conflicts = []
+        conflicts_df = pd.DataFrame(columns=['Column', 'Conflicting Rows'])
+        
+        for i in additional_columns_to_diff:
+            conflicts = (matching_primary_key_rows[i+": Table A"] != matching_primary_key_rows[i+": Table B"]) & \
+                (matching_primary_key_rows[i+": Table A"].notnull() | matching_primary_key_rows[i+": Table B"].notnull())
+            sum_conflicts = sum(conflicts)
+            conflicts_df.loc[len(conflicts_df.index)] = [i, sum_conflicts]
+            if sum(conflicts) > 0:
+                columns_with_conflicts += [i+": Table A", i+": Table B"]
+
+        # blankIndex=[''] * len(conflicts_df)
+        # conflicts_df.index=blankIndex
+        print(tabulate(conflicts_df, headers='keys', tablefmt='psql', showindex=False))
+
     def _get_stats(self) -> DiffStats:
         list(self)  # Consume the iterator into result_list, if we haven't already
 
         diff_by_key = {}
+
         for sign, values in self.result_list:
+           # print(self.info_tree.info.tables[0].extra_columns)
             k = values[: len(self.info_tree.info.tables[0].key_columns)]
             if k in diff_by_key:
                 assert sign != diff_by_key[k]
@@ -136,11 +194,12 @@ class DiffResultWrapper:
         string_output += f"Difference Score: {100*diff_stats.diff_percent:.2f}%\n"
 
         if self.stats:
-            string_output += "\nExtra-Info:\n"
             for k, v in sorted(self.stats.items()):
-                string_output += f"  {k} = {v}\n"
+                if type(v) is dict: # Only the value of diff_counts is dict, with one key per column.
+                    for column, diff_count in v.items():
+                        string_output += f"{column}\t{diff_count}\n" # Report the number of conflicts.
 
-        return string_output
+        return ""
 
     def get_stats_dict(self):
 
