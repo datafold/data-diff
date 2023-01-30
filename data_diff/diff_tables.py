@@ -102,11 +102,41 @@ class DiffResultWrapper:
             self.result_list.append(i)
             yield i
 
+    def _get_stats(self) -> DiffStats:
+        list(self)  # Consume the iterator into result_list, if we haven't already
+
+        diff_by_key = {}
+        for sign, values in self.result_list:
+            k = values[: len(self.info_tree.info.tables[0].key_columns)]
+            if k in diff_by_key:
+                assert sign != diff_by_key[k]
+                diff_by_key[k] = "!"
+            else:
+                diff_by_key[k] = sign
+
+        diff_by_sign = {k: 0 for k in "+-!"}
+        for sign in diff_by_key.values():
+            diff_by_sign[sign] += 1
+
+        table1_count = self.info_tree.info.rowcounts[1]
+        table2_count = self.info_tree.info.rowcounts[2]
+        unchanged = table1_count - diff_by_sign["-"] - diff_by_sign["!"]
+        diff_percent = 1 - unchanged / max(table1_count, table2_count)
+
+        return DiffStats(diff_by_sign, table1_count, table2_count, unchanged, diff_percent)
+
+    def get_stats_string(self):
+
+        diff_stats = self._get_stats()
+
+        # Convert result_list into human-readable pandas table.
+        string_output = ""
+
         for sign, values in self.result_list:
             store_extra_columns = self.info_tree.info.tables[0].extra_columns
             if store_extra_columns != None:
                 break
-                
+        
         diff_output = self.result_list.copy()
         additional_columns_to_diff = list(store_extra_columns)
         primary_key = "org_id"
@@ -138,7 +168,7 @@ class DiffResultWrapper:
         
         #blankIndex=[''] * len(primary_keys_df)
         #primary_keys_df.index=blankIndex
-        print(tabulate(primary_keys_df, headers='keys', tablefmt='psql', showindex=False))
+        string_output += tabulate(primary_keys_df, headers='keys', tablefmt='psql', showindex=False)
 
         # Display columns with conflicts
         columns_with_conflicts = []
@@ -151,56 +181,11 @@ class DiffResultWrapper:
             conflicts_df.loc[len(conflicts_df.index)] = [i, sum_conflicts]
             if sum(conflicts) > 0:
                 columns_with_conflicts += [i+": Table A", i+": Table B"]
+        
+        string_output += tabulate(conflicts_df, headers='keys', tablefmt='psql', showindex=False)
 
-        # blankIndex=[''] * len(conflicts_df)
-        # conflicts_df.index=blankIndex
-        print(tabulate(conflicts_df, headers='keys', tablefmt='psql', showindex=False))
-
-    def _get_stats(self) -> DiffStats:
-        list(self)  # Consume the iterator into result_list, if we haven't already
-
-        diff_by_key = {}
-
-        for sign, values in self.result_list:
-           # print(self.info_tree.info.tables[0].extra_columns)
-            k = values[: len(self.info_tree.info.tables[0].key_columns)]
-            if k in diff_by_key:
-                assert sign != diff_by_key[k]
-                diff_by_key[k] = "!"
-            else:
-                diff_by_key[k] = sign
-
-        diff_by_sign = {k: 0 for k in "+-!"}
-        for sign in diff_by_key.values():
-            diff_by_sign[sign] += 1
-
-        table1_count = self.info_tree.info.rowcounts[1]
-        table2_count = self.info_tree.info.rowcounts[2]
-        unchanged = table1_count - diff_by_sign["-"] - diff_by_sign["!"]
-        diff_percent = 1 - unchanged / max(table1_count, table2_count)
-
-        return DiffStats(diff_by_sign, table1_count, table2_count, unchanged, diff_percent)
-
-    def get_stats_string(self):
-
-        diff_stats = self._get_stats()
-        string_output = "\n\t\t|\tTable A\t\t|\tTable B\n"
-        string_output += "------------------------------------------------------------\n"
-        string_output += f"Rows\t\t|\t{diff_stats.table1_count}\t\t|\t{diff_stats.table2_count}\n"
-        string_output += f"Exclusive PKs\t|\t{diff_stats.diff_by_sign['-']}\t\t|\t{diff_stats.diff_by_sign['+']}\n"
-        string_output += "------------------------------------------------------------\n\n"
-        string_output += f"Rows with value conflicts: {diff_stats.diff_by_sign['!']}\n"
-        string_output += f"Matching Rows: {diff_stats.unchanged}\n"
-        string_output += f"Difference Score: {100*diff_stats.diff_percent:.2f}%\n"
-
-        if self.stats:
-            for k, v in sorted(self.stats.items()):
-                if type(v) is dict: # Only the value of diff_counts is dict, with one key per column.
-                    for column, diff_count in v.items():
-                        string_output += f"{column}\t{diff_count}\n" # Report the number of conflicts.
-
-        return ""
-
+        return string_output
+        
     def get_stats_dict(self):
 
         diff_stats = self._get_stats()
