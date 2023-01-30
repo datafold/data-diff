@@ -139,7 +139,7 @@ class DiffResultWrapper:
         
         diff_output = self.result_list.copy()
         additional_columns_to_diff = list(store_extra_columns)
-        primary_key = "org_id"
+        primary_key = self.info_tree.info.tables[0].key_columns[0]
 
         df_output = pd.DataFrame(diff_output, columns =['a', 'b'])
         column_values = pd.DataFrame(df_output['b'].to_list(), columns = [primary_key] + additional_columns_to_diff)
