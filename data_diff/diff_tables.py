@@ -130,7 +130,7 @@ class DiffResultWrapper:
         diff_stats = self._get_stats()
 
         # Convert result_list into human-readable pandas table.
-        string_output = ""
+        string_output = "\n\n"
 
         for sign, values in self.result_list:
             store_extra_columns = self.info_tree.info.tables[0].extra_columns
@@ -145,42 +145,44 @@ class DiffResultWrapper:
         column_values = pd.DataFrame(df_output['b'].to_list(), columns = [primary_key] + additional_columns_to_diff)
         all_columns_values_tall = pd.concat([df_output, column_values], axis=1).\
         drop('b', axis=1)
-        all_columns_values_tall.loc[all_columns_values_tall['a'] == '-', 'a'] = 'Table A'
-        all_columns_values_tall.loc[all_columns_values_tall['a'] == '+', 'a'] = 'Table B'
+        all_columns_values_tall.loc[all_columns_values_tall['a'] == '-', 'a'] = 'Prod'
+        all_columns_values_tall.loc[all_columns_values_tall['a'] == '+', 'a'] = 'Dev'
         all_columns_values_pivot = all_columns_values_tall.\
             pivot(index=primary_key, columns='a',values=[primary_key] + additional_columns_to_diff)
 
         all_columns = [primary_key] + additional_columns_to_diff
         each_column_twice = [item for item in all_columns for _ in range(2)]
-        tuples = [(x, 'Table A' if idx % 2 == 0 else 'Table B') for idx, x in enumerate(each_column_twice)]
+        tuples = [(x, 'Prod' if idx % 2 == 0 else 'Dev') for idx, x in enumerate(each_column_twice)]
         index = pd.MultiIndex.from_tuples(tuples, names=[None, "a"])
         df_with_index = pd.DataFrame(columns=index)
         all_columns_values_pivot_multiindex = pd.concat([df_with_index, all_columns_values_pivot])
 
         all_columns_values_pivot_multiindex.columns = [': '.join(i) for i in all_columns_values_pivot_multiindex.columns]
-        matching_primary_key_rows = all_columns_values_pivot_multiindex.loc[all_columns_values_pivot_multiindex[primary_key+": Table A"] == \
-        all_columns_values_pivot_multiindex[primary_key+": Table B"]]
+        matching_primary_key_rows = all_columns_values_pivot_multiindex.loc[all_columns_values_pivot_multiindex[primary_key+": Prod"] == \
+        all_columns_values_pivot_multiindex[primary_key+": Dev"]]
 
         # Display missing primary keys
-        pks_missing_from_table_a = all_columns_values_pivot_multiindex[[primary_key+": Table A"]].isna().sum()[0]   
-        pks_missing_from_table_b = all_columns_values_pivot_multiindex[[primary_key+": Table B"]].isna().sum()[0]
-        primary_keys_df = pd.DataFrame([[pks_missing_from_table_a, pks_missing_from_table_b]], columns=['Primary Keys Missing from Table A', 'Primary Keys Missing from Table B'])
+        pks_missing_from_table_a = all_columns_values_pivot_multiindex[[primary_key+": Prod"]].isna().sum()[0]   
+        pks_missing_from_table_b = all_columns_values_pivot_multiindex[[primary_key+": Dev"]].isna().sum()[0]
+        primary_keys_df = pd.DataFrame([[pks_missing_from_table_a, pks_missing_from_table_b]], columns=['Rows Added', 'Rows Removed'])
         
         #blankIndex=[''] * len(primary_keys_df)
         #primary_keys_df.index=blankIndex
+        
         string_output += tabulate(primary_keys_df, headers='keys', tablefmt='psql', showindex=False)
-
+        string_output += "\n\n"
+        
         # Display columns with conflicts
         columns_with_conflicts = []
         conflicts_df = pd.DataFrame(columns=['Column', 'Conflicting Rows'])
         
         for i in additional_columns_to_diff:
-            conflicts = (matching_primary_key_rows[i+": Table A"] != matching_primary_key_rows[i+": Table B"]) & \
-                (matching_primary_key_rows[i+": Table A"].notnull() | matching_primary_key_rows[i+": Table B"].notnull())
+            conflicts = (matching_primary_key_rows[i+": Prod"] != matching_primary_key_rows[i+": Dev"]) & \
+                (matching_primary_key_rows[i+": Prod"].notnull() | matching_primary_key_rows[i+": Dev"].notnull())
             sum_conflicts = sum(conflicts)
             conflicts_df.loc[len(conflicts_df.index)] = [i, sum_conflicts]
             if sum(conflicts) > 0:
-                columns_with_conflicts += [i+": Table A", i+": Table B"]
+                columns_with_conflicts += [i+": Prod", i+": Dev"]
         
         string_output += tabulate(conflicts_df, headers='keys', tablefmt='psql', showindex=False)
 
