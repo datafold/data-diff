@@ -64,15 +64,23 @@ class Redshift(PostgreSQL):
     CONNECT_URI_PARAMS = ["database?"]
 
     def select_table_schema(self, path: DbPath) -> str:
-        _, schema, table = self._normalize_table_path(path)
+        database, schema, table = self._normalize_table_path(path)
+
+        info_schema_path = ["information_schema", "columns"]
+        if database:
+            info_schema_path.insert(0, database)
 
         return (
-            "SELECT column_name, data_type, datetime_precision, numeric_precision, numeric_scale FROM information_schema.columns "
+            f"SELECT column_name, data_type, datetime_precision, numeric_precision, numeric_scale FROM {'.'.join(info_schema_path)} "
             f"WHERE table_name = '{table.lower()}' AND table_schema = '{schema.lower()}'"
         )
 
     def select_external_table_schema(self, path: DbPath) -> str:
-        _, schema, table = self._normalize_table_path(path)
+        database, schema, table = self._normalize_table_path(path)
+
+        db_clause = ""
+        if database:
+            db_clause = f" AND redshift_database_name = '{database.lower()}'"
 
         return f"""SELECT
                 columnname AS column_name
@@ -82,7 +90,7 @@ class Redshift(PostgreSQL):
                 , NULL AS numeric_scale
             FROM svv_external_columns
                 WHERE tablename = '{table.lower()}' AND schemaname = '{schema.lower()}'
-            """
+            """ + db_clause
 
     def query_external_table_schema(self, path: DbPath) -> Dict[str, tuple]:
         rows = self.query(self.select_external_table_schema(path), list)
