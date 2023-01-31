@@ -50,6 +50,15 @@ class Mixin_NormalizeValue(AbstractMixin_NormalizeValue):
         return self.to_string(f"{value}::int")
 
     def normalize_json(self, value: str, _coltype: PostgresqlJSON) -> str:
+        """
+        Converts json or bjson values to its minified (most compact) string representation.
+
+        Removes whitespaces after json separators (':' and ',') using string replacement.
+        '{"a": 1, "b": true, "c": "x"}' (bjson::text) -> '{"a":1,"b":true,"c":"x"}'
+
+        Comparisons to jsons of other db types can give false positives if they contain string
+        values that include any of the replaced patterns, or if the items have different order.
+        """
         return f"replace(replace({value}::text, '\": ', '\":'), ', \"', ',\"')"
 
 
