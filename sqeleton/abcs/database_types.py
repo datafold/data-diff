@@ -146,6 +146,10 @@ class PostgresqlJSON(JSONType):
     pass
 
 
+class PostgresqlJSONB(JSONType):
+    pass
+
+
 @dataclass
 class Integer(NumericType, IKey):
     precision: int = 0

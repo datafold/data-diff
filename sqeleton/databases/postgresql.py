@@ -10,7 +10,8 @@ from ..abcs.database_types import (
     FractionalType,
     Boolean,
     Date,
-    PostgresqlJSON
+    PostgresqlJSON,
+    PostgresqlJSONB
 )
 from ..abcs.mixins import AbstractMixin_MD5, AbstractMixin_NormalizeValue
 from .base import BaseDialect, ThreadedDatabase, import_helper, ConnectError, Mixin_Schema
@@ -89,6 +90,7 @@ class PostgresqlDialect(BaseDialect, Mixin_Schema):
         "text": Text,
         # JSON
         "json": PostgresqlJSON,
+        "jsonb": PostgresqlJSONB,
         # UUID
         "uuid": Native_UUID,
         # Boolean
