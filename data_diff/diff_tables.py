@@ -174,7 +174,7 @@ class DiffResultWrapper:
         
         # Display columns with conflicts
         columns_with_conflicts = []
-        conflicts_df = pd.DataFrame(columns=['Column', 'Conflicting Rows'])
+        conflicts_df = pd.DataFrame(columns=['Column', 'Values Updated'])
         
         for i in additional_columns_to_diff:
             conflicts = (matching_primary_key_rows[i+": Prod"] != matching_primary_key_rows[i+": Dev"]) & \
