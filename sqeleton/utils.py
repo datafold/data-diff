@@ -1,4 +1,4 @@
-from typing import Iterable, Iterator, MutableMapping, Union, Any, Sequence, Dict, Hashable, TypeVar, TYPE_CHECKING
+from typing import Iterable, Iterator, MutableMapping, Union, Any, Sequence, Dict, Hashable, TypeVar, TYPE_CHECKING, List
 from abc import abstractmethod
 from weakref import ref
 import math
@@ -251,6 +251,12 @@ class ArithAlphanumeric(ArithString):
             return NotImplemented
         return self._str < other._str
 
+    def __eq__(self, other):
+        if not isinstance(other, type(self)):
+            return NotImplemented
+        return self._str == other._str
+
+
     def new(self, *args, **kw):
         return type(self)(*args, **kw, max_len=self._max_len)
 
@@ -266,7 +272,7 @@ def number_to_human(n):
     return "{:.0f}{}".format(n / 10 ** (3 * millidx), millnames[millidx])
 
 
-def split_space(start, end, count):
+def split_space(start, end, count) -> List[int]:
     size = end - start
     assert count <= size, (count, size)
     return list(range(start, end, (size + 1) // (count + 1)))[1 : count + 1]

@@ -12,6 +12,8 @@ It consists of -
 
 It is comparable to other libraries such as SQLAlchemy or PyPika, in terms of API and intended audience. However there are several notable ways in which it is different.
 
+## Overview
+
 ### Built for performance
 
 - Multi-threaded by default -
@@ -31,11 +33,13 @@ This feature can be also used to inform the query-builder, either as an alternat
 
 The schema is used for validation when building expressions, making sure the names are correct, and that the data-types align.
 
+(Still WIP)
+
 ### Multi-database access
 
 Sqeleton is designed to work with several databases at the same time. Its API abstracts away as many implementation details as possible.
 
-Databases we support:
+Databases we fully support:
 
 - PostgreSQL >=10
 - MySQL
@@ -51,10 +55,27 @@ Databases we support:
 - DuckDB >=0.6
 - SQLite (coming soon)
 
-
-### Documentation
+## Documentation
 
 [Read the docs!](https://sqeleton.readthedocs.io)
+
+Or jump straight to the [introduction](https://sqeleton.readthedocs.io/en/latest/intro.html).
+
+### Install
+
+Install using pip:
+
+```bash
+pip install sqeleton
+```
+
+It is recommended to install the driver dependencies using pip's `[]` syntax:
+
+```bash
+pip install 'sqeleton[mysql, postgresql]'
+```
+
+Read more in [install / getting started.](https://sqeleton.readthedocs.io/en/latest/install.html)
 
 ### Basic usage
 
