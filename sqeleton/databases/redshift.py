@@ -82,7 +82,8 @@ class Redshift(PostgreSQL):
         if database:
             db_clause = f" AND redshift_database_name = '{database.lower()}'"
 
-        return f"""SELECT
+        return (
+            f"""SELECT
                 columnname AS column_name
                 , CASE WHEN external_type = 'string' THEN 'varchar' ELSE external_type END AS data_type
                 , NULL AS datetime_precision
@@ -90,7 +91,9 @@ class Redshift(PostgreSQL):
                 , NULL AS numeric_scale
             FROM svv_external_columns
                 WHERE tablename = '{table.lower()}' AND schemaname = '{schema.lower()}'
-            """ + db_clause
+            """
+            + db_clause
+        )
 
     def query_external_table_schema(self, path: DbPath) -> Dict[str, tuple]:
         rows = self.query(self.select_external_table_schema(path), list)
