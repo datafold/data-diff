@@ -487,7 +487,7 @@ class Database(AbstractDatabase[T]):
     def parse_table_name(self, name: str) -> DbPath:
         return parse_table_name(name)
 
-    def _query_cursor(self, c, sql_code: str):
+    def _query_cursor(self, c, sql_code: str) -> QueryResult:
         assert isinstance(sql_code, str), sql_code
         try:
             c.execute(sql_code)
@@ -499,7 +499,7 @@ class Database(AbstractDatabase[T]):
             # logger.error(f'Caused by SQL: {sql_code}')
             raise
 
-    def _query_conn(self, conn, sql_code: Union[str, ThreadLocalInterpreter]) -> list:
+    def _query_conn(self, conn, sql_code: Union[str, ThreadLocalInterpreter]) -> QueryResult:
         c = conn.cursor()
         callback = partial(self._query_cursor, c)
         return apply_query(callback, sql_code)
@@ -542,7 +542,7 @@ class ThreadedDatabase(Database):
         except Exception as e:
             self._init_error = e
 
-    def _query(self, sql_code: Union[str, ThreadLocalInterpreter]):
+    def _query(self, sql_code: Union[str, ThreadLocalInterpreter]) -> QueryResult:
         r = self._queue.submit(self._query_in_worker, sql_code)
         return r.result()
 

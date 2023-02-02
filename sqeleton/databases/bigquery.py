@@ -19,7 +19,7 @@ from ..abcs.mixins import (
 )
 from ..abcs import Compilable
 from ..queries import this, table, SKIP, code
-from .base import BaseDialect, Database, import_helper, parse_table_name, ConnectError, apply_query
+from .base import BaseDialect, Database, import_helper, parse_table_name, ConnectError, apply_query, QueryResult
 from .base import TIMESTAMP_PRECISION_POS, ThreadLocalInterpreter, Mixin_RandomSample
 
 
@@ -161,16 +161,18 @@ class BigQuery(Database):
         from google.cloud import bigquery
 
         try:
-            res = list(self._client.query(sql_code))
+            result = self._client.query(sql_code).result()
+            columns = [c.name for c in result.schema]
+            rows = list(result)
         except Exception as e:
             msg = "Exception when trying to execute SQL code:\n    %s\n\nGot error: %s"
             raise ConnectError(msg % (sql_code, e))
 
-        if res and isinstance(res[0], bigquery.table.Row):
-            res = [tuple(self._normalize_returned_value(v) for v in row.values()) for row in res]
-        return res
+        if rows and isinstance(rows[0], bigquery.table.Row):
+            rows = [tuple(self._normalize_returned_value(v) for v in row.values()) for row in rows]
+        return QueryResult(rows, columns)
 
-    def _query(self, sql_code: Union[str, ThreadLocalInterpreter]):
+    def _query(self, sql_code: Union[str, ThreadLocalInterpreter]) -> QueryResult:
         return apply_query(self._query_atom, sql_code)
 
     def close(self):
