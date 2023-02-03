@@ -16,11 +16,7 @@ from sqeleton.queries.api import current_timestamp
 from .dbt import dbt_diff
 from .utils import eval_name_template, remove_password_from_url, safezip, match_like
 from .diff_tables import Algorithm
-from .hashdiff_tables import (
-    HashDiffer,
-    DEFAULT_BISECTION_THRESHOLD,
-    DEFAULT_BISECTION_FACTOR,
-)
+from .hashdiff_tables import HashDiffer, DEFAULT_BISECTION_THRESHOLD, DEFAULT_BISECTION_FACTOR
 from .joindiff_tables import TABLE_WRITE_LIMIT, JoinDiffer
 from .table_segment import TableSegment
 from .databases import connect
@@ -103,20 +99,9 @@ click.Context.formatter_class = MyHelpFormatter
 @click.argument("database2", required=False)
 @click.argument("table2", required=False)
 @click.option(
-    "-k",
-    "--key-columns",
-    default=[],
-    multiple=True,
-    help="Names of primary key columns. Default='id'.",
-    metavar="NAME",
+    "-k", "--key-columns", default=[], multiple=True, help="Names of primary key columns. Default='id'.", metavar="NAME"
 )
-@click.option(
-    "-t",
-    "--update-column",
-    default=None,
-    help="Name of updated_at/last_updated column",
-    metavar="NAME",
-)
+@click.option("-t", "--update-column", default=None, help="Name of updated_at/last_updated column", metavar="NAME")
 @click.option(
     "-c",
     "--columns",
@@ -127,13 +112,7 @@ click.Context.formatter_class = MyHelpFormatter
     "Accepts a name or a pattern like in SQL. Example: -c col% -c another_col",
     metavar="NAME",
 )
-@click.option(
-    "-l",
-    "--limit",
-    default=None,
-    help="Maximum number of differences to find",
-    metavar="NUM",
-)
+@click.option("-l", "--limit", default=None, help="Maximum number of differences to find", metavar="NUM")
 @click.option(
     "--bisection-factor",
     default=None,
@@ -162,27 +141,15 @@ click.Context.formatter_class = MyHelpFormatter
     metavar="AGE",
 )
 @click.option(
-    "--max-age",
-    default=None,
-    help="Considers only rows younger than specified. See --min-age.",
-    metavar="AGE",
+    "--max-age", default=None, help="Considers only rows younger than specified. See --min-age.", metavar="AGE"
 )
 @click.option("-s", "--stats", is_flag=True, help="Print stats instead of a detailed diff")
 @click.option("-d", "--debug", is_flag=True, help="Print debug info")
-@click.option(
-    "--json",
-    "json_output",
-    is_flag=True,
-    help="Print JSONL output for machine readability",
-)
+@click.option("--json", "json_output", is_flag=True, help="Print JSONL output for machine readability")
 @click.option("-v", "--verbose", is_flag=True, help="Print extra info")
 @click.option("--version", is_flag=True, help="Print version info and exit")
 @click.option("-i", "--interactive", is_flag=True, help="Confirm queries, implies --debug")
-@click.option(
-    "--no-tracking",
-    is_flag=True,
-    help="data-diff sends home anonymous usage data. Use this to disable it.",
-)
+@click.option("--no-tracking", is_flag=True, help="data-diff sends home anonymous usage data. Use this to disable it.")
 @click.option(
     "--case-sensitive",
     is_flag=True,
@@ -225,12 +192,7 @@ click.Context.formatter_class = MyHelpFormatter
     help="An additional 'where' expression to restrict the search space. Beware of SQL Injection!",
     metavar="EXPR",
 )
-@click.option(
-    "-a",
-    "--algorithm",
-    default=Algorithm.AUTO.value,
-    type=click.Choice([i.value for i in Algorithm]),
-)
+@click.option("-a", "--algorithm", default=Algorithm.AUTO.value, type=click.Choice([i.value for i in Algorithm]))
 @click.option(
     "--conf",
     default=None,
