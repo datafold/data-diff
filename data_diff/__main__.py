@@ -13,6 +13,7 @@ import click
 from sqeleton.schema import create_schema
 from sqeleton.queries.api import current_timestamp
 
+from .dbt import dbt_diff
 from .utils import eval_name_template, remove_password_from_url, safezip, match_like
 from .diff_tables import Algorithm
 from .hashdiff_tables import HashDiffer, DEFAULT_BISECTION_THRESHOLD, DEFAULT_BISECTION_FACTOR
@@ -185,7 +186,11 @@ click.Context.formatter_class = MyHelpFormatter
     metavar="COUNT",
 )
 @click.option(
-    "-w", "--where", default=None, help="An additional 'where' expression to restrict the search space. Beware of SQL Injection!", metavar="EXPR"
+    "-w",
+    "--where",
+    default=None,
+    help="An additional 'where' expression to restrict the search space. Beware of SQL Injection!",
+    metavar="EXPR",
 )
 @click.option("-a", "--algorithm", default=Algorithm.AUTO.value, type=click.Choice([i.value for i in Algorithm]))
 @click.option(
@@ -200,24 +205,74 @@ click.Context.formatter_class = MyHelpFormatter
     help="Name of run-configuration to run. If used, CLI arguments for database and table must be omitted.",
     metavar="NAME",
 )
+@click.option(
+    "--dbt",
+    is_flag=True,
+    help="Run a diff using your local dbt project. Expects to be run from a dbt project folder by default.",
+)
+@click.option(
+    "--cloud",
+    is_flag=True,
+    help="Add this flag along with --dbt to run a diff using your local dbt project on Datafold cloud. Expects an api key on env var DATAFOLD_API_KEY.",
+)
+@click.option(
+    "--dbt-profiles-dir",
+    default=None,
+    metavar="PATH",
+    help="Override the default dbt profile location (~/.dbt).",
+)
+@click.option(
+    "--dbt-project-dir",
+    default=None,
+    metavar="PATH",
+    help="Override the dbt project directory. Otherwise assumed to be the current directory.",
+)
 def main(conf, run, **kw):
     if kw["table2"] is None and kw["database2"]:
         # Use the "database table table" form
         kw["table2"] = kw["database2"]
         kw["database2"] = kw["database1"]
 
+    if kw["version"]:
+        print(f"v{__version__}")
+        return
+
     if conf:
         kw = apply_config_from_file(conf, run, kw)
 
+    if kw["no_tracking"]:
+        disable_tracking()
+
+    if kw.get("interactive"):
+        kw["debug"] = True
+
+    if kw["debug"]:
+        logging.basicConfig(level=logging.DEBUG, format=LOG_FORMAT, datefmt=DATE_FORMAT)
+        if kw.get("__conf__"):
+            kw["__conf__"] = deepcopy(kw["__conf__"])
+            _remove_passwords_in_dict(kw["__conf__"])
+            logging.debug(f"Applied run configuration: {kw['__conf__']}")
+    elif kw.get("verbose"):
+        logging.basicConfig(level=logging.INFO, format=LOG_FORMAT, datefmt=DATE_FORMAT)
+    else:
+        logging.basicConfig(level=logging.WARNING, format=LOG_FORMAT, datefmt=DATE_FORMAT)
+
     try:
-        return _main(**kw)
+        if kw["dbt"]:
+            dbt_diff(
+                profiles_dir_override=kw["dbt_profiles_dir"],
+                project_dir_override=kw["dbt_project_dir"],
+                is_cloud=kw["cloud"],
+            )
+        else:
+            return _data_diff(**kw)
     except Exception as e:
         logging.error(e)
         if kw["debug"]:
             raise
 
 
-def _main(
+def _data_diff(
     database1,
     table1,
     database2,
@@ -246,31 +301,14 @@ def _main(
     materialize_all_rows,
     table_write_limit,
     materialize_to_table,
+    dbt,
+    cloud,
+    dbt_profiles_dir,
+    dbt_project_dir,
     threads1=None,
     threads2=None,
     __conf__=None,
 ):
-    if version:
-        print(f"v{__version__}")
-        return
-
-    if no_tracking:
-        disable_tracking()
-
-    if interactive:
-        debug = True
-
-    if debug:
-        logging.basicConfig(level=logging.DEBUG, format=LOG_FORMAT, datefmt=DATE_FORMAT)
-        if __conf__:
-            __conf__ = deepcopy(__conf__)
-            _remove_passwords_in_dict(__conf__)
-            logging.debug(f"Applied run configuration: {__conf__}")
-    elif verbose:
-        logging.basicConfig(level=logging.INFO, format=LOG_FORMAT, datefmt=DATE_FORMAT)
-    else:
-        logging.basicConfig(level=logging.WARNING, format=LOG_FORMAT, datefmt=DATE_FORMAT)
-
     if limit and stats:
         logging.error("Cannot specify a limit when using the -s/--stats switch")
         return
