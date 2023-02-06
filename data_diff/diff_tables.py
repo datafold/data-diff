@@ -104,10 +104,9 @@ class DiffResultWrapper:
     def _get_stats(self, is_dbt:bool = False) -> DiffStats:
         list(self)  # Consume the iterator into result_list, if we haven't already
 
-        
         key_columns = self.info_tree.info.tables[0].key_columns
         diff_by_key = {}
-
+        extra_column_diffs = None
         if is_dbt:
             extra_column_values_store = {}
             extra_columns = self.info_tree.info.tables[0].extra_columns
@@ -137,16 +136,13 @@ class DiffResultWrapper:
         table2_count = self.info_tree.info.rowcounts[2]
         unchanged = table1_count - diff_by_sign["-"] - diff_by_sign["!"]
         diff_percent = 1 - unchanged / max(table1_count, table2_count)
-        if is_dbt:
-            return DiffStats(diff_by_sign, table1_count, table2_count, unchanged, diff_percent, extra_column_diffs)
-        else:
-            return DiffStats(diff_by_sign, table1_count, table2_count, unchanged, diff_percent, None)
+
+        return DiffStats(diff_by_sign, table1_count, table2_count, unchanged, diff_percent, extra_column_diffs)
 
     def get_stats_string(self, is_dbt:bool = False):
 
-        diff_stats = self._get_stats()
+        diff_stats = self._get_stats(is_dbt)
         if is_dbt:
-            diff_stats = self._get_stats(is_dbt=True)
             
             string_output = "\n| Rows Added\t| Rows Removed\n"
             string_output += "------------------------------------------------------------\n"
