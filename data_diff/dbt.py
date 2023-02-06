@@ -302,7 +302,7 @@ class DbtParser:
                 "user": rendered_credentials.get("user"),
                 "password": rendered_credentials.get("password"),
                 "port": rendered_credentials.get("port"),
-                "dbname": rendered_credentials.get("dbname")
+                "dbname": rendered_credentials.get("dbname"),
             }
         # untested
         elif conn_type == "databricks":
@@ -313,11 +313,11 @@ class DbtParser:
                 # TODO may need to trim the / at http_path[0]
                 "http_path": rendered_credentials.get("http_path"),
                 "schema": rendered_credentials.get("schema"),
-                "access_token": rendered_credentials.get("token")
+                "access_token": rendered_credentials.get("token"),
             }
         # untested
         elif conn_type == "postgres":
-            conn_info ={
+            conn_info = {
                 "driver": "postgresql",
                 "host": rendered_credentials.get("host"),
                 "user": rendered_credentials.get("user"),
