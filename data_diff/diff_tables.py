@@ -14,7 +14,6 @@ from runtype import dataclass
 
 from data_diff.info_tree import InfoTree, SegmentInfo
 
-from .utils import run_as_daemon, safezip, getLogger
 from .thread_utils import ThreadedYielder
 from .table_segment import TableSegment
 from .tracking import create_end_event_json, create_start_event_json, send_event_json, is_tracking_enabled
@@ -32,9 +31,6 @@ class Algorithm(Enum):
 DiffResult = Iterator[Tuple[str, tuple]]  # Iterator[Tuple[Literal["+", "-"], tuple]]
 
 
-def truncate_error(error: str):
-    first_line = error.split("\n", 1)[0]
-    return re.sub("'(.*?)'", "'***'", first_line)
 
 
 @dataclass

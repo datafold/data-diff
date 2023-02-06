@@ -72,3 +72,7 @@ def eval_name_template(name):
         return datetime.now().isoformat("_", "seconds").replace(":", "_")
 
     return re.sub("%t", get_timestamp, name)
+
+def truncate_error(error: str):
+    first_line = error.split("\n", 1)[0]
+    return re.sub("'(.*?)'", "'***'", first_line)
