@@ -146,7 +146,7 @@ class DiffResultWrapper:
 
         diff_stats = self._get_stats()
         if is_dbt:
-            diff_stats = self._get_stats_dbt()
+            diff_stats = self._get_stats(is_dbt=True)
             
             string_output = "\n| Rows Added\t| Rows Removed\n"
             string_output += "------------------------------------------------------------\n"
