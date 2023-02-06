@@ -64,17 +64,26 @@ class Redshift(PostgreSQL):
     CONNECT_URI_PARAMS = ["database?"]
 
     def select_table_schema(self, path: DbPath) -> str:
-        schema, table = self._normalize_table_path(path)
+        database, schema, table = self._normalize_table_path(path)
+
+        info_schema_path = ["information_schema", "columns"]
+        if database:
+            info_schema_path.insert(0, database)
 
         return (
-            "SELECT column_name, data_type, datetime_precision, numeric_precision, numeric_scale FROM information_schema.columns "
+            f"SELECT column_name, data_type, datetime_precision, numeric_precision, numeric_scale FROM {'.'.join(info_schema_path)} "
             f"WHERE table_name = '{table.lower()}' AND table_schema = '{schema.lower()}'"
         )
 
     def select_external_table_schema(self, path: DbPath) -> str:
-        schema, table = self._normalize_table_path(path)
+        database, schema, table = self._normalize_table_path(path)
 
-        return f"""SELECT
+        db_clause = ""
+        if database:
+            db_clause = f" AND redshift_database_name = '{database.lower()}'"
+
+        return (
+            f"""SELECT
                 columnname AS column_name
                 , CASE WHEN external_type = 'string' THEN 'varchar' ELSE external_type END AS data_type
                 , NULL AS datetime_precision
@@ -83,6 +92,8 @@ class Redshift(PostgreSQL):
             FROM svv_external_columns
                 WHERE tablename = '{table.lower()}' AND schemaname = '{schema.lower()}'
             """
+            + db_clause
+        )
 
     def query_external_table_schema(self, path: DbPath) -> Dict[str, tuple]:
         rows = self.query(self.select_external_table_schema(path), list)
@@ -98,3 +109,15 @@ class Redshift(PostgreSQL):
             return super().query_table_schema(path)
         except RuntimeError:
             return self.query_external_table_schema(path)
+
+    def _normalize_table_path(self, path: DbPath) -> DbPath:
+        if len(path) == 1:
+            return None, self.default_schema, path[0]
+        elif len(path) == 2:
+            return None, path[0], path[1]
+        elif len(path) == 3:
+            return path
+
+        raise ValueError(
+            f"{self.name}: Bad table path for {self}: '{'.'.join(path)}'. Expected format: table, schema.table, or database.schema.table"
+        )
