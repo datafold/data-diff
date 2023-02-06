@@ -268,6 +268,7 @@ class DbtParser:
         # values can contain env_vars
         rendered_credentials = ProfileRenderer().render_data(credentials)
 
+        # this whole block should be refactored/extracted to method(s)
         if conn_type == "snowflake":
             if rendered_credentials.get("password") is None or rendered_credentials.get("private_key_path") is not None:
                 raise Exception("Only password authentication is currently supported for Snowflake.")
@@ -292,6 +293,37 @@ class DbtParser:
                 "driver": conn_type,
                 "project": rendered_credentials.get("project"),
                 "dataset": rendered_credentials.get("dataset"),
+            }
+        # untested
+        elif conn_type == "redshift":
+            conn_info = {
+                "driver": conn_type,
+                "host": rendered_credentials.get("host"),
+                "user": rendered_credentials.get("user"),
+                "password": rendered_credentials.get("password"),
+                "port": rendered_credentials.get("port"),
+                "dbname": rendered_credentials.get("dbname")
+            }
+        # untested
+        elif conn_type == "databricks":
+            conn_info = {
+                "driver": conn_type,
+                "catalog": rendered_credentials.get("catalog"),
+                "server_hostname": rendered_credentials.get("host"),
+                # TODO may need to trim the / at http_path[0]
+                "http_path": rendered_credentials.get("http_path"),
+                "schema": rendered_credentials.get("schema"),
+                "access_token": rendered_credentials.get("token")
+            }
+        # untested
+        elif conn_type == "postgres":
+            conn_info ={
+                "driver": "postgresql",
+                "host": rendered_credentials.get("host"),
+                "user": rendered_credentials.get("user"),
+                "password": rendered_credentials.get("password"),
+                "port": rendered_credentials.get("port"),
+                "dbname": rendered_credentials.get("dbname") or rendered_credentials.get("database"),
             }
         else:
             raise NotImplementedError(f"Provider {conn_type} is not yet supported for dbt diffs")
