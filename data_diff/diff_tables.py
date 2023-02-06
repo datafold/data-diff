@@ -101,7 +101,7 @@ class DiffResultWrapper:
             self.result_list.append(i)
             yield i
 
-    def _get_stats(self) -> DiffStats:
+    def _get_stats(self, is_dbt:bool = False) -> DiffStats:
         list(self)  # Consume the iterator into result_list, if we haven't already
 
         
