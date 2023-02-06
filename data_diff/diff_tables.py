@@ -104,49 +104,30 @@ class DiffResultWrapper:
     def _get_stats(self) -> DiffStats:
         list(self)  # Consume the iterator into result_list, if we haven't already
 
-        diff_by_key = {}
-        for sign, values in self.result_list:
-            k = values[: len(self.info_tree.info.tables[0].key_columns)]
-            if k in diff_by_key:
-                assert sign != diff_by_key[k]
-                diff_by_key[k] = "!"
-            else:
-                diff_by_key[k] = sign
-
-        diff_by_sign = {k: 0 for k in "+-!"}
-        for sign in diff_by_key.values():
-            diff_by_sign[sign] += 1
-
-        table1_count = self.info_tree.info.rowcounts[1]
-        table2_count = self.info_tree.info.rowcounts[2]
-        unchanged = table1_count - diff_by_sign["-"] - diff_by_sign["!"]
-        diff_percent = 1 - unchanged / max(table1_count, table2_count)
-
-        return DiffStats(diff_by_sign, table1_count, table2_count, unchanged, diff_percent, None)
-
-    def _get_stats_dbt(self) -> DiffStats:
-        list(self)  # Consume the iterator into result_list, if we haven't already
-
+        
         key_columns = self.info_tree.info.tables[0].key_columns
         diff_by_key = {}
-        extra_column_values_store = {}
 
-        extra_columns = self.info_tree.info.tables[0].extra_columns
-        extra_column_diffs = {k:0 for k in extra_columns}
+        if is_dbt:
+            extra_column_values_store = {}
+            extra_columns = self.info_tree.info.tables[0].extra_columns
+            extra_column_diffs = {k:0 for k in extra_columns}
 
         for sign, values in self.result_list:
-            k = values[: len(self.info_tree.info.tables[0].key_columns)]
-            extra_column_values = values[len(self.info_tree.info.tables[0].key_columns) :]
+            k = values[: len(key_columns)]
+            if is_dbt:
+                extra_column_values = values[len(self.info_tree.info.tables[0].key_columns) :]
             if k in diff_by_key:
                 assert sign != diff_by_key[k]
                 diff_by_key[k] = "!"
-                for i in range(0,len(extra_columns)):
-
-                    if extra_column_values[i] != extra_column_values_store[k][i]:
-                        extra_column_diffs[extra_columns[i]] += 1
+                if is_dbt:
+                    for i in range(0,len(extra_columns)):
+                        if extra_column_values[i] != extra_column_values_store[k][i]:
+                            extra_column_diffs[extra_columns[i]] += 1
             else:
                 diff_by_key[k] = sign
-                extra_column_values_store[k] = extra_column_values
+                if is_dbt:
+                    extra_column_values_store[k] = extra_column_values
 
         diff_by_sign = {k: 0 for k in "+-!"}
         for sign in diff_by_key.values():
@@ -156,10 +137,14 @@ class DiffResultWrapper:
         table2_count = self.info_tree.info.rowcounts[2]
         unchanged = table1_count - diff_by_sign["-"] - diff_by_sign["!"]
         diff_percent = 1 - unchanged / max(table1_count, table2_count)
+        if is_dbt:
+            return DiffStats(diff_by_sign, table1_count, table2_count, unchanged, diff_percent, extra_column_diffs)
+        else:
+            return DiffStats(diff_by_sign, table1_count, table2_count, unchanged, diff_percent, None)
 
-        return DiffStats(diff_by_sign, table1_count, table2_count, unchanged, diff_percent, extra_column_diffs)
+    def get_stats_string(self, is_dbt:bool = False):
 
-    def get_stats_string(self):
+
 
         diff_stats = self._get_stats()
         string_output = ""
@@ -204,7 +189,7 @@ class DiffResultWrapper:
             string_output += f"\n{k}: {v}"
 
         return string_output
-        
+
     def get_stats_dict(self):
 
         diff_stats = self._get_stats()
