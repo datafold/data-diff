@@ -92,7 +92,7 @@ def create_end_event_json(
     diff_count: int,
     error: Optional[str],
     diff_id: Optional[int] = None,
-    is_cloud: bool = False
+    is_cloud: bool = False,
 ):
     return {
         "event": "os_diff_run_end",
@@ -111,7 +111,7 @@ def create_end_event_json(
             "data_diff_version:": __version__,
             "entrypoint_name": entrypoint_name,
             "is_cloud": is_cloud,
-            "diff_id": diff_id
+            "diff_id": diff_id,
         },
     }
 

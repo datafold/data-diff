@@ -12,7 +12,13 @@ import requests
 from dbt_artifacts_parser.parser import parse_run_results, parse_manifest
 from dbt.config.renderer import ProfileRenderer
 
-from .tracking import set_entrypoint_name, create_end_event_json, create_start_event_json, send_event_json, is_tracking_enabled
+from .tracking import (
+    set_entrypoint_name,
+    create_end_event_json,
+    create_start_event_json,
+    send_event_json,
+    is_tracking_enabled,
+)
 from .utils import run_as_daemon, truncate_error
 from . import connect_to_table, diff_tables, Algorithm
 
@@ -23,7 +29,6 @@ PROFILES_FILE = "/profiles.yml"
 LOWER_DBT_V = "1.0.0"
 UPPER_DBT_V = "1.5.0"
 
-set_entrypoint_name("CLI-dbt")
 
 @dataclass
 class DiffVars:
@@ -37,6 +42,7 @@ class DiffVars:
 def dbt_diff(
     profiles_dir_override: Optional[str] = None, project_dir_override: Optional[str] = None, is_cloud: bool = False
 ) -> None:
+    set_entrypoint_name("CLI-dbt")
     dbt_parser = DbtParser(profiles_dir_override, project_dir_override, is_cloud)
     models = dbt_parser.get_models()
     dbt_parser.set_project_dict()
@@ -200,6 +206,7 @@ def _cloud_diff(diff_vars: DiffVars) -> None:
 
     start = time.monotonic()
     error = None
+    diff_id = None
     try:
         response = requests.request("POST", url, headers=headers, json=payload, timeout=30)
         response.raise_for_status()
@@ -217,7 +224,7 @@ def _cloud_diff(diff_vars: DiffVars) -> None:
             + "\n"
         )
     except BaseException as ex:  # Catch KeyboardInterrupt too
-            error = ex
+        error = ex
     finally:
         # we don't currently have much of this information
         # but I imagine a future iteration of this _cloud method
@@ -225,21 +232,21 @@ def _cloud_diff(diff_vars: DiffVars) -> None:
         if is_tracking_enabled():
             err_message = truncate_error(repr(error))
             event_json = create_end_event_json(
-                is_success = error is None,
-                runtime_seconds = time.monotonic() - start,
-                data_source_1_type = "",
-                data_source_2_type = "",
-                table1_count = 0,
-                table2_count = 0,
-                diff_count = 0,
-                error = err_message,
-                diff_id = diff_id,
-                is_cloud = True
+                is_success=error is None,
+                runtime_seconds=time.monotonic() - start,
+                data_source_1_type="",
+                data_source_2_type="",
+                table1_count=0,
+                table2_count=0,
+                diff_count=0,
+                error=err_message,
+                diff_id=diff_id,
+                is_cloud=True,
             )
             send_event_json(event_json)
 
-            if error:
-                raise error
+        if error:
+            raise error
 
 
 class DbtParser:
