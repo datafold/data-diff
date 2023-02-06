@@ -85,7 +85,7 @@ class DiffStats:
     table2_count: int
     unchanged: int
     diff_percent: float
-    extra_column_diffs: Dict[str, int]
+    extra_column_diffs: Optional[Dict[str, int]]
 
 
 @dataclass
