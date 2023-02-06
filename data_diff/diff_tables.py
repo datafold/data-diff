@@ -166,15 +166,7 @@ class DiffResultWrapper:
     def get_stats_string_dbt(self):
 
         diff_stats = self._get_stats_dbt()
-        string_output = ""
-        string_output += f"{diff_stats.table1_count} rows in table A\n"
-        string_output += f"{diff_stats.table2_count} rows in table B\n"
-        string_output += f"{diff_stats.diff_by_sign['-']} rows exclusive to table A (not present in B)\n"
-        string_output += f"{diff_stats.diff_by_sign['+']} rows exclusive to table B (not present in A)\n"
-        string_output += f"{diff_stats.diff_by_sign['!']} rows updated\n"
-        string_output += f"{diff_stats.unchanged} rows unchanged\n"
-        string_output += f"{100*diff_stats.diff_percent:.2f}% difference score\n"
-
+        
         string_output = "\n| Rows Added\t| Rows Removed\n"
         string_output += "------------------------------------------------------------\n"
 
