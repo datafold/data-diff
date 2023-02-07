@@ -10,7 +10,7 @@ from runtype import dataclass
 from sqeleton.abcs import ColType_UUID, NumericType, PrecisionType, StringType, Boolean
 
 from .info_tree import InfoTree
-from .utils import safezip
+from .utils import safezip, diffs_are_equiv_jsons
 from .thread_utils import ThreadedYielder
 from .table_segment import TableSegment
 
@@ -24,7 +24,10 @@ DEFAULT_BISECTION_FACTOR = 32
 logger = logging.getLogger("hashdiff_tables")
 
 
-def diff_sets(a: set, b: set) -> Iterator:
+def diff_sets(a: list, b: list, has_json_cols: bool = None) -> Iterator:
+    # check unless the only item is the key. TODO: pass a boolean to know whether the schema has json columns or not
+    has_json_cols = len(a[0]) > 1
+
     sa = set(a)
     sb = set(b)
 
@@ -39,6 +42,8 @@ def diff_sets(a: set, b: set) -> Iterator:
             d[row[0]].append(("+", row))
 
     for _k, v in sorted(d.items(), key=lambda i: i[0]):
+        if has_json_cols and diffs_are_equiv_jsons(v):
+            continue  # don't count this as a diff, maybe do and send a warning, maybe parametrized ??
         yield from v
 
 

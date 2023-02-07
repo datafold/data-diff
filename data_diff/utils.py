@@ -5,6 +5,7 @@ from urllib.parse import urlparse
 import operator
 import threading
 from datetime import datetime
+import json
 
 
 def safezip(*args):
@@ -72,3 +73,22 @@ def eval_name_template(name):
         return datetime.now().isoformat("_", "seconds").replace(":", "_")
 
     return re.sub("%t", get_timestamp, name)
+
+
+def _jsons_equal(a, b):
+    try:
+        return json.loads(a) == json.loads(b)
+    except (ValueError, TypeError, json.decoder.JSONDecodeError):  # not valid jsons
+        return False
+
+
+def diffs_are_equiv_jsons(v):
+    if (len(v) != 2) or ({v[0][0], v[1][0]} != {'+', '-'}):  # ignore rows that are missing in one of the tables
+        return False
+    # check all extra columns.  TODO: would be more efficient if we pass the indices of json cols to only compare those
+    match = True
+    for col_a, col_b in safezip(v[0][1][1:], v[1][1][1:]):
+        match = (col_a == col_b) or _jsons_equal(col_a, col_b)
+        if not match:
+            break
+    return match

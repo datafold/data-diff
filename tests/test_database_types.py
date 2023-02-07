@@ -74,6 +74,10 @@ DATABASE_TYPES = {
         "boolean": [
             "boolean",
         ],
+        "json": [
+            "json",
+            "jsonb"
+        ]
     },
     db.MySQL: {
         # https://dev.mysql.com/doc/refman/8.0/en/integer-types.html
@@ -199,6 +203,9 @@ DATABASE_TYPES = {
         "boolean": [
             "boolean",
         ],
+        "json": [
+            "super",
+        ]
     },
     db.Oracle: {
         "int": [
@@ -469,12 +476,28 @@ class UUID_Faker:
         return (uuid.uuid1(i) for i in range(self.max))
 
 
+class JsonFaker:
+    MANUAL_FAKES = [
+        '{"keyText": "text", "keyInt": 3, "keyFloat": 5.4445, "keyBoolean": true}',
+    ]
+
+    def __init__(self, max):
+        self.max = max
+
+    def __iter__(self):
+        return iter(self.MANUAL_FAKES[: self.max])
+
+    def __len__(self):
+        return min(self.max, len(self.MANUAL_FAKES))
+
+
 TYPE_SAMPLES = {
     "int": IntFaker(N_SAMPLES),
     "datetime": DateTimeFaker(N_SAMPLES),
     "float": FloatFaker(N_SAMPLES),
     "uuid": UUID_Faker(N_SAMPLES),
     "boolean": BooleanFaker(N_SAMPLES),
+    "json": JsonFaker(N_SAMPLES)
 }
 
 
