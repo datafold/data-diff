@@ -105,6 +105,7 @@ class DiffResultWrapper:
         list(self)  # Consume the iterator into result_list, if we haven't already
 
         key_columns = self.info_tree.info.tables[0].key_columns
+        len_key_columns = len(key_columns)
         diff_by_key = {}
         extra_column_diffs = None
         if is_dbt:
@@ -113,9 +114,10 @@ class DiffResultWrapper:
             extra_column_diffs = {k:0 for k in extra_columns}
 
         for sign, values in self.result_list:
-            k = values[: len(key_columns)]
+            len_key_columns = 
+            k = values[: len_key_columns]
             if is_dbt:
-                extra_column_values = values[len(self.info_tree.info.tables[0].key_columns) :]
+                extra_column_values = values[len_key_columns :]
             if k in diff_by_key:
                 assert sign != diff_by_key[k]
                 diff_by_key[k] = "!"
