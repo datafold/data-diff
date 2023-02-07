@@ -101,7 +101,7 @@ class DiffResultWrapper:
             self.result_list.append(i)
             yield i
 
-    def _get_stats(self, is_dbt:bool = False) -> DiffStats:
+    def _get_stats(self, is_dbt: bool = False) -> DiffStats:
         list(self)  # Consume the iterator into result_list, if we haven't already
 
         key_columns = self.info_tree.info.tables[0].key_columns
@@ -111,18 +111,17 @@ class DiffResultWrapper:
         if is_dbt:
             extra_column_values_store = {}
             extra_columns = self.info_tree.info.tables[0].extra_columns
-            extra_column_diffs = {k:0 for k in extra_columns}
+            extra_column_diffs = {k: 0 for k in extra_columns}
 
         for sign, values in self.result_list:
-            len_key_columns = 
-            k = values[: len_key_columns]
+            k = values[:len_key_columns]
             if is_dbt:
-                extra_column_values = values[len_key_columns :]
+                extra_column_values = values[len_key_columns:]
             if k in diff_by_key:
                 assert sign != diff_by_key[k]
                 diff_by_key[k] = "!"
                 if is_dbt:
-                    for i in range(0,len(extra_columns)):
+                    for i in range(0, len(extra_columns)):
                         if extra_column_values[i] != extra_column_values_store[k][i]:
                             extra_column_diffs[extra_columns[i]] += 1
             else:
@@ -141,11 +140,11 @@ class DiffResultWrapper:
 
         return DiffStats(diff_by_sign, table1_count, table2_count, unchanged, diff_percent, extra_column_diffs)
 
-    def get_stats_string(self, is_dbt:bool = False):
+    def get_stats_string(self, is_dbt: bool = False):
 
         diff_stats = self._get_stats(is_dbt)
         if is_dbt:
-            
+
             string_output = "\n| Rows Added\t| Rows Removed\n"
             string_output += "------------------------------------------------------------\n"
 
@@ -173,7 +172,7 @@ class DiffResultWrapper:
             if self.stats:
                 string_output += "\nExtra-Info:\n"
                 for k, v in sorted(self.stats.items()):
-                    string_output += f"  {k} = {v}\n"         
+                    string_output += f"  {k} = {v}\n"
 
         return string_output
 
