@@ -150,7 +150,7 @@ class DiffResultWrapper:
             string_output += f"| {diff_stats.diff_by_sign['-']}\t\t| {diff_stats.diff_by_sign['+']}\n"
             string_output += "------------------------------------------------------------\n\n"
             string_output += f"Updated Rows: {diff_stats.diff_by_sign['!']}\n"
-            string_output += f"Identical Rows: {diff_stats.unchanged}\n\n"
+            string_output += f"Unchanged Rows: {diff_stats.unchanged}\n\n"
 
             string_output += f"Values Updated:"
 
