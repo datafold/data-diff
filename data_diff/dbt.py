@@ -1,6 +1,7 @@
 import json
 import logging
 import os
+import time
 import rich
 import yaml
 from dataclasses import dataclass
@@ -11,6 +12,14 @@ import requests
 from dbt_artifacts_parser.parser import parse_run_results, parse_manifest
 from dbt.config.renderer import ProfileRenderer
 
+from .tracking import (
+    set_entrypoint_name,
+    create_end_event_json,
+    create_start_event_json,
+    send_event_json,
+    is_tracking_enabled,
+)
+from .utils import run_as_daemon, truncate_error
 from . import connect_to_table, diff_tables, Algorithm
 
 RUN_RESULTS_PATH = "/target/run_results.json"
@@ -33,6 +42,7 @@ class DiffVars:
 def dbt_diff(
     profiles_dir_override: Optional[str] = None, project_dir_override: Optional[str] = None, is_cloud: bool = False
 ) -> None:
+    set_entrypoint_name("CLI-dbt")
     dbt_parser = DbtParser(profiles_dir_override, project_dir_override, is_cloud)
     models = dbt_parser.get_models()
     dbt_parser.set_project_dict()
@@ -190,22 +200,53 @@ def _cloud_diff(diff_vars: DiffVars) -> None:
         "Authorization": f"Key {api_key}",
         "Content-Type": "application/json",
     }
+    if is_tracking_enabled():
+        event_json = create_start_event_json({"is_cloud": True, "datasource_id": diff_vars.datasource_id})
+        run_as_daemon(send_event_json, event_json)
 
-    response = requests.request("POST", url, headers=headers, json=payload, timeout=30)
-    response.raise_for_status()
-    data = response.json()
-    diff_id = data["id"]
-    # TODO in future we should support self hosted datafold
-    diff_url = f"https://app.datafold.com/datadiffs/{diff_id}/overview"
-    rich.print(
-        "[red]"
-        + ".".join(diff_vars.dev_path)
-        + " <> "
-        + ".".join(diff_vars.prod_path)
-        + "[/] \n    Diff in progress: \n    "
-        + diff_url
-        + "\n"
-    )
+    start = time.monotonic()
+    error = None
+    diff_id = None
+    try:
+        response = requests.request("POST", url, headers=headers, json=payload, timeout=30)
+        response.raise_for_status()
+        data = response.json()
+        diff_id = data["id"]
+        # TODO in future we should support self hosted datafold
+        diff_url = f"https://app.datafold.com/datadiffs/{diff_id}/overview"
+        rich.print(
+            "[red]"
+            + ".".join(diff_vars.dev_path)
+            + " <> "
+            + ".".join(diff_vars.prod_path)
+            + "[/] \n    Diff in progress: \n    "
+            + diff_url
+            + "\n"
+        )
+    except BaseException as ex:  # Catch KeyboardInterrupt too
+        error = ex
+    finally:
+        # we don't currently have much of this information
+        # but I imagine a future iteration of this _cloud method
+        # will poll for results
+        if is_tracking_enabled():
+            err_message = truncate_error(repr(error))
+            event_json = create_end_event_json(
+                is_success=error is None,
+                runtime_seconds=time.monotonic() - start,
+                data_source_1_type="",
+                data_source_2_type="",
+                table1_count=0,
+                table2_count=0,
+                diff_count=0,
+                error=err_message,
+                diff_id=diff_id,
+                is_cloud=True,
+            )
+            send_event_json(event_json)
+
+        if error:
+            raise error
 
 
 class DbtParser:
@@ -230,7 +271,6 @@ class DbtParser:
 
         dbt_version = parse_version(run_results_obj.metadata.dbt_version)
 
-        # TODO 1.4 support
         if dbt_version < parse_version(LOWER_DBT_V) or dbt_version >= parse_version(UPPER_DBT_V):
             raise Exception(
                 f"Found dbt: v{dbt_version} Expected the dbt project's version to be >= {LOWER_DBT_V} and < {UPPER_DBT_V}"
