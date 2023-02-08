@@ -94,7 +94,7 @@ class TestDbtParser(unittest.TestCase):
         mock_run_parser.assert_called_once_with(run_results={})
         mock_manifest_parser.assert_not_called()
         self.assertIn("version to be", ex.exception.args[0])
-        
+
     @patch("builtins.open", new_callable=mock_open, read_data="{}")
     @patch("data_diff.dbt.parse_run_results")
     @patch("data_diff.dbt.parse_manifest")
