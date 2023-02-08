@@ -75,20 +75,25 @@ def eval_name_template(name):
     return re.sub("%t", get_timestamp, name)
 
 
-def _jsons_equal(a, b):
+def _jsons_equiv(a: str, b: str):
     try:
         return json.loads(a) == json.loads(b)
     except (ValueError, TypeError, json.decoder.JSONDecodeError):  # not valid jsons
         return False
 
 
-def diffs_are_equiv_jsons(v):
-    if (len(v) != 2) or ({v[0][0], v[1][0]} != {'+', '-'}):  # ignore rows that are missing in one of the tables
+def diffs_are_equiv_jsons(diff: list, json_cols: dict):
+    if (len(diff) != 2) or ({diff[0][0], diff[1][0]} != {'+', '-'}):
         return False
-    # check all extra columns.  TODO: would be more efficient if we pass the indices of json cols to only compare those
     match = True
-    for col_a, col_b in safezip(v[0][1][1:], v[1][1][1:]):
-        match = (col_a == col_b) or _jsons_equal(col_a, col_b)
+    overriden_diff_cols = set()
+    for i, (col_a, col_b) in enumerate(safezip(diff[0][1][1:], diff[1][1][1:])):  # index 0 is extra_columns first elem
+        # we only attempt to parse columns of JSONType, but we still need to check if non-json columns don't match
+        match = col_a == col_b
+        if not match and (i in json_cols):
+            if _jsons_equiv(col_a, col_b):
+                overriden_diff_cols.add(json_cols[i])
+                match = True
         if not match:
             break
-    return match
+    return match, overriden_diff_cols

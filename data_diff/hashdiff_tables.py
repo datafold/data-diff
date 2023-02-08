@@ -7,7 +7,7 @@ from operator import attrgetter
 
 from runtype import dataclass
 
-from sqeleton.abcs import ColType_UUID, NumericType, PrecisionType, StringType, Boolean
+from sqeleton.abcs import ColType_UUID, NumericType, PrecisionType, StringType, Boolean, JSONType
 
 from .info_tree import InfoTree
 from .utils import safezip, diffs_are_equiv_jsons
@@ -24,10 +24,7 @@ DEFAULT_BISECTION_FACTOR = 32
 logger = logging.getLogger("hashdiff_tables")
 
 
-def diff_sets(a: list, b: list, has_json_cols: bool = None) -> Iterator:
-    # check unless the only item is the key. TODO: pass a boolean to know whether the schema has json columns or not
-    has_json_cols = len(a[0]) > 1
-
+def diff_sets(a: list, b: list, json_cols: dict = None) -> Iterator:
     sa = set(a)
     sb = set(b)
 
@@ -41,9 +38,17 @@ def diff_sets(a: list, b: list, has_json_cols: bool = None) -> Iterator:
         if row not in sa:
             d[row[0]].append(("+", row))
 
+    warned_diff_cols = set()
     for _k, v in sorted(d.items(), key=lambda i: i[0]):
-        if has_json_cols and diffs_are_equiv_jsons(v):
-            continue  # don't count this as a diff, maybe do and send a warning, maybe parametrized ??
+        if json_cols:
+            parsed_match, overriden_diff_cols = diffs_are_equiv_jsons(v, json_cols)
+            if parsed_match:
+                to_warn = overriden_diff_cols - warned_diff_cols
+                for w in to_warn:
+                    logger.warning(f"Equivalent JSON objects with different string representations detected "
+                                   f"in column '{w}'. These cases are NOT reported as differences.")
+                    warned_diff_cols.add(w)
+                continue
         yield from v
 
 
@@ -199,7 +204,9 @@ class HashDiffer(TableDiffer):
         # This saves time, as bisection speed is limited by ping and query performance.
         if max_rows < self.bisection_threshold or max_space_size < self.bisection_factor * 2:
             rows1, rows2 = self._threaded_call("get_values", [table1, table2])
-            diff = list(diff_sets(rows1, rows2))
+            json_cols = {i: colname for i, colname in enumerate(table1.extra_columns)
+                         if isinstance(table1._schema[colname], JSONType)}
+            diff = list(diff_sets(rows1, rows2, json_cols))
 
             info_tree.info.set_diff(diff)
             info_tree.info.rowcounts = {1: len(rows1), 2: len(rows2)}
