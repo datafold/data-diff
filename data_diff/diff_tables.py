@@ -80,6 +80,7 @@ class DiffStats:
     table2_count: int
     unchanged: int
     diff_percent: float
+    extra_column_diffs: Optional[Dict[str, int]]
 
 
 @dataclass
@@ -95,17 +96,33 @@ class DiffResultWrapper:
             self.result_list.append(i)
             yield i
 
-    def _get_stats(self) -> DiffStats:
+    def _get_stats(self, is_dbt: bool = False) -> DiffStats:
         list(self)  # Consume the iterator into result_list, if we haven't already
 
+        key_columns = self.info_tree.info.tables[0].key_columns
+        len_key_columns = len(key_columns)
         diff_by_key = {}
+        extra_column_diffs = None
+        if is_dbt:
+            extra_column_values_store = {}
+            extra_columns = self.info_tree.info.tables[0].extra_columns
+            extra_column_diffs = {k: 0 for k in extra_columns}
+
         for sign, values in self.result_list:
-            k = values[: len(self.info_tree.info.tables[0].key_columns)]
+            k = values[:len_key_columns]
+            if is_dbt:
+                extra_column_values = values[len_key_columns:]
             if k in diff_by_key:
                 assert sign != diff_by_key[k]
                 diff_by_key[k] = "!"
+                if is_dbt:
+                    for i in range(0, len(extra_columns)):
+                        if extra_column_values[i] != extra_column_values_store[k][i]:
+                            extra_column_diffs[extra_columns[i]] += 1
             else:
                 diff_by_key[k] = sign
+                if is_dbt:
+                    extra_column_values_store[k] = extra_column_values
 
         diff_by_sign = {k: 0 for k in "+-!"}
         for sign in diff_by_key.values():
@@ -116,23 +133,41 @@ class DiffResultWrapper:
         unchanged = table1_count - diff_by_sign["-"] - diff_by_sign["!"]
         diff_percent = 1 - unchanged / max(table1_count, table2_count)
 
-        return DiffStats(diff_by_sign, table1_count, table2_count, unchanged, diff_percent)
+        return DiffStats(diff_by_sign, table1_count, table2_count, unchanged, diff_percent, extra_column_diffs)
 
-    def get_stats_string(self):
-        diff_stats = self._get_stats()
-        string_output = ""
-        string_output += f"{diff_stats.table1_count} rows in table A\n"
-        string_output += f"{diff_stats.table2_count} rows in table B\n"
-        string_output += f"{diff_stats.diff_by_sign['-']} rows exclusive to table A (not present in B)\n"
-        string_output += f"{diff_stats.diff_by_sign['+']} rows exclusive to table B (not present in A)\n"
-        string_output += f"{diff_stats.diff_by_sign['!']} rows updated\n"
-        string_output += f"{diff_stats.unchanged} rows unchanged\n"
-        string_output += f"{100*diff_stats.diff_percent:.2f}% difference score\n"
 
-        if self.stats:
-            string_output += "\nExtra-Info:\n"
-            for k, v in sorted(self.stats.items()):
-                string_output += f"  {k} = {v}\n"
+    def get_stats_string(self, is_dbt: bool = False):
+        diff_stats = self._get_stats(is_dbt)
+
+        if is_dbt:
+            string_output = "\n| Rows Added\t| Rows Removed\n"
+            string_output += "------------------------------------------------------------\n"
+
+            string_output += f"| {diff_stats.diff_by_sign['-']}\t\t| {diff_stats.diff_by_sign['+']}\n"
+            string_output += "------------------------------------------------------------\n\n"
+            string_output += f"Updated Rows: {diff_stats.diff_by_sign['!']}\n"
+            string_output += f"Unchanged Rows: {diff_stats.unchanged}\n\n"
+
+            string_output += f"Values Updated:"
+
+            for k, v in diff_stats.extra_column_diffs.items():
+                string_output += f"\n{k}: {v}"
+
+        else:
+
+            string_output = ""
+            string_output += f"{diff_stats.table1_count} rows in table A\n"
+            string_output += f"{diff_stats.table2_count} rows in table B\n"
+            string_output += f"{diff_stats.diff_by_sign['-']} rows exclusive to table A (not present in B)\n"
+            string_output += f"{diff_stats.diff_by_sign['+']} rows exclusive to table B (not present in A)\n"
+            string_output += f"{diff_stats.diff_by_sign['!']} rows updated\n"
+            string_output += f"{diff_stats.unchanged} rows unchanged\n"
+            string_output += f"{100*diff_stats.diff_percent:.2f}% difference score\n"
+
+            if self.stats:
+                string_output += "\nExtra-Info:\n"
+                for k, v in sorted(self.stats.items()):
+                    string_output += f"  {k} = {v}\n"
 
         return string_output
 
