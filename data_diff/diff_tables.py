@@ -14,7 +14,7 @@ from runtype import dataclass
 
 from data_diff.info_tree import InfoTree, SegmentInfo
 
-from .utils import run_as_daemon, safezip, getLogger
+from .utils import run_as_daemon, safezip, getLogger, truncate_error
 from .thread_utils import ThreadedYielder
 from .table_segment import TableSegment
 from .tracking import create_end_event_json, create_start_event_json, send_event_json, is_tracking_enabled
@@ -30,11 +30,6 @@ class Algorithm(Enum):
 
 
 DiffResult = Iterator[Tuple[str, tuple]]  # Iterator[Tuple[Literal["+", "-"], tuple]]
-
-
-def truncate_error(error: str):
-    first_line = error.split("\n", 1)[0]
-    return re.sub("'(.*?)'", "'***'", first_line)
 
 
 @dataclass
@@ -140,11 +135,11 @@ class DiffResultWrapper:
 
         return DiffStats(diff_by_sign, table1_count, table2_count, unchanged, diff_percent, extra_column_diffs)
 
+
     def get_stats_string(self, is_dbt: bool = False):
-
         diff_stats = self._get_stats(is_dbt)
-        if is_dbt:
 
+        if is_dbt:
             string_output = "\n| Rows Added\t| Rows Removed\n"
             string_output += "------------------------------------------------------------\n"
 
@@ -177,7 +172,6 @@ class DiffResultWrapper:
         return string_output
 
     def get_stats_dict(self):
-
         diff_stats = self._get_stats()
         json_output = {
             "rows_A": diff_stats.table1_count,
@@ -224,7 +218,6 @@ class TableDiffer(ThreadBase, ABC):
         start = time.monotonic()
         error = None
         try:
-
             # Query and validate schema
             table1, table2 = self._threaded_call("with_schema", [table1, table2])
             self._validate_and_adjust_columns(table1, table2)
