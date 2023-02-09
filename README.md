@@ -64,21 +64,21 @@ pip install data-diff
 
 #### Then, install one or more driver(s) specific to the database(s) you want to connect to.
 
-- `pip install 'data-diff[mysql]'`
+- `pip install 'sqeleton[mysql]'`
 
-- `pip install 'data-diff[postgresql]'`
+- `pip install 'sqeleton[postgresql]'`
 
-- `pip install 'data-diff[snowflake]'`
+- `pip install 'sqeleton[snowflake]'`
 
-- `pip install 'data-diff[presto]'`
+- `pip install 'sqeleton[presto]'`
 
-- `pip install 'data-diff[oracle]'`
+- `pip install 'sqeleton[oracle]'`
 
-- `pip install 'data-diff[trino]'`
+- `pip install 'sqeleton[trino]'`
 
-- `pip install 'data-diff[clickhouse]'`
+- `pip install 'sqeleton[clickhouse]'`
 
-- `pip install 'data-diff[vertica]'`
+- `pip install 'sqeleton[vertica]'`
 
 - For BigQuery, see: https://pypi.org/project/google-cloud-bigquery/
 
