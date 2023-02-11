@@ -166,3 +166,14 @@ class DuckDB(Database):
             return ddb.connect(self._args["filepath"])
         except ddb.OperationalError as e:
             raise ConnectError(*e.args) from e
+
+    def _normalize_table_path(self, path: DbPath) -> DbPath:
+        if len(path) == 1:
+            return self.default_schema, path[0]
+        elif len(path) == 2:
+            return path
+        elif len(path) > 2:
+            # Use only the last two values from the path
+            return path[-2:]
+
+        raise ValueError(f"{self.name}: Bad table path for {self}: '{'.'.join(path)}'. Expected form: schema.table")
