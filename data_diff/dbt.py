@@ -333,6 +333,11 @@ class DbtParser:
                 "project": rendered_credentials.get("project"),
                 "dataset": rendered_credentials.get("dataset"),
             }
+        elif conn_type == "duckdb":
+            conn_info = {
+                "driver": conn_type,
+                "filepath": rendered_credentials.get("path"),
+            }
         else:
             raise NotImplementedError(f"Provider {conn_type} is not yet supported for dbt diffs")
 
