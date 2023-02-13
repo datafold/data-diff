@@ -425,8 +425,8 @@ class TestDbtDiffer(unittest.TestCase):
         )
         self.assertEqual(request_data_dict["data_source1_id"], expected_datasource_id)
         self.assertEqual(request_data_dict["data_source2_id"], expected_datasource_id)
-        self.assertEqual(request_data_dict["table1"], dev_qualified_list)
-        self.assertEqual(request_data_dict["table2"], prod_qualified_list)
+        self.assertEqual(request_data_dict["table1"], prod_qualified_list)
+        self.assertEqual(request_data_dict["table2"], dev_qualified_list)
         self.assertEqual(request_data_dict["pk_columns"], expected_primary_keys)
 
     @patch("data_diff.dbt.rich.print")
