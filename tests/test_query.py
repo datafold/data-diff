@@ -207,7 +207,7 @@ class TestQuery(unittest.TestCase):
         self.assertEqual(q, "SELECT /*+ PARALLEL(a 16) */ b FROM (SELECT * FROM a LIMIT 10) tmp1")
 
         q = c.compile(t.select(this.a).group_by(this.b).agg(this.c).select(optimizer_hints='PARALLEL(a 16)'))
-        self.assertEqual(q, "SELECT /*+ PARALLEL(a 16) */ * FROM (SELECT b, c FROM (SELECT a FROM point) tmp1 GROUP BY 1) tmp2")
+        self.assertEqual(q, "SELECT /*+ PARALLEL(a 16) */ * FROM (SELECT b, c FROM (SELECT a FROM a) tmp2 GROUP BY 1) tmp3")
 
     def test_table_ops(self):
         c = Compiler(MockDatabase())
