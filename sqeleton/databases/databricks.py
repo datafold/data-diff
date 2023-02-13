@@ -94,8 +94,6 @@ class Dialect(BaseDialect):
     def set_timezone_to_utc(self) -> str:
         return "SET TIME ZONE 'UTC'"
 
-    def optimizer_hints(self, hints: str) -> str:
-        raise NotImplementedError("Optimizer hints not yet implemented in databricks")
 
 
 class Databricks(ThreadedDatabase):

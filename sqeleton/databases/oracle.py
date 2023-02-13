@@ -130,6 +130,9 @@ class Dialect(BaseDialect, Mixin_Schema):
     def explain_as_text(self, query: str) -> str:
         raise NotImplementedError("Explain not yet implemented in Oracle")
 
+    def optimizer_hints(self, s: str):
+        return f"/*+ {s} */ "
+
     def parse_type(
         self,
         table_path: DbPath,

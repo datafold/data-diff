@@ -109,6 +109,9 @@ class Dialect(BaseDialect, Mixin_Schema):
     def explain_as_text(self, query: str) -> str:
         return f"EXPLAIN FORMAT=TREE {query}"
 
+    def optimizer_hints(self, s: str):
+        return f"/*+ {s} */ "
+
     def set_timezone_to_utc(self) -> str:
         return "SET @@session.time_zone='+00:00'"
 

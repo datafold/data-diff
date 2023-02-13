@@ -168,8 +168,8 @@ class BaseDialect(AbstractDialect):
     def explain_as_text(self, query: str) -> str:
         return f"EXPLAIN {query}"
 
-    def optimizer_hints(self, s: str):
-        return f"/*+ {s} */ "
+    def optimizer_hints(self, hints: str) -> str:
+        raise NotImplementedError(f"Optimizer hints not yet implemented in {self.__class__}")
 
     def _constant_value(self, v):
         if v is None:

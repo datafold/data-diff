@@ -96,9 +96,6 @@ class PostgresqlDialect(BaseDialect, Mixin_Schema):
     def current_timestamp(self) -> str:
         return "current_timestamp"
 
-    def optimizer_hints(self, hints: str) -> str:
-        raise NotImplementedError("Optimizer hints not yet implemented in postgresql")
-
 
 class PostgreSQL(ThreadedDatabase):
     dialect = PostgresqlDialect()

@@ -52,7 +52,7 @@ class MockDialect(AbstractDialect):
         return "set timezone 'UTC'"
 
     def optimizer_hints(self, s: str):
-        return f"/*+ {s} */ " if s else ""
+        return f"/*+ {s} */ "
 
     def load_mixins(self):
         raise NotImplementedError()

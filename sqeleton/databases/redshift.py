@@ -57,8 +57,6 @@ class Dialect(PostgresqlDialect):
     def is_distinct_from(self, a: str, b: str) -> str:
         return f"({a} IS NULL != {b} IS NULL) OR ({a}!={b})"
 
-    def optimizer_hints(self, hints: str) -> str:
-        raise NotImplementedError("Optimizer hints not yet implemented in redshift")
 
 class Redshift(PostgreSQL):
     dialect = Dialect()

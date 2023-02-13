@@ -136,9 +136,6 @@ class Dialect(BaseDialect, Mixin_Schema):
     def current_timestamp(self) -> str:
         return "current_timestamp"
 
-    def optimizer_hints(self, hints: str) -> str:
-        raise NotImplementedError("Optimizer hints not yet implemented in duckdb")
-
 
 class DuckDB(Database):
     dialect = Dialect()
