@@ -241,9 +241,7 @@ class TableSegment:
 
         start = time.monotonic()
         q = self.make_select().select(
-            Count(),
-            Checksum(self._relevant_columns_repr),
-            optimizer_hints=self.optimizer_hints
+            Count(), Checksum(self._relevant_columns_repr), optimizer_hints=self.optimizer_hints
         )
         count, checksum = self.database.query(q, tuple)
         duration = time.monotonic() - start

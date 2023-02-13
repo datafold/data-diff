@@ -83,7 +83,7 @@ def diff_tables(
 
     hash_query_type: str = None,
     # Optimizer hints for Select queries
-    optimizer_hints: Optional[str] = None
+    optimizer_hints: Optional[str] = None,
 ) -> Iterator:
     """Finds the diff between table1 and table2.
 
