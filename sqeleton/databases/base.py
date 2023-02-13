@@ -169,7 +169,7 @@ class BaseDialect(AbstractDialect):
         return f"EXPLAIN {query}"
 
     def optimizer_hints(self, s: str):
-        return f"/*+ {s} */ " if s else ""
+        return f"/*+ {s} */ "
 
     def _constant_value(self, v):
         if v is None:

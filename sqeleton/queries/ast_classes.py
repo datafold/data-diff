@@ -700,7 +700,7 @@ class Select(ExprNode, ITable, Root):
 
         columns = ", ".join(map(c.compile, self.columns)) if self.columns else "*"
         distinct = "DISTINCT " if self.distinct else ""
-        optimizer_hints = c.dialect.optimizer_hints(self.optimizer_hints)
+        optimizer_hints = c.dialect.optimizer_hints(self.optimizer_hints) if self.optimizer_hints else ""
         select = f"SELECT {optimizer_hints}{distinct}{columns}"
 
         if self.table:
