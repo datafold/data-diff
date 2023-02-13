@@ -80,7 +80,7 @@ def diff_tables(
     # Maximum number of rows to write when materializing, per thread. (joindiff only)
     table_write_limit: int = TABLE_WRITE_LIMIT,
     # Optimizer hints for Select queries
-    optimizer_hints: Optional[str] = None
+    optimizer_hints: Optional[str] = None,
 ) -> Iterator:
     """Finds the diff between table1 and table2.
 
@@ -143,7 +143,7 @@ def diff_tables(
             min_update=min_update,
             max_update=max_update,
             where=where,
-            optimizer_hints=optimizer_hints
+            optimizer_hints=optimizer_hints,
         ).items()
         if v is not None
     }

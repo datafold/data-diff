@@ -172,9 +172,7 @@ class TableSegment:
         """Count and checksum the rows in the segment, in one pass."""
         start = time.monotonic()
         q = self.make_select().select(
-            Count(),
-            Checksum(self._relevant_columns_repr),
-            optimizer_hints=self.optimizer_hints
+            Count(), Checksum(self._relevant_columns_repr), optimizer_hints=self.optimizer_hints
         )
         count, checksum = self.database.query(q, tuple)
         duration = time.monotonic() - start
@@ -196,7 +194,7 @@ class TableSegment:
         select = self.make_select().select(
             ApplyFuncAndNormalizeAsString(this[k], min_),
             ApplyFuncAndNormalizeAsString(this[k], max_),
-            optimizer_hints=self.optimizer_hints
+            optimizer_hints=self.optimizer_hints,
         )
         min_key, max_key = self.database.query(select, tuple)
 
