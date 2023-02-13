@@ -202,10 +202,6 @@ class AbstractDialect(ABC):
         "Provide SQL for explaining a query, returned as table(varchar)"
 
     @abstractmethod
-    def optimizer_hints(self, hints: str) -> str:
-        "Provide SQL for enclosing optimizer hints"
-
-    @abstractmethod
     def timestamp_value(self, t: datetime) -> str:
         "Provide SQL for the given timestamp value"
 

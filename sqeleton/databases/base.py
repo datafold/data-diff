@@ -36,7 +36,12 @@ from ..abcs.database_types import (
     Boolean,
 )
 from ..abcs.mixins import Compilable
-from ..abcs.mixins import AbstractMixin_Schema, AbstractMixin_RandomSample, AbstractMixin_NormalizeValue
+from ..abcs.mixins import (
+    AbstractMixin_Schema,
+    AbstractMixin_RandomSample,
+    AbstractMixin_NormalizeValue,
+    AbstractMixin_OptimizerHints
+) 
 from ..bound_exprs import bound_table
 
 logger = logging.getLogger("database")
@@ -134,6 +139,14 @@ class Mixin_RandomSample(AbstractMixin_RandomSample):
         return tbl.where(Random() < ratio)
 
 
+class Mixin_OptimizerHints(AbstractMixin_OptimizerHints):
+    def optimizer_hints(
+        self,
+        hints: str
+    ) -> str:
+        return f"/*+ {hints} */ "
+
+
 class BaseDialect(AbstractDialect):
     SUPPORTS_PRIMARY_KEY = False
     SUPPORTS_INDEXES = False
@@ -168,8 +181,6 @@ class BaseDialect(AbstractDialect):
     def explain_as_text(self, query: str) -> str:
         return f"EXPLAIN {query}"
 
-    def optimizer_hints(self, hints: str) -> str:
-        raise NotImplementedError(f"Optimizer hints not yet implemented in {self.__class__}")
 
     def _constant_value(self, v):
         if v is None:
