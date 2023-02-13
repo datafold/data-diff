@@ -99,6 +99,7 @@ class TableSegment:
         min_update (:data:`DbTime`, optional): Lowest update_column value, used to restrict the segment
         max_update (:data:`DbTime`, optional): Highest update_column value, used to restrict the segment
         where (str, optional): An additional 'where' expression to restrict the search space.
+        optimizer_hints (str, optional): Optimizer hints for SELECT queries
 
         case_sensitive (bool): If false, the case of column names will adjust according to the schema. Default is true.
         hash_query_type (str)
@@ -120,6 +121,7 @@ class TableSegment:
     min_update: DbTime = None
     max_update: DbTime = None
     where: str = None
+    optimizer_hints: str = None
 
     # group_by column
     group_by_column: str = None 
@@ -238,7 +240,11 @@ class TableSegment:
         time.sleep(1)
 
         start = time.monotonic()
-        q = self.make_select().select(Count(), Checksum(self._relevant_columns_repr))
+        q = self.make_select().select(
+            Count(),
+            Checksum(self._relevant_columns_repr),
+            optimizer_hints=self.optimizer_hints
+        )
         count, checksum = self.database.query(q, tuple)
         duration = time.monotonic() - start
         if duration > RECOMMENDED_CHECKSUM_DURATION:
@@ -339,7 +345,8 @@ class TableSegment:
         """Query database for minimum and maximum key. This is used for setting the initial bounds."""
         # Normalizes the result (needed for UUIDs) after the min/max computation
         select = self.make_select().select(
-            ApplyFuncAndNormalizeAsString(this[k], f) for k in self.key_columns for f in (min_, max_)
+            (ApplyFuncAndNormalizeAsString(this[k], f) for k in self.key_columns for f in (min_, max_)),
+            optimizer_hints=self.optimizer_hints
         )
         result = tuple(self.database.query(select, tuple))
 
