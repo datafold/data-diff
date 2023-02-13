@@ -137,6 +137,9 @@ class Dialect(BaseDialect, Mixin_Schema):
     def set_timezone_to_utc(self) -> str:
         raise NotImplementedError()
 
+    def optimizer_hints(self, hints: str) -> str:
+        raise NotImplementedError("Optimizer hints not yet implemented in bigquery")
+
 
 class BigQuery(Database):
     CONNECT_URI_HELP = "bigquery://<project>/<dataset>"

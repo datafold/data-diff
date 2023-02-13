@@ -168,6 +168,9 @@ class BaseDialect(AbstractDialect):
     def explain_as_text(self, query: str) -> str:
         return f"EXPLAIN {query}"
 
+    def optimizer_hints(self, s: str):
+        return f"/*+ {s} */ " if s else ""
+
     def _constant_value(self, v):
         if v is None:
             return "NULL"

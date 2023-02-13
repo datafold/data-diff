@@ -149,6 +149,9 @@ class Dialect(BaseDialect, Mixin_Schema):
     def current_timestamp(self) -> str:
         return "current_timestamp(6)"
 
+    def optimizer_hints(self, hints: str) -> str:
+        raise NotImplementedError("Optimizer hints not yet implemented in vertica")
+
 
 class Vertica(ThreadedDatabase):
     dialect = Dialect()

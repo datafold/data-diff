@@ -162,6 +162,9 @@ class Dialect(BaseDialect):
     def current_timestamp(self) -> str:
         return "now()"
 
+    def optimizer_hints(self, hints: str) -> str:
+        raise NotImplementedError("Optimizer hints not yet implemented in clickhouse")
+
 
 class Clickhouse(ThreadedDatabase):
     dialect = Dialect()
