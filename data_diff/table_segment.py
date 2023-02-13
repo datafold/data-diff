@@ -31,6 +31,7 @@ class TableSegment:
         min_update (:data:`DbTime`, optional): Lowest update_column value, used to restrict the segment
         max_update (:data:`DbTime`, optional): Highest update_column value, used to restrict the segment
         where (str, optional): An additional 'where' expression to restrict the search space.
+        optimizer_hints (str, optional): Optimizer hints for SELECT queries
 
         case_sensitive (bool): If false, the case of column names will adjust according to the schema. Default is true.
 
@@ -51,6 +52,7 @@ class TableSegment:
     min_update: DbTime = None
     max_update: DbTime = None
     where: str = None
+    optimizer_hints: str = None
 
     case_sensitive: bool = True
     _schema: Schema = None
@@ -169,7 +171,11 @@ class TableSegment:
     def count_and_checksum(self) -> Tuple[int, int]:
         """Count and checksum the rows in the segment, in one pass."""
         start = time.monotonic()
-        q = self.make_select().select(Count(), Checksum(self._relevant_columns_repr))
+        q = self.make_select().select(
+            Count(),
+            Checksum(self._relevant_columns_repr),
+            optimizer_hints=self.optimizer_hints
+        )
         count, checksum = self.database.query(q, tuple)
         duration = time.monotonic() - start
         if duration > RECOMMENDED_CHECKSUM_DURATION:
@@ -190,6 +196,7 @@ class TableSegment:
         select = self.make_select().select(
             ApplyFuncAndNormalizeAsString(this[k], min_),
             ApplyFuncAndNormalizeAsString(this[k], max_),
+            optimizer_hints=self.optimizer_hints
         )
         min_key, max_key = self.database.query(select, tuple)
 

@@ -79,6 +79,8 @@ def diff_tables(
     materialize_all_rows: bool = False,
     # Maximum number of rows to write when materializing, per thread. (joindiff only)
     table_write_limit: int = TABLE_WRITE_LIMIT,
+    # Optimizer hints for Select queries
+    optimizer_hints: Optional[str] = None
 ) -> Iterator:
     """Finds the diff between table1 and table2.
 
@@ -107,10 +109,11 @@ def diff_tables(
         materialize_to_table (Union[str, DbPath], optional): Path of new table to write diff results to. Disabled if not provided. Used for `JOINDIFF`.
         materialize_all_rows (bool): Materialize every row, not just those that are different. (used for `JOINDIFF`. default: False)
         table_write_limit (int): Maximum number of rows to write when materializing, per thread.
+        optimizer_hints (Optional[str]): optimizer hints for SELECT queries
 
     Note:
         The following parameters are used to override the corresponding attributes of the given :class:`TableSegment` instances:
-        `key_columns`, `update_column`, `extra_columns`, `min_key`, `max_key`, `where`.
+        `key_columns`, `update_column`, `extra_columns`, `min_key`, `max_key`, `where`, `optimizer_hints`.
         If different values are needed per table, it's possible to omit them here, and instead set
         them directly when creating each :class:`TableSegment`.
 
@@ -140,6 +143,7 @@ def diff_tables(
             min_update=min_update,
             max_update=max_update,
             where=where,
+            optimizer_hints=optimizer_hints
         ).items()
         if v is not None
     }
