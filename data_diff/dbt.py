@@ -54,7 +54,7 @@ def dbt_diff(
     if not is_cloud:
         dbt_parser.set_connection()
 
-    if config_prod_database is None or (config_prod_database is None and config_prod_schema is None):
+    if config_prod_database is None:
         raise ValueError(
             "Expected a value for prod_database: OR prod_database: AND prod_schema: under \nvars:\n  data_diff: "
         )
