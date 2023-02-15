@@ -48,9 +48,9 @@ class Mixin_MD5(AbstractMixin_MD5):
 class Mixin_NormalizeValue(AbstractMixin_NormalizeValue):
     def normalize_timestamp(self, value: str, coltype: TemporalType) -> str:
         if coltype.rounds:
-            timestamp = f"to_timestamp(round(date_part(epoch_nanosecond, {value}::timestamp(9))/1000000000, {coltype.precision}))"
+            timestamp = f"to_timestamp(round(date_part(epoch_nanosecond, convert_timezone('UTC', {value})::timestamp(9))/1000000000, {coltype.precision}))"
         else:
-            timestamp = f"cast({value} as timestamp({coltype.precision}))"
+            timestamp = f"cast(convert_timezone('UTC', {value}) as timestamp({coltype.precision}))"
 
         return f"to_char({timestamp}, 'YYYY-MM-DD HH24:MI:SS.FF6')"
 
