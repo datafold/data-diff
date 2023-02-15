@@ -84,7 +84,7 @@ def dbt_diff(
                 + "Skipped due to missing primary-key tag or multi-column primary-key (unsupported for non --cloud diffs)\n"
             )
 
-        rich.print("Diffs Complete!")
+    rich.print("Diffs Complete!")
 
 
 def _get_diff_vars(
