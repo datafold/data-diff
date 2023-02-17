@@ -104,10 +104,15 @@ class TableSegment:
     def source_table(self):
         return table(*self.table_path, schema=self._schema)
 
-    def make_select(self):
-        return self.source_table.where(
-            *self._make_key_range(), *self._make_update_range(), Code(self._where()) if self.where else SKIP
-        )
+    def make_select(self, include_key_range=True):
+        if include_key_range:
+            return self.source_table.where(
+                *self._make_key_range(), *self._make_update_range(), Code(self._where()) if self.where else SKIP
+            )
+        else:
+            return self.source_table.where(
+                *self._make_update_range(), Code(self._where()) if self.where else SKIP
+            )
 
     def get_values(self) -> list:
         "Download all the relevant values of the segment from the database"
@@ -187,7 +192,7 @@ class TableSegment:
         """Query database for minimum and maximum key. This is used for setting the initial bounds."""
         # Normalizes the result (needed for UUIDs) after the min/max computation
         (k,) = self.key_columns
-        select = self.make_select().select(
+        select = self.make_select(include_key_range=False).select(
             ApplyFuncAndNormalizeAsString(this[k], min_),
             ApplyFuncAndNormalizeAsString(this[k], max_),
         )
