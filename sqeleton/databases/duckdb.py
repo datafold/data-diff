@@ -176,7 +176,7 @@ class DuckDB(Database):
 
         return (
             f"SELECT column_name, data_type, datetime_precision, numeric_precision, numeric_scale FROM {'.'.join(info_schema_path)} "
-            f"WHERE table_name = '{table.lower()}' AND table_schema = '{schema.lower()}'"
+            f"WHERE table_name = '{table}' AND table_schema = '{schema}'"
         )
 
     def _normalize_table_path(self, path: DbPath) -> DbPath:
