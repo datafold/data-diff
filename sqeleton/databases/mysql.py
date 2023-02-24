@@ -17,7 +17,7 @@ from ..abcs.mixins import (
     AbstractMixin_Regex,
     AbstractMixin_RandomSample,
 )
-from .base import ThreadedDatabase, import_helper, ConnectError, BaseDialect, Compilable
+from .base import Mixin_OptimizerHints, ThreadedDatabase, import_helper, ConnectError, BaseDialect, Compilable
 from .base import MD5_HEXDIGITS, CHECKSUM_HEXDIGITS, TIMESTAMP_PRECISION_POS, Mixin_Schema, Mixin_RandomSample
 from ..queries.ast_classes import BinBoolOp
 
@@ -54,7 +54,7 @@ class Mixin_Regex(AbstractMixin_Regex):
         return BinBoolOp("REGEXP", [string, pattern])
 
 
-class Dialect(BaseDialect, Mixin_Schema):
+class Dialect(BaseDialect, Mixin_Schema, Mixin_OptimizerHints):
     name = "MySQL"
     ROUNDS_ON_PREC_LOSS = True
     SUPPORTS_PRIMARY_KEY = True
@@ -108,6 +108,9 @@ class Dialect(BaseDialect, Mixin_Schema):
 
     def explain_as_text(self, query: str) -> str:
         return f"EXPLAIN FORMAT=TREE {query}"
+
+    def optimizer_hints(self, s: str):
+        return f"/*+ {s} */ "
 
     def set_timezone_to_utc(self) -> str:
         return "SET @@session.time_zone='+00:00'"

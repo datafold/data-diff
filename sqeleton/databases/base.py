@@ -36,7 +36,12 @@ from ..abcs.database_types import (
     Boolean,
 )
 from ..abcs.mixins import Compilable
-from ..abcs.mixins import AbstractMixin_Schema, AbstractMixin_RandomSample, AbstractMixin_NormalizeValue
+from ..abcs.mixins import (
+    AbstractMixin_Schema,
+    AbstractMixin_RandomSample,
+    AbstractMixin_NormalizeValue,
+    AbstractMixin_OptimizerHints,
+)
 from ..bound_exprs import bound_table
 
 logger = logging.getLogger("database")
@@ -132,6 +137,11 @@ class Mixin_RandomSample(AbstractMixin_RandomSample):
 
     def random_sample_ratio_approx(self, tbl: AbstractTable, ratio: float) -> AbstractTable:
         return tbl.where(Random() < ratio)
+
+
+class Mixin_OptimizerHints(AbstractMixin_OptimizerHints):
+    def optimizer_hints(self, hints: str) -> str:
+        return f"/*+ {hints} */ "
 
 
 class BaseDialect(AbstractDialect):

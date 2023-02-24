@@ -463,6 +463,8 @@ List of available abstract mixins:
 
 - `AbstractMixin_TimeTravel` - Only snowflake & bigquery
 
+- `AbstractMixin_OptimizerHints` - Only oracle & mysql
+
 More will be added in the future.
 
 Note that it's still possible to use user-defined mixins that aren't on this list.

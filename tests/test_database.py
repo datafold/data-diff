@@ -80,3 +80,27 @@ class TestQueries(unittest.TestCase):
         db = get_conn(self.db_cls)
         res = db.query(current_timestamp(), datetime)
         assert isinstance(res, datetime), (res, type(res))
+
+
+@test_each_database
+class TestThreePartIds(unittest.TestCase):
+    def test_three_part_support(self):
+        if self.db_cls not in [dbs.PostgreSQL, dbs.Redshift, dbs.Snowflake]:
+            self.skipTest("Limited support for 3 part ids")
+
+        table_name = "tbl_" + random_table_suffix()
+        db = get_conn(self.db_cls)
+        db_res = db.query("SELECT CURRENT_DATABASE()")
+        schema_res = db.query("SELECT CURRENT_SCHEMA()")
+        db_name = db_res.rows[0][0]
+        schema_name = schema_res.rows[0][0]
+
+        table_one_part = table((table_name,), schema={"id": int})
+        table_two_part = table((schema_name, table_name), schema={"id": int})
+        table_three_part = table((db_name, schema_name, table_name), schema={"id": int})
+
+        for part in (table_one_part, table_two_part, table_three_part):
+            db.query(part.create())
+            d = db.query_table_schema(part.path)
+            assert len(d) == 1
+            db.query(part.drop())
