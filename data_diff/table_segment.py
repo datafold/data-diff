@@ -1,5 +1,5 @@
 import time
-from typing import List, Tuple
+from typing import List, Tuple, Literal
 import logging
 
 from runtype import dataclass
@@ -202,6 +202,22 @@ class TableSegment:
             raise ValueError("Table appears to be empty")
 
         return min_key, max_key
+
+    def query_key_bound(self, bound: Literal['min', 'max']) -> int:
+        """Query database for min OR max of key. This is used for setting the initial bounds."""
+        # Normalizes the result (needed for UUIDs) after the min computation
+
+        bound_expr = min_ if bound == 'min' else max_
+        (k,) = self.key_columns
+        select = self.make_select(include_key_range=False).select(
+            ApplyFuncAndNormalizeAsString(this[k], bound_expr)
+        )
+        min_or_max_key = self.database.query(select, str)
+
+        if min_or_max_key is None:
+            raise ValueError("Table appears to be empty")
+
+        return min_or_max_key[0][0]
 
     @property
     def is_bounded(self):

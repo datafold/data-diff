@@ -60,9 +60,9 @@ class ThreadBase:
             for future in as_completed(futures):
                 yield future.result()
 
-    def _threaded_call_as_completed(self, func, iterable):
+    def _threaded_call_as_completed(self, func, iterable, *args, **kwargs):
         "Calls a method for each object in iterable. Returned in order of completion."
-        return self._thread_as_completed(methodcaller(func), iterable)
+        return self._thread_as_completed(methodcaller(func, *args, **kwargs), iterable)
 
     @contextmanager
     def _run_in_background(self, *funcs):
@@ -290,8 +290,21 @@ class TableDiffer(ThreadBase, ABC):
         if key_type.python_type is not key_type2.python_type:
             raise TypeError(f"Incompatible key types: {key_type} and {key_type2}")
 
-        # Query min/max values
-        key_ranges = self._threaded_call_as_completed("query_key_range", [table1, table2])
+        if all([table1.min_key, table1.max_key, table2.min_key, table2.max_key]):
+            key_ranges = (kr for kr in [(table1.min_key, table1.max_key), (table2.min_key, table2.max_key)])
+        elif table1.min_key and table2.min_key:
+            logger.debug('Querying for max_key')
+            max_keys = self._threaded_call_as_completed("query_key_bound", [table1, table2], bound='max')
+            min_keys = (table1.min_key, table2.min_key)
+            key_ranges = zip(min_keys, max_keys)
+        elif table1.max_key and table2.max_key:
+            logger.debug('Querying for min_key')
+            min_keys = self._threaded_call_as_completed("query_key_bound", [table1, table2], bound='min')
+            max_keys = (table1.max_key, table2.max_key)
+            key_ranges = zip(min_keys, max_keys)
+        else:
+            # Query min/max values
+            key_ranges = self._threaded_call_as_completed("query_key_range", [table1, table2])
 
         # Start with the first completed value, so we don't waste time waiting
         min_key1, max_key1 = self._parse_key_range_result(key_type, next(key_ranges))
