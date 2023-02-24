@@ -86,7 +86,7 @@ class TestQueries(unittest.TestCase):
 class TestThreePartIds(unittest.TestCase):
     def test_three_part_support(self):
         if self.db_cls not in [dbs.PostgreSQL, dbs.Redshift, dbs.Snowflake]:
-            self.skipTest('Limited support for 3 part ids')
+            self.skipTest("Limited support for 3 part ids")
 
         table_name = "tbl_" + random_table_suffix()
         db = get_conn(self.db_cls)
@@ -99,11 +99,8 @@ class TestThreePartIds(unittest.TestCase):
         table_two_part = table((schema_name, table_name), schema={"id": int})
         table_three_part = table((db_name, schema_name, table_name), schema={"id": int})
 
-        db.query(table_one_part.create())
-        db.query(table_one_part.drop())
-
-        db.query(table_two_part.create())
-        db.query(table_two_part.drop())
-
-        db.query(table_three_part.create())
-        db.query(table_three_part.drop())
+        for part in (table_one_part, table_two_part, table_three_part):
+            db.query(part.create())
+            d = db.query_table_schema(part.path)
+            assert len(d) == 1
+            db.query(part.drop())
