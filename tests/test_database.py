@@ -85,7 +85,7 @@ class TestQueries(unittest.TestCase):
 @test_each_database
 class TestThreePartIds(unittest.TestCase):
     def test_three_part_support(self):
-        if self.db_cls not in [dbs.PostgreSQL, dbs.Redshift, dbs.Snowflake]:
+        if self.db_cls not in [dbs.PostgreSQL, dbs.Redshift, dbs.Snowflake, dbs.DuckDB]:
             self.skipTest("Limited support for 3 part ids")
 
         table_name = "tbl_" + random_table_suffix()
