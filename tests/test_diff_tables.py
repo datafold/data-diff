@@ -2,6 +2,7 @@ from datetime import datetime, timedelta
 from typing import Callable
 import uuid
 import unittest
+from unittest.mock import patch
 
 from sqeleton.queries import table, this, commit
 from sqeleton.utils import ArithAlphanumeric, numberToAlphanum
@@ -298,6 +299,50 @@ class TestDiffTables(DiffTestCase):
             ("+", ("4", time + ".000000")),
         }
         self.assertEqual(expected, diff)
+
+    @patch.object(TableSegment, 'query_key_range')
+    @patch.object(TableSegment, 'query_key_bound')
+    def test_key_bounds(self, mock_query_key_bound, mock_query_key_range):
+        # test range query when no min/max provided
+        mock_query_key_range.return_value = (0, 10)
+        _ = list(self.differ.diff_tables(self.table, self.table2))
+        mock_query_key_range.assert_called()
+        mock_query_key_bound.assert_not_called()
+
+        # test no range or bounds query
+        mock_query_key_range.reset_mock()
+        mock_query_key_bound.reset_mock()
+
+        tbl1 = self.table.replace(min_key=1, max_key=100)
+        tbl2 = self.table2.replace(min_key=1, max_key=100)
+
+        _ = list(self.differ.diff_tables(tbl1, tbl2))
+        mock_query_key_range.assert_not_called()
+        mock_query_key_bound.assert_not_called()
+
+        # test query min only
+        mock_query_key_range.reset_mock()
+        mock_query_key_bound.reset_mock()
+
+        tbl1 = self.table.replace(max_key=100)
+        tbl2 = self.table2.replace(max_key=100)
+
+        _ = list(self.differ.diff_tables(tbl1, tbl2))
+        mock_query_key_range.assert_not_called()
+        mock_query_key_bound.assert_called_with(bound='min')
+
+        # test query max only
+        mock_query_key_range.reset_mock()
+        mock_query_key_bound.reset_mock()
+        mock_query_key_bound.return_value = 1000
+
+        tbl1 = self.table.replace(max_key=None, min_key=100)
+        tbl2 = self.table2.replace(max_key=None, min_key=100)
+
+        _ = list(self.differ.diff_tables(tbl1, tbl2))
+        mock_query_key_range.assert_not_called()
+        mock_query_key_bound.assert_called_with(bound='max')
+
 
 
 @test_each_database
