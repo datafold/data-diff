@@ -1,4 +1,16 @@
-from typing import Iterable, Iterator, MutableMapping, Union, Any, Sequence, Dict, Hashable, TypeVar, TYPE_CHECKING, List
+from typing import (
+    Iterable,
+    Iterator,
+    MutableMapping,
+    Union,
+    Any,
+    Sequence,
+    Dict,
+    Hashable,
+    TypeVar,
+    TYPE_CHECKING,
+    List,
+)
 from abc import abstractmethod
 from weakref import ref
 import math
@@ -255,7 +267,6 @@ class ArithAlphanumeric(ArithString):
         if not isinstance(other, type(self)):
             return NotImplemented
         return self._str == other._str
-
 
     def new(self, *args, **kw):
         return type(self)(*args, **kw, max_len=self._max_len)

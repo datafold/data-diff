@@ -48,7 +48,7 @@ def repl(uri):
                 continue
             try:
                 path = db.parse_table_name(table_name)
-                print('->', path)
+                print("->", path)
                 schema = db.query_table_schema(path)
             except Exception as e:
                 logging.error(e)

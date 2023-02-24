@@ -136,6 +136,9 @@ class Dialect(BaseDialect, Mixin_Schema):
     def set_timezone_to_utc(self) -> str:
         return "ALTER SESSION SET TIMEZONE = 'UTC'"
 
+    def optimizer_hints(self, hints: str) -> str:
+        raise NotImplementedError("Optimizer hints not yet implemented in snowflake")
+
 
 class Snowflake(Database):
     dialect = Dialect()
