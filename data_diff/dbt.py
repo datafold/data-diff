@@ -54,8 +54,10 @@ def dbt_diff(
     if not is_cloud:
         dbt_parser.set_connection()
 
-    if config_prod_database is None or config_prod_schema is None:
-        raise ValueError("Expected a value for prod_database: or prod_schema: under \nvars:\n  data_diff: ")
+    if config_prod_database is None:
+        raise ValueError(
+            "Expected a value for prod_database: OR prod_database: AND prod_schema: under \nvars:\n  data_diff: "
+        )
 
     for model in models:
         diff_vars = _get_diff_vars(dbt_parser, config_prod_database, config_prod_schema, model, datasource_id)
@@ -65,9 +67,9 @@ def dbt_diff(
         elif is_cloud:
             rich.print(
                 "[red]"
-                + ".".join(diff_vars.dev_path)
-                + " <> "
                 + ".".join(diff_vars.prod_path)
+                + " <> "
+                + ".".join(diff_vars.dev_path)
                 + "[/] \n"
                 + "Skipped due to missing primary-key tag\n"
             )
@@ -77,9 +79,9 @@ def dbt_diff(
         elif not is_cloud:
             rich.print(
                 "[red]"
-                + ".".join(diff_vars.dev_path)
-                + " <> "
                 + ".".join(diff_vars.prod_path)
+                + " <> "
+                + ".".join(diff_vars.dev_path)
                 + "[/] \n"
                 + "Skipped due to missing primary-key tag or multi-column primary-key (unsupported for non --cloud diffs)\n"
             )
@@ -129,9 +131,9 @@ def _local_diff(diff_vars: DiffVars) -> None:
         logging.info(ex)
         rich.print(
             "[red]"
-            + dev_qualified_string
-            + " <> "
             + prod_qualified_string
+            + " <> "
+            + dev_qualified_string
             + "[/] \n"
             + column_diffs_str
             + "[green]New model or no access to prod table.[/] \n"
@@ -170,8 +172,8 @@ def _cloud_diff(diff_vars: DiffVars) -> None:
     payload = {
         "data_source1_id": diff_vars.datasource_id,
         "data_source2_id": diff_vars.datasource_id,
-        "table1": diff_vars.dev_path,
-        "table2": diff_vars.prod_path,
+        "table1": diff_vars.prod_path,
+        "table2": diff_vars.dev_path,
         "pk_columns": diff_vars.primary_keys,
     }
 
@@ -195,9 +197,9 @@ def _cloud_diff(diff_vars: DiffVars) -> None:
         diff_url = f"https://app.datafold.com/datadiffs/{diff_id}/overview"
         rich.print(
             "[red]"
-            + ".".join(diff_vars.dev_path)
-            + " <> "
             + ".".join(diff_vars.prod_path)
+            + " <> "
+            + ".".join(diff_vars.dev_path)
             + "[/] \n    Diff in progress: \n    "
             + diff_url
             + "\n"
