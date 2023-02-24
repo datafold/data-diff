@@ -155,5 +155,5 @@ class AbstractMixin_OptimizerHints(AbstractMixin):
         """Creates a compatible optimizer_hints string
 
         Parameters:
-            optimizer_hints - string of opimizer hints
+            optimizer_hints - string of optimizer hints
         """
