@@ -197,17 +197,19 @@ class TestQuery(unittest.TestCase):
         c = Compiler(MockDatabase())
         t = table("a")
 
-        q = c.compile(t.select(this.b, optimizer_hints='PARALLEL(a 16)'))
+        q = c.compile(t.select(this.b, optimizer_hints="PARALLEL(a 16)"))
         assert q == "SELECT /*+ PARALLEL(a 16) */ b FROM a"
 
-        q = c.compile(t.where(this.b > 10).select(this.b, optimizer_hints='PARALLEL(a 16)'))
+        q = c.compile(t.where(this.b > 10).select(this.b, optimizer_hints="PARALLEL(a 16)"))
         self.assertEqual(q, "SELECT /*+ PARALLEL(a 16) */ b FROM a WHERE (b > 10)")
 
-        q = c.compile(t.limit(10).select(this.b, optimizer_hints='PARALLEL(a 16)'))
+        q = c.compile(t.limit(10).select(this.b, optimizer_hints="PARALLEL(a 16)"))
         self.assertEqual(q, "SELECT /*+ PARALLEL(a 16) */ b FROM (SELECT * FROM a LIMIT 10) tmp1")
 
-        q = c.compile(t.select(this.a).group_by(this.b).agg(this.c).select(optimizer_hints='PARALLEL(a 16)'))
-        self.assertEqual(q, "SELECT /*+ PARALLEL(a 16) */ * FROM (SELECT b, c FROM (SELECT a FROM a) tmp2 GROUP BY 1) tmp3")
+        q = c.compile(t.select(this.a).group_by(this.b).agg(this.c).select(optimizer_hints="PARALLEL(a 16)"))
+        self.assertEqual(
+            q, "SELECT /*+ PARALLEL(a 16) */ * FROM (SELECT b, c FROM (SELECT a FROM a) tmp2 GROUP BY 1) tmp3"
+        )
 
     def test_table_ops(self):
         c = Compiler(MockDatabase())

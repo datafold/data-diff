@@ -17,7 +17,15 @@ from ..abcs.database_types import (
 from ..abcs.mixins import AbstractMixin_MD5, AbstractMixin_NormalizeValue, AbstractMixin_Schema
 from ..abcs import Compilable
 from ..queries import this, table, SKIP
-from .base import BaseDialect, Mixin_OptimizerHints, ThreadedDatabase, import_helper, ConnectError, QueryError, Mixin_RandomSample
+from .base import (
+    BaseDialect,
+    Mixin_OptimizerHints,
+    ThreadedDatabase,
+    import_helper,
+    ConnectError,
+    QueryError,
+    Mixin_RandomSample,
+)
 from .base import TIMESTAMP_PRECISION_POS
 
 SESSION_TIME_ZONE = None  # Changed by the tests

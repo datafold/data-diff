@@ -95,7 +95,6 @@ class Dialect(BaseDialect):
         return "SET TIME ZONE 'UTC'"
 
 
-
 class Databricks(ThreadedDatabase):
     dialect = Dialect()
     CONNECT_URI_HELP = "databricks://:<access_token>@<server_hostname>/<http_path>"

@@ -40,8 +40,8 @@ from ..abcs.mixins import (
     AbstractMixin_Schema,
     AbstractMixin_RandomSample,
     AbstractMixin_NormalizeValue,
-    AbstractMixin_OptimizerHints
-) 
+    AbstractMixin_OptimizerHints,
+)
 from ..bound_exprs import bound_table
 
 logger = logging.getLogger("database")
@@ -140,10 +140,7 @@ class Mixin_RandomSample(AbstractMixin_RandomSample):
 
 
 class Mixin_OptimizerHints(AbstractMixin_OptimizerHints):
-    def optimizer_hints(
-        self,
-        hints: str
-    ) -> str:
+    def optimizer_hints(self, hints: str) -> str:
         return f"/*+ {hints} */ "
 
 
@@ -180,7 +177,6 @@ class BaseDialect(AbstractDialect):
 
     def explain_as_text(self, query: str) -> str:
         return f"EXPLAIN {query}"
-
 
     def _constant_value(self, v):
         if v is None:
