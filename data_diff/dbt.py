@@ -73,7 +73,7 @@ def dbt_diff(
             )
 
         if not is_cloud and len(diff_vars.primary_keys) == 1:
-            _local_diff(diff_vars)
+            return _local_diff(diff_vars)
         elif not is_cloud:
             rich.print(
                 "[red]"
@@ -152,28 +152,7 @@ def _local_diff(diff_vars: DiffVars) -> None:
     extra_columns = tuple(mutual_set)
 
     diff = diff_tables(table1, table2, threaded=True, algorithm=Algorithm.JOINDIFF, extra_columns=extra_columns)
-
-    if list(diff):
-        rich.print(
-            "[red]"
-            + dev_qualified_string
-            + " <> "
-            + prod_qualified_string
-            + "[/] \n"
-            + column_diffs_str
-            + diff.get_stats_string(is_dbt=True)
-            + "\n"
-        )
-    else:
-        rich.print(
-            "[red]"
-            + dev_qualified_string
-            + " <> "
-            + prod_qualified_string
-            + "[/] \n"
-            + column_diffs_str
-            + "[green]No row differences[/] \n"
-        )
+    return diff
 
 
 def _cloud_diff(diff_vars: DiffVars) -> None:

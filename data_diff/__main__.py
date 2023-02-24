@@ -259,11 +259,13 @@ def main(conf, run, **kw):
 
     try:
         if kw["dbt"]:
-            dbt_diff(
+            diff = dbt_diff(
                 profiles_dir_override=kw["dbt_profiles_dir"],
                 project_dir_override=kw["dbt_project_dir"],
                 is_cloud=kw["cloud"],
             )
+            render_diff(diff, kw["limit"], kw["stats"], kw["json_output"])
+
         else:
             return _data_diff(**kw)
     except Exception as e:
@@ -444,6 +446,14 @@ def _data_diff(
 
     diff_iter = differ.diff_tables(*segments)
 
+    render_diff(diff_iter, limit, stats, json_output)
+
+    end = time.monotonic()
+
+    logging.info(f"Duration: {end-start:.2f} seconds.")
+
+
+def render_diff(diff_iter, limit, stats, json_output):
     if limit:
         assert not stats
         diff_iter = islice(diff_iter, int(limit))
@@ -466,10 +476,6 @@ def _data_diff(
                 rich.print(f"[{color}]{text}[/{color}]")
 
             sys.stdout.flush()
-
-    end = time.monotonic()
-
-    logging.info(f"Duration: {end-start:.2f} seconds.")
 
 
 if __name__ == "__main__":
