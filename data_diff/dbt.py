@@ -7,6 +7,7 @@ import yaml
 from dataclasses import dataclass
 from packaging.version import parse as parse_version
 from typing import List, Optional, Dict
+from pathlib import Path
 
 import requests
 from dbt_artifacts_parser.parser import parse_run_results, parse_manifest
@@ -22,12 +23,24 @@ from .tracking import (
 from .utils import run_as_daemon, truncate_error
 from . import connect_to_table, diff_tables, Algorithm
 
-RUN_RESULTS_PATH = "/target/run_results.json"
-MANIFEST_PATH = "/target/manifest.json"
-PROJECT_FILE = "/dbt_project.yml"
-PROFILES_FILE = "/profiles.yml"
+RUN_RESULTS_PATH = "target/run_results.json"
+MANIFEST_PATH = "target/manifest.json"
+PROJECT_FILE = "dbt_project.yml"
+PROFILES_FILE = "profiles.yml"
 LOWER_DBT_V = "1.0.0"
 UPPER_DBT_V = "1.5.0"
+
+
+# https://github.com/dbt-labs/dbt-core/blob/c952d44ec5c2506995fbad75320acbae49125d3d/core/dbt/cli/resolvers.py#L6
+def default_project_dir() -> Path:
+    paths = list(Path.cwd().parents)
+    paths.insert(0, Path.cwd())
+    return next((x for x in paths if (x / PROJECT_FILE).exists()), Path.cwd())
+
+
+# https://github.com/dbt-labs/dbt-core/blob/c952d44ec5c2506995fbad75320acbae49125d3d/core/dbt/cli/resolvers.py#L12
+def default_profiles_dir() -> Path:
+    return Path.cwd() if (Path.cwd() / PROFILES_FILE).exists() else Path.home() / ".dbt"
 
 
 @dataclass
@@ -252,12 +265,10 @@ def _cloud_diff(diff_vars: DiffVars) -> None:
 
 
 class DbtParser:
-    DEFAULT_PROFILES_DIR = os.path.expanduser("~") + "/.dbt"
-    DEFAULT_PROJECT_DIR = os.getcwd()
 
     def __init__(self, profiles_dir_override: str, project_dir_override: str, is_cloud: bool) -> None:
-        self.profiles_dir = profiles_dir_override or self.DEFAULT_PROFILES_DIR
-        self.project_dir = project_dir_override or self.DEFAULT_PROJECT_DIR
+        self.profiles_dir = Path(profiles_dir_override or default_profiles_dir())
+        self.project_dir = Path(project_dir_override or default_project_dir())
         self.is_cloud = is_cloud
         self.connection = None
         self.project_dict = None
@@ -267,7 +278,7 @@ class DbtParser:
         return self.project_dict.get("vars").get("data_diff")
 
     def get_models(self):
-        with open(self.project_dir + RUN_RESULTS_PATH) as run_results:
+        with open(self.project_dir / RUN_RESULTS_PATH) as run_results:
             run_results_dict = json.load(run_results)
             run_results_obj = parse_run_results(run_results=run_results_dict)
 
@@ -278,7 +289,7 @@ class DbtParser:
                 f"Found dbt: v{dbt_version} Expected the dbt project's version to be >= {LOWER_DBT_V} and < {UPPER_DBT_V}"
             )
 
-        with open(self.project_dir + MANIFEST_PATH) as manifest:
+        with open(self.project_dir / MANIFEST_PATH) as manifest:
             manifest_dict = json.load(manifest)
             manifest_obj = parse_manifest(manifest=manifest_dict)
 
@@ -294,11 +305,11 @@ class DbtParser:
         return list((x.name for x in model.columns.values() if "primary-key" in x.tags))
 
     def set_project_dict(self):
-        with open(self.project_dir + PROJECT_FILE) as project:
+        with open(self.project_dir / PROJECT_FILE) as project:
             self.project_dict = yaml.safe_load(project)
 
     def set_connection(self):
-        with open(self.profiles_dir + PROFILES_FILE) as profiles:
+        with open(self.profiles_dir / PROFILES_FILE) as profiles:
             profiles = yaml.safe_load(profiles)
 
         dbt_profile = self.project_dict.get("profile")
