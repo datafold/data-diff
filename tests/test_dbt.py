@@ -1,4 +1,3 @@
-import json
 import os
 
 from data_diff.diff_tables import Algorithm
@@ -11,7 +10,6 @@ from data_diff.dbt import (
     DbtParser,
     RUN_RESULTS_PATH,
     MANIFEST_PATH,
-    PROFILES_FILE,
     PROJECT_FILE,
     DiffVars,
 )
@@ -154,10 +152,7 @@ class TestDbtParser(unittest.TestCase):
 
     def test_set_connection_snowflake_success(self):
         expected_driver = "snowflake"
-        expected_credentials = {
-                "user": "user",
-                "password": "password"
-        }
+        expected_credentials = {"user": "user", "password": "password"}
         mock_self = Mock()
         mock_self._get_connection_creds.return_value = (expected_credentials, expected_driver)
 
@@ -171,9 +166,7 @@ class TestDbtParser(unittest.TestCase):
 
     def test_set_connection_snowflake_no_password(self):
         expected_driver = "snowflake"
-        expected_credentials = {
-                "user": "user"
-        }
+        expected_credentials = {"user": "user"}
         mock_self = Mock()
         mock_self._get_connection_creds.return_value = (expected_credentials, expected_driver)
 
@@ -185,10 +178,10 @@ class TestDbtParser(unittest.TestCase):
     def test_set_connection_bigquery_success(self):
         expected_driver = "bigquery"
         expected_credentials = {
-                        "method": "oauth",
-                        "project": "a_project",
-                        "dataset": "a_dataset",
-                    }
+            "method": "oauth",
+            "project": "a_project",
+            "dataset": "a_dataset",
+        }
         mock_self = Mock()
         mock_self._get_connection_creds.return_value = (expected_credentials, expected_driver)
 
@@ -202,10 +195,10 @@ class TestDbtParser(unittest.TestCase):
     def test_set_connection_bigquery_not_oauth(self):
         expected_driver = "bigquery"
         expected_credentials = {
-                        "method": "not_oauth",
-                        "project": "a_project",
-                        "dataset": "a_dataset",
-                    }
+            "method": "not_oauth",
+            "project": "a_project",
+            "dataset": "a_dataset",
+        }
 
         mock_self = Mock()
         mock_self._get_connection_creds.return_value = (expected_credentials, expected_driver)
@@ -300,7 +293,6 @@ class TestDbtParser(unittest.TestCase):
         with self.assertRaises(ValueError):
             _, _ = DbtParser._get_connection_creds(mock_self)
 
-
     profile_yaml_no_target_credentials = """
     a_profile:
       outputs:
@@ -335,6 +327,7 @@ class TestDbtParser(unittest.TestCase):
         mock_self.project_dict = {"profile": "a_profile"}
         with self.assertRaises(ValueError):
             _, _ = DbtParser._get_connection_creds(mock_self)
+
 
 class TestDbtDiffer(unittest.TestCase):
     # These two integration tests can be used to test a real diff
