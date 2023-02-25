@@ -152,179 +152,189 @@ class TestDbtParser(unittest.TestCase):
         self.assertEqual(mock_self.project_dict, expected_dict)
         mock_open.assert_called_once_with(PROJECT_FILE)
 
-    @patch("data_diff.dbt.yaml.safe_load")
-    @patch("builtins.open", new_callable=mock_open, read_data="key:\n  value")
-    def test_set_connection_snowflake(self, mock_open_file, mock_yaml_parse):
+    def test_set_connection_snowflake_success(self):
         expected_driver = "snowflake"
-        expected_password = "password_value"
-        profiles_dict = {
-            "profile_name": {
-                "outputs": {
-                    "connection1": {
-                        "type": expected_driver,
-                        "password": expected_password,
-                    }
-                },
-                "target": "connection1",
-            }
+        expected_credentials = {
+                "user": "user",
+                "password": "password"
         }
-
         mock_self = Mock()
-        mock_self.profiles_dir = ""
-        mock_self.project_dict = {"profile": "profile_name"}
-        mock_yaml_parse.return_value = profiles_dict
+        mock_self._get_connection_creds.return_value = (expected_credentials, expected_driver)
+
         DbtParser.set_connection(mock_self)
 
         self.assertIsInstance(mock_self.connection, dict)
         self.assertEqual(mock_self.connection.get("driver"), expected_driver)
-        self.assertEqual(mock_self.connection.get("password"), expected_password)
+        self.assertEqual(mock_self.connection.get("user"), expected_credentials["user"])
+        self.assertEqual(mock_self.connection.get("password"), expected_credentials["password"])
         self.assertEqual(mock_self.requires_upper, True)
-        mock_open_file.assert_called_once_with(PROFILES_FILE)
-        mock_yaml_parse.assert_called_once_with(mock_open_file())
 
-    @patch("data_diff.dbt.yaml.safe_load")
-    @patch("builtins.open", new_callable=mock_open, read_data="key:\n  value")
-    def test_set_connection_snowflake_no_password(self, mock_open_file, mock_yaml_parse):
+    def test_set_connection_snowflake_no_password(self):
         expected_driver = "snowflake"
-        profiles_dict = {
-            "profile_name": {
-                "outputs": {"connection1": {"type": expected_driver}},
-                "target": "connection1",
-            }
+        expected_credentials = {
+                "user": "user"
         }
-
         mock_self = Mock()
-        mock_self.profiles_dir = ""
-        mock_self.project_dict = {"profile": "profile_name"}
-        mock_yaml_parse.return_value = profiles_dict
+        mock_self._get_connection_creds.return_value = (expected_credentials, expected_driver)
 
         with self.assertRaises(Exception):
             DbtParser.set_connection(mock_self)
 
-        mock_open_file.assert_called_once_with(PROFILES_FILE)
-        mock_yaml_parse.assert_called_once_with(mock_open_file())
         self.assertNotIsInstance(mock_self.connection, dict)
 
-    @patch("data_diff.dbt.yaml.safe_load")
-    @patch("builtins.open", new_callable=mock_open, read_data="key:\n  value")
-    def test_set_connection_bigquery(self, mock_open_file, mock_yaml_parse):
+    def test_set_connection_bigquery_success(self):
         expected_driver = "bigquery"
-        expected_method = "oauth"
-        expected_project = "a_project"
-        expected_dataset = "a_dataset"
-        profiles_dict = {
-            "profile_name": {
-                "outputs": {
-                    "connection1": {
-                        "type": expected_driver,
-                        "method": expected_method,
-                        "project": expected_project,
-                        "dataset": expected_dataset,
+        expected_credentials = {
+                        "method": "oauth",
+                        "project": "a_project",
+                        "dataset": "a_dataset",
                     }
-                },
-                "target": "connection1",
-            }
-        }
-
         mock_self = Mock()
-        mock_self.profiles_dir = ""
-        mock_self.project_dict = {"profile": "profile_name"}
-        mock_yaml_parse.return_value = profiles_dict
+        mock_self._get_connection_creds.return_value = (expected_credentials, expected_driver)
+
         DbtParser.set_connection(mock_self)
 
         self.assertIsInstance(mock_self.connection, dict)
         self.assertEqual(mock_self.connection.get("driver"), expected_driver)
-        self.assertEqual(mock_self.connection.get("project"), expected_project)
-        self.assertEqual(mock_self.connection.get("dataset"), expected_dataset)
-        mock_open_file.assert_called_once_with(PROFILES_FILE)
-        mock_yaml_parse.assert_called_once_with(mock_open_file())
+        self.assertEqual(mock_self.connection.get("project"), expected_credentials["project"])
+        self.assertEqual(mock_self.connection.get("dataset"), expected_credentials["dataset"])
 
-    @patch("data_diff.dbt.yaml.safe_load")
-    @patch("builtins.open", new_callable=mock_open, read_data="key:\n  value")
-    def test_set_connection_bigquery_not_oauth(self, mock_open_file, mock_yaml_parse):
+    def test_set_connection_bigquery_not_oauth(self):
         expected_driver = "bigquery"
-        expected_method = "not_oauth"
-        expected_project = "a_project"
-        expected_dataset = "a_dataset"
-        profiles_dict = {
-            "profile_name": {
-                "outputs": {
-                    "connection1": {
-                        "type": expected_driver,
-                        "method": expected_method,
-                        "project": expected_project,
-                        "dataset": expected_dataset,
+        expected_credentials = {
+                        "method": "not_oauth",
+                        "project": "a_project",
+                        "dataset": "a_dataset",
                     }
-                },
-                "target": "connection1",
-            }
-        }
 
         mock_self = Mock()
-        mock_self.profiles_dir = ""
-        mock_self.project_dict = {"profile": "profile_name"}
-        mock_yaml_parse.return_value = profiles_dict
+        mock_self._get_connection_creds.return_value = (expected_credentials, expected_driver)
         with self.assertRaises(Exception):
             DbtParser.set_connection(mock_self)
 
-        mock_open_file.assert_called_once_with(PROFILES_FILE)
-        mock_yaml_parse.assert_called_once_with(mock_open_file())
         self.assertNotIsInstance(mock_self.connection, dict)
 
-    @patch("data_diff.dbt.yaml.safe_load")
-    @patch("builtins.open", new_callable=mock_open, read_data="key:\n  value")
-    def test_set_connection_key_error(self, mock_open_file, mock_yaml_parse):
-        profiles_dict = {
-            "profile_name": {
-                "outputs": {
-                    "connection1": {
-                        "type": "a_driver",
-                        "password": "a_password",
-                    }
-                },
-                "target": "connection1",
-            }
-        }
+    def test_set_connection_not_implemented(self):
+        expected_driver = "unimplemented_provider"
 
         mock_self = Mock()
-        mock_self.profiles_dir = ""
-        mock_self.project_dir = ""
-        mock_self.project_dict = {"profile": "bad_key"}
-        mock_yaml_parse.return_value = profiles_dict
-        with self.assertRaises(Exception):
-            DbtParser.set_connection(mock_self)
-
-        mock_open_file.assert_called_once_with(PROFILES_FILE)
-        mock_yaml_parse.assert_called_once_with(mock_open_file())
-        self.assertNotIsInstance(mock_self.connection, dict)
-
-    @patch("data_diff.dbt.yaml.safe_load")
-    @patch("builtins.open", new_callable=mock_open, read_data="key:\n  value")
-    def test_set_connection_not_implemented(self, mock_open_file, mock_yaml_parse):
-        expected_driver = "not_implemented"
-        profiles_dict = {
-            "profile_name": {
-                "outputs": {
-                    "connection1": {
-                        "type": expected_driver,
-                    }
-                },
-                "target": "connection1",
-            }
-        }
-
-        mock_self = Mock()
-        mock_self.profiles_dir = ""
-        mock_self.project_dir = ""
-        mock_self.project_dict = {"profile": "profile_name"}
-        mock_yaml_parse.return_value = profiles_dict
+        mock_self._get_connection_creds.return_value = (None, expected_driver)
         with self.assertRaises(NotImplementedError):
             DbtParser.set_connection(mock_self)
 
-        mock_open_file.assert_called_once_with(PROFILES_FILE)
-        mock_yaml_parse.assert_called_once_with(mock_open_file())
         self.assertNotIsInstance(mock_self.connection, dict)
 
+    valid_profile_yaml = f"""
+    a_profile:
+      outputs:
+        a_target:
+          type: TYPE1
+          credential_1: credential_1
+          credential_2: "{{{{ env_var('not_exists_var', 'credential_2') }}}}"
+      target: a_target
+    """
+
+    @patch("builtins.open", new_callable=mock_open, read_data=valid_profile_yaml)
+    def test_get_connection_creds_success(self, mock_file):
+        mock_self = Mock()
+        mock_self.profiles_dir = ""
+        mock_self.project_dict = {"profile": "a_profile"}
+        credentials, conn_type = DbtParser._get_connection_creds(mock_self)
+        self.assertEqual(credentials, {"type": "TYPE1", "credential_1": "credential_1", "credential_2": "credential_2"})
+        self.assertEqual(conn_type, "type1")
+
+    profile_yaml_no_matching_profile = """
+    a_profile:
+    """
+
+    @patch("builtins.open", new_callable=mock_open, read_data=profile_yaml_no_matching_profile)
+    def test_get_connection_no_matching_profile(self, mock_file):
+        mock_self = Mock()
+        mock_self.profiles_dir = ""
+        mock_self.project_dict = {"profile": "wrong_profile"}
+        with self.assertRaises(ValueError):
+            _, _ = DbtParser._get_connection_creds(mock_self)
+
+    profile_yaml_no_target = """
+    a_profile:
+      outputs:
+        a_target:
+          type: TYPE1
+          credential_1: credential_1
+          credential_2: credential_2
+    """
+
+    @patch("builtins.open", new_callable=mock_open, read_data=profile_yaml_no_target)
+    def test_get_connection_no_target(self, mock_file):
+        mock_self = Mock()
+        mock_self.profiles_dir = ""
+        mock_self.project_dict = {"profile": "a_profile"}
+        with self.assertRaises(ValueError):
+            _, _ = DbtParser._get_connection_creds(mock_self)
+
+    profile_yaml_no_outputs = """
+    a_profile:
+      target: a_target
+    """
+
+    @patch("builtins.open", new_callable=mock_open, read_data=profile_yaml_no_outputs)
+    def test_get_connection_no_outputs(self, mock_file):
+        mock_self = Mock()
+        mock_self.profiles_dir = ""
+        mock_self.project_dict = {"profile": "a_profile"}
+        with self.assertRaises(ValueError):
+            _, _ = DbtParser._get_connection_creds(mock_self)
+
+    profile_yaml_no_credentials = """
+    a_profile:
+      outputs:
+        a_target:
+      target: a_target
+    """
+
+    @patch("builtins.open", new_callable=mock_open, read_data=profile_yaml_no_credentials)
+    def test_get_connection_no_credentials(self, mock_file):
+        mock_self = Mock()
+        mock_self.profiles_dir = ""
+        mock_self.project_dict = {"profile": "a_profile"}
+        with self.assertRaises(ValueError):
+            _, _ = DbtParser._get_connection_creds(mock_self)
+
+
+    profile_yaml_no_target_credentials = """
+    a_profile:
+      outputs:
+        a_target:
+          type: TYPE1
+          credential_1: credential_1
+          credential_2: credential_2
+      target: a_different_target
+    """
+
+    @patch("builtins.open", new_callable=mock_open, read_data=profile_yaml_no_target_credentials)
+    def test_get_connection_no_target_credentials(self, mock_file):
+        mock_self = Mock()
+        mock_self.profiles_dir = ""
+        mock_self.project_dict = {"profile": "a_profile"}
+        with self.assertRaises(ValueError):
+            _, _ = DbtParser._get_connection_creds(mock_self)
+
+    profile_yaml_no_type = """
+    a_profile:
+      outputs:
+        a_target:
+          credential_1: credential_1
+          credential_2: credential_2
+      target: a_different_target
+    """
+
+    @patch("builtins.open", new_callable=mock_open, read_data=profile_yaml_no_type)
+    def test_get_connection_no_type(self, mock_file):
+        mock_self = Mock()
+        mock_self.profiles_dir = ""
+        mock_self.project_dict = {"profile": "a_profile"}
+        with self.assertRaises(ValueError):
+            _, _ = DbtParser._get_connection_creds(mock_self)
 
 class TestDbtDiffer(unittest.TestCase):
     # These two integration tests can be used to test a real diff

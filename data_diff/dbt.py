@@ -6,7 +6,7 @@ import rich
 import yaml
 from dataclasses import dataclass
 from packaging.version import parse as parse_version
-from typing import List, Optional, Dict
+from typing import List, Optional, Dict, Tuple
 
 import requests
 from dbt_artifacts_parser.parser import parse_run_results, parse_manifest
@@ -19,7 +19,7 @@ from .tracking import (
     send_event_json,
     is_tracking_enabled,
 )
-from .utils import run_as_daemon, truncate_error
+from .utils import get_from_dict_with_raise, run_as_daemon, truncate_error
 from . import connect_to_table, diff_tables, Algorithm
 
 RUN_RESULTS_PATH = "/target/run_results.json"
@@ -297,18 +297,40 @@ class DbtParser:
         with open(self.project_dir + PROJECT_FILE) as project:
             self.project_dict = yaml.safe_load(project)
 
-    def set_connection(self):
-        with open(self.profiles_dir + PROFILES_FILE) as profiles:
+    def _get_connection_creds(self) -> Tuple[Dict[str, str], str]:
+        profiles_path = self.profiles_dir + PROFILES_FILE
+        with open(profiles_path) as profiles:
             profiles = yaml.safe_load(profiles)
 
         dbt_profile = self.project_dict.get("profile")
-        profile_outputs = profiles.get(dbt_profile)
-        profile_target = profile_outputs.get("target")
-        credentials = profile_outputs.get("outputs").get(profile_target)
-        conn_type = credentials.get("type").lower()
+
+        profile_outputs = get_from_dict_with_raise(
+            profiles, dbt_profile, f"No profile '{dbt_profile}' found in '{profiles_path}'."
+        )
+        profile_target = get_from_dict_with_raise(
+            profile_outputs, "target", f"No target found in profile '{dbt_profile}' in '{profiles_path}'."
+        )
+        outputs = get_from_dict_with_raise(
+            profile_outputs, "outputs", f"No outputs found in profile '{dbt_profile}' in '{profiles_path}'."
+        )
+        credentials = get_from_dict_with_raise(
+            outputs,
+            profile_target,
+            f"No credentials found for target '{profile_target}' in profile '{dbt_profile}' in '{profiles_path}'.",
+        )
+        conn_type = get_from_dict_with_raise(
+            credentials,
+            "type",
+            f"No type found for target '{profile_target}' in profile '{dbt_profile}' in '{profiles_path}'.",
+        )
+        conn_type = conn_type.lower()
 
         # values can contain env_vars
         rendered_credentials = ProfileRenderer().render_data(credentials)
+        return rendered_credentials, conn_type
+
+    def set_connection(self):
+        rendered_credentials, conn_type = self._get_connection_creds()
 
         if conn_type == "snowflake":
             if rendered_credentials.get("password") is None or rendered_credentials.get("private_key_path") is not None:
