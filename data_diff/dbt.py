@@ -3,7 +3,6 @@ import logging
 import os
 import time
 import rich
-import yaml
 from dataclasses import dataclass
 from packaging.version import parse as parse_version
 from typing import List, Optional, Dict
@@ -14,10 +13,11 @@ def import_dbt():
     try:
         from dbt_artifacts_parser.parser import parse_run_results, parse_manifest
         from dbt.config.renderer import ProfileRenderer
+        import yaml
     except ImportError:
         raise RuntimeError("Could not import 'dbt' package. You can install it using 'pip install data-diff[dbt]'.")
 
-    return parse_run_results, parse_manifest, ProfileRenderer
+    return parse_run_results, parse_manifest, ProfileRenderer, yaml
 
 from .tracking import (
     set_entrypoint_name,
@@ -270,7 +270,7 @@ class DbtParser:
         self.project_dict = None
         self.requires_upper = False
 
-        self.parse_run_results, self.parse_manifest, self.ProfileRenderer = import_dbt()
+        self.parse_run_results, self.parse_manifest, self.ProfileRenderer, self.yaml = import_dbt()
 
     def get_datadiff_variables(self) -> dict:
         return self.project_dict.get("vars").get("data_diff")
@@ -304,11 +304,11 @@ class DbtParser:
 
     def set_project_dict(self):
         with open(self.project_dir + PROJECT_FILE) as project:
-            self.project_dict = yaml.safe_load(project)
+            self.project_dict = self.yaml.safe_load(project)
 
     def set_connection(self):
         with open(self.profiles_dir + PROFILES_FILE) as profiles:
-            profiles = yaml.safe_load(profiles)
+            profiles = self.yaml.safe_load(profiles)
 
         dbt_profile = self.project_dict.get("profile")
         profile_outputs = profiles.get(dbt_profile)
