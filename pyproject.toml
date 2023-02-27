@@ -54,6 +54,8 @@ presto-python-client = "*"
 clickhouse-driver = "*"
 vertica-python = "*"
 duckdb = "^0.6.0"
+dbt-artifacts-parser = "^0.2.4"
+dbt-core = "^1.0.0"
 # google-cloud-bigquery = "*"
 # databricks-sql-connector = "*"
 
