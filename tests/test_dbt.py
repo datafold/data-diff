@@ -1,6 +1,8 @@
 import json
 import os
 
+from pathlib import Path
+
 from data_diff.diff_tables import Algorithm
 from .test_cli import run_datadiff_cli
 
