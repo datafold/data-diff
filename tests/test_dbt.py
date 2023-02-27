@@ -54,7 +54,7 @@ class TestDbtParser(unittest.TestCase):
     def test_get_models(self, mock_manifest_parser, mock_run_parser, mock_open):
         expected_value = "expected_value"
         mock_self = Mock()
-        mock_self.project_dir = ""
+        mock_self.project_dir = Path()
         mock_run_results = Mock()
         mock_success_result = Mock()
         mock_failed_result = Mock()
@@ -82,7 +82,7 @@ class TestDbtParser(unittest.TestCase):
     @patch("data_diff.dbt.parse_manifest")
     def test_get_models_bad_lower_dbt_version(self, mock_manifest_parser, mock_run_parser, mock_open):
         mock_self = Mock()
-        mock_self.project_dir = ""
+        mock_self.project_dir = Path()
         mock_run_results = Mock()
         mock_run_parser.return_value = mock_run_results
         mock_run_results.metadata.dbt_version = "0.19.0"
@@ -100,7 +100,7 @@ class TestDbtParser(unittest.TestCase):
     @patch("data_diff.dbt.parse_manifest")
     def test_get_models_bad_upper_dbt_version(self, mock_manifest_parser, mock_run_parser, mock_open):
         mock_self = Mock()
-        mock_self.project_dir = ""
+        mock_self.project_dir = Path()
         mock_run_results = Mock()
         mock_run_parser.return_value = mock_run_results
         mock_run_results.metadata.dbt_version = "1.5.1"
@@ -118,7 +118,7 @@ class TestDbtParser(unittest.TestCase):
     @patch("data_diff.dbt.parse_manifest")
     def test_get_models_no_success(self, mock_manifest_parser, mock_run_parser, mock_open):
         mock_self = Mock()
-        mock_self.project_dir = ""
+        mock_self.project_dir = Path()
         mock_run_results = Mock()
         mock_success_result = Mock()
         mock_failed_result = Mock()
@@ -145,7 +145,7 @@ class TestDbtParser(unittest.TestCase):
     def test_set_project_dict(self, mock_open, mock_yaml_parse):
         expected_dict = {"key1": "value1"}
         mock_self = Mock()
-        mock_self.project_dir = ""
+        mock_self.project_dir = Path()
         mock_yaml_parse.return_value = expected_dict
         DbtParser.set_project_dict(mock_self)
 
@@ -170,7 +170,7 @@ class TestDbtParser(unittest.TestCase):
         }
 
         mock_self = Mock()
-        mock_self.profiles_dir = ""
+        mock_self.profiles_dir = Path()
         mock_self.project_dict = {"profile": "profile_name"}
         mock_yaml_parse.return_value = profiles_dict
         DbtParser.set_connection(mock_self)
@@ -194,7 +194,7 @@ class TestDbtParser(unittest.TestCase):
         }
 
         mock_self = Mock()
-        mock_self.profiles_dir = ""
+        mock_self.profiles_dir = Path()
         mock_self.project_dict = {"profile": "profile_name"}
         mock_yaml_parse.return_value = profiles_dict
 
@@ -227,7 +227,7 @@ class TestDbtParser(unittest.TestCase):
         }
 
         mock_self = Mock()
-        mock_self.profiles_dir = ""
+        mock_self.profiles_dir = Path()
         mock_self.project_dict = {"profile": "profile_name"}
         mock_yaml_parse.return_value = profiles_dict
         DbtParser.set_connection(mock_self)
@@ -261,7 +261,7 @@ class TestDbtParser(unittest.TestCase):
         }
 
         mock_self = Mock()
-        mock_self.profiles_dir = ""
+        mock_self.profiles_dir = Path()
         mock_self.project_dict = {"profile": "profile_name"}
         mock_yaml_parse.return_value = profiles_dict
         with self.assertRaises(Exception):
@@ -287,8 +287,8 @@ class TestDbtParser(unittest.TestCase):
         }
 
         mock_self = Mock()
-        mock_self.profiles_dir = ""
-        mock_self.project_dir = ""
+        mock_self.profiles_dir = Path()
+        mock_self.project_dir = Path()
         mock_self.project_dict = {"profile": "bad_key"}
         mock_yaml_parse.return_value = profiles_dict
         with self.assertRaises(Exception):
@@ -314,8 +314,8 @@ class TestDbtParser(unittest.TestCase):
         }
 
         mock_self = Mock()
-        mock_self.profiles_dir = ""
-        mock_self.project_dir = ""
+        mock_self.profiles_dir = Path()
+        mock_self.project_dir = Path()
         mock_self.project_dict = {"profile": "profile_name"}
         mock_yaml_parse.return_value = profiles_dict
         with self.assertRaises(NotImplementedError):
