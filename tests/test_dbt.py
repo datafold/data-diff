@@ -50,8 +50,8 @@ class TestDbtParser(unittest.TestCase):
             DbtParser.get_datadiff_variables(mock_self)
 
     @patch("builtins.open", new_callable=mock_open, read_data="{}")
-    @patch("data_diff.dbt.parse_run_results")
-    @patch("data_diff.dbt.parse_manifest")
+    @patch("dbt_artifacts_parser.parser.parse_run_results")
+    @patch("dbt_artifacts_parser.parser.parse_manifest")
     def test_get_models(self, mock_manifest_parser, mock_run_parser, mock_open):
         expected_value = "expected_value"
         mock_self = Mock()
@@ -79,8 +79,8 @@ class TestDbtParser(unittest.TestCase):
         mock_manifest_parser.assert_called_once_with(manifest={})
 
     @patch("builtins.open", new_callable=mock_open, read_data="{}")
-    @patch("data_diff.dbt.parse_run_results")
-    @patch("data_diff.dbt.parse_manifest")
+    @patch("dbt_artifacts_parser.parser.parse_run_results")
+    @patch("dbt_artifacts_parser.parser.parse_manifest")
     def test_get_models_bad_lower_dbt_version(self, mock_manifest_parser, mock_run_parser, mock_open):
         mock_self = Mock()
         mock_self.project_dir = ""
@@ -97,8 +97,8 @@ class TestDbtParser(unittest.TestCase):
         self.assertIn("version to be", ex.exception.args[0])
 
     @patch("builtins.open", new_callable=mock_open, read_data="{}")
-    @patch("data_diff.dbt.parse_run_results")
-    @patch("data_diff.dbt.parse_manifest")
+    @patch("dbt_artifacts_parser.parser.parse_run_results")
+    @patch("dbt_artifacts_parser.parser.parse_manifest")
     def test_get_models_bad_upper_dbt_version(self, mock_manifest_parser, mock_run_parser, mock_open):
         mock_self = Mock()
         mock_self.project_dir = ""
@@ -115,8 +115,8 @@ class TestDbtParser(unittest.TestCase):
         self.assertIn("version to be", ex.exception.args[0])
 
     @patch("builtins.open", new_callable=mock_open, read_data="{}")
-    @patch("data_diff.dbt.parse_run_results")
-    @patch("data_diff.dbt.parse_manifest")
+    @patch("dbt_artifacts_parser.parser.parse_run_results")
+    @patch("dbt_artifacts_parser.parser.parse_manifest")
     def test_get_models_no_success(self, mock_manifest_parser, mock_run_parser, mock_open):
         mock_self = Mock()
         mock_self.project_dir = ""
