@@ -1,6 +1,7 @@
 import json
 import os
 
+import yaml
 from data_diff.diff_tables import Algorithm
 from .test_cli import run_datadiff_cli
 
@@ -140,7 +141,7 @@ class TestDbtParser(unittest.TestCase):
         mock_run_parser.assert_called_once_with(run_results={})
         mock_manifest_parser.assert_called_once_with(manifest={})
 
-    @patch("data_diff.dbt.yaml.safe_load")
+    @patch("yaml.safe_load")
     @patch("builtins.open", new_callable=mock_open, read_data="key:\n  value")
     def test_set_project_dict(self, mock_open, mock_yaml_parse):
         expected_dict = {"key1": "value1"}
@@ -152,7 +153,7 @@ class TestDbtParser(unittest.TestCase):
         self.assertEqual(mock_self.project_dict, expected_dict)
         mock_open.assert_called_once_with(PROJECT_FILE)
 
-    @patch("data_diff.dbt.yaml.safe_load")
+    @patch("yaml.safe_load")
     @patch("builtins.open", new_callable=mock_open, read_data="key:\n  value")
     def test_set_connection_snowflake(self, mock_open_file, mock_yaml_parse):
         expected_driver = "snowflake"
@@ -182,7 +183,7 @@ class TestDbtParser(unittest.TestCase):
         mock_open_file.assert_called_once_with(PROFILES_FILE)
         mock_yaml_parse.assert_called_once_with(mock_open_file())
 
-    @patch("data_diff.dbt.yaml.safe_load")
+    @patch("yaml.safe_load")
     @patch("builtins.open", new_callable=mock_open, read_data="key:\n  value")
     def test_set_connection_snowflake_no_password(self, mock_open_file, mock_yaml_parse):
         expected_driver = "snowflake"
@@ -205,7 +206,7 @@ class TestDbtParser(unittest.TestCase):
         mock_yaml_parse.assert_called_once_with(mock_open_file())
         self.assertNotIsInstance(mock_self.connection, dict)
 
-    @patch("data_diff.dbt.yaml.safe_load")
+    @patch("yaml.safe_load")
     @patch("builtins.open", new_callable=mock_open, read_data="key:\n  value")
     def test_set_connection_bigquery(self, mock_open_file, mock_yaml_parse):
         expected_driver = "bigquery"
@@ -239,7 +240,7 @@ class TestDbtParser(unittest.TestCase):
         mock_open_file.assert_called_once_with(PROFILES_FILE)
         mock_yaml_parse.assert_called_once_with(mock_open_file())
 
-    @patch("data_diff.dbt.yaml.safe_load")
+    @patch("yaml.safe_load")
     @patch("builtins.open", new_callable=mock_open, read_data="key:\n  value")
     def test_set_connection_bigquery_not_oauth(self, mock_open_file, mock_yaml_parse):
         expected_driver = "bigquery"
@@ -271,7 +272,7 @@ class TestDbtParser(unittest.TestCase):
         mock_yaml_parse.assert_called_once_with(mock_open_file())
         self.assertNotIsInstance(mock_self.connection, dict)
 
-    @patch("data_diff.dbt.yaml.safe_load")
+    @patch("yaml.safe_load")
     @patch("builtins.open", new_callable=mock_open, read_data="key:\n  value")
     def test_set_connection_key_error(self, mock_open_file, mock_yaml_parse):
         profiles_dict = {
@@ -298,7 +299,7 @@ class TestDbtParser(unittest.TestCase):
         mock_yaml_parse.assert_called_once_with(mock_open_file())
         self.assertNotIsInstance(mock_self.connection, dict)
 
-    @patch("data_diff.dbt.yaml.safe_load")
+    @patch("yaml.safe_load")
     @patch("builtins.open", new_callable=mock_open, read_data="key:\n  value")
     def test_set_connection_not_implemented(self, mock_open_file, mock_yaml_parse):
         expected_driver = "not_implemented"
