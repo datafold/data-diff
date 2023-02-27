@@ -60,9 +60,9 @@ class ThreadBase:
             for future in as_completed(futures):
                 yield future.result()
 
-    def _threaded_call_as_completed(self, func, iterable, *args, **kwargs):
+    def _threaded_call_as_completed(self, func, iterable):
         "Calls a method for each object in iterable. Returned in order of completion."
-        return self._thread_as_completed(methodcaller(func, *args, **kwargs), iterable)
+        return self._thread_as_completed(methodcaller(func), iterable)
 
     @contextmanager
     def _run_in_background(self, *funcs):
@@ -271,6 +271,14 @@ class TableDiffer(ThreadBase, ABC):
     ):
         ...
 
+    def _resolve_key_range(self, key_range_res, usr_key_range):
+        key_range_res = list(key_range_res)
+        if usr_key_range[0] is not None:
+            key_range_res[0] = usr_key_range[0]
+        if usr_key_range[1] is not None:
+            key_range_res[1] = usr_key_range[1]
+        return tuple(key_range_res)
+
     def _bisect_and_diff_tables(self, table1, table2, info_tree):
         if len(table1.key_columns) > 1:
             raise NotImplementedError("Composite key not supported yet!")
@@ -290,24 +298,15 @@ class TableDiffer(ThreadBase, ABC):
         if key_type.python_type is not key_type2.python_type:
             raise TypeError(f"Incompatible key types: {key_type} and {key_type2}")
 
-        if all([table1.min_key, table1.max_key, table2.min_key, table2.max_key]):
+        usr_key_range = (table1.min_key, table1.max_key)
+        if all(k is not None for k in [table1.min_key, table1.max_key, table2.min_key, table2.max_key]):
             key_ranges = (kr for kr in [(table1.min_key, table1.max_key), (table2.min_key, table2.max_key)])
-        elif table1.min_key and table2.min_key:
-            logger.debug('Querying for max_key')
-            max_keys = self._threaded_call_as_completed("query_key_bound", [table1, table2], bound='max')
-            min_keys = (table1.min_key, table2.min_key)
-            key_ranges = zip(min_keys, max_keys)
-        elif table1.max_key and table2.max_key:
-            logger.debug('Querying for min_key')
-            min_keys = self._threaded_call_as_completed("query_key_bound", [table1, table2], bound='min')
-            max_keys = (table1.max_key, table2.max_key)
-            key_ranges = zip(min_keys, max_keys)
         else:
             # Query min/max values
             key_ranges = self._threaded_call_as_completed("query_key_range", [table1, table2])
 
         # Start with the first completed value, so we don't waste time waiting
-        min_key1, max_key1 = self._parse_key_range_result(key_type, next(key_ranges))
+        min_key1, max_key1 = self._parse_key_range_result(key_type, self._resolve_key_range(next(key_ranges), usr_key_range))
 
         table1, table2 = [t.new(min_key=min_key1, max_key=max_key1) for t in (table1, table2)]
 
@@ -321,7 +320,7 @@ class TableDiffer(ThreadBase, ABC):
         ti.submit(self._bisect_and_diff_segments, ti, table1, table2, info_tree)
 
         # Now we check for the second min-max, to diff the portions we "missed".
-        min_key2, max_key2 = self._parse_key_range_result(key_type, next(key_ranges))
+        min_key2, max_key2 = self._parse_key_range_result(key_type, self._resolve_key_range(next(key_ranges), usr_key_range))
 
         if min_key2 < min_key1:
             pre_tables = [t.new(min_key=min_key2, max_key=min_key1) for t in (table1, table2)]

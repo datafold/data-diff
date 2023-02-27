@@ -301,48 +301,32 @@ class TestDiffTables(DiffTestCase):
         self.assertEqual(expected, diff)
 
     @patch.object(TableSegment, 'query_key_range')
-    @patch.object(TableSegment, 'query_key_bound')
-    def test_key_bounds(self, mock_query_key_bound, mock_query_key_range):
+    def test_key_bounds(self, mock_query_key_range):
         # test range query when no min/max provided
         mock_query_key_range.return_value = (0, 10)
         _ = list(self.differ.diff_tables(self.table, self.table2))
         mock_query_key_range.assert_called()
-        mock_query_key_bound.assert_not_called()
 
-        # test no range or bounds query
+        # test no range query
         mock_query_key_range.reset_mock()
-        mock_query_key_bound.reset_mock()
-
         tbl1 = self.table.replace(min_key=1, max_key=100)
         tbl2 = self.table2.replace(min_key=1, max_key=100)
-
         _ = list(self.differ.diff_tables(tbl1, tbl2))
         mock_query_key_range.assert_not_called()
-        mock_query_key_bound.assert_not_called()
 
         # test query min only
         mock_query_key_range.reset_mock()
-        mock_query_key_bound.reset_mock()
-
         tbl1 = self.table.replace(max_key=100)
         tbl2 = self.table2.replace(max_key=100)
-
         _ = list(self.differ.diff_tables(tbl1, tbl2))
-        mock_query_key_range.assert_not_called()
-        mock_query_key_bound.assert_called_with(bound='min')
+        mock_query_key_range.assert_called()
 
-        # test query max only
+        # test query min only
         mock_query_key_range.reset_mock()
-        mock_query_key_bound.reset_mock()
-        mock_query_key_bound.return_value = 1000
-
-        tbl1 = self.table.replace(max_key=None, min_key=100)
-        tbl2 = self.table2.replace(max_key=None, min_key=100)
-
+        tbl1 = self.table.replace(min_key=0)
+        tbl2 = self.table2.replace(min_key=0)
         _ = list(self.differ.diff_tables(tbl1, tbl2))
-        mock_query_key_range.assert_not_called()
-        mock_query_key_bound.assert_called_with(bound='max')
-
+        mock_query_key_range.assert_called()
 
 
 @test_each_database
