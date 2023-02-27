@@ -50,9 +50,7 @@ class TestDbtParser(unittest.TestCase):
             DbtParser.get_datadiff_variables(mock_self)
 
     @patch("builtins.open", new_callable=mock_open, read_data="{}")
-    @patch("dbt_artifacts_parser.parser.parse_run_results")
-    @patch("dbt_artifacts_parser.parser.parse_manifest")
-    def test_get_models(self, mock_manifest_parser, mock_run_parser, mock_open):
+    def test_get_models(self, mock_open):
         expected_value = "expected_value"
         mock_self = Mock()
         mock_self.project_dir = ""
@@ -60,14 +58,14 @@ class TestDbtParser(unittest.TestCase):
         mock_success_result = Mock()
         mock_failed_result = Mock()
         mock_manifest = Mock()
-        mock_run_parser.return_value = mock_run_results
+        mock_self.parse_run_results.return_value = mock_run_results
         mock_run_results.metadata.dbt_version = "1.0.0"
         mock_success_result.unique_id = "success_unique_id"
         mock_failed_result.unique_id = "failed_unique_id"
         mock_success_result.status.name = "success"
         mock_failed_result.status.name = "failed"
         mock_run_results.results = [mock_success_result, mock_failed_result]
-        mock_manifest_parser.return_value = mock_manifest
+        mock_self.parse_manifest.return_value = mock_manifest
         mock_manifest.nodes = {"success_unique_id": expected_value}
 
         models = DbtParser.get_models(mock_self)
@@ -75,8 +73,8 @@ class TestDbtParser(unittest.TestCase):
         self.assertEqual(expected_value, models[0])
         mock_open.assert_any_call(RUN_RESULTS_PATH)
         mock_open.assert_any_call(MANIFEST_PATH)
-        mock_run_parser.assert_called_once_with(run_results={})
-        mock_manifest_parser.assert_called_once_with(manifest={})
+        mock_self.parse_run_results.assert_called_once_with(run_results={})
+        mock_self.parse_manifest.assert_called_once_with(manifest={})
 
     @patch("builtins.open", new_callable=mock_open, read_data="{}")
     @patch("dbt_artifacts_parser.parser.parse_run_results")
