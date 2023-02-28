@@ -154,10 +154,10 @@ def _local_diff(diff_vars: DiffVars) -> None:
     table2_set_diff = list(set(table2_columns) - set(table1_columns))
 
     if table1_set_diff:
-        column_diffs_str += "Columns exclusive to table A: " + str(table1_set_diff) + "\n"
+        column_diffs_str += "Column(s) added: " + str(table1_set_diff) + "\n"
 
     if table2_set_diff:
-        column_diffs_str += "Columns exclusive to table B: " + str(table2_set_diff) + "\n"
+        column_diffs_str += "Column(s) removed: " + str(table2_set_diff) + "\n"
 
     mutual_set.discard(primary_key)
     extra_columns = tuple(mutual_set)
