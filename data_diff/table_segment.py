@@ -1,9 +1,11 @@
 import time
 from typing import List, Tuple
 import logging
+from itertools import product
 
 from runtype import dataclass
 
+from .utils import safezip, Vector
 from sqeleton.utils import ArithString, split_space
 from sqeleton.databases import Database, DbPath, DbKey, DbTime
 from sqeleton.schema import Schema, create_schema
@@ -14,7 +16,10 @@ logger = logging.getLogger("table_segment")
 
 RECOMMENDED_CHECKSUM_DURATION = 20
 
-def split_key_space(min_key: DbKey, max_key: DbKey, count: int):
+
+def split_key_space(min_key: DbKey, max_key: DbKey, count: int) -> List[DbKey]:
+    assert min_key < max_key
+
     if max_key - min_key <= count:
         count = 1
 
@@ -28,6 +33,54 @@ def split_key_space(min_key: DbKey, max_key: DbKey, count: int):
     return [min_key] + checkpoints + [max_key]
 
 
+def int_product(nums: List[int]) -> int:
+    p = 1
+    for n in nums:
+        p *= n
+    return p
+
+
+def split_compound_key_space(mn: Vector, mx: Vector, count: int) -> List[List[DbKey]]:
+    """Returns a list of split-points for each key dimension, essentially returning an N-dimensional grid of split points."""
+    return [split_key_space(mn_k, mx_k, count) for mn_k, mx_k in safezip(mn, mx)]
+
+
+def create_mesh_from_points(*values_per_dim: list) -> List[Tuple[Vector, Vector]]:
+    """Given a list of values along each axis of N dimensional space,
+    return an array of boxes whose start-points & end-points align with the given values,
+    and together consitute a mesh filling that space entirely (within the bounds of the given values).
+
+    Assumes given values are already ordered ascending.
+
+    len(boxes) == ∏i( len(i)-1 )
+
+    Example:
+        ::
+            >>> d1 = 'a', 'b', 'c'
+            >>> d2 = 1, 2, 3
+            >>> d3 = 'X', 'Y'
+            >>> create_mesh_from_points(d1, d2, d3)
+            [
+                [('a', 1, 'X'), ('b', 2, 'Y')],
+                [('a', 2, 'X'), ('b', 3, 'Y')],
+                [('b', 1, 'X'), ('c', 2, 'Y')],
+                [('b', 2, 'X'), ('c', 3, 'Y')]
+            ]
+    """
+    assert all(len(v) >= 2 for v in values_per_dim), values_per_dim
+
+    # Create tuples of (v1, v2) for each pair of adjacent values
+    ranges = [list(zip(values[:-1], values[1:])) for values in values_per_dim]
+
+    assert all(a <= b for r in ranges for a, b in r)
+
+    # Create a product of all the ranges
+    res = [tuple(Vector(a) for a in safezip(*r)) for r in product(*ranges)]
+
+    expected_len = int_product(len(v) - 1 for v in values_per_dim)
+    assert len(res) == expected_len, (len(res), expected_len)
+    return res
+
 
 @dataclass
 class TableSegment:
@@ -40,8 +93,8 @@ class TableSegment:
         update_column (str, optional): Name of updated column, which signals that rows changed.
                                        Usually updated_at or last_update. Used by `min_update` and `max_update`.
         extra_columns (Tuple[str, ...], optional): Extra columns to compare
-        min_key (:data:`DbKey`, optional): Lowest key value, used to restrict the segment
-        max_key (:data:`DbKey`, optional): Highest key value, used to restrict the segment
+        min_key (:data:`Vector`, optional): Lowest key value, used to restrict the segment
+        max_key (:data:`Vector`, optional): Highest key value, used to restrict the segment
         min_update (:data:`DbTime`, optional): Lowest update_column value, used to restrict the segment
         max_update (:data:`DbTime`, optional): Highest update_column value, used to restrict the segment
         where (str, optional): An additional 'where' expression to restrict the search space.
@@ -60,8 +113,8 @@ class TableSegment:
     extra_columns: Tuple[str, ...] = ()
 
     # Restrict the segment
-    min_key: DbKey = None
-    max_key: DbKey = None
+    min_key: Vector = None
+    max_key: Vector = None
     min_update: DbTime = None
     max_update: DbTime = None
     where: str = None
@@ -100,13 +153,11 @@ class TableSegment:
 
     def _make_key_range(self):
         if self.min_key is not None:
-            assert len(self.key_columns) == 1
-            (k,) = self.key_columns
-            yield self.min_key <= this[k]
+            for mn, k in safezip(self.min_key, self.key_columns):
+                yield mn <= this[k]
         if self.max_key is not None:
-            assert len(self.key_columns) == 1
-            (k,) = self.key_columns
-            yield this[k] < self.max_key
+            for k, mx in safezip(self.key_columns, self.max_key):
+                yield this[k] < mx
 
     def _make_update_range(self):
         if self.min_update is not None:
@@ -128,29 +179,35 @@ class TableSegment:
         select = self.make_select().select(*self._relevant_columns_repr)
         return self.database.query(select, List[Tuple])
 
-    def choose_checkpoints(self, count: int) -> List[DbKey]:
+    def choose_checkpoints(self, count: int) -> List[List[DbKey]]:
         "Suggests a bunch of evenly-spaced checkpoints to split by, including start, end."
 
         assert self.is_bounded
-        return split_key_space(self.min_key, self.max_key, count)
 
-    def segment_by_checkpoints(self, checkpoints: List[DbKey]) -> List["TableSegment"]:
+        # Take Nth root of count, to approximate the appropriate box size
+        count = int(count ** (1 / len(self.key_columns))) or 1
+
+        return split_compound_key_space(self.min_key, self.max_key, count)
+
+    def segment_by_checkpoints(self, checkpoints: List[List[DbKey]]) -> List["TableSegment"]:
         "Split the current TableSegment to a bunch of smaller ones, separated by the given checkpoints"
 
-        if self.min_key and self.max_key:
-            assert all(self.min_key <= c <= self.max_key for c in checkpoints)
-
-        # Calculate sub-segments
-        ranges = list(zip(checkpoints[:-1], checkpoints[1:]))
-
-        # Create table segments
-        tables = [self.new(min_key=s, max_key=e) for s, e in ranges]
-
-        return tables
+        return [self.new_key_bounds(min_key=s, max_key=e) for s, e in create_mesh_from_points(*checkpoints)]
 
     def new(self, **kwargs) -> "TableSegment":
-        """Using new() creates a copy of the instance using 'replace()'"""
+        """Creates a copy of the instance using 'replace()'"""
         return self.replace(**kwargs)
+
+    def new_key_bounds(self, min_key: Vector, max_key: Vector) -> "TableSegment":
+        if self.min_key is not None:
+            assert self.min_key <= min_key, (self.min_key, min_key)
+            assert self.min_key < max_key
+
+        if self.max_key is not None:
+            assert min_key < self.max_key
+            assert max_key <= self.max_key
+
+        return self.replace(min_key=min_key, max_key=max_key)
 
     @property
     def relevant_columns(self) -> List[str]:
@@ -189,15 +246,17 @@ class TableSegment:
     def query_key_range(self) -> Tuple[int, int]:
         """Query database for minimum and maximum key. This is used for setting the initial bounds."""
         # Normalizes the result (needed for UUIDs) after the min/max computation
-        (k,) = self.key_columns
         select = self.make_select().select(
-            ApplyFuncAndNormalizeAsString(this[k], min_),
-            ApplyFuncAndNormalizeAsString(this[k], max_),
+            ApplyFuncAndNormalizeAsString(this[k], f) for k in self.key_columns for f in (min_, max_)
         )
-        min_key, max_key = self.database.query(select, tuple)
+        result = self.database.query(select, tuple)
 
-        if min_key is None or max_key is None:
+        if any(i is None for i in result):
             raise ValueError("Table appears to be empty")
+
+        # Min/max keys are interleaved
+        min_key, max_key = result[::2], result[1::2]
+        assert len(min_key) == len(max_key)
 
         return min_key, max_key
 
@@ -208,4 +267,6 @@ class TableSegment:
     def approximate_size(self):
         if not self.is_bounded:
             raise RuntimeError("Cannot approximate the size of an unbounded segment. Must have min_key and max_key.")
-        return self.max_key - self.min_key
+        diff = self.max_key - self.min_key
+        assert all(d > 0 for d in diff)
+        return int_product(diff)
