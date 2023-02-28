@@ -9,6 +9,7 @@ from typing import List, Optional, Dict
 
 import requests
 
+
 def import_dbt():
     try:
         from dbt_artifacts_parser.parser import parse_run_results, parse_manifest
@@ -18,6 +19,7 @@ def import_dbt():
         raise RuntimeError("Could not import 'dbt' package. You can install it using: pip install 'data-diff[dbt]'.")
 
     return parse_run_results, parse_manifest, ProfileRenderer, yaml
+
 
 from .tracking import (
     set_entrypoint_name,
