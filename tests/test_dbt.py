@@ -74,8 +74,8 @@ class TestDbtParser(unittest.TestCase):
         models = DbtParser.get_models(mock_self)
 
         self.assertEqual(expected_value, models[0])
-        mock_open.assert_any_call(RUN_RESULTS_PATH)
-        mock_open.assert_any_call(MANIFEST_PATH)
+        mock_open.assert_any_call(Path(RUN_RESULTS_PATH))
+        mock_open.assert_any_call(Path(MANIFEST_PATH))
         mock_run_parser.assert_called_once_with(run_results={})
         mock_manifest_parser.assert_called_once_with(manifest={})
 
@@ -92,7 +92,7 @@ class TestDbtParser(unittest.TestCase):
         with self.assertRaises(Exception) as ex:
             DbtParser.get_models(mock_self)
 
-        mock_open.assert_called_once_with(RUN_RESULTS_PATH)
+        mock_open.assert_called_once_with(Path(RUN_RESULTS_PATH))
         mock_run_parser.assert_called_once_with(run_results={})
         mock_manifest_parser.assert_not_called()
         self.assertIn("version to be", ex.exception.args[0])
@@ -110,7 +110,7 @@ class TestDbtParser(unittest.TestCase):
         with self.assertRaises(Exception) as ex:
             DbtParser.get_models(mock_self)
 
-        mock_open.assert_called_once_with(RUN_RESULTS_PATH)
+        mock_open.assert_called_once_with(Path(RUN_RESULTS_PATH))
         mock_run_parser.assert_called_once_with(run_results={})
         mock_manifest_parser.assert_not_called()
         self.assertIn("version to be", ex.exception.args[0])
@@ -137,8 +137,8 @@ class TestDbtParser(unittest.TestCase):
         with self.assertRaises(Exception):
             DbtParser.get_models(mock_self)
 
-        mock_open.assert_any_call(RUN_RESULTS_PATH)
-        mock_open.assert_any_call(MANIFEST_PATH)
+        mock_open.assert_any_call(Path(RUN_RESULTS_PATH))
+        mock_open.assert_any_call(Path(MANIFEST_PATH))
         mock_run_parser.assert_called_once_with(run_results={})
         mock_manifest_parser.assert_called_once_with(manifest={})
 
@@ -152,7 +152,7 @@ class TestDbtParser(unittest.TestCase):
         DbtParser.set_project_dict(mock_self)
 
         self.assertEqual(mock_self.project_dict, expected_dict)
-        mock_open.assert_called_once_with(PROJECT_FILE)
+        mock_open.assert_called_once_with(Path(PROJECT_FILE))
 
     @patch("data_diff.dbt.yaml.safe_load")
     @patch("builtins.open", new_callable=mock_open, read_data="key:\n  value")
@@ -181,7 +181,7 @@ class TestDbtParser(unittest.TestCase):
         self.assertEqual(mock_self.connection.get("driver"), expected_driver)
         self.assertEqual(mock_self.connection.get("password"), expected_password)
         self.assertEqual(mock_self.requires_upper, True)
-        mock_open_file.assert_called_once_with(PROFILES_FILE)
+        mock_open_file.assert_called_once_with(Path(PROFILES_FILE))
         mock_yaml_parse.assert_called_once_with(mock_open_file())
 
     @patch("data_diff.dbt.yaml.safe_load")
@@ -203,7 +203,7 @@ class TestDbtParser(unittest.TestCase):
         with self.assertRaises(Exception):
             DbtParser.set_connection(mock_self)
 
-        mock_open_file.assert_called_once_with(PROFILES_FILE)
+        mock_open_file.assert_called_once_with(Path(PROFILES_FILE))
         mock_yaml_parse.assert_called_once_with(mock_open_file())
         self.assertNotIsInstance(mock_self.connection, dict)
 
@@ -238,7 +238,7 @@ class TestDbtParser(unittest.TestCase):
         self.assertEqual(mock_self.connection.get("driver"), expected_driver)
         self.assertEqual(mock_self.connection.get("project"), expected_project)
         self.assertEqual(mock_self.connection.get("dataset"), expected_dataset)
-        mock_open_file.assert_called_once_with(PROFILES_FILE)
+        mock_open_file.assert_called_once_with(Path(PROFILES_FILE))
         mock_yaml_parse.assert_called_once_with(mock_open_file())
 
     @patch("data_diff.dbt.yaml.safe_load")
@@ -269,7 +269,7 @@ class TestDbtParser(unittest.TestCase):
         with self.assertRaises(Exception):
             DbtParser.set_connection(mock_self)
 
-        mock_open_file.assert_called_once_with(PROFILES_FILE)
+        mock_open_file.assert_called_once_with(Path(PROFILES_FILE))
         mock_yaml_parse.assert_called_once_with(mock_open_file())
         self.assertNotIsInstance(mock_self.connection, dict)
 
@@ -296,7 +296,7 @@ class TestDbtParser(unittest.TestCase):
         with self.assertRaises(Exception):
             DbtParser.set_connection(mock_self)
 
-        mock_open_file.assert_called_once_with(PROFILES_FILE)
+        mock_open_file.assert_called_once_with(Path(PROFILES_FILE))
         mock_yaml_parse.assert_called_once_with(mock_open_file())
         self.assertNotIsInstance(mock_self.connection, dict)
 
@@ -323,7 +323,7 @@ class TestDbtParser(unittest.TestCase):
         with self.assertRaises(NotImplementedError):
             DbtParser.set_connection(mock_self)
 
-        mock_open_file.assert_called_once_with(PROFILES_FILE)
+        mock_open_file.assert_called_once_with(Path(PROFILES_FILE))
         mock_yaml_parse.assert_called_once_with(mock_open_file())
         self.assertNotIsInstance(mock_self.connection, dict)
 
