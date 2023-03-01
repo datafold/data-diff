@@ -3,14 +3,23 @@ import logging
 import os
 import time
 import rich
-import yaml
 from dataclasses import dataclass
 from packaging.version import parse as parse_version
 from typing import List, Optional, Dict, Tuple
 
 import requests
-from dbt_artifacts_parser.parser import parse_run_results, parse_manifest
-from dbt.config.renderer import ProfileRenderer
+
+
+def import_dbt():
+    try:
+        from dbt_artifacts_parser.parser import parse_run_results, parse_manifest
+        from dbt.config.renderer import ProfileRenderer
+        import yaml
+    except ImportError:
+        raise RuntimeError("Could not import 'dbt' package. You can install it using: pip install 'data-diff[dbt]'.")
+
+    return parse_run_results, parse_manifest, ProfileRenderer, yaml
+
 
 from .tracking import (
     set_entrypoint_name,
@@ -145,10 +154,10 @@ def _local_diff(diff_vars: DiffVars) -> None:
     table2_set_diff = list(set(table2_columns) - set(table1_columns))
 
     if table1_set_diff:
-        column_diffs_str += "Columns exclusive to table A: " + str(table1_set_diff) + "\n"
+        column_diffs_str += "Column(s) added: " + str(table1_set_diff) + "\n"
 
     if table2_set_diff:
-        column_diffs_str += "Columns exclusive to table B: " + str(table2_set_diff) + "\n"
+        column_diffs_str += "Column(s) removed: " + str(table2_set_diff) + "\n"
 
     mutual_set.discard(primary_key)
     extra_columns = tuple(mutual_set)
@@ -263,13 +272,15 @@ class DbtParser:
         self.project_dict = None
         self.requires_upper = False
 
+        self.parse_run_results, self.parse_manifest, self.ProfileRenderer, self.yaml = import_dbt()
+
     def get_datadiff_variables(self) -> dict:
         return self.project_dict.get("vars").get("data_diff")
 
     def get_models(self):
         with open(self.project_dir + RUN_RESULTS_PATH) as run_results:
             run_results_dict = json.load(run_results)
-            run_results_obj = parse_run_results(run_results=run_results_dict)
+            run_results_obj = self.parse_run_results(run_results=run_results_dict)
 
         dbt_version = parse_version(run_results_obj.metadata.dbt_version)
 
@@ -280,7 +291,7 @@ class DbtParser:
 
         with open(self.project_dir + MANIFEST_PATH) as manifest:
             manifest_dict = json.load(manifest)
-            manifest_obj = parse_manifest(manifest=manifest_dict)
+            manifest_obj = self.parse_manifest(manifest=manifest_dict)
 
         success_models = [x.unique_id for x in run_results_obj.results if x.status.name == "success"]
         models = [manifest_obj.nodes.get(x) for x in success_models]
@@ -295,12 +306,12 @@ class DbtParser:
 
     def set_project_dict(self):
         with open(self.project_dir + PROJECT_FILE) as project:
-            self.project_dict = yaml.safe_load(project)
+            self.project_dict = self.yaml.safe_load(project)
 
     def _get_connection_creds(self) -> Tuple[Dict[str, str], str]:
         profiles_path = self.profiles_dir + PROFILES_FILE
         with open(profiles_path) as profiles:
-            profiles = yaml.safe_load(profiles)
+            profiles = self.yaml.safe_load(profiles)
 
         dbt_profile = self.project_dict.get("profile")
 
@@ -326,7 +337,7 @@ class DbtParser:
         conn_type = conn_type.lower()
 
         # values can contain env_vars
-        rendered_credentials = ProfileRenderer().render_data(credentials)
+        rendered_credentials = self.ProfileRenderer().render_data(credentials)
         return rendered_credentials, conn_type
 
     def set_connection(self):

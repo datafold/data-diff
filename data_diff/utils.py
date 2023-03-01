@@ -84,3 +84,46 @@ def get_from_dict_with_raise(dictionary: Dict, key: str, error_message: str):
     if result is None:
         raise ValueError(error_message)
     return result
+
+
+class Vector(tuple):
+
+    """Immutable implementation of a regular vector over any arithmetic value
+
+    Implements a product order - https://en.wikipedia.org/wiki/Product_order
+
+    Partial implementation: Only the needed functionality is implemented
+    """
+
+    def __lt__(self, other: "Vector"):
+        if isinstance(other, Vector):
+            return all(a < b for a, b in safezip(self, other))
+        return NotImplemented
+
+    def __le__(self, other: "Vector"):
+        if isinstance(other, Vector):
+            return all(a <= b for a, b in safezip(self, other))
+        return NotImplemented
+
+    def __gt__(self, other: "Vector"):
+        if isinstance(other, Vector):
+            return all(a > b for a, b in safezip(self, other))
+        return NotImplemented
+
+    def __ge__(self, other: "Vector"):
+        if isinstance(other, Vector):
+            return all(a >= b for a, b in safezip(self, other))
+        return NotImplemented
+
+    def __eq__(self, other: "Vector"):
+        if isinstance(other, Vector):
+            return all(a == b for a, b in safezip(self, other))
+        return NotImplemented
+
+    def __sub__(self, other: "Vector"):
+        if isinstance(other, Vector):
+            return Vector((a - b) for a, b in safezip(self, other))
+        raise NotImplementedError()
+
+    def __repr__(self) -> str:
+        return "(%s)" % ", ".join(str(k) for k in self)

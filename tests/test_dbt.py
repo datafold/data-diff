@@ -1,5 +1,6 @@
 import os
 
+import yaml
 from data_diff.diff_tables import Algorithm
 from .test_cli import run_datadiff_cli
 
@@ -47,9 +48,7 @@ class TestDbtParser(unittest.TestCase):
             DbtParser.get_datadiff_variables(mock_self)
 
     @patch("builtins.open", new_callable=mock_open, read_data="{}")
-    @patch("data_diff.dbt.parse_run_results")
-    @patch("data_diff.dbt.parse_manifest")
-    def test_get_models(self, mock_manifest_parser, mock_run_parser, mock_open):
+    def test_get_models(self, mock_open):
         expected_value = "expected_value"
         mock_self = Mock()
         mock_self.project_dir = ""
@@ -57,14 +56,14 @@ class TestDbtParser(unittest.TestCase):
         mock_success_result = Mock()
         mock_failed_result = Mock()
         mock_manifest = Mock()
-        mock_run_parser.return_value = mock_run_results
+        mock_self.parse_run_results.return_value = mock_run_results
         mock_run_results.metadata.dbt_version = "1.0.0"
         mock_success_result.unique_id = "success_unique_id"
         mock_failed_result.unique_id = "failed_unique_id"
         mock_success_result.status.name = "success"
         mock_failed_result.status.name = "failed"
         mock_run_results.results = [mock_success_result, mock_failed_result]
-        mock_manifest_parser.return_value = mock_manifest
+        mock_self.parse_manifest.return_value = mock_manifest
         mock_manifest.nodes = {"success_unique_id": expected_value}
 
         models = DbtParser.get_models(mock_self)
@@ -72,62 +71,56 @@ class TestDbtParser(unittest.TestCase):
         self.assertEqual(expected_value, models[0])
         mock_open.assert_any_call(RUN_RESULTS_PATH)
         mock_open.assert_any_call(MANIFEST_PATH)
-        mock_run_parser.assert_called_once_with(run_results={})
-        mock_manifest_parser.assert_called_once_with(manifest={})
+        mock_self.parse_run_results.assert_called_once_with(run_results={})
+        mock_self.parse_manifest.assert_called_once_with(manifest={})
 
     @patch("builtins.open", new_callable=mock_open, read_data="{}")
-    @patch("data_diff.dbt.parse_run_results")
-    @patch("data_diff.dbt.parse_manifest")
-    def test_get_models_bad_lower_dbt_version(self, mock_manifest_parser, mock_run_parser, mock_open):
+    def test_get_models_bad_lower_dbt_version(self, mock_open):
         mock_self = Mock()
         mock_self.project_dir = ""
         mock_run_results = Mock()
-        mock_run_parser.return_value = mock_run_results
+        mock_self.parse_run_results.return_value = mock_run_results
         mock_run_results.metadata.dbt_version = "0.19.0"
 
         with self.assertRaises(Exception) as ex:
             DbtParser.get_models(mock_self)
 
         mock_open.assert_called_once_with(RUN_RESULTS_PATH)
-        mock_run_parser.assert_called_once_with(run_results={})
-        mock_manifest_parser.assert_not_called()
+        mock_self.parse_run_results.assert_called_once_with(run_results={})
+        mock_self.parse_manifest.assert_not_called()
         self.assertIn("version to be", ex.exception.args[0])
 
     @patch("builtins.open", new_callable=mock_open, read_data="{}")
-    @patch("data_diff.dbt.parse_run_results")
-    @patch("data_diff.dbt.parse_manifest")
-    def test_get_models_bad_upper_dbt_version(self, mock_manifest_parser, mock_run_parser, mock_open):
+    def test_get_models_bad_upper_dbt_version(self, mock_open):
         mock_self = Mock()
         mock_self.project_dir = ""
         mock_run_results = Mock()
-        mock_run_parser.return_value = mock_run_results
+        mock_self.parse_run_results.return_value = mock_run_results
         mock_run_results.metadata.dbt_version = "1.5.1"
 
         with self.assertRaises(Exception) as ex:
             DbtParser.get_models(mock_self)
 
         mock_open.assert_called_once_with(RUN_RESULTS_PATH)
-        mock_run_parser.assert_called_once_with(run_results={})
-        mock_manifest_parser.assert_not_called()
+        mock_self.parse_run_results.assert_called_once_with(run_results={})
+        mock_self.parse_manifest.assert_not_called()
         self.assertIn("version to be", ex.exception.args[0])
 
     @patch("builtins.open", new_callable=mock_open, read_data="{}")
-    @patch("data_diff.dbt.parse_run_results")
-    @patch("data_diff.dbt.parse_manifest")
-    def test_get_models_no_success(self, mock_manifest_parser, mock_run_parser, mock_open):
+    def test_get_models_no_success(self, mock_open):
         mock_self = Mock()
         mock_self.project_dir = ""
         mock_run_results = Mock()
         mock_success_result = Mock()
         mock_failed_result = Mock()
         mock_manifest = Mock()
-        mock_run_parser.return_value = mock_run_results
+        mock_self.parse_run_results.return_value = mock_run_results
         mock_run_results.metadata.dbt_version = "1.0.0"
         mock_failed_result.unique_id = "failed_unique_id"
         mock_success_result.status.name = "success"
         mock_failed_result.status.name = "failed"
         mock_run_results.results = [mock_failed_result]
-        mock_manifest_parser.return_value = mock_manifest
+        mock_self.parse_manifest.return_value = mock_manifest
         mock_manifest.nodes = {"success_unique_id": "a_unique_id"}
 
         with self.assertRaises(Exception):
@@ -135,16 +128,15 @@ class TestDbtParser(unittest.TestCase):
 
         mock_open.assert_any_call(RUN_RESULTS_PATH)
         mock_open.assert_any_call(MANIFEST_PATH)
-        mock_run_parser.assert_called_once_with(run_results={})
-        mock_manifest_parser.assert_called_once_with(manifest={})
+        mock_self.parse_run_results.assert_called_once_with(run_results={})
+        mock_self.parse_manifest.assert_called_once_with(manifest={})
 
-    @patch("data_diff.dbt.yaml.safe_load")
     @patch("builtins.open", new_callable=mock_open, read_data="key:\n  value")
-    def test_set_project_dict(self, mock_open, mock_yaml_parse):
+    def test_set_project_dict(self, mock_open):
         expected_dict = {"key1": "value1"}
         mock_self = Mock()
         mock_self.project_dir = ""
-        mock_yaml_parse.return_value = expected_dict
+        mock_self.yaml.safe_load.return_value = expected_dict
         DbtParser.set_project_dict(mock_self)
 
         self.assertEqual(mock_self.project_dict, expected_dict)
