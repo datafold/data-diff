@@ -274,7 +274,6 @@ def _cloud_diff(diff_vars: DiffVars) -> None:
 
 
 class DbtParser:
-
     def __init__(self, profiles_dir_override: str, project_dir_override: str, is_cloud: bool) -> None:
         self.profiles_dir = Path(profiles_dir_override or default_profiles_dir())
         self.project_dir = Path(project_dir_override or default_project_dir())
