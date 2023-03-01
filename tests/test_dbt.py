@@ -209,51 +209,49 @@ class TestDbtParser(unittest.TestCase):
 
         self.assertNotIsInstance(mock_self.connection, dict)
 
-    valid_profile_yaml = f"""
-    a_profile:
-      outputs:
-        a_target:
-          type: TYPE1
-          credential_1: credential_1
-          credential_2: "{{{{ env_var('not_exists_var', 'credential_2') }}}}"
-      target: a_target
-    """
-
-    @patch("builtins.open", new_callable=mock_open, read_data=valid_profile_yaml)
-    def test_get_connection_creds_success(self, mock_file):
+    @patch("builtins.open", new_callable=mock_open, read_data="")
+    def test_get_connection_creds_success(self, mock_open):
+        profile_dict = {
+            "a_profile": {
+                "outputs": {
+                    "a_target": {"type": "TYPE1", "credential_1": "credential_1", "credential_2": "credential_2"}
+                },
+                "target": "a_target",
+            }
+        }
+        expected_credentials = profile_dict["a_profile"]["outputs"]["a_target"]
         mock_self = Mock()
         mock_self.profiles_dir = ""
         mock_self.project_dict = {"profile": "a_profile"}
+        mock_self.yaml.safe_load.return_value = profile_dict
+        mock_self.ProfileRenderer().render_data.return_value = expected_credentials
         credentials, conn_type = DbtParser._get_connection_creds(mock_self)
-        self.assertEqual(credentials, {"type": "TYPE1", "credential_1": "credential_1", "credential_2": "credential_2"})
+        self.assertEqual(credentials, expected_credentials)
         self.assertEqual(conn_type, "type1")
 
-    profile_yaml_no_matching_profile = """
-    a_profile:
-    """
-
-    @patch("builtins.open", new_callable=mock_open, read_data=profile_yaml_no_matching_profile)
-    def test_get_connection_no_matching_profile(self, mock_file):
+    @patch("builtins.open", new_callable=mock_open, read_data="")
+    def test_get_connection_no_matching_profile(self, mock_open):
+        profile_dict = {"a_profile": {}}
         mock_self = Mock()
         mock_self.profiles_dir = ""
         mock_self.project_dict = {"profile": "wrong_profile"}
+        mock_self.yaml.safe_load.return_value = profile_dict
         with self.assertRaises(ValueError):
             _, _ = DbtParser._get_connection_creds(mock_self)
 
-    profile_yaml_no_target = """
-    a_profile:
-      outputs:
-        a_target:
-          type: TYPE1
-          credential_1: credential_1
-          credential_2: credential_2
-    """
-
-    @patch("builtins.open", new_callable=mock_open, read_data=profile_yaml_no_target)
-    def test_get_connection_no_target(self, mock_file):
+    @patch("builtins.open", new_callable=mock_open, read_data="")
+    def test_get_connection_no_target(self, mock_open):
+        profile_dict = {
+            "a_profile": {
+                "outputs": {
+                    "a_target": {"type": "TYPE1", "credential_1": "credential_1", "credential_2": "credential_2"}
+                },
+            }
+        }
         mock_self = Mock()
         mock_self.profiles_dir = ""
         mock_self.project_dict = {"profile": "a_profile"}
+        mock_self.yaml.safe_load.return_value = profile_dict
         with self.assertRaises(ValueError):
             _, _ = DbtParser._get_connection_creds(mock_self)
 
@@ -262,11 +260,13 @@ class TestDbtParser(unittest.TestCase):
       target: a_target
     """
 
-    @patch("builtins.open", new_callable=mock_open, read_data=profile_yaml_no_outputs)
-    def test_get_connection_no_outputs(self, mock_file):
+    @patch("builtins.open", new_callable=mock_open, read_data="")
+    def test_get_connection_no_outputs(self, mock_open):
+        profile_dict = {"a_profile": {"target": "a_target"}}
         mock_self = Mock()
         mock_self.profiles_dir = ""
         mock_self.project_dict = {"profile": "a_profile"}
+        mock_self.yaml.safe_load.return_value = profile_dict
         with self.assertRaises(ValueError):
             _, _ = DbtParser._get_connection_creds(mock_self)
 
@@ -277,46 +277,50 @@ class TestDbtParser(unittest.TestCase):
       target: a_target
     """
 
-    @patch("builtins.open", new_callable=mock_open, read_data=profile_yaml_no_credentials)
-    def test_get_connection_no_credentials(self, mock_file):
+    @patch("builtins.open", new_callable=mock_open, read_data="")
+    def test_get_connection_no_credentials(self, mock_open):
+        profile_dict = {
+            "a_profile": {
+                "outputs": {"a_target": {}},
+                "target": "a_target",
+            }
+        }
         mock_self = Mock()
         mock_self.profiles_dir = ""
         mock_self.project_dict = {"profile": "a_profile"}
+        mock_self.yaml.safe_load.return_value = profile_dict
         with self.assertRaises(ValueError):
             _, _ = DbtParser._get_connection_creds(mock_self)
 
-    profile_yaml_no_target_credentials = """
-    a_profile:
-      outputs:
-        a_target:
-          type: TYPE1
-          credential_1: credential_1
-          credential_2: credential_2
-      target: a_different_target
-    """
-
-    @patch("builtins.open", new_callable=mock_open, read_data=profile_yaml_no_target_credentials)
-    def test_get_connection_no_target_credentials(self, mock_file):
+    @patch("builtins.open", new_callable=mock_open, read_data="")
+    def test_get_connection_no_target_credentials(self, mock_open):
+        profile_dict = {
+            "a_profile": {
+                "outputs": {
+                    "a_target": {"type": "TYPE1", "credential_1": "credential_1", "credential_2": "credential_2"}
+                },
+                "target": "a_different_target",
+            }
+        }
         mock_self = Mock()
         mock_self.profiles_dir = ""
         mock_self.project_dict = {"profile": "a_profile"}
+        mock_self.yaml.safe_load.return_value = profile_dict
         with self.assertRaises(ValueError):
             _, _ = DbtParser._get_connection_creds(mock_self)
 
-    profile_yaml_no_type = """
-    a_profile:
-      outputs:
-        a_target:
-          credential_1: credential_1
-          credential_2: credential_2
-      target: a_different_target
-    """
-
-    @patch("builtins.open", new_callable=mock_open, read_data=profile_yaml_no_type)
-    def test_get_connection_no_type(self, mock_file):
+    @patch("builtins.open", new_callable=mock_open, read_data="")
+    def test_get_connection_no_type(self, mock_open):
+        profile_dict = {
+            "a_profile": {
+                "outputs": {"a_target": {"credential_1": "credential_1", "credential_2": "credential_2"}},
+                "target": "a_target",
+            }
+        }
         mock_self = Mock()
         mock_self.profiles_dir = ""
         mock_self.project_dict = {"profile": "a_profile"}
+        mock_self.yaml.safe_load.return_value = profile_dict
         with self.assertRaises(ValueError):
             _, _ = DbtParser._get_connection_creds(mock_self)
 
