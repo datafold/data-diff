@@ -113,12 +113,12 @@ def _get_diff_vars(
     prod_schema = config_prod_schema if config_prod_schema else dev_schema
 
     if dbt_parser.requires_upper:
-        dev_qualified_list = [x.upper() for x in [dev_database, dev_schema, model.name]]
-        prod_qualified_list = [x.upper() for x in [prod_database, prod_schema, model.name]]
+        dev_qualified_list = [x.upper() for x in [dev_database, dev_schema, model.alias]]
+        prod_qualified_list = [x.upper() for x in [prod_database, prod_schema, model.alias]]
         primary_keys = [x.upper() for x in primary_keys]
     else:
-        dev_qualified_list = [dev_database, dev_schema, model.name]
-        prod_qualified_list = [prod_database, prod_schema, model.name]
+        dev_qualified_list = [dev_database, dev_schema, model.alias]
+        prod_qualified_list = [prod_database, prod_schema, model.alias]
 
     return DiffVars(dev_qualified_list, prod_qualified_list, primary_keys, datasource_id, dbt_parser.connection)
 
