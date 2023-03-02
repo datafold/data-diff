@@ -351,8 +351,8 @@ class TestDbtDiffer(unittest.TestCase):
         mock_diff.__iter__.return_value = [1, 2, 3]
         dev_qualified_list = ["dev_db", "dev_schema", "dev_table"]
         prod_qualified_list = ["prod_db", "prod_schema", "prod_table"]
-        expected_key = "key"
-        diff_vars = DiffVars(dev_qualified_list, prod_qualified_list, [expected_key], None, mock_connection)
+        expected_keys = ["key"]
+        diff_vars = DiffVars(dev_qualified_list, prod_qualified_list, expected_keys, None, mock_connection)
         with patch("data_diff.dbt.connect_to_table", side_effect=[mock_table1, mock_table2]) as mock_connect:
             _local_diff(diff_vars)
 
@@ -360,8 +360,8 @@ class TestDbtDiffer(unittest.TestCase):
             mock_table1, mock_table2, threaded=True, algorithm=Algorithm.JOINDIFF, extra_columns=tuple(column_set)
         )
         self.assertEqual(mock_connect.call_count, 2)
-        mock_connect.assert_any_call(mock_connection, ".".join(dev_qualified_list), expected_key)
-        mock_connect.assert_any_call(mock_connection, ".".join(prod_qualified_list), expected_key)
+        mock_connect.assert_any_call(mock_connection, ".".join(dev_qualified_list), tuple(expected_keys))
+        mock_connect.assert_any_call(mock_connection, ".".join(prod_qualified_list), tuple(expected_keys))
         mock_diff.get_stats_string.assert_called_once()
 
     @patch("data_diff.dbt.diff_tables")
@@ -377,8 +377,8 @@ class TestDbtDiffer(unittest.TestCase):
         mock_diff.__iter__.return_value = []
         dev_qualified_list = ["dev_db", "dev_schema", "dev_table"]
         prod_qualified_list = ["prod_db", "prod_schema", "prod_table"]
-        expected_key = "primary_key_column"
-        diff_vars = DiffVars(dev_qualified_list, prod_qualified_list, [expected_key], None, mock_connection)
+        expected_keys = ["primary_key_column"]
+        diff_vars = DiffVars(dev_qualified_list, prod_qualified_list, expected_keys, None, mock_connection)
         with patch("data_diff.dbt.connect_to_table", side_effect=[mock_table1, mock_table2]) as mock_connect:
             _local_diff(diff_vars)
 
@@ -386,8 +386,8 @@ class TestDbtDiffer(unittest.TestCase):
             mock_table1, mock_table2, threaded=True, algorithm=Algorithm.JOINDIFF, extra_columns=tuple(column_set)
         )
         self.assertEqual(mock_connect.call_count, 2)
-        mock_connect.assert_any_call(mock_connection, ".".join(dev_qualified_list), expected_key)
-        mock_connect.assert_any_call(mock_connection, ".".join(prod_qualified_list), expected_key)
+        mock_connect.assert_any_call(mock_connection, ".".join(dev_qualified_list), tuple(expected_keys))
+        mock_connect.assert_any_call(mock_connection, ".".join(prod_qualified_list), tuple(expected_keys))
         mock_diff.get_stats_string.assert_not_called()
 
     @patch("data_diff.dbt.rich.print")

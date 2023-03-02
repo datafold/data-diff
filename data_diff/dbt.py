@@ -73,7 +73,9 @@ def dbt_diff(
 
         if is_cloud and len(diff_vars.primary_keys) > 0:
             _cloud_diff(diff_vars)
-        elif is_cloud:
+        elif not is_cloud and len(diff_vars.primary_keys) > 0:
+            _local_diff(diff_vars)
+        else:
             rich.print(
                 "[red]"
                 + ".".join(diff_vars.prod_path)
@@ -81,18 +83,6 @@ def dbt_diff(
                 + ".".join(diff_vars.dev_path)
                 + "[/] \n"
                 + "Skipped due to missing primary-key tag\n"
-            )
-
-        if not is_cloud and len(diff_vars.primary_keys) == 1:
-            _local_diff(diff_vars)
-        elif not is_cloud:
-            rich.print(
-                "[red]"
-                + ".".join(diff_vars.prod_path)
-                + " <> "
-                + ".".join(diff_vars.dev_path)
-                + "[/] \n"
-                + "Skipped due to missing primary-key tag or multi-column primary-key (unsupported for non --cloud diffs)\n"
             )
 
         rich.print("Diffs Complete!")
@@ -127,10 +117,9 @@ def _local_diff(diff_vars: DiffVars) -> None:
     column_diffs_str = ""
     dev_qualified_string = ".".join(diff_vars.dev_path)
     prod_qualified_string = ".".join(diff_vars.prod_path)
-    primary_key = diff_vars.primary_keys[0]
 
-    table1 = connect_to_table(diff_vars.connection, dev_qualified_string, primary_key)
-    table2 = connect_to_table(diff_vars.connection, prod_qualified_string, primary_key)
+    table1 = connect_to_table(diff_vars.connection, dev_qualified_string, tuple(diff_vars.primary_keys))
+    table2 = connect_to_table(diff_vars.connection, prod_qualified_string, tuple(diff_vars.primary_keys))
 
     table1_columns = list(table1.get_schema())
     try:
@@ -159,7 +148,7 @@ def _local_diff(diff_vars: DiffVars) -> None:
     if table2_set_diff:
         column_diffs_str += "Column(s) removed: " + str(table2_set_diff) + "\n"
 
-    mutual_set.discard(primary_key)
+    mutual_set = mutual_set - set(diff_vars.primary_keys)
     extra_columns = tuple(mutual_set)
 
     diff = diff_tables(table1, table2, threaded=True, algorithm=Algorithm.JOINDIFF, extra_columns=extra_columns)
