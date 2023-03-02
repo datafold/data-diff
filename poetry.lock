@@ -2116,32 +2116,38 @@ secure-local-storage = ["keyring (!=16.1.0,<24.0.0)"]
 
 [[package]]
 name = "sqeleton"
-version = "0.0.5"
+version = "0.0.6"
 description = "Python library for querying SQL databases"
 category = "main"
 optional = false
-python-versions = ">=3.7,<4.0"
-files = [
-    {file = "sqeleton-0.0.5-py3-none-any.whl", hash = "sha256:2d1b53632c2758b1317943a48f8c6e84833eb61515fccb3a8b5d6cce2d6647cd"},
-    {file = "sqeleton-0.0.5.tar.gz", hash = "sha256:049bd07dc4c20518e93f03acacc45103716ca9f499eea5ba4a78dc2abbb30b5e"},
-]
+python-versions = "^3.7"
+files = []
+develop = false
 
 [package.dependencies]
-click = ">=8.1,<9.0"
+click = "^8.1"
 dsnparse = "*"
 rich = "*"
-runtype = ">=0.2.6,<0.3.0"
-toml = ">=0.10.2,<0.11.0"
+runtype = "^0.2.6"
+toml = "^0.10.2"
 
 [package.extras]
 clickhouse = ["clickhouse-driver"]
-duckdb = ["duckdb (>=0.6.0,<0.7.0)"]
+duckdb = ["duckdb (>=0.7.0,<0.8.0)"]
 mysql = ["mysql-connector-python (==8.0.29)"]
+oracle = []
 postgresql = ["psycopg2"]
 presto = ["presto-python-client"]
 snowflake = ["cryptography", "snowflake-connector-python (>=2.7.2,<3.0.0)"]
 trino = ["trino (>=0.314.0,<0.315.0)"]
 tui = ["textual (>=0.9.1,<0.10.0)", "textual-select"]
+vertica = []
+
+[package.source]
+type = "git"
+url = "https://github.com/datafold/sqeleton"
+reference = "postgres_select_table_unique_columns"
+resolved_reference = "1c736adc0ae1efa59121790d50317559aa7400a2"
 
 [[package]]
 name = "sqlparse"
@@ -2387,6 +2393,7 @@ testing = ["flake8 (<5)", "func-timeout", "jaraco.functools", "jaraco.itertools"
 
 [extras]
 clickhouse = ["clickhouse-driver"]
+dbt = ["dbt-core", "dbt-artifacts-parser"]
 duckdb = ["duckdb"]
 mysql = ["mysql-connector-python"]
 oracle = []
@@ -2400,4 +2407,4 @@ vertica = []
 [metadata]
 lock-version = "2.0"
 python-versions = "^3.7"
-content-hash = "f9c967b0eb707ea6af1d67b19cbef59a2e49f6a8d6fa9b3dbf7afcffc6273087"
+content-hash = "e18ece9928b1cbe36941b470cf5fe9c216d692bc68d9bddfc463acd4ff03cb21"
