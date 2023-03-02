@@ -2116,14 +2116,14 @@ secure-local-storage = ["keyring (!=16.1.0,<24.0.0)"]
 
 [[package]]
 name = "sqeleton"
-version = "0.0.5"
+version = "0.0.6"
 description = "Python library for querying SQL databases"
 category = "main"
 optional = false
 python-versions = ">=3.7,<4.0"
 files = [
-    {file = "sqeleton-0.0.5-py3-none-any.whl", hash = "sha256:2d1b53632c2758b1317943a48f8c6e84833eb61515fccb3a8b5d6cce2d6647cd"},
-    {file = "sqeleton-0.0.5.tar.gz", hash = "sha256:049bd07dc4c20518e93f03acacc45103716ca9f499eea5ba4a78dc2abbb30b5e"},
+    {file = "sqeleton-0.0.6-py3-none-any.whl", hash = "sha256:c9b46a0f65bcb1c19781480951529814f3ce52e47b28c1f6ee3ed7424a0d9338"},
+    {file = "sqeleton-0.0.6.tar.gz", hash = "sha256:a7c315084cc9d61ce5136494165d9b1addb74b0ea6a552e369a71152cd05a708"},
 ]
 
 [package.dependencies]
