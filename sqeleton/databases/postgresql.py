@@ -136,6 +136,19 @@ class PostgreSQL(ThreadedDatabase):
             f"WHERE table_name = '{table}' AND table_schema = '{schema}'"
         )
 
+    def select_table_unique_columns(self, path: DbPath) -> str:
+        database, schema, table = self._normalize_table_path(path)
+
+        info_schema_path = ["information_schema", "key_column_usage"]
+        if database:
+            info_schema_path.insert(0, database)
+
+        return (
+            "SELECT column_name "
+            f"FROM {'.'.join(info_schema_path)} "
+            f"WHERE table_name = '{table}' AND table_schema = '{schema}'"
+        )
+
     def _normalize_table_path(self, path: DbPath) -> DbPath:
         if len(path) == 1:
             return None, self.default_schema, path[0]
