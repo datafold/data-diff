@@ -82,7 +82,7 @@ def dbt_diff(
                 + " <> "
                 + ".".join(diff_vars.dev_path)
                 + "[/] \n"
-                + "Skipped due to missing primary-key tag\n"
+                + "Skipped due to missing primary-key tag(s).\n"
             )
 
         rich.print("Diffs Complete!")
