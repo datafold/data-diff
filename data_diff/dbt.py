@@ -36,7 +36,7 @@ MANIFEST_PATH = "/target/manifest.json"
 PROJECT_FILE = "/dbt_project.yml"
 PROFILES_FILE = "/profiles.yml"
 LOWER_DBT_V = "1.0.0"
-UPPER_DBT_V = "1.5.0"
+UPPER_DBT_V = "1.4.2"
 
 
 @dataclass
@@ -367,6 +367,35 @@ class DbtParser:
                 "driver": conn_type,
                 "project": rendered_credentials.get("project"),
                 "dataset": rendered_credentials.get("dataset"),
+            }
+        elif conn_type == "redshift":
+            if rendered_credentials.get("password") is None or rendered_credentials.get("method") == "iam":
+                raise Exception("Only password authentication is currently supported for Redshift.")
+            conn_info = {
+                "driver": conn_type,
+                "host": rendered_credentials.get("host"),
+                "user": rendered_credentials.get("user"),
+                "password": rendered_credentials.get("password"),
+                "port": rendered_credentials.get("port"),
+                "dbname": rendered_credentials.get("dbname"),
+            }
+        elif conn_type == "databricks":
+            conn_info = {
+                "driver": conn_type,
+                "catalog": rendered_credentials.get("catalog"),
+                "server_hostname": rendered_credentials.get("host"),
+                "http_path": rendered_credentials.get("http_path"),
+                "schema": rendered_credentials.get("schema"),
+                "access_token": rendered_credentials.get("token"),
+            }
+        elif conn_type == "postgres":
+            conn_info = {
+                "driver": "postgresql",
+                "host": rendered_credentials.get("host"),
+                "user": rendered_credentials.get("user"),
+                "password": rendered_credentials.get("password"),
+                "port": rendered_credentials.get("port"),
+                "dbname": rendered_credentials.get("dbname") or rendered_credentials.get("database"),
             }
         else:
             raise NotImplementedError(f"Provider {conn_type} is not yet supported for dbt diffs")
