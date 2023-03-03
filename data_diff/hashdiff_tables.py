@@ -303,12 +303,12 @@ class SinglePassHashDiffer(HashDiffer):
         if table1.hash_query_type == 'multi':
             bg_funcs['t1'] = [seg.count_and_checksum for seg in segmented1]
         else:
-            bg_funcs['t1'] = [partial(table1.count_and_checksum_by_group, checkpoints, self.bisection_factor, max_rows)]
+            bg_funcs['t1'] = [partial(table1.count_and_checksum_by_group, checkpoints[0], self.bisection_factor, max_rows)]
 
         if table2.hash_query_type == 'multi':
             bg_funcs['t2'] = [seg.count_and_checksum for seg in segmented2]
         else:
-            bg_funcs['t2'] = [partial(table2.count_and_checksum_by_group, checkpoints, self.bisection_factor, max_rows)]
+            bg_funcs['t2'] = [partial(table2.count_and_checksum_by_group, checkpoints[0], self.bisection_factor, max_rows)]
 
         logging.info(f'Running in background: {len(bg_funcs["t1"]) + len(bg_funcs["t2"])}')
 

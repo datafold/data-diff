@@ -282,12 +282,14 @@ class TableSegment:
         # logging.info(f'min_key: {self.min_key}')
         # logging.info('--------')
 
+        # unpack min keys to value since this algo ignores composite keys until the end
+        min_key = self.min_key[0]
+
         # follows same logic as split_space in sqeleton
         div_factor = math.floor((max_rows+1) / (bisection_factor))
-        expected_groups = [self.min_key] + checkpoints
 
         group_by_col = self.key_columns[0]
-        group_by_expr = f'FLOOR(({group_by_col} - {self.min_key})/{div_factor})'
+        group_by_expr = f'FLOOR(({group_by_col} - {min_key})/{div_factor})'
 
         q = (self.make_select()
             .select(
@@ -305,7 +307,7 @@ class TableSegment:
         duration = time.monotonic() - start
 
         # insert missing groups
-        for i, exp_grp in enumerate(expected_groups):
+        for i, exp_grp in enumerate(checkpoints):
             # empty_result =  [0, None] # TODO: Cleanup. [exp_grp, 0, None]
             empty_result =  [exp_grp, 0, None] # TODO: Cleanup. [exp_grp, 0, None]
             if i >= len(rows):
@@ -313,8 +315,8 @@ class TableSegment:
                 rows.insert(i, empty_result)
                 continue
 
-            grp_val = rows[i][0] * div_factor + self.min_key
-            assert(grp_val in expected_groups)
+            grp_val = rows[i][0] * div_factor + min_key
+            assert grp_val in checkpoints, (grp_val, checkpoints)
 
             if grp_val > exp_grp:
                 # group was skipped, insert it
