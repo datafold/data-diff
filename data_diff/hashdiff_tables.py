@@ -334,6 +334,13 @@ class SinglePassHashDiffer(HashDiffer):
         for idx, (res1, res2, seg1, seg2) in enumerate(zip(table1_res, table2_res, segmented1, segmented2)):
             ti.submit(self._diff_segments, ti, seg1, seg2, res1, res2, info_tree, max_rows, level + 1, idx+1, len(segmented1)) #), priority=level)
 
+    def _resolve_key_range(self, key_range_res, usr_key_range):
+        key_range_res = list(key_range_res)
+        if usr_key_range[0] is not None:
+            key_range_res[0] = usr_key_range[0]
+        if usr_key_range[1] is not None:
+            key_range_res[1] = usr_key_range[1]
+        return tuple(key_range_res)
 
     def _bisect_and_diff_tables(self, table1, table2, info_tree):
         logging.info('SinglePassHashDiffer._bisect_and_diff_tables')
@@ -356,12 +363,16 @@ class SinglePassHashDiffer(HashDiffer):
             raise TypeError(f"Incompatible key types: {key_type} and {key_type2}")
 
         # Query min/max values
-        key_ranges = self._threaded_call_as_completed("query_key_range", [table1, table2])
-        # key_ranges = (kr for kr in [((2009), (2543202)), ((2009), (2543202))])
+        usr_key_range = (table1.min_key, table1.max_key)
+        if all(k is not None for k in [table1.min_key, table1.max_key, table2.min_key, table2.max_key]):
+            key_ranges = (kr for kr in [(table1.min_key, table1.max_key), (table2.min_key, table2.max_key)])
+        else:
+            # Query min/max values
+            key_ranges = self._threaded_call_as_completed("query_key_range", [table1, table2])
 
         # Wait for both
-        min_key1, max_key1 = self._parse_key_range_result(key_type, next(key_ranges))
-        min_key2, max_key2 = self._parse_key_range_result(key_type, next(key_ranges))
+        min_key1, max_key1 = self._parse_key_range_result((key_type,), self._resolve_key_range(next(key_ranges), usr_key_range))
+        min_key2, max_key2 = self._parse_key_range_result((key_type,), self._resolve_key_range(next(key_ranges), usr_key_range))
 
         min_key = min(min_key1, min_key2)
         max_key = max(max_key1, max_key2)
