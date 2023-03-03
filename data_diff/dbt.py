@@ -36,7 +36,7 @@ MANIFEST_PATH = "/target/manifest.json"
 PROJECT_FILE = "/dbt_project.yml"
 PROFILES_FILE = "/profiles.yml"
 LOWER_DBT_V = "1.0.0"
-UPPER_DBT_V = "1.5.0"
+UPPER_DBT_V = "1.4.2"
 
 
 @dataclass
@@ -343,7 +343,6 @@ class DbtParser:
     def set_connection(self):
         rendered_credentials, conn_type = self._get_connection_creds()
 
-        # this whole block should be refactored/extracted to method(s)
         if conn_type == "snowflake":
             if rendered_credentials.get("password") is None or rendered_credentials.get("private_key_path") is not None:
                 raise Exception("Only password authentication is currently supported for Snowflake.")
@@ -369,8 +368,9 @@ class DbtParser:
                 "project": rendered_credentials.get("project"),
                 "dataset": rendered_credentials.get("dataset"),
             }
-        # untested
         elif conn_type == "redshift":
+            if rendered_credentials.get("password") is None or rendered_credentials.get("method") == "iam":
+                raise Exception("Only password authentication is currently supported for Redshift.")
             conn_info = {
                 "driver": conn_type,
                 "host": rendered_credentials.get("host"),
@@ -379,18 +379,15 @@ class DbtParser:
                 "port": rendered_credentials.get("port"),
                 "dbname": rendered_credentials.get("dbname"),
             }
-        # untested
         elif conn_type == "databricks":
             conn_info = {
                 "driver": conn_type,
                 "catalog": rendered_credentials.get("catalog"),
                 "server_hostname": rendered_credentials.get("host"),
-                # TODO may need to trim the / at http_path[0]
                 "http_path": rendered_credentials.get("http_path"),
                 "schema": rendered_credentials.get("schema"),
                 "access_token": rendered_credentials.get("token"),
             }
-        # untested
         elif conn_type == "postgres":
             conn_info = {
                 "driver": "postgresql",
