@@ -1,3 +1,4 @@
+import math
 import time
 from typing import List, Tuple
 import logging
@@ -9,7 +10,7 @@ from .utils import safezip, Vector
 from sqeleton.utils import ArithString, split_space
 from sqeleton.databases import Database, DbPath, DbKey, DbTime
 from sqeleton.schema import Schema, create_schema
-from sqeleton.queries import Count, Checksum, SKIP, table, this, Expr, min_, max_, Code
+from sqeleton.queries import Count, Checksum, SKIP, table, this, Expr, min_, max_, Code, Compiler
 from sqeleton.queries.extras import ApplyFuncAndNormalizeAsString, NormalizeAsString
 
 logger = logging.getLogger("table_segment")
@@ -100,6 +101,7 @@ class TableSegment:
         where (str, optional): An additional 'where' expression to restrict the search space.
 
         case_sensitive (bool): If false, the case of column names will adjust according to the schema. Default is true.
+        hash_query_type (str)
 
     """
 
@@ -118,6 +120,10 @@ class TableSegment:
     min_update: DbTime = None
     max_update: DbTime = None
     where: str = None
+
+    # group_by column
+    group_by_column: str = None 
+    hash_query_type: str = 'multi'
 
     case_sensitive: bool = True
     _schema: Schema = None
@@ -179,8 +185,8 @@ class TableSegment:
         select = self.make_select().select(*self._relevant_columns_repr)
         return self.database.query(select, List[Tuple])
 
-    def choose_checkpoints(self, count: int) -> List[List[DbKey]]:
-        "Suggests a bunch of evenly-spaced checkpoints to split by, including start, end."
+    def choose_checkpoints(self, count: int) -> List[DbKey]:
+        "Suggests a bunch of evenly-spaced checkpoints to split by (not including start, end)"
 
         assert self.is_bounded
 
@@ -228,6 +234,9 @@ class TableSegment:
 
     def count_and_checksum(self) -> Tuple[int, int]:
         """Count and checksum the rows in the segment, in one pass."""
+        logging.info('count_and_checksum')
+        time.sleep(1)
+
         start = time.monotonic()
         q = self.make_select().select(Count(), Checksum(self._relevant_columns_repr))
         count, checksum = self.database.query(q, tuple)
@@ -241,7 +250,88 @@ class TableSegment:
 
         if count:
             assert checksum, (count, checksum)
-        return count or 0, int(checksum) if count else None
+        # return count or 0, int(checksum) if count else None
+        return f'{self.min_key} - {self.max_key}', count or 0, int(checksum) if count else None
+
+    def count_and_checksum_by_group(self, checkpoints: List, bisection_factor: int, max_rows: int) -> Tuple[Tuple[int, int]]:
+        """Count and checksum each group"""
+
+        # TODO: REMOVE
+        logging.info('count_and_checksum_by_group')
+        time.sleep(4)
+        """
+        If group_by col is PK:
+            if PK is num: use GROUP BY FLOOR(div_factor)
+            if PK is alphanum: figure out way to group_by.
+
+                look at 'checkpoints' (which should be passed in, maybe instead of 'groups' count)
+                somehow determine how many chars to GROUP BY with 'substring(n)'
+                    - hmmmmmm... We prob don't have much control over how many groups we end up with
+                    - eg. If we group by "substring(0, 1)" there could be up to N groups (N == number of allowed chars) 
+                    - eg. If we group by "substring(0, 2)" there could be up to N*N groups
+
+                Another option is to use the CASE, WHEN version of the group by query, with all the ranges explicitly listed in the query. 
+
+            # TODO: if self.group_by_column != self.key_columns[0]:
+        """
+        # logging.info('--------')
+        # logging.info('count_and_checksum_by_group')
+        # logging.info(f'max_rows: {max_rows}')
+        # logging.info(f'groups: {len(checkpoints)}')
+        # logging.info(f'max_key: {self.max_key}')
+        # logging.info(f'min_key: {self.min_key}')
+        # logging.info('--------')
+
+        # follows same logic as split_space in sqeleton
+        div_factor = math.floor((max_rows+1) / (bisection_factor))
+        expected_groups = [self.min_key] + checkpoints
+
+        group_by_col = self.key_columns[0]
+        group_by_expr = f'FLOOR(({group_by_col} - {self.min_key})/{div_factor})'
+
+        q = (self.make_select()
+            .select(
+                Code(group_by_expr),
+                Count(), 
+                Checksum(self._relevant_columns_repr))
+            .order_by(Code(group_by_expr))
+            .group_by(self.source_table[group_by_col])
+            .agg(self.source_table[group_by_col])
+            .table
+            .replace(group_by_exprs=[Code(group_by_expr)]))
+
+        start = time.monotonic()
+        rows = self.database.query(q, list)
+        duration = time.monotonic() - start
+
+        # insert missing groups
+        for i, exp_grp in enumerate(expected_groups):
+            # empty_result =  [0, None] # TODO: Cleanup. [exp_grp, 0, None]
+            empty_result =  [exp_grp, 0, None] # TODO: Cleanup. [exp_grp, 0, None]
+            if i >= len(rows):
+                # no more returned groups, insert next expected one
+                rows.insert(i, empty_result)
+                continue
+
+            grp_val = rows[i][0] * div_factor + self.min_key
+            assert(grp_val in expected_groups)
+
+            if grp_val > exp_grp:
+                # group was skipped, insert it
+                rows.insert(i, empty_result)
+                continue
+
+            # group exists, just map its value
+            row_ls = list(rows[i])
+
+            ## OPTION 1 (debug) - includes group label
+            row_ls[0] = grp_val # TODO: Cleanup.
+            rows[i] = row_ls
+            
+            # OPTION 2: remove first item (group label)
+            # rows[i] = row_ls[1:]
+
+        return rows
 
     def query_key_range(self) -> Tuple[tuple, tuple]:
         """Query database for minimum and maximum key. This is used for setting the initial bounds."""

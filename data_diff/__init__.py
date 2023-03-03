@@ -1,3 +1,4 @@
+import logging
 from typing import Sequence, Tuple, Iterator, Optional, Union
 
 from sqeleton.abcs import DbTime, DbPath
@@ -5,7 +6,7 @@ from sqeleton.abcs import DbTime, DbPath
 from .tracking import disable_tracking
 from .databases import connect
 from .diff_tables import Algorithm
-from .hashdiff_tables import HashDiffer, DEFAULT_BISECTION_THRESHOLD, DEFAULT_BISECTION_FACTOR
+from .hashdiff_tables import HashDiffer, DEFAULT_BISECTION_THRESHOLD, DEFAULT_BISECTION_FACTOR, SinglePassHashDiffer
 from .joindiff_tables import JoinDiffer, TABLE_WRITE_LIMIT
 from .table_segment import TableSegment
 from .utils import eval_name_template, Vector
@@ -79,6 +80,8 @@ def diff_tables(
     materialize_all_rows: bool = False,
     # Maximum number of rows to write when materializing, per thread. (joindiff only)
     table_write_limit: int = TABLE_WRITE_LIMIT,
+
+    hash_query_type: str = None
 ) -> Iterator:
     """Finds the diff between table1 and table2.
 
@@ -107,6 +110,7 @@ def diff_tables(
         materialize_to_table (Union[str, DbPath], optional): Path of new table to write diff results to. Disabled if not provided. Used for `JOINDIFF`.
         materialize_all_rows (bool): Materialize every row, not just those that are different. (used for `JOINDIFF`. default: False)
         table_write_limit (int): Maximum number of rows to write when materializing, per thread.
+        hash_query_type (str): multi, or grouped
 
     Note:
         The following parameters are used to override the corresponding attributes of the given :class:`TableSegment` instances:
@@ -140,6 +144,7 @@ def diff_tables(
             min_update=min_update,
             max_update=max_update,
             where=where,
+            hash_query_type=hash_query_type
         ).items()
         if v is not None
     }
@@ -151,12 +156,23 @@ def diff_tables(
         algorithm = Algorithm.JOINDIFF if table1.database is table2.database else Algorithm.HASHDIFF
 
     if algorithm == Algorithm.HASHDIFF:
-        differ = HashDiffer(
-            bisection_factor=bisection_factor,
-            bisection_threshold=bisection_threshold,
-            threaded=threaded,
-            max_threadpool_size=max_threadpool_size,
-        )
+        if segments[0].hash_query_type == 'multi' and segments[1].hash_query_type == 'multi':
+            logging.info('Diffing with HASHDIFF multi-query')
+
+            differ = HashDiffer(
+                bisection_factor=bisection_factor,
+                bisection_threshold=bisection_threshold,
+                threaded=threaded,
+                max_threadpool_size=max_threadpool_size,
+            )
+        else:
+            logging.info('Diffing with HASHDIFF grouped query')
+            differ = SinglePassHashDiffer(
+                bisection_factor=bisection_factor,
+                bisection_threshold=bisection_threshold,
+                threaded=threaded,
+                max_threadpool_size=max_threadpool_size,
+            )         
     elif algorithm == Algorithm.JOINDIFF:
         if isinstance(materialize_to_table, str):
             materialize_to_table = table1.database.parse_table_name(eval_name_template(materialize_to_table))

@@ -147,7 +147,7 @@ class DiffResultWrapper:
             string_output += f"Updated Rows: {diff_stats.diff_by_sign['!']}\n"
             string_output += f"Unchanged Rows: {diff_stats.unchanged}\n\n"
 
-            string_output += f"Values Updated:"
+            string_output += "Values Updated:"
 
             for k, v in diff_stats.extra_column_diffs.items():
                 string_output += f"\n{k}: {v}"

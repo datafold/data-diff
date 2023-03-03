@@ -62,6 +62,10 @@ class ThreadedYielder(Iterable):
     def submit(self, fn: Callable, *args, priority: int = 0, **kwargs):
         self._futures.append(self._pool.submit(self._worker, fn, *args, priority=priority, **kwargs))
 
+    def _submit_and_block(self, *funcs, priority):
+        futures = [self._pool.submit(fn, priority=priority) for fn in funcs if fn is not None]
+        return [f.result() for f in futures]
+
     def __iter__(self) -> Iterator:
         while True:
             if self._exception:

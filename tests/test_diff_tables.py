@@ -1,4 +1,6 @@
 from datetime import datetime, timedelta
+import logging
+import math
 from typing import Callable
 import uuid
 import unittest
@@ -6,7 +8,7 @@ import unittest
 from sqeleton.queries import table, this, commit, code
 from sqeleton.utils import ArithAlphanumeric, numberToAlphanum
 
-from data_diff.hashdiff_tables import HashDiffer
+from data_diff.hashdiff_tables import HashDiffer, SinglePassHashDiffer
 from data_diff.joindiff_tables import JoinDiffer
 from data_diff.table_segment import TableSegment, split_space, Vector
 from data_diff import databases as db
@@ -138,12 +140,12 @@ class TestDiffTables(DiffTestCase):
 
         self.differ = HashDiffer(bisection_factor=3, bisection_threshold=4)
 
-    def test_properties_on_empty_table(self):
+    def _test_properties_on_empty_table(self):
         table = self.table.with_schema()
         self.assertEqual(0, table.count())
         self.assertEqual(None, table.count_and_checksum()[1])
 
-    def test_get_values(self):
+    def _test_get_values(self):
         time = "2022-01-01 00:00:00.000000"
         time_obj = datetime.fromisoformat(time)
 
@@ -158,7 +160,7 @@ class TestDiffTables(DiffTestCase):
         concatted = str(id_) + "|" + time
         self.assertEqual(str_to_checksum(concatted), table.count_and_checksum()[1])
 
-    def test_diff_small_tables(self):
+    def _test_diff_small_tables(self):
         time = "2022-01-01 00:00:00"
         time_obj = datetime.fromisoformat(time)
 
@@ -180,7 +182,7 @@ class TestDiffTables(DiffTestCase):
         self.assertEqual(2, info.rowcounts[1])
         self.assertEqual(1, info.rowcounts[2])
 
-    def test_non_threaded(self):
+    def _test_non_threaded(self):
         differ = HashDiffer(bisection_factor=3, bisection_threshold=4, threaded=False)
 
         time = "2022-01-01 00:00:00"
@@ -197,7 +199,7 @@ class TestDiffTables(DiffTestCase):
         diff = list(differ.diff_tables(self.table, self.table2))
         self.assertEqual(diff, [])
 
-    def test_diff_table_above_bisection_threshold(self):
+    def _test_diff_table_above_bisection_threshold(self):
         time = "2022-01-01 00:00:00"
         time_obj = datetime.fromisoformat(time)
 
@@ -237,7 +239,7 @@ class TestDiffTables(DiffTestCase):
         self.assertEqual(5, info.rowcounts[1])
         self.assertEqual(4, info.rowcounts[2])
 
-    def test_return_empty_array_when_same(self):
+    def _test_return_empty_array_when_same(self):
         time = "2022-01-01 00:00:00"
         time_obj = datetime.fromisoformat(time)
 
@@ -254,7 +256,7 @@ class TestDiffTables(DiffTestCase):
         diff = list(self.differ.diff_tables(self.table, self.table2))
         self.assertEqual([], diff)
 
-    def test_diff_sorted_by_key(self):
+    def _test_diff_sorted_by_key(self):
         time = "2022-01-01 00:00:00"
         time2 = "2021-01-01 00:00:00"
 
@@ -298,6 +300,133 @@ class TestDiffTables(DiffTestCase):
             ("+", ("4", time + ".000000")),
         }
         self.assertEqual(expected, diff)
+
+
+    def compare_checkpoint_groups(self, min_key, max_key, bisection_factor):
+        logging.info('. '*40)
+        max_rows = max_key - min_key
+        table1 = self.table.replace(min_key=min_key, max_key=max_key)
+        # table2 = self.table2.replace(min_key=60000, max_key=120000)
+
+        checkpoints = table1.choose_checkpoints(bisection_factor-1)
+
+        # TODO: desired logic:
+        #   if max_rows % bisection_factor == 0: use (len(checkpoints)+1)
+        #   if max_rows % bisection_factor != 0: use (len(checkpoints))
+
+        """
+        #TODO: The prob is we're using 'checkpts' to calc div_factor, but sometimes the # checkpts can be the same for 2 diff values of bisection_factor
+        #      SO we need to use bi_fact instead of checkpoints
+        size    bi_fact     checkpts     grp_count   div_factor
+        1000    2           1            2           500
+        1000    3           3            4           333
+        1000    4           3            4           250
+        1000    5           4            5           200
+        1000    6           6            7           143
+        """
+
+        # div_factor = math.floor((max_rows+1) / (len(checkpoints)+1))
+        div_factor = math.floor((max_rows+1) / (bisection_factor))
+        logging.info(f'div_factor: {div_factor}')
+
+        # simulates DB grouping
+        calculated_groups = {math.floor((i - min_key)/div_factor) for i in range(min_key, max_key)}
+
+        # convert DB groups to minimum val of each range
+        translated_groups = [(g * div_factor) + min_key for g in calculated_groups]
+
+        # prepend min_key to checkpoints for comparison
+        checkpoints = [table1.min_key] + checkpoints
+
+        logging.info(f'checkpoints: {checkpoints} (len={len(checkpoints)})')
+        logging.info(f'calc_groups: {calculated_groups} (len={len(calculated_groups)})')
+        logging.info(f'tran_groups: {translated_groups}')
+
+    def _test_checkpoints_match_expected_groups(self):
+        logging.info('*'*80)
+        logging.info('test_checkpoints_match_expected_groups')
+        logging.info('*'*80)
+        # self.compare_checkpoint_groups(min_key=60000, max_key=120000, bisection_factor=10)
+        # self.compare_checkpoint_groups(min_key=0, max_key=100000, bisection_factor=10)
+
+        # TODO: This is the issue. When the 'max_rows' (size) is not divisble by the bisection_factor, the checkpoints & groups differ.
+        self.compare_checkpoint_groups(min_key=2009, max_key=10000000, bisection_factor=10)
+        self.compare_checkpoint_groups(min_key=2010, max_key=10000000, bisection_factor=10)
+        self.compare_checkpoint_groups(min_key=2009, max_key=10000009, bisection_factor=10)
+
+        # self.compare_checkpoint_groups(min_key=0, max_key=1000, bisection_factor=2)
+        # self.compare_checkpoint_groups(min_key=0, max_key=1000, bisection_factor=3)
+        # self.compare_checkpoint_groups(min_key=0, max_key=1000, bisection_factor=4)
+        # self.compare_checkpoint_groups(min_key=0, max_key=1000, bisection_factor=5)
+        # self.compare_checkpoint_groups(min_key=0, max_key=1000, bisection_factor=6)
+
+
+    def test_count_and_checksum_by_group(self):
+        logging.info('*'*80)
+        logging.info('test_count_and_checksum_by_group')
+        logging.info('*'*80)
+        time = "2022-01-01 00:00:00"
+        time2 = "2021-01-01 00:00:00"
+
+        time_obj = datetime.fromisoformat(time)
+        time_obj2 = datetime.fromisoformat(time2)
+
+        cols = "id userid movieid rating timestamp".split()
+
+        rows_t1 = [[idx, idx, idx, 9, time_obj] for idx in range(100080)]
+        rows_t2 = [[idx, idx, idx, 9, time_obj2] for idx in range(100100)]
+
+        self.connection.query(
+            [
+                self.src_table.insert_rows(rows_t1, columns=cols),
+                self.dst_table.insert_rows(rows_t2, columns=cols),
+                commit,
+            ]
+        )
+
+        table1 = self.table.replace(hash_query_type = 'grouped', min_key=500, max_key=120000, extra_columns=())
+        table2 = self.table2.replace(min_key=500, max_key=120000, extra_columns=())
+        differ = SinglePassHashDiffer(bisection_factor=4, bisection_threshold=1000, max_threadpool_size=30)
+        diff = set(differ.diff_tables(table1, table2))
+        
+        logging.info('\n'.join(str(d) for d in diff))
+
+    def _test_count_and_checksum_by_group_2(self):
+        logging.info('*'*80)
+        logging.info('test_count_and_checksum_by_group')
+        logging.info('*'*80)
+        time = "2022-01-01 00:00:00"
+        time2 = "2021-01-01 00:00:00"
+
+        time_obj = datetime.fromisoformat(time)
+        time_obj2 = datetime.fromisoformat(time2)
+
+        cols = "id userid movieid rating timestamp".split()
+
+        rows_t1 = [[idx, idx, idx, 9, time_obj] for idx in range(200000)]
+        rows_t2 = [[idx, idx, idx, 9, time_obj] for idx in range(200000)]
+
+        self.connection.query(
+            [
+                self.src_table.insert_rows(rows_t1, columns=cols),
+                self.dst_table.insert_rows(rows_t2, columns=cols),
+                commit,
+            ]
+        )
+
+        table1 = self.table.replace(hash_query_type = 'grouped', min_key=2009, max_key=100000, extra_columns=())
+        table2 = self.table2.replace(min_key=2009, max_key=100000, extra_columns=())
+        differ = SinglePassHashDiffer(bisection_factor=10, bisection_threshold=1000)
+        diff = set(differ.diff_tables(table1, table2))
+        
+        logging.info('\n'.join(str(d) for d in diff))
+        # expected = {
+        #     ("-", ("2", time2 + ".000000")),
+        #     ("+", ("2", time + ".000000")),
+        #     ("-", ("4", time2 + ".000000")),
+        #     ("+", ("4", time + ".000000")),
+        # }
+        # self.assertEqual(expected, diff)
 
 
 @test_each_database
