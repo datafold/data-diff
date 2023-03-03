@@ -366,7 +366,7 @@ class TestDbtDiffer(unittest.TestCase):
         mock_diff_tables.assert_called_once_with(
             mock_table1, mock_table2, threaded=True, algorithm=Algorithm.JOINDIFF, extra_columns=ANY
         )
-        self.assertEqual(len(mock_diff_tables.call_args.kwargs['extra_columns']), 2)
+        self.assertEqual(len(mock_diff_tables.call_args[1]['extra_columns']), 2)
         self.assertEqual(mock_connect.call_count, 2)
         mock_connect.assert_any_call(mock_connection, ".".join(dev_qualified_list), tuple(expected_keys))
         mock_connect.assert_any_call(mock_connection, ".".join(prod_qualified_list), tuple(expected_keys))
@@ -393,7 +393,7 @@ class TestDbtDiffer(unittest.TestCase):
         mock_diff_tables.assert_called_once_with(
             mock_table1, mock_table2, threaded=True, algorithm=Algorithm.JOINDIFF, extra_columns=ANY
         )
-        self.assertEqual(len(mock_diff_tables.call_args.kwargs['extra_columns']), 2)
+        self.assertEqual(len(mock_diff_tables.call_args[1]['extra_columns']), 2)
         self.assertEqual(mock_connect.call_count, 2)
         mock_connect.assert_any_call(mock_connection, ".".join(dev_qualified_list), tuple(expected_keys))
         mock_connect.assert_any_call(mock_connection, ".".join(prod_qualified_list), tuple(expected_keys))
