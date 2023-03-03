@@ -540,10 +540,10 @@ files = [
 cffi = ">=1.12"
 
 [package.extras]
-docs = ["sphinx (>=1.6.5,!=1.8.0,!=3.1.0,!=3.1.1)", "sphinx_rtd_theme"]
+docs = ["sphinx (>=1.6.5,!=1.8.0,!=3.1.0,!=3.1.1)", "sphinx-rtd-theme"]
 docstest = ["pyenchant (>=1.6.11)", "sphinxcontrib-spelling (>=4.0.1)", "twine (>=1.12.0)"]
 pep8test = ["black", "flake8", "flake8-import-order", "pep8-naming"]
-sdist = ["setuptools_rust (>=0.11.4)"]
+sdist = ["setuptools-rust (>=0.11.4)"]
 ssh = ["bcrypt (>=3.1.5)"]
 test = ["hypothesis (>=1.11.4,!=3.79.2)", "iso8601", "pretend", "pytest (>=6.2.0)", "pytest-cov", "pytest-subtests", "pytest-xdist", "pytz"]
 
@@ -1009,14 +1009,14 @@ files = [
 ]
 
 [package.extras]
-all = ["Jinja2", "brotli", "cython", "execnet (>=1.0.9)", "pytest (>4.0)", "pytest-cov (>=2.6)", "pyzmq", "redis", "sqlalchemy"]
+all = ["Jinja2", "brotli", "cython", "execnet (>=1.0.9)", "mock", "pytest", "pytest-cov (<2.6)", "pyzmq", "redis", "sqlalchemy"]
 compression = ["brotli"]
-dev = ["cython", "pytest (>4.0)", "pytest-cov (>=2.6)"]
+dev = ["cython", "mock", "pytest", "pytest-cov (<2.6)"]
 execnet = ["execnet (>=1.0.9)"]
 jinja = ["Jinja2"]
 redis = ["redis"]
 sqlalchemy = ["sqlalchemy"]
-test = ["pytest (>4.0)", "pytest-cov (>=2.6)"]
+test = ["mock", "pytest", "pytest-cov (<2.6)"]
 zmq = ["pyzmq"]
 
 [[package]]
@@ -1988,6 +1988,8 @@ files = [
     {file = "ruamel.yaml.clib-0.2.7-cp311-cp311-macosx_10_9_universal2.whl", hash = "sha256:045e0626baf1c52e5527bd5db361bc83180faaba2ff586e763d3d5982a876a9e"},
     {file = "ruamel.yaml.clib-0.2.7-cp311-cp311-macosx_12_6_arm64.whl", hash = "sha256:721bc4ba4525f53f6a611ec0967bdcee61b31df5a56801281027a3a6d1c2daf5"},
     {file = "ruamel.yaml.clib-0.2.7-cp311-cp311-manylinux_2_17_x86_64.manylinux2014_x86_64.manylinux_2_24_x86_64.whl", hash = "sha256:41d0f1fa4c6830176eef5b276af04c89320ea616655d01327d5ce65e50575c94"},
+    {file = "ruamel.yaml.clib-0.2.7-cp311-cp311-win32.whl", hash = "sha256:f6d3d39611ac2e4f62c3128a9eed45f19a6608670c5a2f4f07f24e8de3441d38"},
+    {file = "ruamel.yaml.clib-0.2.7-cp311-cp311-win_amd64.whl", hash = "sha256:da538167284de58a52109a9b89b8f6a53ff8437dd6dc26d33b57bf6699153122"},
     {file = "ruamel.yaml.clib-0.2.7-cp36-cp36m-macosx_10_9_x86_64.whl", hash = "sha256:4b3a93bb9bc662fc1f99c5c3ea8e623d8b23ad22f861eb6fce9377ac07ad6072"},
     {file = "ruamel.yaml.clib-0.2.7-cp36-cp36m-macosx_12_0_arm64.whl", hash = "sha256:a234a20ae07e8469da311e182e70ef6b199d0fbeb6c6cc2901204dd87fb867e8"},
     {file = "ruamel.yaml.clib-0.2.7-cp36-cp36m-manylinux2014_aarch64.whl", hash = "sha256:15910ef4f3e537eea7fe45f8a5d19997479940d9196f357152a09031c5be59f3"},
@@ -2116,14 +2118,14 @@ secure-local-storage = ["keyring (!=16.1.0,<24.0.0)"]
 
 [[package]]
 name = "sqeleton"
-version = "0.0.5"
+version = "0.0.7"
 description = "Python library for querying SQL databases"
 category = "main"
 optional = false
 python-versions = ">=3.7,<4.0"
 files = [
-    {file = "sqeleton-0.0.5-py3-none-any.whl", hash = "sha256:2d1b53632c2758b1317943a48f8c6e84833eb61515fccb3a8b5d6cce2d6647cd"},
-    {file = "sqeleton-0.0.5.tar.gz", hash = "sha256:049bd07dc4c20518e93f03acacc45103716ca9f499eea5ba4a78dc2abbb30b5e"},
+    {file = "sqeleton-0.0.7-py3-none-any.whl", hash = "sha256:9e16deb240e675af3facdd57de0264546507507728cad1f6fdba3922428891f4"},
+    {file = "sqeleton-0.0.7.tar.gz", hash = "sha256:cbfb7f2689ad54b1cb528e67d0954ac1a18ab1f1f757883b62f4e5c9dce0b468"},
 ]
 
 [package.dependencies]
@@ -2135,7 +2137,7 @@ toml = ">=0.10.2,<0.11.0"
 
 [package.extras]
 clickhouse = ["clickhouse-driver"]
-duckdb = ["duckdb (>=0.6.0,<0.7.0)"]
+duckdb = ["duckdb (>=0.7.0,<0.8.0)"]
 mysql = ["mysql-connector-python (==8.0.29)"]
 postgresql = ["psycopg2"]
 presto = ["presto-python-client"]
@@ -2387,6 +2389,7 @@ testing = ["flake8 (<5)", "func-timeout", "jaraco.functools", "jaraco.itertools"
 
 [extras]
 clickhouse = ["clickhouse-driver"]
+dbt = ["dbt-core", "dbt-artifacts-parser"]
 duckdb = ["duckdb"]
 mysql = ["mysql-connector-python"]
 oracle = []
@@ -2400,4 +2403,4 @@ vertica = []
 [metadata]
 lock-version = "2.0"
 python-versions = "^3.7"
-content-hash = "f9c967b0eb707ea6af1d67b19cbef59a2e49f6a8d6fa9b3dbf7afcffc6273087"
+content-hash = "271bd4cec7e8c49558727012e085366f7003eff05919b8892aa9ee4cd6d4542c"

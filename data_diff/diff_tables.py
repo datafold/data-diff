@@ -14,9 +14,9 @@ from runtype import dataclass
 
 from data_diff.info_tree import InfoTree, SegmentInfo
 
-from .utils import run_as_daemon, safezip, getLogger
+from .utils import run_as_daemon, safezip, getLogger, truncate_error, Vector
 from .thread_utils import ThreadedYielder
-from .table_segment import TableSegment
+from .table_segment import TableSegment, create_mesh_from_points
 from .tracking import create_end_event_json, create_start_event_json, send_event_json, is_tracking_enabled
 from sqeleton.abcs import IKey
 
@@ -30,11 +30,6 @@ class Algorithm(Enum):
 
 
 DiffResult = Iterator[Tuple[str, tuple]]  # Iterator[Tuple[Literal["+", "-"], tuple]]
-
-
-def truncate_error(error: str):
-    first_line = error.split("\n", 1)[0]
-    return re.sub("'(.*?)'", "'***'", first_line)
 
 
 @dataclass
@@ -85,6 +80,7 @@ class DiffStats:
     table2_count: int
     unchanged: int
     diff_percent: float
+    extra_column_diffs: Optional[Dict[str, int]]
 
 
 @dataclass
@@ -100,17 +96,33 @@ class DiffResultWrapper:
             self.result_list.append(i)
             yield i
 
-    def _get_stats(self) -> DiffStats:
+    def _get_stats(self, is_dbt: bool = False) -> DiffStats:
         list(self)  # Consume the iterator into result_list, if we haven't already
 
+        key_columns = self.info_tree.info.tables[0].key_columns
+        len_key_columns = len(key_columns)
         diff_by_key = {}
+        extra_column_diffs = None
+        if is_dbt:
+            extra_column_values_store = {}
+            extra_columns = self.info_tree.info.tables[0].extra_columns
+            extra_column_diffs = {k: 0 for k in extra_columns}
+
         for sign, values in self.result_list:
-            k = values[: len(self.info_tree.info.tables[0].key_columns)]
+            k = values[:len_key_columns]
+            if is_dbt:
+                extra_column_values = values[len_key_columns:]
             if k in diff_by_key:
                 assert sign != diff_by_key[k]
                 diff_by_key[k] = "!"
+                if is_dbt:
+                    for i in range(0, len(extra_columns)):
+                        if extra_column_values[i] != extra_column_values_store[k][i]:
+                            extra_column_diffs[extra_columns[i]] += 1
             else:
                 diff_by_key[k] = sign
+                if is_dbt:
+                    extra_column_values_store[k] = extra_column_values
 
         diff_by_sign = {k: 0 for k in "+-!"}
         for sign in diff_by_key.values():
@@ -121,29 +133,44 @@ class DiffResultWrapper:
         unchanged = table1_count - diff_by_sign["-"] - diff_by_sign["!"]
         diff_percent = 1 - unchanged / max(table1_count, table2_count)
 
-        return DiffStats(diff_by_sign, table1_count, table2_count, unchanged, diff_percent)
+        return DiffStats(diff_by_sign, table1_count, table2_count, unchanged, diff_percent, extra_column_diffs)
 
-    def get_stats_string(self):
+    def get_stats_string(self, is_dbt: bool = False):
+        diff_stats = self._get_stats(is_dbt)
 
-        diff_stats = self._get_stats()
-        string_output = ""
-        string_output += f"{diff_stats.table1_count} rows in table A\n"
-        string_output += f"{diff_stats.table2_count} rows in table B\n"
-        string_output += f"{diff_stats.diff_by_sign['-']} rows exclusive to table A (not present in B)\n"
-        string_output += f"{diff_stats.diff_by_sign['+']} rows exclusive to table B (not present in A)\n"
-        string_output += f"{diff_stats.diff_by_sign['!']} rows updated\n"
-        string_output += f"{diff_stats.unchanged} rows unchanged\n"
-        string_output += f"{100*diff_stats.diff_percent:.2f}% difference score\n"
+        if is_dbt:
+            string_output = "\n| Rows Added\t| Rows Removed\n"
+            string_output += "------------------------------------------------------------\n"
 
-        if self.stats:
-            string_output += "\nExtra-Info:\n"
-            for k, v in sorted(self.stats.items()):
-                string_output += f"  {k} = {v}\n"
+            string_output += f"| {diff_stats.diff_by_sign['-']}\t\t| {diff_stats.diff_by_sign['+']}\n"
+            string_output += "------------------------------------------------------------\n\n"
+            string_output += f"Updated Rows: {diff_stats.diff_by_sign['!']}\n"
+            string_output += f"Unchanged Rows: {diff_stats.unchanged}\n\n"
+
+            string_output += f"Values Updated:"
+
+            for k, v in diff_stats.extra_column_diffs.items():
+                string_output += f"\n{k}: {v}"
+
+        else:
+
+            string_output = ""
+            string_output += f"{diff_stats.table1_count} rows in table A\n"
+            string_output += f"{diff_stats.table2_count} rows in table B\n"
+            string_output += f"{diff_stats.diff_by_sign['-']} rows exclusive to table A (not present in B)\n"
+            string_output += f"{diff_stats.diff_by_sign['+']} rows exclusive to table B (not present in A)\n"
+            string_output += f"{diff_stats.diff_by_sign['!']} rows updated\n"
+            string_output += f"{diff_stats.unchanged} rows unchanged\n"
+            string_output += f"{100*diff_stats.diff_percent:.2f}% difference score\n"
+
+            if self.stats:
+                string_output += "\nExtra-Info:\n"
+                for k, v in sorted(self.stats.items()):
+                    string_output += f"  {k} = {v}\n"
 
         return string_output
 
     def get_stats_dict(self):
-
         diff_stats = self._get_stats()
         json_output = {
             "rows_A": diff_stats.table1_count,
@@ -190,7 +217,6 @@ class TableDiffer(ThreadBase, ABC):
         start = time.monotonic()
         error = None
         try:
-
             # Query and validate schema
             table1, table2 = self._threaded_call("with_schema", [table1, table2])
             self._validate_and_adjust_columns(table1, table2)
@@ -244,63 +270,75 @@ class TableDiffer(ThreadBase, ABC):
     ):
         ...
 
-    def _bisect_and_diff_tables(self, table1, table2, info_tree):
-        if len(table1.key_columns) > 1:
-            raise NotImplementedError("Composite key not supported yet!")
-        if len(table2.key_columns) > 1:
-            raise NotImplementedError("Composite key not supported yet!")
+    def _bisect_and_diff_tables(self, table1: TableSegment, table2: TableSegment, info_tree):
         if len(table1.key_columns) != len(table2.key_columns):
             raise ValueError("Tables should have an equivalent number of key columns!")
-        (key1,) = table1.key_columns
-        (key2,) = table2.key_columns
 
-        key_type = table1._schema[key1]
-        key_type2 = table2._schema[key2]
-        if not isinstance(key_type, IKey):
-            raise NotImplementedError(f"Cannot use column of type {key_type} as a key")
-        if not isinstance(key_type2, IKey):
-            raise NotImplementedError(f"Cannot use column of type {key_type2} as a key")
-        if key_type.python_type is not key_type2.python_type:
-            raise TypeError(f"Incompatible key types: {key_type} and {key_type2}")
+        key_types1 = [table1._schema[i] for i in table1.key_columns]
+        key_types2 = [table2._schema[i] for i in table2.key_columns]
+
+        for kt in key_types1 + key_types2:
+            if not isinstance(kt, IKey):
+                raise NotImplementedError(f"Cannot use a column of type {kt} as a key")
+
+        for kt1, kt2 in safezip(key_types1, key_types2):
+            if kt1.python_type is not kt2.python_type:
+                raise TypeError(f"Incompatible key types: {kt1} and {kt2}")
 
         # Query min/max values
         key_ranges = self._threaded_call_as_completed("query_key_range", [table1, table2])
 
         # Start with the first completed value, so we don't waste time waiting
-        min_key1, max_key1 = self._parse_key_range_result(key_type, next(key_ranges))
+        min_key1, max_key1 = self._parse_key_range_result(key_types1, next(key_ranges))
 
-        table1, table2 = [t.new(min_key=min_key1, max_key=max_key1) for t in (table1, table2)]
+        btable1, btable2 = [t.new_key_bounds(min_key=min_key1, max_key=max_key1) for t in (table1, table2)]
 
         logger.info(
-            f"Diffing segments at key-range: {table1.min_key}..{table2.max_key}. "
-            f"size: table1 <= {table1.approximate_size()}, table2 <= {table2.approximate_size()}"
+            f"Diffing segments at key-range: {btable1.min_key}..{btable2.max_key}. "
+            f"size: table1 <= {btable1.approximate_size()}, table2 <= {btable2.approximate_size()}"
         )
 
         ti = ThreadedYielder(self.max_threadpool_size)
         # Bisect (split) the table into segments, and diff them recursively.
-        ti.submit(self._bisect_and_diff_segments, ti, table1, table2, info_tree)
+        ti.submit(self._bisect_and_diff_segments, ti, btable1, btable2, info_tree)
 
         # Now we check for the second min-max, to diff the portions we "missed".
-        min_key2, max_key2 = self._parse_key_range_result(key_type, next(key_ranges))
+        # This is achieved by subtracting the table ranges, and dividing the resulting space into aligned boxes.
+        # For example, given tables A & B, and a 2D compound key, where A was queried first for key-range,
+        # the regions of B we need to diff in this second pass are marked by B1..8:
+        # ┌──┬──────┬──┐
+        # │B1│  B2  │B3│
+        # ├──┼──────┼──┤
+        # │B4│  A   │B5│
+        # ├──┼──────┼──┤
+        # │B6│  B7  │B8│
+        # └──┴──────┴──┘
+        # Overall, the max number of new regions in this 2nd pass is 3^|k| - 1
 
-        if min_key2 < min_key1:
-            pre_tables = [t.new(min_key=min_key2, max_key=min_key1) for t in (table1, table2)]
-            ti.submit(self._bisect_and_diff_segments, ti, *pre_tables, info_tree)
+        min_key2, max_key2 = self._parse_key_range_result(key_types1, next(key_ranges))
 
-        if max_key2 > max_key1:
-            post_tables = [t.new(min_key=max_key1, max_key=max_key2) for t in (table1, table2)]
-            ti.submit(self._bisect_and_diff_segments, ti, *post_tables, info_tree)
+        points = [list(sorted(p)) for p in safezip(min_key1, min_key2, max_key1, max_key2)]
+        box_mesh = create_mesh_from_points(*points)
+
+        new_regions = [(p1, p2) for p1, p2 in box_mesh if p1 < p2 and not (p1 >= min_key1 and p2 <= max_key1)]
+
+        for p1, p2 in new_regions:
+            extra_tables = [t.new_key_bounds(min_key=p1, max_key=p2) for t in (table1, table2)]
+            ti.submit(self._bisect_and_diff_segments, ti, *extra_tables, info_tree)
 
         return ti
 
-    def _parse_key_range_result(self, key_type, key_range):
-        mn, mx = key_range
-        cls = key_type.make_value
+    def _parse_key_range_result(self, key_types, key_range) -> Tuple[Vector, Vector]:
+        min_key_values, max_key_values = key_range
+
         # We add 1 because our ranges are exclusive of the end (like in Python)
         try:
-            return cls(mn), cls(mx) + 1
+            min_key = Vector(key_type.make_value(mn) for key_type, mn in safezip(key_types, min_key_values))
+            max_key = Vector(key_type.make_value(mx) + 1 for key_type, mx in safezip(key_types, max_key_values))
         except (TypeError, ValueError) as e:
-            raise type(e)(f"Cannot apply {key_type} to '{mn}', '{mx}'.") from e
+            raise type(e)(f"Cannot apply {key_types} to '{min_key_values}', '{max_key_values}'.") from e
+
+        return min_key, max_key
 
     def _bisect_and_diff_segments(
         self,

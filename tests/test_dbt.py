@@ -1,6 +1,6 @@
-import json
 import os
 
+import yaml
 from data_diff.diff_tables import Algorithm
 from .test_cli import run_datadiff_cli
 
@@ -11,7 +11,6 @@ from data_diff.dbt import (
     DbtParser,
     RUN_RESULTS_PATH,
     MANIFEST_PATH,
-    PROFILES_FILE,
     PROJECT_FILE,
     DiffVars,
 )
@@ -49,9 +48,7 @@ class TestDbtParser(unittest.TestCase):
             DbtParser.get_datadiff_variables(mock_self)
 
     @patch("builtins.open", new_callable=mock_open, read_data="{}")
-    @patch("data_diff.dbt.parse_run_results")
-    @patch("data_diff.dbt.parse_manifest")
-    def test_get_models(self, mock_manifest_parser, mock_run_parser, mock_open):
+    def test_get_models(self, mock_open):
         expected_value = "expected_value"
         mock_self = Mock()
         mock_self.project_dir = ""
@@ -59,14 +56,14 @@ class TestDbtParser(unittest.TestCase):
         mock_success_result = Mock()
         mock_failed_result = Mock()
         mock_manifest = Mock()
-        mock_run_parser.return_value = mock_run_results
+        mock_self.parse_run_results.return_value = mock_run_results
         mock_run_results.metadata.dbt_version = "1.0.0"
         mock_success_result.unique_id = "success_unique_id"
         mock_failed_result.unique_id = "failed_unique_id"
         mock_success_result.status.name = "success"
         mock_failed_result.status.name = "failed"
         mock_run_results.results = [mock_success_result, mock_failed_result]
-        mock_manifest_parser.return_value = mock_manifest
+        mock_self.parse_manifest.return_value = mock_manifest
         mock_manifest.nodes = {"success_unique_id": expected_value}
 
         models = DbtParser.get_models(mock_self)
@@ -74,62 +71,56 @@ class TestDbtParser(unittest.TestCase):
         self.assertEqual(expected_value, models[0])
         mock_open.assert_any_call(RUN_RESULTS_PATH)
         mock_open.assert_any_call(MANIFEST_PATH)
-        mock_run_parser.assert_called_once_with(run_results={})
-        mock_manifest_parser.assert_called_once_with(manifest={})
+        mock_self.parse_run_results.assert_called_once_with(run_results={})
+        mock_self.parse_manifest.assert_called_once_with(manifest={})
 
     @patch("builtins.open", new_callable=mock_open, read_data="{}")
-    @patch("data_diff.dbt.parse_run_results")
-    @patch("data_diff.dbt.parse_manifest")
-    def test_get_models_bad_lower_dbt_version(self, mock_manifest_parser, mock_run_parser, mock_open):
+    def test_get_models_bad_lower_dbt_version(self, mock_open):
         mock_self = Mock()
         mock_self.project_dir = ""
         mock_run_results = Mock()
-        mock_run_parser.return_value = mock_run_results
+        mock_self.parse_run_results.return_value = mock_run_results
         mock_run_results.metadata.dbt_version = "0.19.0"
 
         with self.assertRaises(Exception) as ex:
             DbtParser.get_models(mock_self)
 
         mock_open.assert_called_once_with(RUN_RESULTS_PATH)
-        mock_run_parser.assert_called_once_with(run_results={})
-        mock_manifest_parser.assert_not_called()
+        mock_self.parse_run_results.assert_called_once_with(run_results={})
+        mock_self.parse_manifest.assert_not_called()
         self.assertIn("version to be", ex.exception.args[0])
-        
+
     @patch("builtins.open", new_callable=mock_open, read_data="{}")
-    @patch("data_diff.dbt.parse_run_results")
-    @patch("data_diff.dbt.parse_manifest")
-    def test_get_models_bad_upper_dbt_version(self, mock_manifest_parser, mock_run_parser, mock_open):
+    def test_get_models_bad_upper_dbt_version(self, mock_open):
         mock_self = Mock()
         mock_self.project_dir = ""
         mock_run_results = Mock()
-        mock_run_parser.return_value = mock_run_results
+        mock_self.parse_run_results.return_value = mock_run_results
         mock_run_results.metadata.dbt_version = "1.5.1"
 
         with self.assertRaises(Exception) as ex:
             DbtParser.get_models(mock_self)
 
         mock_open.assert_called_once_with(RUN_RESULTS_PATH)
-        mock_run_parser.assert_called_once_with(run_results={})
-        mock_manifest_parser.assert_not_called()
+        mock_self.parse_run_results.assert_called_once_with(run_results={})
+        mock_self.parse_manifest.assert_not_called()
         self.assertIn("version to be", ex.exception.args[0])
 
     @patch("builtins.open", new_callable=mock_open, read_data="{}")
-    @patch("data_diff.dbt.parse_run_results")
-    @patch("data_diff.dbt.parse_manifest")
-    def test_get_models_no_success(self, mock_manifest_parser, mock_run_parser, mock_open):
+    def test_get_models_no_success(self, mock_open):
         mock_self = Mock()
         mock_self.project_dir = ""
         mock_run_results = Mock()
         mock_success_result = Mock()
         mock_failed_result = Mock()
         mock_manifest = Mock()
-        mock_run_parser.return_value = mock_run_results
+        mock_self.parse_run_results.return_value = mock_run_results
         mock_run_results.metadata.dbt_version = "1.0.0"
         mock_failed_result.unique_id = "failed_unique_id"
         mock_success_result.status.name = "success"
         mock_failed_result.status.name = "failed"
         mock_run_results.results = [mock_failed_result]
-        mock_manifest_parser.return_value = mock_manifest
+        mock_self.parse_manifest.return_value = mock_manifest
         mock_manifest.nodes = {"success_unique_id": "a_unique_id"}
 
         with self.assertRaises(Exception):
@@ -137,193 +128,201 @@ class TestDbtParser(unittest.TestCase):
 
         mock_open.assert_any_call(RUN_RESULTS_PATH)
         mock_open.assert_any_call(MANIFEST_PATH)
-        mock_run_parser.assert_called_once_with(run_results={})
-        mock_manifest_parser.assert_called_once_with(manifest={})
+        mock_self.parse_run_results.assert_called_once_with(run_results={})
+        mock_self.parse_manifest.assert_called_once_with(manifest={})
 
-    @patch("data_diff.dbt.yaml.safe_load")
     @patch("builtins.open", new_callable=mock_open, read_data="key:\n  value")
-    def test_set_project_dict(self, mock_open, mock_yaml_parse):
+    def test_set_project_dict(self, mock_open):
         expected_dict = {"key1": "value1"}
         mock_self = Mock()
         mock_self.project_dir = ""
-        mock_yaml_parse.return_value = expected_dict
+        mock_self.yaml.safe_load.return_value = expected_dict
         DbtParser.set_project_dict(mock_self)
 
         self.assertEqual(mock_self.project_dict, expected_dict)
         mock_open.assert_called_once_with(PROJECT_FILE)
 
-    @patch("data_diff.dbt.yaml.safe_load")
-    @patch("builtins.open", new_callable=mock_open, read_data="key:\n  value")
-    def test_set_connection_snowflake(self, mock_open_file, mock_yaml_parse):
+    def test_set_connection_snowflake_success(self):
         expected_driver = "snowflake"
-        expected_password = "password_value"
-        profiles_dict = {
-            "profile_name": {
-                "outputs": {
-                    "connection1": {
-                        "type": expected_driver,
-                        "password": expected_password,
-                    }
-                },
-                "target": "connection1",
-            }
-        }
-
+        expected_credentials = {"user": "user", "password": "password"}
         mock_self = Mock()
-        mock_self.profiles_dir = ""
-        mock_self.project_dict = {"profile": "profile_name"}
-        mock_yaml_parse.return_value = profiles_dict
+        mock_self._get_connection_creds.return_value = (expected_credentials, expected_driver)
+
         DbtParser.set_connection(mock_self)
 
         self.assertIsInstance(mock_self.connection, dict)
         self.assertEqual(mock_self.connection.get("driver"), expected_driver)
-        self.assertEqual(mock_self.connection.get("password"), expected_password)
+        self.assertEqual(mock_self.connection.get("user"), expected_credentials["user"])
+        self.assertEqual(mock_self.connection.get("password"), expected_credentials["password"])
         self.assertEqual(mock_self.requires_upper, True)
-        mock_open_file.assert_called_once_with(PROFILES_FILE)
-        mock_yaml_parse.assert_called_once_with(mock_open_file())
 
-    @patch("data_diff.dbt.yaml.safe_load")
-    @patch("builtins.open", new_callable=mock_open, read_data="key:\n  value")
-    def test_set_connection_snowflake_no_password(self, mock_open_file, mock_yaml_parse):
+    def test_set_connection_snowflake_no_password(self):
         expected_driver = "snowflake"
-        profiles_dict = {
-            "profile_name": {
-                "outputs": {"connection1": {"type": expected_driver}},
-                "target": "connection1",
-            }
-        }
-
+        expected_credentials = {"user": "user"}
         mock_self = Mock()
-        mock_self.profiles_dir = ""
-        mock_self.project_dict = {"profile": "profile_name"}
-        mock_yaml_parse.return_value = profiles_dict
+        mock_self._get_connection_creds.return_value = (expected_credentials, expected_driver)
 
         with self.assertRaises(Exception):
             DbtParser.set_connection(mock_self)
 
-        mock_open_file.assert_called_once_with(PROFILES_FILE)
-        mock_yaml_parse.assert_called_once_with(mock_open_file())
         self.assertNotIsInstance(mock_self.connection, dict)
 
-    @patch("data_diff.dbt.yaml.safe_load")
-    @patch("builtins.open", new_callable=mock_open, read_data="key:\n  value")
-    def test_set_connection_bigquery(self, mock_open_file, mock_yaml_parse):
+    def test_set_connection_bigquery_success(self):
         expected_driver = "bigquery"
-        expected_method = "oauth"
-        expected_project = "a_project"
-        expected_dataset = "a_dataset"
-        profiles_dict = {
-            "profile_name": {
-                "outputs": {
-                    "connection1": {
-                        "type": expected_driver,
-                        "method": expected_method,
-                        "project": expected_project,
-                        "dataset": expected_dataset,
-                    }
-                },
-                "target": "connection1",
-            }
+        expected_credentials = {
+            "method": "oauth",
+            "project": "a_project",
+            "dataset": "a_dataset",
         }
-
         mock_self = Mock()
-        mock_self.profiles_dir = ""
-        mock_self.project_dict = {"profile": "profile_name"}
-        mock_yaml_parse.return_value = profiles_dict
+        mock_self._get_connection_creds.return_value = (expected_credentials, expected_driver)
+
         DbtParser.set_connection(mock_self)
 
         self.assertIsInstance(mock_self.connection, dict)
         self.assertEqual(mock_self.connection.get("driver"), expected_driver)
-        self.assertEqual(mock_self.connection.get("project"), expected_project)
-        self.assertEqual(mock_self.connection.get("dataset"), expected_dataset)
-        mock_open_file.assert_called_once_with(PROFILES_FILE)
-        mock_yaml_parse.assert_called_once_with(mock_open_file())
+        self.assertEqual(mock_self.connection.get("project"), expected_credentials["project"])
+        self.assertEqual(mock_self.connection.get("dataset"), expected_credentials["dataset"])
 
-    @patch("data_diff.dbt.yaml.safe_load")
-    @patch("builtins.open", new_callable=mock_open, read_data="key:\n  value")
-    def test_set_connection_bigquery_not_oauth(self, mock_open_file, mock_yaml_parse):
+    def test_set_connection_bigquery_not_oauth(self):
         expected_driver = "bigquery"
-        expected_method = "not_oauth"
-        expected_project = "a_project"
-        expected_dataset = "a_dataset"
-        profiles_dict = {
-            "profile_name": {
-                "outputs": {
-                    "connection1": {
-                        "type": expected_driver,
-                        "method": expected_method,
-                        "project": expected_project,
-                        "dataset": expected_dataset,
-                    }
-                },
-                "target": "connection1",
-            }
+        expected_credentials = {
+            "method": "not_oauth",
+            "project": "a_project",
+            "dataset": "a_dataset",
         }
 
         mock_self = Mock()
-        mock_self.profiles_dir = ""
-        mock_self.project_dict = {"profile": "profile_name"}
-        mock_yaml_parse.return_value = profiles_dict
+        mock_self._get_connection_creds.return_value = (expected_credentials, expected_driver)
         with self.assertRaises(Exception):
             DbtParser.set_connection(mock_self)
 
-        mock_open_file.assert_called_once_with(PROFILES_FILE)
-        mock_yaml_parse.assert_called_once_with(mock_open_file())
         self.assertNotIsInstance(mock_self.connection, dict)
 
-    @patch("data_diff.dbt.yaml.safe_load")
-    @patch("builtins.open", new_callable=mock_open, read_data="key:\n  value")
-    def test_set_connection_key_error(self, mock_open_file, mock_yaml_parse):
-        profiles_dict = {
-            "profile_name": {
-                "outputs": {
-                    "connection1": {
-                        "type": "a_driver",
-                        "password": "a_password",
-                    }
-                },
-                "target": "connection1",
-            }
-        }
+    def test_set_connection_not_implemented(self):
+        expected_driver = "unimplemented_provider"
 
         mock_self = Mock()
-        mock_self.profiles_dir = ""
-        mock_self.project_dir = ""
-        mock_self.project_dict = {"profile": "bad_key"}
-        mock_yaml_parse.return_value = profiles_dict
-        with self.assertRaises(Exception):
-            DbtParser.set_connection(mock_self)
-
-        mock_open_file.assert_called_once_with(PROFILES_FILE)
-        mock_yaml_parse.assert_called_once_with(mock_open_file())
-        self.assertNotIsInstance(mock_self.connection, dict)
-
-    @patch("data_diff.dbt.yaml.safe_load")
-    @patch("builtins.open", new_callable=mock_open, read_data="key:\n  value")
-    def test_set_connection_not_implemented(self, mock_open_file, mock_yaml_parse):
-        expected_driver = "not_implemented"
-        profiles_dict = {
-            "profile_name": {
-                "outputs": {
-                    "connection1": {
-                        "type": expected_driver,
-                    }
-                },
-                "target": "connection1",
-            }
-        }
-
-        mock_self = Mock()
-        mock_self.profiles_dir = ""
-        mock_self.project_dir = ""
-        mock_self.project_dict = {"profile": "profile_name"}
-        mock_yaml_parse.return_value = profiles_dict
+        mock_self._get_connection_creds.return_value = (None, expected_driver)
         with self.assertRaises(NotImplementedError):
             DbtParser.set_connection(mock_self)
 
-        mock_open_file.assert_called_once_with(PROFILES_FILE)
-        mock_yaml_parse.assert_called_once_with(mock_open_file())
         self.assertNotIsInstance(mock_self.connection, dict)
+
+    @patch("builtins.open", new_callable=mock_open, read_data="")
+    def test_get_connection_creds_success(self, mock_open):
+        profile_dict = {
+            "a_profile": {
+                "outputs": {
+                    "a_target": {"type": "TYPE1", "credential_1": "credential_1", "credential_2": "credential_2"}
+                },
+                "target": "a_target",
+            }
+        }
+        expected_credentials = profile_dict["a_profile"]["outputs"]["a_target"]
+        mock_self = Mock()
+        mock_self.profiles_dir = ""
+        mock_self.project_dict = {"profile": "a_profile"}
+        mock_self.yaml.safe_load.return_value = profile_dict
+        mock_self.ProfileRenderer().render_data.return_value = expected_credentials
+        credentials, conn_type = DbtParser._get_connection_creds(mock_self)
+        self.assertEqual(credentials, expected_credentials)
+        self.assertEqual(conn_type, "type1")
+
+    @patch("builtins.open", new_callable=mock_open, read_data="")
+    def test_get_connection_no_matching_profile(self, mock_open):
+        profile_dict = {"a_profile": {}}
+        mock_self = Mock()
+        mock_self.profiles_dir = ""
+        mock_self.project_dict = {"profile": "wrong_profile"}
+        mock_self.yaml.safe_load.return_value = profile_dict
+        with self.assertRaises(ValueError):
+            _, _ = DbtParser._get_connection_creds(mock_self)
+
+    @patch("builtins.open", new_callable=mock_open, read_data="")
+    def test_get_connection_no_target(self, mock_open):
+        profile_dict = {
+            "a_profile": {
+                "outputs": {
+                    "a_target": {"type": "TYPE1", "credential_1": "credential_1", "credential_2": "credential_2"}
+                },
+            }
+        }
+        mock_self = Mock()
+        mock_self.profiles_dir = ""
+        mock_self.project_dict = {"profile": "a_profile"}
+        mock_self.yaml.safe_load.return_value = profile_dict
+        with self.assertRaises(ValueError):
+            _, _ = DbtParser._get_connection_creds(mock_self)
+
+    profile_yaml_no_outputs = """
+    a_profile:
+      target: a_target
+    """
+
+    @patch("builtins.open", new_callable=mock_open, read_data="")
+    def test_get_connection_no_outputs(self, mock_open):
+        profile_dict = {"a_profile": {"target": "a_target"}}
+        mock_self = Mock()
+        mock_self.profiles_dir = ""
+        mock_self.project_dict = {"profile": "a_profile"}
+        mock_self.yaml.safe_load.return_value = profile_dict
+        with self.assertRaises(ValueError):
+            _, _ = DbtParser._get_connection_creds(mock_self)
+
+    profile_yaml_no_credentials = """
+    a_profile:
+      outputs:
+        a_target:
+      target: a_target
+    """
+
+    @patch("builtins.open", new_callable=mock_open, read_data="")
+    def test_get_connection_no_credentials(self, mock_open):
+        profile_dict = {
+            "a_profile": {
+                "outputs": {"a_target": {}},
+                "target": "a_target",
+            }
+        }
+        mock_self = Mock()
+        mock_self.profiles_dir = ""
+        mock_self.project_dict = {"profile": "a_profile"}
+        mock_self.yaml.safe_load.return_value = profile_dict
+        with self.assertRaises(ValueError):
+            _, _ = DbtParser._get_connection_creds(mock_self)
+
+    @patch("builtins.open", new_callable=mock_open, read_data="")
+    def test_get_connection_no_target_credentials(self, mock_open):
+        profile_dict = {
+            "a_profile": {
+                "outputs": {
+                    "a_target": {"type": "TYPE1", "credential_1": "credential_1", "credential_2": "credential_2"}
+                },
+                "target": "a_different_target",
+            }
+        }
+        mock_self = Mock()
+        mock_self.profiles_dir = ""
+        mock_self.project_dict = {"profile": "a_profile"}
+        mock_self.yaml.safe_load.return_value = profile_dict
+        with self.assertRaises(ValueError):
+            _, _ = DbtParser._get_connection_creds(mock_self)
+
+    @patch("builtins.open", new_callable=mock_open, read_data="")
+    def test_get_connection_no_type(self, mock_open):
+        profile_dict = {
+            "a_profile": {
+                "outputs": {"a_target": {"credential_1": "credential_1", "credential_2": "credential_2"}},
+                "target": "a_target",
+            }
+        }
+        mock_self = Mock()
+        mock_self.profiles_dir = ""
+        mock_self.project_dict = {"profile": "a_profile"}
+        mock_self.yaml.safe_load.return_value = profile_dict
+        with self.assertRaises(ValueError):
+            _, _ = DbtParser._get_connection_creds(mock_self)
 
 
 class TestDbtDiffer(unittest.TestCase):
@@ -425,8 +424,8 @@ class TestDbtDiffer(unittest.TestCase):
         )
         self.assertEqual(request_data_dict["data_source1_id"], expected_datasource_id)
         self.assertEqual(request_data_dict["data_source2_id"], expected_datasource_id)
-        self.assertEqual(request_data_dict["table1"], dev_qualified_list)
-        self.assertEqual(request_data_dict["table2"], prod_qualified_list)
+        self.assertEqual(request_data_dict["table1"], prod_qualified_list)
+        self.assertEqual(request_data_dict["table2"], dev_qualified_list)
         self.assertEqual(request_data_dict["pk_columns"], expected_primary_keys)
 
     @patch("data_diff.dbt.rich.print")
@@ -537,6 +536,63 @@ class TestDbtDiffer(unittest.TestCase):
         mock_model = Mock()
         expected_dbt_vars_dict = {
             "datasource_id": 1,
+        }
+
+        mock_dbt_parser_inst.get_models.return_value = [mock_model]
+        mock_dbt_parser_inst.get_datadiff_variables.return_value = expected_dbt_vars_dict
+        expected_diff_vars = DiffVars(["dev"], ["prod"], ["pks"], 123, None)
+        mock_get_diff_vars.return_value = expected_diff_vars
+        with self.assertRaises(ValueError):
+            dbt_diff(is_cloud=False)
+
+        mock_dbt_parser_inst.get_models.assert_called_once()
+        mock_dbt_parser_inst.set_project_dict.assert_called_once()
+        mock_dbt_parser_inst.set_connection.assert_called_once()
+        mock_dbt_parser_inst.get_primary_keys.assert_not_called()
+        mock_cloud_diff.assert_not_called()
+        mock_local_diff.assert_not_called()
+        mock_print.assert_not_called()
+
+    @patch("data_diff.dbt._get_diff_vars")
+    @patch("data_diff.dbt._local_diff")
+    @patch("data_diff.dbt._cloud_diff")
+    @patch("data_diff.dbt.DbtParser.__new__")
+    @patch("data_diff.dbt.rich.print")
+    def test_diff_only_prod_db(self, mock_print, mock_dbt_parser, mock_cloud_diff, mock_local_diff, mock_get_diff_vars):
+        mock_dbt_parser_inst = Mock()
+        mock_dbt_parser.return_value = mock_dbt_parser_inst
+        mock_model = Mock()
+        expected_dbt_vars_dict = {
+            "prod_database": "prod_db",
+            "datasource_id": 1,
+        }
+        mock_dbt_parser_inst.get_models.return_value = [mock_model]
+        mock_dbt_parser_inst.get_datadiff_variables.return_value = expected_dbt_vars_dict
+        expected_diff_vars = DiffVars(["dev"], ["prod"], ["pks"], 123, None)
+        mock_get_diff_vars.return_value = expected_diff_vars
+        dbt_diff(is_cloud=False)
+
+        mock_dbt_parser_inst.get_models.assert_called_once()
+        mock_dbt_parser_inst.set_project_dict.assert_called_once()
+        mock_dbt_parser_inst.set_connection.assert_called_once()
+        mock_cloud_diff.assert_not_called()
+        mock_local_diff.assert_called_once_with(expected_diff_vars)
+        mock_print.assert_called_once()
+
+    @patch("data_diff.dbt._get_diff_vars")
+    @patch("data_diff.dbt._local_diff")
+    @patch("data_diff.dbt._cloud_diff")
+    @patch("data_diff.dbt.DbtParser.__new__")
+    @patch("data_diff.dbt.rich.print")
+    def test_diff_only_prod_schema(
+        self, mock_print, mock_dbt_parser, mock_cloud_diff, mock_local_diff, mock_get_diff_vars
+    ):
+        mock_dbt_parser_inst = Mock()
+        mock_dbt_parser.return_value = mock_dbt_parser_inst
+        mock_model = Mock()
+        expected_dbt_vars_dict = {
+            "datasource_id": 1,
+            "prod_schema": "prod_schema",
         }
 
         mock_dbt_parser_inst.get_models.return_value = [mock_model]

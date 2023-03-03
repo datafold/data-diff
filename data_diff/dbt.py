@@ -1,16 +1,34 @@
 import json
 import logging
 import os
+import time
 import rich
-import yaml
 from dataclasses import dataclass
 from packaging.version import parse as parse_version
-from typing import List, Optional, Dict
+from typing import List, Optional, Dict, Tuple
 
 import requests
-from dbt_artifacts_parser.parser import parse_run_results, parse_manifest
-from dbt.config.renderer import ProfileRenderer
 
+
+def import_dbt():
+    try:
+        from dbt_artifacts_parser.parser import parse_run_results, parse_manifest
+        from dbt.config.renderer import ProfileRenderer
+        import yaml
+    except ImportError:
+        raise RuntimeError("Could not import 'dbt' package. You can install it using: pip install 'data-diff[dbt]'.")
+
+    return parse_run_results, parse_manifest, ProfileRenderer, yaml
+
+
+from .tracking import (
+    set_entrypoint_name,
+    create_end_event_json,
+    create_start_event_json,
+    send_event_json,
+    is_tracking_enabled,
+)
+from .utils import get_from_dict_with_raise, run_as_daemon, truncate_error
 from . import connect_to_table, diff_tables, Algorithm
 
 RUN_RESULTS_PATH = "/target/run_results.json"
@@ -33,6 +51,7 @@ class DiffVars:
 def dbt_diff(
     profiles_dir_override: Optional[str] = None, project_dir_override: Optional[str] = None, is_cloud: bool = False
 ) -> None:
+    set_entrypoint_name("CLI-dbt")
     dbt_parser = DbtParser(profiles_dir_override, project_dir_override, is_cloud)
     models = dbt_parser.get_models()
     dbt_parser.set_project_dict()
@@ -44,8 +63,10 @@ def dbt_diff(
     if not is_cloud:
         dbt_parser.set_connection()
 
-    if config_prod_database is None or config_prod_schema is None:
-        raise ValueError("Expected a value for prod_database: or prod_schema: under \nvars:\n  data_diff: ")
+    if config_prod_database is None:
+        raise ValueError(
+            "Expected a value for prod_database: OR prod_database: AND prod_schema: under \nvars:\n  data_diff: "
+        )
 
     for model in models:
         diff_vars = _get_diff_vars(dbt_parser, config_prod_database, config_prod_schema, model, datasource_id)
@@ -55,9 +76,9 @@ def dbt_diff(
         elif is_cloud:
             rich.print(
                 "[red]"
-                + ".".join(diff_vars.dev_path)
-                + " <> "
                 + ".".join(diff_vars.prod_path)
+                + " <> "
+                + ".".join(diff_vars.dev_path)
                 + "[/] \n"
                 + "Skipped due to missing primary-key tag\n"
             )
@@ -67,14 +88,14 @@ def dbt_diff(
         elif not is_cloud:
             rich.print(
                 "[red]"
-                + ".".join(diff_vars.dev_path)
-                + " <> "
                 + ".".join(diff_vars.prod_path)
+                + " <> "
+                + ".".join(diff_vars.dev_path)
                 + "[/] \n"
                 + "Skipped due to missing primary-key tag or multi-column primary-key (unsupported for non --cloud diffs)\n"
             )
 
-        rich.print("Diffs Complete!")
+    rich.print("Diffs Complete!")
 
 
 def _get_diff_vars(
@@ -92,12 +113,12 @@ def _get_diff_vars(
     prod_schema = config_prod_schema if config_prod_schema else dev_schema
 
     if dbt_parser.requires_upper:
-        dev_qualified_list = [x.upper() for x in [dev_database, dev_schema, model.name]]
-        prod_qualified_list = [x.upper() for x in [prod_database, prod_schema, model.name]]
+        dev_qualified_list = [x.upper() for x in [dev_database, dev_schema, model.alias]]
+        prod_qualified_list = [x.upper() for x in [prod_database, prod_schema, model.alias]]
         primary_keys = [x.upper() for x in primary_keys]
     else:
-        dev_qualified_list = [dev_database, dev_schema, model.name]
-        prod_qualified_list = [prod_database, prod_schema, model.name]
+        dev_qualified_list = [dev_database, dev_schema, model.alias]
+        prod_qualified_list = [prod_database, prod_schema, model.alias]
 
     return DiffVars(dev_qualified_list, prod_qualified_list, primary_keys, datasource_id, dbt_parser.connection)
 
@@ -119,9 +140,9 @@ def _local_diff(diff_vars: DiffVars) -> None:
         logging.info(ex)
         rich.print(
             "[red]"
-            + dev_qualified_string
-            + " <> "
             + prod_qualified_string
+            + " <> "
+            + dev_qualified_string
             + "[/] \n"
             + column_diffs_str
             + "[green]New model or no access to prod table.[/] \n"
@@ -133,10 +154,10 @@ def _local_diff(diff_vars: DiffVars) -> None:
     table2_set_diff = list(set(table2_columns) - set(table1_columns))
 
     if table1_set_diff:
-        column_diffs_str += "Columns exclusive to table A: " + str(table1_set_diff) + "\n"
+        column_diffs_str += "Column(s) added: " + str(table1_set_diff) + "\n"
 
     if table2_set_diff:
-        column_diffs_str += "Columns exclusive to table B: " + str(table2_set_diff) + "\n"
+        column_diffs_str += "Column(s) removed: " + str(table2_set_diff) + "\n"
 
     mutual_set.discard(primary_key)
     extra_columns = tuple(mutual_set)
@@ -146,20 +167,20 @@ def _local_diff(diff_vars: DiffVars) -> None:
     if list(diff):
         rich.print(
             "[red]"
-            + dev_qualified_string
-            + " <> "
             + prod_qualified_string
+            + " <> "
+            + dev_qualified_string
             + "[/] \n"
             + column_diffs_str
-            + diff.get_stats_string()
+            + diff.get_stats_string(is_dbt=True)
             + "\n"
         )
     else:
         rich.print(
             "[red]"
-            + dev_qualified_string
-            + " <> "
             + prod_qualified_string
+            + " <> "
+            + dev_qualified_string
             + "[/] \n"
             + column_diffs_str
             + "[green]No row differences[/] \n"
@@ -181,8 +202,8 @@ def _cloud_diff(diff_vars: DiffVars) -> None:
     payload = {
         "data_source1_id": diff_vars.datasource_id,
         "data_source2_id": diff_vars.datasource_id,
-        "table1": diff_vars.dev_path,
-        "table2": diff_vars.prod_path,
+        "table1": diff_vars.prod_path,
+        "table2": diff_vars.dev_path,
         "pk_columns": diff_vars.primary_keys,
     }
 
@@ -190,22 +211,53 @@ def _cloud_diff(diff_vars: DiffVars) -> None:
         "Authorization": f"Key {api_key}",
         "Content-Type": "application/json",
     }
+    if is_tracking_enabled():
+        event_json = create_start_event_json({"is_cloud": True, "datasource_id": diff_vars.datasource_id})
+        run_as_daemon(send_event_json, event_json)
 
-    response = requests.request("POST", url, headers=headers, json=payload, timeout=30)
-    response.raise_for_status()
-    data = response.json()
-    diff_id = data["id"]
-    # TODO in future we should support self hosted datafold
-    diff_url = f"https://app.datafold.com/datadiffs/{diff_id}/overview"
-    rich.print(
-        "[red]"
-        + ".".join(diff_vars.dev_path)
-        + " <> "
-        + ".".join(diff_vars.prod_path)
-        + "[/] \n    Diff in progress: \n    "
-        + diff_url
-        + "\n"
-    )
+    start = time.monotonic()
+    error = None
+    diff_id = None
+    try:
+        response = requests.request("POST", url, headers=headers, json=payload, timeout=30)
+        response.raise_for_status()
+        data = response.json()
+        diff_id = data["id"]
+        # TODO in future we should support self hosted datafold
+        diff_url = f"https://app.datafold.com/datadiffs/{diff_id}/overview"
+        rich.print(
+            "[red]"
+            + ".".join(diff_vars.prod_path)
+            + " <> "
+            + ".".join(diff_vars.dev_path)
+            + "[/] \n    Diff in progress: \n    "
+            + diff_url
+            + "\n"
+        )
+    except BaseException as ex:  # Catch KeyboardInterrupt too
+        error = ex
+    finally:
+        # we don't currently have much of this information
+        # but I imagine a future iteration of this _cloud method
+        # will poll for results
+        if is_tracking_enabled():
+            err_message = truncate_error(repr(error))
+            event_json = create_end_event_json(
+                is_success=error is None,
+                runtime_seconds=time.monotonic() - start,
+                data_source_1_type="",
+                data_source_2_type="",
+                table1_count=0,
+                table2_count=0,
+                diff_count=0,
+                error=err_message,
+                diff_id=diff_id,
+                is_cloud=True,
+            )
+            send_event_json(event_json)
+
+        if error:
+            raise error
 
 
 class DbtParser:
@@ -220,17 +272,18 @@ class DbtParser:
         self.project_dict = None
         self.requires_upper = False
 
+        self.parse_run_results, self.parse_manifest, self.ProfileRenderer, self.yaml = import_dbt()
+
     def get_datadiff_variables(self) -> dict:
         return self.project_dict.get("vars").get("data_diff")
 
     def get_models(self):
         with open(self.project_dir + RUN_RESULTS_PATH) as run_results:
             run_results_dict = json.load(run_results)
-            run_results_obj = parse_run_results(run_results=run_results_dict)
+            run_results_obj = self.parse_run_results(run_results=run_results_dict)
 
         dbt_version = parse_version(run_results_obj.metadata.dbt_version)
 
-        # TODO 1.4 support
         if dbt_version < parse_version(LOWER_DBT_V) or dbt_version >= parse_version(UPPER_DBT_V):
             raise Exception(
                 f"Found dbt: v{dbt_version} Expected the dbt project's version to be >= {LOWER_DBT_V} and < {UPPER_DBT_V}"
@@ -238,7 +291,7 @@ class DbtParser:
 
         with open(self.project_dir + MANIFEST_PATH) as manifest:
             manifest_dict = json.load(manifest)
-            manifest_obj = parse_manifest(manifest=manifest_dict)
+            manifest_obj = self.parse_manifest(manifest=manifest_dict)
 
         success_models = [x.unique_id for x in run_results_obj.results if x.status.name == "success"]
         models = [manifest_obj.nodes.get(x) for x in success_models]
@@ -253,20 +306,42 @@ class DbtParser:
 
     def set_project_dict(self):
         with open(self.project_dir + PROJECT_FILE) as project:
-            self.project_dict = yaml.safe_load(project)
+            self.project_dict = self.yaml.safe_load(project)
 
-    def set_connection(self):
-        with open(self.profiles_dir + PROFILES_FILE) as profiles:
-            profiles = yaml.safe_load(profiles)
+    def _get_connection_creds(self) -> Tuple[Dict[str, str], str]:
+        profiles_path = self.profiles_dir + PROFILES_FILE
+        with open(profiles_path) as profiles:
+            profiles = self.yaml.safe_load(profiles)
 
         dbt_profile = self.project_dict.get("profile")
-        profile_outputs = profiles.get(dbt_profile)
-        profile_target = profile_outputs.get("target")
-        credentials = profile_outputs.get("outputs").get(profile_target)
-        conn_type = credentials.get("type").lower()
+
+        profile_outputs = get_from_dict_with_raise(
+            profiles, dbt_profile, f"No profile '{dbt_profile}' found in '{profiles_path}'."
+        )
+        profile_target = get_from_dict_with_raise(
+            profile_outputs, "target", f"No target found in profile '{dbt_profile}' in '{profiles_path}'."
+        )
+        outputs = get_from_dict_with_raise(
+            profile_outputs, "outputs", f"No outputs found in profile '{dbt_profile}' in '{profiles_path}'."
+        )
+        credentials = get_from_dict_with_raise(
+            outputs,
+            profile_target,
+            f"No credentials found for target '{profile_target}' in profile '{dbt_profile}' in '{profiles_path}'.",
+        )
+        conn_type = get_from_dict_with_raise(
+            credentials,
+            "type",
+            f"No type found for target '{profile_target}' in profile '{dbt_profile}' in '{profiles_path}'.",
+        )
+        conn_type = conn_type.lower()
 
         # values can contain env_vars
-        rendered_credentials = ProfileRenderer().render_data(credentials)
+        rendered_credentials = self.ProfileRenderer().render_data(credentials)
+        return rendered_credentials, conn_type
+
+    def set_connection(self):
+        rendered_credentials, conn_type = self._get_connection_creds()
 
         # this whole block should be refactored/extracted to method(s)
         if conn_type == "snowflake":
