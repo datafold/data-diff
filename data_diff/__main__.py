@@ -219,13 +219,14 @@ click.Context.formatter_class = MyHelpFormatter
     "--dbt-profiles-dir",
     default=None,
     metavar="PATH",
-    help="Override the default dbt profile location (~/.dbt).",
+    help="Which directory to look in for the profiles.yml file. If not set, dbt will look in the current working directory first, then HOME/.dbt/",
 )
+asf
 @click.option(
     "--dbt-project-dir",
     default=None,
     metavar="PATH",
-    help="Override the dbt project directory. Otherwise assumed to be the current directory.",
+    help="Which directory to look in for the dbt_project.yml file. Default is the current working directory and its parents.",
 )
 def main(conf, run, **kw):
     if kw["table2"] is None and kw["database2"]:
