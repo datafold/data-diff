@@ -357,6 +357,11 @@ class DbtParser:
                 "project": rendered_credentials.get("project"),
                 "dataset": rendered_credentials.get("dataset"),
             }
+        elif conn_type == "duckdb":
+            conn_info = {
+                "driver": conn_type,
+                "filepath": rendered_credentials.get("path"),
+            }
         elif conn_type == "redshift":
             if rendered_credentials.get("password") is None or rendered_credentials.get("method") == "iam":
                 raise Exception("Only password authentication is currently supported for Redshift.")
