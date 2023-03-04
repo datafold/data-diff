@@ -5,7 +5,7 @@ import time
 import rich
 from dataclasses import dataclass
 from packaging.version import parse as parse_version
-from typing import List, Optional, Dict
+from typing import List, Optional, Dict, Tuple
 from pathlib import Path
 
 import requests
@@ -29,7 +29,7 @@ from .tracking import (
     send_event_json,
     is_tracking_enabled,
 )
-from .utils import run_as_daemon, truncate_error
+from .utils import get_from_dict_with_raise, run_as_daemon, truncate_error
 from . import connect_to_table, diff_tables, Algorithm
 
 RUN_RESULTS_PATH = "target/run_results.json"
@@ -37,7 +37,7 @@ MANIFEST_PATH = "target/manifest.json"
 PROJECT_FILE = "dbt_project.yml"
 PROFILES_FILE = "profiles.yml"
 LOWER_DBT_V = "1.0.0"
-UPPER_DBT_V = "1.5.0"
+UPPER_DBT_V = "1.4.2"
 
 
 # https://github.com/dbt-labs/dbt-core/blob/c952d44ec5c2506995fbad75320acbae49125d3d/core/dbt/cli/resolvers.py#L6
@@ -90,29 +90,19 @@ def dbt_diff(
 
         if is_cloud and len(diff_vars.primary_keys) > 0:
             _cloud_diff(diff_vars)
-        elif is_cloud:
-            rich.print(
-                "[red]"
-                + ".".join(diff_vars.prod_path)
-                + " <> "
-                + ".".join(diff_vars.dev_path)
-                + "[/] \n"
-                + "Skipped due to missing primary-key tag\n"
-            )
-
-        if not is_cloud and len(diff_vars.primary_keys) == 1:
+        elif not is_cloud and len(diff_vars.primary_keys) > 0:
             _local_diff(diff_vars)
-        elif not is_cloud:
+        else:
             rich.print(
                 "[red]"
                 + ".".join(diff_vars.prod_path)
                 + " <> "
                 + ".".join(diff_vars.dev_path)
                 + "[/] \n"
-                + "Skipped due to missing primary-key tag or multi-column primary-key (unsupported for non --cloud diffs)\n"
+                + "Skipped due to missing primary-key tag(s).\n"
             )
 
-        rich.print("Diffs Complete!")
+    rich.print("Diffs Complete!")
 
 
 def _get_diff_vars(
@@ -130,12 +120,12 @@ def _get_diff_vars(
     prod_schema = config_prod_schema if config_prod_schema else dev_schema
 
     if dbt_parser.requires_upper:
-        dev_qualified_list = [x.upper() for x in [dev_database, dev_schema, model.name]]
-        prod_qualified_list = [x.upper() for x in [prod_database, prod_schema, model.name]]
+        dev_qualified_list = [x.upper() for x in [dev_database, dev_schema, model.alias]]
+        prod_qualified_list = [x.upper() for x in [prod_database, prod_schema, model.alias]]
         primary_keys = [x.upper() for x in primary_keys]
     else:
-        dev_qualified_list = [dev_database, dev_schema, model.name]
-        prod_qualified_list = [prod_database, prod_schema, model.name]
+        dev_qualified_list = [dev_database, dev_schema, model.alias]
+        prod_qualified_list = [prod_database, prod_schema, model.alias]
 
     return DiffVars(dev_qualified_list, prod_qualified_list, primary_keys, datasource_id, dbt_parser.connection)
 
@@ -144,10 +134,9 @@ def _local_diff(diff_vars: DiffVars) -> None:
     column_diffs_str = ""
     dev_qualified_string = ".".join(diff_vars.dev_path)
     prod_qualified_string = ".".join(diff_vars.prod_path)
-    primary_key = diff_vars.primary_keys[0]
 
-    table1 = connect_to_table(diff_vars.connection, dev_qualified_string, primary_key)
-    table2 = connect_to_table(diff_vars.connection, prod_qualified_string, primary_key)
+    table1 = connect_to_table(diff_vars.connection, dev_qualified_string, tuple(diff_vars.primary_keys))
+    table2 = connect_to_table(diff_vars.connection, prod_qualified_string, tuple(diff_vars.primary_keys))
 
     table1_columns = list(table1.get_schema())
     try:
@@ -176,7 +165,7 @@ def _local_diff(diff_vars: DiffVars) -> None:
     if table2_set_diff:
         column_diffs_str += "Column(s) removed: " + str(table2_set_diff) + "\n"
 
-    mutual_set.discard(primary_key)
+    mutual_set = mutual_set - set(diff_vars.primary_keys)
     extra_columns = tuple(mutual_set)
 
     diff = diff_tables(table1, table2, threaded=True, algorithm=Algorithm.JOINDIFF, extra_columns=extra_columns)
@@ -325,18 +314,40 @@ class DbtParser:
         with open(self.project_dir / PROJECT_FILE) as project:
             self.project_dict = self.yaml.safe_load(project)
 
-    def set_connection(self):
-        with open(self.profiles_dir / PROFILES_FILE) as profiles:
+    def _get_connection_creds(self) -> Tuple[Dict[str, str], str]:
+        profiles_path = self.profiles_dir / PROFILES_FILE
+        with open(profiles_path) as profiles:
             profiles = self.yaml.safe_load(profiles)
 
         dbt_profile = self.project_dict.get("profile")
-        profile_outputs = profiles.get(dbt_profile)
-        profile_target = profile_outputs.get("target")
-        credentials = profile_outputs.get("outputs").get(profile_target)
-        conn_type = credentials.get("type").lower()
+
+        profile_outputs = get_from_dict_with_raise(
+            profiles, dbt_profile, f"No profile '{dbt_profile}' found in '{profiles_path}'."
+        )
+        profile_target = get_from_dict_with_raise(
+            profile_outputs, "target", f"No target found in profile '{dbt_profile}' in '{profiles_path}'."
+        )
+        outputs = get_from_dict_with_raise(
+            profile_outputs, "outputs", f"No outputs found in profile '{dbt_profile}' in '{profiles_path}'."
+        )
+        credentials = get_from_dict_with_raise(
+            outputs,
+            profile_target,
+            f"No credentials found for target '{profile_target}' in profile '{dbt_profile}' in '{profiles_path}'.",
+        )
+        conn_type = get_from_dict_with_raise(
+            credentials,
+            "type",
+            f"No type found for target '{profile_target}' in profile '{dbt_profile}' in '{profiles_path}'.",
+        )
+        conn_type = conn_type.lower()
 
         # values can contain env_vars
         rendered_credentials = self.ProfileRenderer().render_data(credentials)
+        return rendered_credentials, conn_type
+
+    def set_connection(self):
+        rendered_credentials, conn_type = self._get_connection_creds()
 
         if conn_type == "snowflake":
             if rendered_credentials.get("password") is None or rendered_credentials.get("private_key_path") is not None:
@@ -362,6 +373,40 @@ class DbtParser:
                 "driver": conn_type,
                 "project": rendered_credentials.get("project"),
                 "dataset": rendered_credentials.get("dataset"),
+            }
+        elif conn_type == "duckdb":
+            conn_info = {
+                "driver": conn_type,
+                "filepath": rendered_credentials.get("path"),
+            }
+        elif conn_type == "redshift":
+            if rendered_credentials.get("password") is None or rendered_credentials.get("method") == "iam":
+                raise Exception("Only password authentication is currently supported for Redshift.")
+            conn_info = {
+                "driver": conn_type,
+                "host": rendered_credentials.get("host"),
+                "user": rendered_credentials.get("user"),
+                "password": rendered_credentials.get("password"),
+                "port": rendered_credentials.get("port"),
+                "dbname": rendered_credentials.get("dbname"),
+            }
+        elif conn_type == "databricks":
+            conn_info = {
+                "driver": conn_type,
+                "catalog": rendered_credentials.get("catalog"),
+                "server_hostname": rendered_credentials.get("host"),
+                "http_path": rendered_credentials.get("http_path"),
+                "schema": rendered_credentials.get("schema"),
+                "access_token": rendered_credentials.get("token"),
+            }
+        elif conn_type == "postgres":
+            conn_info = {
+                "driver": "postgresql",
+                "host": rendered_credentials.get("host"),
+                "user": rendered_credentials.get("user"),
+                "password": rendered_credentials.get("password"),
+                "port": rendered_credentials.get("port"),
+                "dbname": rendered_credentials.get("dbname") or rendered_credentials.get("database"),
             }
         else:
             raise NotImplementedError(f"Provider {conn_type} is not yet supported for dbt diffs")

@@ -1,6 +1,6 @@
 import logging
 import re
-from typing import Iterable, Sequence
+from typing import Dict, Iterable, Sequence
 from urllib.parse import urlparse
 import operator
 import threading
@@ -77,6 +77,13 @@ def eval_name_template(name):
 def truncate_error(error: str):
     first_line = error.split("\n", 1)[0]
     return re.sub("'(.*?)'", "'***'", first_line)
+
+
+def get_from_dict_with_raise(dictionary: Dict, key: str, error_message: str):
+    result = dictionary.get(key)
+    if result is None:
+        raise ValueError(error_message)
+    return result
 
 
 class Vector(tuple):
