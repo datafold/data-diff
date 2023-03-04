@@ -222,7 +222,6 @@ click.Context.formatter_class = MyHelpFormatter
     metavar="PATH",
     help="Which directory to look in for the profiles.yml file. If not set, dbt will look in the current working directory first, then HOME/.dbt/",
 )
-asf
 @click.option(
     "--dbt-project-dir",
     default=None,
