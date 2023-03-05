@@ -130,6 +130,8 @@ class Redshift(PostgreSQL):
             if len(type_info) > 1:
                 if base_type == 'numeric':
                     precision, scale = type_info[1][:-1].split(',')
+                    precision = int(precision)
+                    scale = int(scale)
                 
             out = [col_name, base_type, None, precision, scale]
             output[col_name] = tuple(out)
@@ -140,10 +142,7 @@ class Redshift(PostgreSQL):
         try:
             return super().query_table_schema(path)
         except RuntimeError:
-            try:
-                return self.query_external_table_schema(path)
-            except RuntimeError:
-                return self.query_pg_get_cols() 
+            return self.query_external_table_schema(path)
 
     def _normalize_table_path(self, path: DbPath) -> DbPath:
         if len(path) == 1:
