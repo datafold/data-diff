@@ -257,7 +257,7 @@ class TableSegment:
         # return count or 0, int(checksum) if count else None
         return f'{self.min_key} - {self.max_key}', count or 0, int(checksum) if count else None
 
-    def count_and_checksum_by_group(self, checkpoints: List, bisection_factor: int, max_rows: int) -> Tuple[Tuple[int, int]]:
+    def count_and_checksum_by_group(self, checkpoints: List, bisection_factor: int, optimizer_hints=False) -> Tuple[Tuple[int, int]]:
         """Count and checksum each group"""
 
         # TODO: REMOVE
@@ -288,18 +288,27 @@ class TableSegment:
 
         # unpack min keys to value since this algo ignores composite keys until the end
         min_key = self.min_key[0]
+        max_key = self.max_key[0]
+
+        # NOTE: using key range instead of 'max_rows' (actual row count) for consistency with multi-query approach
+        #       when using a single PK column of a composite PK.
+        key_range = max_key - min_key
 
         # follows same logic as split_space in sqeleton
-        div_factor = math.floor((max_rows+1) / (bisection_factor))
+        div_factor = math.floor((key_range+1) / (bisection_factor))
 
         group_by_col = self.key_columns[0]
         group_by_expr = f'FLOOR(({group_by_col} - {min_key})/{div_factor})'
+
+        maybe_optimizer_hints = \
+            {'optimizer_hints': self.optimizer_hints} if optimizer_hints else {}
 
         q = (self.make_select()
             .select(
                 Code(group_by_expr),
                 Count(), 
-                Checksum(self._relevant_columns_repr))
+                Checksum(self._relevant_columns_repr),
+                **maybe_optimizer_hints)
             .order_by(Code(group_by_expr))
             .group_by(self.source_table[group_by_col])
             .agg(self.source_table[group_by_col])
