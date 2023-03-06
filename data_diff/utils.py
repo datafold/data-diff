@@ -1,6 +1,6 @@
 import logging
 import re
-from typing import Dict, Iterable, Sequence
+from typing import Dict, Iterable, List, Sequence
 from urllib.parse import urlparse
 import operator
 import threading
@@ -85,6 +85,13 @@ def get_from_dict_with_raise(dictionary: Dict, key: str, error_message: str):
         raise ValueError(error_message)
     return result
 
+def split_space(start, end, count) -> List[int]:
+    size = end - start
+    assert count <= size, (count, size)
+
+     # NOTE: I copied this in from sqeleton to avoid having to fork 2 libraries,
+     # and modified to include 1 additional checkpoint for compat with group_by algo
+    return list(range(start, end, (size + 1) // (count + 1)))[1:]
 
 class Vector(tuple):
 
