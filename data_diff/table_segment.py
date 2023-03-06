@@ -127,6 +127,9 @@ class TableSegment:
     group_by_column: str = None 
     hash_query_type: str = 'multi'
 
+    # use to force cast certain columns to non-standard types 
+    column_type_overrides: List[Tuple] = None
+
     case_sensitive: bool = True
     _schema: Schema = None
 
@@ -146,7 +149,15 @@ class TableSegment:
         return f"({self.where})" if self.where else None
 
     def _with_raw_schema(self, raw_schema: dict) -> "TableSegment":
+        if self.column_type_overrides is not None:
+            for col_info in self.column_type_overrides:
+                col_name = col_info[0]
+                if col_name not in raw_schema:
+                    raise ValueError(f'Column {col_name} not found in schema for DB {self.database}')
+                raw_schema[col_name] = col_info
+
         schema = self.database._process_table_schema(self.table_path, raw_schema, self.relevant_columns, self._where())
+
         return self.new(_schema=create_schema(self.database, self.table_path, schema, self.case_sensitive))
 
     def with_schema(self) -> "TableSegment":
