@@ -347,7 +347,7 @@ class DbtParser:
                 "role": credentials.get("role"),
                 "schema": credentials.get("schema"),
             }
-            self.threads = rendered_credentials.get("threads")
+            self.threads = credentials.get("threads")
             self.requires_upper = True
         elif conn_type == "bigquery":
             method = credentials.get("method")
@@ -360,7 +360,7 @@ class DbtParser:
                 "project": credentials.get("project"),
                 "dataset": credentials.get("dataset"),
             }
-            self.threads = rendered_credentials.get("threads")
+            self.threads = credentials.get("threads")
         elif conn_type == "duckdb":
             conn_info = {
                 "driver": conn_type,
@@ -377,7 +377,7 @@ class DbtParser:
                 "port": credentials.get("port"),
                 "dbname": credentials.get("dbname"),
             }
-            self.threads = rendered_credentials.get("threads")
+            self.threads = credentials.get("threads")
         elif conn_type == "databricks":
             conn_info = {
                 "driver": conn_type,
@@ -387,7 +387,7 @@ class DbtParser:
                 "schema": credentials.get("schema"),
                 "access_token": credentials.get("token"),
             }
-            self.threads = rendered_credentials.get("threads")
+            self.threads = credentials.get("threads")
         elif conn_type == "postgres":
             conn_info = {
                 "driver": "postgresql",
@@ -397,7 +397,7 @@ class DbtParser:
                 "port": credentials.get("port"),
                 "dbname": credentials.get("dbname") or credentials.get("database"),
             }
-            self.threads = rendered_credentials.get("threads")
+            self.threads = credentials.get("threads")
         else:
             raise NotImplementedError(f"Provider {conn_type} is not yet supported for dbt diffs")
 
