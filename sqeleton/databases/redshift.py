@@ -142,7 +142,10 @@ class Redshift(PostgreSQL):
         try:
             return super().query_table_schema(path)
         except RuntimeError:
-            return self.query_external_table_schema(path)
+            try:
+                return self.query_external_table_schema(path)	
+            except RuntimeError:	
+                return self.query_pg_get_cols() 
 
     def _normalize_table_path(self, path: DbPath) -> DbPath:
         if len(path) == 1:
