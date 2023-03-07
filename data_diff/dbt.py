@@ -46,6 +46,7 @@ class DiffVars:
     primary_keys: List[str]
     datasource_id: str
     connection: Dict[str, str]
+    threads: Optional[int]
 
 
 def dbt_diff(
@@ -110,7 +111,7 @@ def _get_diff_vars(
         dev_qualified_list = [dev_database, dev_schema, model.alias]
         prod_qualified_list = [prod_database, prod_schema, model.alias]
 
-    return DiffVars(dev_qualified_list, prod_qualified_list, primary_keys, datasource_id, dbt_parser.connection)
+    return DiffVars(dev_qualified_list, prod_qualified_list, primary_keys, datasource_id, dbt_parser.connection, dbt_parser.threads)
 
 
 def _local_diff(diff_vars: DiffVars) -> None:
@@ -118,8 +119,8 @@ def _local_diff(diff_vars: DiffVars) -> None:
     dev_qualified_string = ".".join(diff_vars.dev_path)
     prod_qualified_string = ".".join(diff_vars.prod_path)
 
-    table1 = connect_to_table(diff_vars.connection, dev_qualified_string, tuple(diff_vars.primary_keys))
-    table2 = connect_to_table(diff_vars.connection, prod_qualified_string, tuple(diff_vars.primary_keys))
+    table1 = connect_to_table(diff_vars.connection, dev_qualified_string, tuple(diff_vars.primary_keys), diff_vars.threads)
+    table2 = connect_to_table(diff_vars.connection, prod_qualified_string, tuple(diff_vars.primary_keys), diff_vars.threads)
 
     table1_columns = list(table1.get_schema())
     try:
@@ -260,6 +261,7 @@ class DbtParser:
         self.connection = None
         self.project_dict = None
         self.requires_upper = False
+        self.threads = None
 
         self.parse_run_results, self.parse_manifest, self.ProfileRenderer, self.yaml = import_dbt()
 
@@ -345,6 +347,7 @@ class DbtParser:
                 "role": credentials.get("role"),
                 "schema": credentials.get("schema"),
             }
+            self.threads = rendered_credentials.get("threads")
             self.requires_upper = True
         elif conn_type == "bigquery":
             method = credentials.get("method")
@@ -357,6 +360,7 @@ class DbtParser:
                 "project": credentials.get("project"),
                 "dataset": credentials.get("dataset"),
             }
+            self.threads = rendered_credentials.get("threads")
         elif conn_type == "duckdb":
             conn_info = {
                 "driver": conn_type,
@@ -373,6 +377,7 @@ class DbtParser:
                 "port": credentials.get("port"),
                 "dbname": credentials.get("dbname"),
             }
+            self.threads = rendered_credentials.get("threads")
         elif conn_type == "databricks":
             conn_info = {
                 "driver": conn_type,
@@ -382,6 +387,7 @@ class DbtParser:
                 "schema": credentials.get("schema"),
                 "access_token": credentials.get("token"),
             }
+            self.threads = rendered_credentials.get("threads")
         elif conn_type == "postgres":
             conn_info = {
                 "driver": "postgresql",
@@ -391,6 +397,7 @@ class DbtParser:
                 "port": credentials.get("port"),
                 "dbname": credentials.get("dbname") or credentials.get("database"),
             }
+            self.threads = rendered_credentials.get("threads")
         else:
             raise NotImplementedError(f"Provider {conn_type} is not yet supported for dbt diffs")
 
