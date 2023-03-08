@@ -332,7 +332,8 @@ class SinglePassHashDiffer(HashDiffer):
 
         # compare results for each segment in parallel
         for idx, (res1, res2, seg1, seg2) in enumerate(zip(table1_res, table2_res, segmented1, segmented2)):
-            ti.submit(self._diff_segments, ti, seg1, seg2, res1, res2, info_tree, max_rows, level + 1, idx+1, len(segmented1)) #), priority=level)
+            info_node = info_tree.add_node(seg1, seg2, max_rows=max_rows)
+            ti.submit(self._diff_segments, ti, seg1, seg2, res1, res2, info_node, max_rows, level + 1, idx+1, len(segmented1)) #), priority=level)
 
     def _resolve_key_range(self, key_range_res, usr_key_range):
         key_range_res = list(key_range_res)
