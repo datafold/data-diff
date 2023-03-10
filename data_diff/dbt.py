@@ -36,7 +36,7 @@ MANIFEST_PATH = "/target/manifest.json"
 PROJECT_FILE = "/dbt_project.yml"
 PROFILES_FILE = "/profiles.yml"
 LOWER_DBT_V = "1.0.0"
-UPPER_DBT_V = "1.4.2"
+UPPER_DBT_V = "1.4.5"
 
 
 @dataclass
