@@ -1,5 +1,6 @@
 import os
 
+from pathlib import Path
 import yaml
 from data_diff.diff_tables import Algorithm
 from .test_cli import run_datadiff_cli
@@ -51,7 +52,7 @@ class TestDbtParser(unittest.TestCase):
     def test_get_models(self, mock_open):
         expected_value = "expected_value"
         mock_self = Mock()
-        mock_self.project_dir = ""
+        mock_self.project_dir = Path()
         mock_run_results = Mock()
         mock_success_result = Mock()
         mock_failed_result = Mock()
@@ -69,15 +70,15 @@ class TestDbtParser(unittest.TestCase):
         models = DbtParser.get_models(mock_self)
 
         self.assertEqual(expected_value, models[0])
-        mock_open.assert_any_call(RUN_RESULTS_PATH)
-        mock_open.assert_any_call(MANIFEST_PATH)
+        mock_open.assert_any_call(Path(RUN_RESULTS_PATH))
+        mock_open.assert_any_call(Path(MANIFEST_PATH))
         mock_self.parse_run_results.assert_called_once_with(run_results={})
         mock_self.parse_manifest.assert_called_once_with(manifest={})
 
     @patch("builtins.open", new_callable=mock_open, read_data="{}")
     def test_get_models_bad_lower_dbt_version(self, mock_open):
         mock_self = Mock()
-        mock_self.project_dir = ""
+        mock_self.project_dir = Path()
         mock_run_results = Mock()
         mock_self.parse_run_results.return_value = mock_run_results
         mock_run_results.metadata.dbt_version = "0.19.0"
@@ -85,7 +86,7 @@ class TestDbtParser(unittest.TestCase):
         with self.assertRaises(Exception) as ex:
             DbtParser.get_models(mock_self)
 
-        mock_open.assert_called_once_with(RUN_RESULTS_PATH)
+        mock_open.assert_called_once_with(Path(RUN_RESULTS_PATH))
         mock_self.parse_run_results.assert_called_once_with(run_results={})
         mock_self.parse_manifest.assert_not_called()
         self.assertIn("version to be", ex.exception.args[0])
@@ -93,7 +94,7 @@ class TestDbtParser(unittest.TestCase):
     @patch("builtins.open", new_callable=mock_open, read_data="{}")
     def test_get_models_bad_upper_dbt_version(self, mock_open):
         mock_self = Mock()
-        mock_self.project_dir = ""
+        mock_self.project_dir = Path()
         mock_run_results = Mock()
         mock_self.parse_run_results.return_value = mock_run_results
         mock_run_results.metadata.dbt_version = "1.5.1"
@@ -101,7 +102,7 @@ class TestDbtParser(unittest.TestCase):
         with self.assertRaises(Exception) as ex:
             DbtParser.get_models(mock_self)
 
-        mock_open.assert_called_once_with(RUN_RESULTS_PATH)
+        mock_open.assert_called_once_with(Path(RUN_RESULTS_PATH))
         mock_self.parse_run_results.assert_called_once_with(run_results={})
         mock_self.parse_manifest.assert_not_called()
         self.assertIn("version to be", ex.exception.args[0])
@@ -109,7 +110,7 @@ class TestDbtParser(unittest.TestCase):
     @patch("builtins.open", new_callable=mock_open, read_data="{}")
     def test_get_models_no_success(self, mock_open):
         mock_self = Mock()
-        mock_self.project_dir = ""
+        mock_self.project_dir = Path()
         mock_run_results = Mock()
         mock_success_result = Mock()
         mock_failed_result = Mock()
@@ -126,8 +127,8 @@ class TestDbtParser(unittest.TestCase):
         with self.assertRaises(Exception):
             DbtParser.get_models(mock_self)
 
-        mock_open.assert_any_call(RUN_RESULTS_PATH)
-        mock_open.assert_any_call(MANIFEST_PATH)
+        mock_open.assert_any_call(Path(RUN_RESULTS_PATH))
+        mock_open.assert_any_call(Path(MANIFEST_PATH))
         mock_self.parse_run_results.assert_called_once_with(run_results={})
         mock_self.parse_manifest.assert_called_once_with(manifest={})
 
@@ -135,12 +136,13 @@ class TestDbtParser(unittest.TestCase):
     def test_set_project_dict(self, mock_open):
         expected_dict = {"key1": "value1"}
         mock_self = Mock()
-        mock_self.project_dir = ""
+
+        mock_self.project_dir = Path()
         mock_self.yaml.safe_load.return_value = expected_dict
         DbtParser.set_project_dict(mock_self)
 
         self.assertEqual(mock_self.project_dict, expected_dict)
-        mock_open.assert_called_once_with(PROJECT_FILE)
+        mock_open.assert_called_once_with(Path(PROJECT_FILE))
 
     def test_set_connection_snowflake_success(self):
         expected_driver = "snowflake"
@@ -222,7 +224,7 @@ class TestDbtParser(unittest.TestCase):
         profile = profiles_dict["a_profile"]
         expected_credentials = profiles_dict["a_profile"]["outputs"]["a_target"]
         mock_self = Mock()
-        mock_self.profiles_dir = ""
+        mock_self.profiles_dir = Path()
         mock_self.project_dict = {"profile": "a_profile"}
         mock_self.yaml.safe_load.return_value = profiles_dict
         mock_self.ProfileRenderer().render_data.return_value = profile
@@ -234,7 +236,7 @@ class TestDbtParser(unittest.TestCase):
     def test_get_connection_no_matching_profile(self, mock_open):
         profiles_dict = {"a_profile": {}}
         mock_self = Mock()
-        mock_self.profiles_dir = ""
+        mock_self.profiles_dir = Path()
         mock_self.project_dict = {"profile": "wrong_profile"}
         mock_self.yaml.safe_load.return_value = profiles_dict
         profile = profiles_dict["a_profile"]
@@ -252,7 +254,7 @@ class TestDbtParser(unittest.TestCase):
             }
         }
         mock_self = Mock()
-        mock_self.profiles_dir = ""
+        mock_self.profiles_dir = Path()
         profile = profiles_dict["a_profile"]
         mock_self.ProfileRenderer().render_data.return_value = profile
         mock_self.project_dict = {"profile": "a_profile"}
@@ -269,7 +271,7 @@ class TestDbtParser(unittest.TestCase):
     def test_get_connection_no_outputs(self, mock_open):
         profiles_dict = {"a_profile": {"target": "a_target"}}
         mock_self = Mock()
-        mock_self.profiles_dir = ""
+        mock_self.profiles_dir = Path()
         mock_self.project_dict = {"profile": "a_profile"}
         profile = profiles_dict["a_profile"]
         mock_self.ProfileRenderer().render_data.return_value = profile
@@ -286,7 +288,7 @@ class TestDbtParser(unittest.TestCase):
             }
         }
         mock_self = Mock()
-        mock_self.profiles_dir = ""
+        mock_self.profiles_dir = Path()
         mock_self.project_dict = {"profile": "a_profile"}
         mock_self.yaml.safe_load.return_value = profiles_dict
         profile = profiles_dict["a_profile"]
@@ -305,7 +307,7 @@ class TestDbtParser(unittest.TestCase):
             }
         }
         mock_self = Mock()
-        mock_self.profiles_dir = ""
+        mock_self.profiles_dir = Path()
         mock_self.project_dict = {"profile": "a_profile"}
         profile = profiles_dict["a_profile"]
         mock_self.ProfileRenderer().render_data.return_value = profile
@@ -322,7 +324,7 @@ class TestDbtParser(unittest.TestCase):
             }
         }
         mock_self = Mock()
-        mock_self.profiles_dir = ""
+        mock_self.profiles_dir = Path()
         mock_self.project_dict = {"profile": "a_profile"}
         mock_self.yaml.safe_load.return_value = profiles_dict
         profile = profiles_dict["a_profile"]
