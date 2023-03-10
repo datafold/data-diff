@@ -1,5 +1,5 @@
 from typing import List, Dict
-from ..abcs.database_types import Float, TemporalType, FractionalType, DbPath
+from ..abcs.database_types import Float, TemporalType, FractionalType, DbPath, TimestampTZ
 from ..abcs.mixins import AbstractMixin_MD5
 from .postgresql import (
     PostgreSQL,
@@ -56,6 +56,11 @@ class Dialect(PostgresqlDialect):
 
     def is_distinct_from(self, a: str, b: str) -> str:
         return f"({a} IS NULL != {b} IS NULL) OR ({a}!={b})"
+
+    def type_repr(self, t) -> str:
+        if isinstance(t, TimestampTZ):
+            return f"timestamptz"
+        return super().type_repr(t)
 
 
 class Redshift(PostgreSQL):
