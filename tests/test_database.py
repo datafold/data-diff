@@ -93,7 +93,11 @@ class TestQueries(unittest.TestCase):
         tz = pytz.timezone('Europe/Berlin')
 
         now = datetime.now(tz)
-        db.query(table(name).insert_row("1", now, now))
+        if isinstance(db, dbs.Presto):
+            ms = now.microsecond // 1000 * 1000  # Presto max precision is 3
+            now = now.replace(microsecond = ms)
+
+        db.query(table(name).insert_row(1, now, now))
         db.query(db.dialect.set_timezone_to_utc())
 
         t = db.table(name).query_schema()
@@ -107,9 +111,11 @@ class TestQueries(unittest.TestCase):
         updated_at = results[0][1]
 
         utc = now.astimezone(pytz.UTC)
+        expected = utc.__format__("%Y-%m-%d %H:%M:%S.%f")
 
-        self.assertEqual(created_at, utc.__format__("%Y-%m-%d %H:%M:%S.%f"))
-        self.assertEqual(updated_at, utc.__format__("%Y-%m-%d %H:%M:%S.%f"))
+
+        self.assertEqual(created_at, expected)
+        self.assertEqual(updated_at, expected)
 
         db.query(tbl.drop())
 
