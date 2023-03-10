@@ -63,6 +63,7 @@ class DiffVars:
     primary_keys: List[str]
     datasource_id: str
     connection: Dict[str, str]
+    threads: Optional[int]
 
 
 def dbt_diff(
@@ -127,7 +128,7 @@ def _get_diff_vars(
         dev_qualified_list = [dev_database, dev_schema, model.alias]
         prod_qualified_list = [prod_database, prod_schema, model.alias]
 
-    return DiffVars(dev_qualified_list, prod_qualified_list, primary_keys, datasource_id, dbt_parser.connection)
+    return DiffVars(dev_qualified_list, prod_qualified_list, primary_keys, datasource_id, dbt_parser.connection, dbt_parser.threads)
 
 
 def _local_diff(diff_vars: DiffVars) -> None:
@@ -135,8 +136,8 @@ def _local_diff(diff_vars: DiffVars) -> None:
     dev_qualified_string = ".".join(diff_vars.dev_path)
     prod_qualified_string = ".".join(diff_vars.prod_path)
 
-    table1 = connect_to_table(diff_vars.connection, dev_qualified_string, tuple(diff_vars.primary_keys))
-    table2 = connect_to_table(diff_vars.connection, prod_qualified_string, tuple(diff_vars.primary_keys))
+    table1 = connect_to_table(diff_vars.connection, dev_qualified_string, tuple(diff_vars.primary_keys), diff_vars.threads)
+    table2 = connect_to_table(diff_vars.connection, prod_qualified_string, tuple(diff_vars.primary_keys), diff_vars.threads)
 
     table1_columns = list(table1.get_schema())
     try:
@@ -274,6 +275,7 @@ class DbtParser:
         self.connection = None
         self.project_dict = None
         self.requires_upper = False
+        self.threads = None
 
         self.parse_run_results, self.parse_manifest, self.ProfileRenderer, self.yaml = import_dbt()
 
@@ -319,95 +321,100 @@ class DbtParser:
         with open(profiles_path) as profiles:
             profiles = self.yaml.safe_load(profiles)
 
-        dbt_profile = self.project_dict.get("profile")
+        dbt_profile_var = self.project_dict.get("profile")
 
-        profile_outputs = get_from_dict_with_raise(
-            profiles, dbt_profile, f"No profile '{dbt_profile}' found in '{profiles_path}'."
+        profile = get_from_dict_with_raise(
+            profiles, dbt_profile_var, f"No profile '{dbt_profile_var}' found in '{profiles_path}'."
         )
+        # values can contain env_vars
+        rendered_profile = self.ProfileRenderer().render_data(profile)
         profile_target = get_from_dict_with_raise(
-            profile_outputs, "target", f"No target found in profile '{dbt_profile}' in '{profiles_path}'."
+            rendered_profile, "target", f"No target found in profile '{dbt_profile_var}' in '{profiles_path}'."
         )
         outputs = get_from_dict_with_raise(
-            profile_outputs, "outputs", f"No outputs found in profile '{dbt_profile}' in '{profiles_path}'."
+            rendered_profile, "outputs", f"No outputs found in profile '{dbt_profile_var}' in '{profiles_path}'."
         )
         credentials = get_from_dict_with_raise(
             outputs,
             profile_target,
-            f"No credentials found for target '{profile_target}' in profile '{dbt_profile}' in '{profiles_path}'.",
+            f"No credentials found for target '{profile_target}' in profile '{dbt_profile_var}' in '{profiles_path}'.",
         )
         conn_type = get_from_dict_with_raise(
             credentials,
             "type",
-            f"No type found for target '{profile_target}' in profile '{dbt_profile}' in '{profiles_path}'.",
+            f"No type found for target '{profile_target}' in profile '{dbt_profile_var}' in '{profiles_path}'.",
         )
         conn_type = conn_type.lower()
 
-        # values can contain env_vars
-        rendered_credentials = self.ProfileRenderer().render_data(credentials)
-        return rendered_credentials, conn_type
+        return credentials, conn_type
 
     def set_connection(self):
-        rendered_credentials, conn_type = self._get_connection_creds()
+        credentials, conn_type = self._get_connection_creds()
 
         if conn_type == "snowflake":
-            if rendered_credentials.get("password") is None or rendered_credentials.get("private_key_path") is not None:
+            if credentials.get("password") is None or credentials.get("private_key_path") is not None:
                 raise Exception("Only password authentication is currently supported for Snowflake.")
             conn_info = {
                 "driver": conn_type,
-                "user": rendered_credentials.get("user"),
-                "password": rendered_credentials.get("password"),
-                "account": rendered_credentials.get("account"),
-                "database": rendered_credentials.get("database"),
-                "warehouse": rendered_credentials.get("warehouse"),
-                "role": rendered_credentials.get("role"),
-                "schema": rendered_credentials.get("schema"),
+                "user": credentials.get("user"),
+                "password": credentials.get("password"),
+                "account": credentials.get("account"),
+                "database": credentials.get("database"),
+                "warehouse": credentials.get("warehouse"),
+                "role": credentials.get("role"),
+                "schema": credentials.get("schema"),
             }
+            self.threads = credentials.get("threads")
             self.requires_upper = True
         elif conn_type == "bigquery":
-            method = rendered_credentials.get("method")
+            method = credentials.get("method")
             # there are many connection types https://docs.getdbt.com/reference/warehouse-setups/bigquery-setup#oauth-via-gcloud
             # this assumes that the user is auth'd via `gcloud auth application-default login`
             if method is None or method != "oauth":
                 raise Exception("Oauth is the current method supported for Big Query.")
             conn_info = {
                 "driver": conn_type,
-                "project": rendered_credentials.get("project"),
-                "dataset": rendered_credentials.get("dataset"),
+                "project": credentials.get("project"),
+                "dataset": credentials.get("dataset"),
             }
+            self.threads = credentials.get("threads")
         elif conn_type == "duckdb":
             conn_info = {
                 "driver": conn_type,
-                "filepath": rendered_credentials.get("path"),
+                "filepath": credentials.get("path"),
             }
         elif conn_type == "redshift":
-            if rendered_credentials.get("password") is None or rendered_credentials.get("method") == "iam":
+            if credentials.get("password") is None or credentials.get("method") == "iam":
                 raise Exception("Only password authentication is currently supported for Redshift.")
             conn_info = {
                 "driver": conn_type,
-                "host": rendered_credentials.get("host"),
-                "user": rendered_credentials.get("user"),
-                "password": rendered_credentials.get("password"),
-                "port": rendered_credentials.get("port"),
-                "dbname": rendered_credentials.get("dbname"),
+                "host": credentials.get("host"),
+                "user": credentials.get("user"),
+                "password": credentials.get("password"),
+                "port": credentials.get("port"),
+                "dbname": credentials.get("dbname"),
             }
+            self.threads = credentials.get("threads")
         elif conn_type == "databricks":
             conn_info = {
                 "driver": conn_type,
-                "catalog": rendered_credentials.get("catalog"),
-                "server_hostname": rendered_credentials.get("host"),
-                "http_path": rendered_credentials.get("http_path"),
-                "schema": rendered_credentials.get("schema"),
-                "access_token": rendered_credentials.get("token"),
+                "catalog": credentials.get("catalog"),
+                "server_hostname": credentials.get("host"),
+                "http_path": credentials.get("http_path"),
+                "schema": credentials.get("schema"),
+                "access_token": credentials.get("token"),
             }
+            self.threads = credentials.get("threads")
         elif conn_type == "postgres":
             conn_info = {
                 "driver": "postgresql",
-                "host": rendered_credentials.get("host"),
-                "user": rendered_credentials.get("user"),
-                "password": rendered_credentials.get("password"),
-                "port": rendered_credentials.get("port"),
-                "dbname": rendered_credentials.get("dbname") or rendered_credentials.get("database"),
+                "host": credentials.get("host"),
+                "user": credentials.get("user"),
+                "password": credentials.get("password"),
+                "port": credentials.get("port"),
+                "dbname": credentials.get("dbname") or credentials.get("database"),
             }
+            self.threads = credentials.get("threads")
         else:
             raise NotImplementedError(f"Provider {conn_type} is not yet supported for dbt diffs")
 
