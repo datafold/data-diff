@@ -139,6 +139,11 @@ class Dialect(BaseDialect, Mixin_Schema):
     def optimizer_hints(self, hints: str) -> str:
         raise NotImplementedError("Optimizer hints not yet implemented in snowflake")
 
+    def type_repr(self, t) -> str:
+        if isinstance(t, TimestampTZ):
+            return f"timestamp_tz({t.precision})"
+        return super().type_repr(t)
+
 
 class Snowflake(Database):
     dialect = Dialect()

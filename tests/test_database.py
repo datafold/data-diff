@@ -9,6 +9,7 @@ from sqeleton import databases as dbs
 from sqeleton.queries import table, current_timestamp, NormalizeAsString
 from .common import TEST_MYSQL_CONN_STRING
 from .common import str_to_checksum, test_each_database_in_list, get_conn, random_table_suffix
+from sqeleton.abcs.database_types import TimestampTZ
 
 TEST_DATABASES = {
     dbs.MySQL,
@@ -83,8 +84,8 @@ class TestQueries(unittest.TestCase):
     def test_correct_timezone(self):
         name = "tbl_" + random_table_suffix()
         db = get_conn(self.db_cls)
-        tbl = table(db.parse_table_name(name), schema={
-            "id": int, "created_at": "timestamp_tz(9)", "updated_at": "timestamp_tz(9)"
+        tbl = table(name, schema={
+            "id": int, "created_at": TimestampTZ(9), "updated_at": TimestampTZ(9)
         })
 
         db.query(tbl.create())
@@ -92,13 +93,13 @@ class TestQueries(unittest.TestCase):
         tz = pytz.timezone('Europe/Berlin')
 
         now = datetime.now(tz)
-        db.query(table(db.parse_table_name(name)).insert_row("1", now, now))
+        db.query(table(name).insert_row("1", now, now))
         db.query(db.dialect.set_timezone_to_utc())
 
         t = db.table(name).query_schema()
-        t.schema["created_at"] = t.schema["created_at"].replace(precision=t.schema["created_at"].precision, rounds=True)
+        t.schema["created_at"] = t.schema["created_at"].replace(precision=t.schema["created_at"].precision)
 
-        tbl = table(db.parse_table_name(name), schema=t.schema)
+        tbl = table(name, schema=t.schema)
 
         results = db.query(tbl.select(NormalizeAsString(tbl[c]) for c in ["created_at", "updated_at"]), List[Tuple])
 
