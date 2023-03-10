@@ -30,6 +30,7 @@ from ..abcs.database_types import (
     String_VaryingAlphanum,
     TemporalType,
     UnknownColType,
+    TimestampTZ,
     Text,
     DbTime,
     DbPath,
@@ -202,6 +203,8 @@ class BaseDialect(AbstractDialect):
     def type_repr(self, t) -> str:
         if isinstance(t, str):
             return t
+        elif isinstance(t, TimestampTZ):
+            return f"TIMESTAMP({min(t.precision, DEFAULT_DATETIME_PRECISION)})"
         return {
             int: "INT",
             str: "VARCHAR",

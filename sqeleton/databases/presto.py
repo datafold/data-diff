@@ -141,6 +141,11 @@ class Dialect(BaseDialect, Mixin_Schema):
     def current_timestamp(self) -> str:
         return "current_timestamp"
 
+    def type_repr(self, t) -> str:
+        if isinstance(t, TimestampTZ):
+            return f"timestamp with time zone"
+        return super().type_repr(t)
+
 
 class Presto(Database):
     dialect = Dialect()

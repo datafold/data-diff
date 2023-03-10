@@ -322,3 +322,20 @@ def match_like(pattern: str, strs: Sequence[str]) -> Iterable[str]:
     for s in strs:
         if reo.match(s):
             yield s
+
+
+
+class UnknownMeta(type):
+    def __instancecheck__(self, instance):
+        return instance is Unknown
+
+    def __repr__(self):
+        return "Unknown"
+
+
+class Unknown(metaclass=UnknownMeta):
+    def __nonzero__(self):
+        raise TypeError()
+
+    def __new__(class_, *args, **kwargs):
+        raise RuntimeError("Unknown is a singleton")

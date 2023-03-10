@@ -1,15 +1,15 @@
-from typing import Callable, List
-from datetime import datetime
 import unittest
+from datetime import datetime
+from typing import Callable, List, Tuple
 
-from .common import str_to_checksum, TEST_MYSQL_CONN_STRING
-from .common import str_to_checksum, test_each_database_in_list, get_conn, random_table_suffix
+import pytz
 
-from sqeleton.queries import table, current_timestamp
-
-from sqeleton import databases as dbs
 from sqeleton import connect
-
+from sqeleton import databases as dbs
+from sqeleton.queries import table, current_timestamp, NormalizeAsString
+from .common import TEST_MYSQL_CONN_STRING
+from .common import str_to_checksum, test_each_database_in_list, get_conn, random_table_suffix
+from sqeleton.abcs.database_types import TimestampTZ
 
 TEST_DATABASES = {
     dbs.MySQL,
@@ -81,6 +81,43 @@ class TestQueries(unittest.TestCase):
         res = db.query(current_timestamp(), datetime)
         assert isinstance(res, datetime), (res, type(res))
 
+    def test_correct_timezone(self):
+        name = "tbl_" + random_table_suffix()
+        db = get_conn(self.db_cls)
+        tbl = table(name, schema={
+            "id": int, "created_at": TimestampTZ(9), "updated_at": TimestampTZ(9)
+        })
+
+        db.query(tbl.create())
+
+        tz = pytz.timezone('Europe/Berlin')
+
+        now = datetime.now(tz)
+        if isinstance(db, dbs.Presto):
+            ms = now.microsecond // 1000 * 1000  # Presto max precision is 3
+            now = now.replace(microsecond = ms)
+
+        db.query(table(name).insert_row(1, now, now))
+        db.query(db.dialect.set_timezone_to_utc())
+
+        t = db.table(name).query_schema()
+        t.schema["created_at"] = t.schema["created_at"].replace(precision=t.schema["created_at"].precision)
+
+        tbl = table(name, schema=t.schema)
+
+        results = db.query(tbl.select(NormalizeAsString(tbl[c]) for c in ["created_at", "updated_at"]), List[Tuple])
+
+        created_at = results[0][1]
+        updated_at = results[0][1]
+
+        utc = now.astimezone(pytz.UTC)
+        expected = utc.__format__("%Y-%m-%d %H:%M:%S.%f")
+
+
+        self.assertEqual(created_at, expected)
+        self.assertEqual(updated_at, expected)
+
+        db.query(tbl.drop())
 
 @test_each_database
 class TestThreePartIds(unittest.TestCase):
@@ -104,3 +141,4 @@ class TestThreePartIds(unittest.TestCase):
             d = db.query_table_schema(part.path)
             assert len(d) == 1
             db.query(part.drop())
+
