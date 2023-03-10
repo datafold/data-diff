@@ -11,6 +11,7 @@ from ..abcs.database_types import (
     TemporalType,
     DbPath,
     Boolean,
+    Date,
 )
 from ..abcs.mixins import (
     AbstractMixin_MD5,
@@ -111,6 +112,7 @@ class Dialect(BaseDialect, Mixin_Schema):
         "TIMESTAMP_NTZ": Timestamp,
         "TIMESTAMP_LTZ": Timestamp,
         "TIMESTAMP_TZ": TimestampTZ,
+        "DATE": Date,
         # Numbers
         "NUMBER": Decimal,
         "FLOAT": Float,
