@@ -152,7 +152,7 @@ class HashDiffer(TableDiffer):
             if max_rows < self.bisection_threshold:
                 return self._bisect_and_diff_segments(ti, table1, table2, info_tree, level=level, max_rows=max_rows)
 
-        (count1, checksum1), (count2, checksum2) = self._threaded_call("count_and_checksum", [table1, table2])
+        (_, count1, checksum1), (_, count2, checksum2) = self._threaded_call("count_and_checksum", [table1, table2])
 
         assert not info_tree.info.rowcounts
         info_tree.info.rowcounts = {1: count1, 2: count2}

@@ -266,7 +266,7 @@ class TableSegment:
         if count:
             assert checksum, (count, checksum)
         # return count or 0, int(checksum) if count else None
-        return f'{self.min_key} - {self.max_key}', count or 0, int(checksum) if count else None
+        return self.min_key, count or 0, int(checksum) if count else None
 
     def count_and_checksum_by_group(self, checkpoints: List, bisection_factor: int, optimizer_hints=False) -> Tuple[Tuple[int, int]]:
         """Count and checksum each group"""
