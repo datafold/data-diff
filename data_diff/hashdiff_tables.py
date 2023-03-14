@@ -406,18 +406,5 @@ class GroupingHashDiffer(HashDiffer):
         ti = ThreadedYielder(self.max_threadpool_size)
         # Bisect (split) the table into segments, and diff them recursively.
         ti.submit(self._bisect_and_diff_segments, ti, table1, table2, info_tree)
-        # self._bisect_and_diff_segments(ti, table1, table2, info_tree)
-
-        # TODO: I don't think we need to do this part since we already got min/max keys for both tables up front
-        # # Now we check for the second min-max, to diff the portions we "missed".
-        # min_key2, max_key2 = self._parse_key_range_result(key_type, next(key_ranges))
-
-        # if min_key2 < min_key1:
-        #     pre_tables = [t.new(min_key=min_key2, max_key=min_key1) for t in (table1, table2)]
-        #     ti.submit(self._bisect_and_diff_segments, ti, *pre_tables, info_tree)
-
-        # if max_key2 > max_key1:
-        #     post_tables = [t.new(min_key=max_key1, max_key=max_key2) for t in (table1, table2)]
-        #     ti.submit(self._bisect_and_diff_segments, ti, *post_tables, info_tree)
 
         return ti
