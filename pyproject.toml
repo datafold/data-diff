@@ -29,7 +29,7 @@ dsnparse = "*"
 click = "^8.1"
 rich = "*"
 toml = "^0.10.2"
-sqeleton = "^0.0.7"
+sqeleton = {git = "git@github.com:RoderickJDunn/sqeleton.git@temp", rev = "fa23f08cb10437fee298f9a9f3b446f2e87528a5"}
 mysql-connector-python = {version="8.0.29", optional=true}
 psycopg2 = {version="*", optional=true}
 snowflake-connector-python = {version="^2.7.2", optional=true}
