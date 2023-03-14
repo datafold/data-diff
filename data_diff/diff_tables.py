@@ -269,6 +269,12 @@ class TableDiffer(ThreadBase, ABC):
         segment_count=None,
     ):
         ...
+    def _resolve_key_range(self, key_range_res, usr_key_range):
+        key_range_res = list(key_range_res)
+        for idx, uk in enumerate(usr_key_range):
+            if uk is not None:
+                key_range_res[idx] = usr_key_range[idx]
+        return tuple(key_range_res)
 
     def _bisect_and_diff_tables(self, table1: TableSegment, table2: TableSegment, info_tree):
         if len(table1.key_columns) != len(table2.key_columns):
@@ -285,13 +291,18 @@ class TableDiffer(ThreadBase, ABC):
             if kt1.python_type is not kt2.python_type:
                 raise TypeError(f"Incompatible key types: {kt1} and {kt2}")
 
-        # Query min/max values
-        key_ranges = self._threaded_call_as_completed("query_key_range", [table1, table2])
+        usr_key_range = (table1.min_key, table1.max_key)
+        if all(k is not None for k in [table1.min_key, table1.max_key, table2.min_key, table2.max_key]):
+            key_ranges = (kr for kr in [(table1.min_key, table1.max_key), (table2.min_key, table2.max_key)])
+        else:
+            # Query min/max values
+            key_ranges = self._threaded_call_as_completed("query_key_range", [table1, table2])
+            logging.info(f'key_ranges: {key_ranges}')
 
         # Start with the first completed value, so we don't waste time waiting
-        min_key1, max_key1 = self._parse_key_range_result(key_types1, next(key_ranges))
-
-        btable1, btable2 = [t.new_key_bounds(min_key=min_key1, max_key=max_key1) for t in (table1, table2)]
+        min_key1, max_key1 = self._parse_key_range_result(key_types1, self._resolve_key_range(next(key_ranges), usr_key_range))
+        
+        btable1, btable2 = [t.new(min_key=min_key1, max_key=max_key1) for t in (table1, table2)]
 
         logger.info(
             f"Diffing segments at key-range: {btable1.min_key}..{btable2.max_key}. "
@@ -315,7 +326,7 @@ class TableDiffer(ThreadBase, ABC):
         # └──┴──────┴──┘
         # Overall, the max number of new regions in this 2nd pass is 3^|k| - 1
 
-        min_key2, max_key2 = self._parse_key_range_result(key_types1, next(key_ranges))
+        min_key2, max_key2 = self._parse_key_range_result(key_types2, self._resolve_key_range(next(key_ranges), usr_key_range))
 
         points = [list(sorted(p)) for p in safezip(min_key1, min_key2, max_key1, max_key2)]
         box_mesh = create_mesh_from_points(*points)
