@@ -224,7 +224,7 @@ class TableSegment:
 
         if self.max_key is not None:
             assert min_key < self.max_key
-            assert max_key <= self.max_key
+            assert max_key <= self.max_key, (max_key, self.max_key)
 
         return self.replace(min_key=min_key, max_key=max_key)
 
@@ -247,8 +247,6 @@ class TableSegment:
 
     def count_and_checksum(self) -> Tuple[int, int]:
         """Count and checksum the rows in the segment, in one pass."""
-        logging.info('count_and_checksum')
-        time.sleep(1)
 
         start = time.monotonic()
         q = self.make_select().select(
@@ -271,9 +269,6 @@ class TableSegment:
     def count_and_checksum_by_group(self, checkpoints: List, bisection_factor: int, optimizer_hints=False) -> Tuple[Tuple[int, int]]:
         """Count and checksum each group"""
 
-        # TODO: REMOVE
-        logging.info('count_and_checksum_by_group')
-        time.sleep(4)
         """
         If group_by col is PK:
             if PK is num: use GROUP BY FLOOR(div_factor)

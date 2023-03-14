@@ -260,7 +260,6 @@ class GroupingHashDiffer(HashDiffer):
         level=0,
         max_rows=None,
     ):
-        logging.info('SinglePassHashDiffer._bisect_and_diff_segments')
 
         assert table1.is_bounded and table2.is_bounded
 
