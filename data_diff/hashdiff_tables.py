@@ -211,7 +211,7 @@ class HashDiffer(TableDiffer):
 
 
 @dataclass
-class SinglePassHashDiffer(HashDiffer):
+class GroupingHashDiffer(HashDiffer):
 
     stats: dict = {}
 
