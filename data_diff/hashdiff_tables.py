@@ -3,8 +3,7 @@ import os
 from numbers import Number
 import logging
 from collections import defaultdict
-import sys
-from typing import Iterator, List
+from typing import Any, Callable, Iterator, List, Tuple
 from operator import attrgetter, methodcaller
 
 from runtype import dataclass
@@ -184,8 +183,6 @@ class HashDiffer(TableDiffer):
         level=0,
         max_rows=None,
     ):
-        logging.info('HashDiffer._bisect_and_diff_segments')
-
         assert table1.is_bounded and table2.is_bounded
 
         max_space_size = max(table1.approximate_size(), table2.approximate_size())
@@ -251,6 +248,15 @@ class GroupingHashDiffer(HashDiffer):
         info_tree.info.is_diff = True
         return self._bisect_and_diff_segments(ti, segment1, segment2, info_tree, level=level, max_rows=max(count1, count2))
 
+    def query_wrapper(self, query_fn: Callable, state: dict, *args: Any, **kwargs: Any) -> Tuple[Tuple[int, int]]:
+        logger.info(
+            ". " * state['level'] + f"Hashing segment {state['idx']+1}/{state['total']}, "
+            f"key-range: {state['segment'].min_key}..{state['segment'].max_key}, "
+            f"size <= {state['max_rows']}"
+        )
+
+        return query_fn(*args, **kwargs)
+
     def _bisect_and_diff_segments(
         self,
         ti: ThreadedYielder,
@@ -264,7 +270,6 @@ class GroupingHashDiffer(HashDiffer):
         assert table1.is_bounded and table2.is_bounded
 
         max_space_size = max(table1.approximate_size(), table2.approximate_size())
-        # logging.info(f'max_space_size: {max_space_size}')
         if max_rows is None:
             # We can be sure that row_count <= max_rows iff the table key is unique
             max_rows = max_space_size
@@ -276,7 +281,6 @@ class GroupingHashDiffer(HashDiffer):
         #       as retreived from the last query. This especially important when dealing with a composite PK table 
         #       because the approximate_size is likely a gross underestimation.
         if max_rows < self.bisection_threshold or max_rows < self.bisection_factor * 2:
-            logging.info('get_values')
             rows1, rows2 = self._threaded_call("get_values", [table1, table2])
             diff = list(diff_sets(rows1, rows2))
 
@@ -290,7 +294,7 @@ class GroupingHashDiffer(HashDiffer):
         # Choose evenly spaced checkpoints (according to min_key and max_key)
         biggest_table = max(table1, table2, key=methodcaller("approximate_size"))
         checkpoints = biggest_table.choose_checkpoints(self.bisection_factor - 1)
-        # logging.info(f'checkpoints: {checkpoints}')
+        logger.info(f'checkpoints: {checkpoints}')
 
         if table1.hash_query_type == 'multi' and table2.hash_query_type == 'multi':
             raise ValueError('At least 1 table must use the groupby hash query type')
@@ -298,33 +302,50 @@ class GroupingHashDiffer(HashDiffer):
         segmented1 = table1.segment_by_checkpoints(checkpoints)
         segmented2 = table2.segment_by_checkpoints(checkpoints)
 
-        bg_funcs = {'t1': [], 't2': []}
-        if table1.hash_query_type == 'multi':
-            bg_funcs['t1'] = [seg.count_and_checksum for seg in segmented1]
-        else:
-            bg_funcs['t1'] = [partial(table1.count_and_checksum_by_group, checkpoints[0], self.bisection_factor, optimizer_hints=(level == 0))]
-
-        if table2.hash_query_type == 'multi':
-            bg_funcs['t2'] = [seg.count_and_checksum for seg in segmented2]
-        else:
-            bg_funcs['t2'] = [partial(table2.count_and_checksum_by_group, checkpoints[0], self.bisection_factor, optimizer_hints=(level == 0))]
-
-        logging.info(f'Running in background: {len(bg_funcs["t1"]) + len(bg_funcs["t2"])}')
+        def _state(seg: TableSegment, idx: int, total: int) -> dict:
+            return {'level': level, 'segment': seg, 'idx': idx, 'total': total, 'max_rows': max_rows}
 
         def print_res(label, res):
             out = [str(r) for r in res]
-            logging.info('{}\n{}'.format(label, "\n".join(out)))
-        
-        # wait for all queries to complete
-        all_results = ti._submit_and_block(*bg_funcs['t1'], *bg_funcs['t2'], priority=level)
-        table1_res = all_results[:len(bg_funcs['t1'])]
-        table2_res = all_results[len(bg_funcs['t1']):]
+            logger.info('{}\n{}'.format(label, "\n".join(out)))
 
-        if len(bg_funcs['t1']) == 1:
-            table1_res = table1_res[0]
-        
-        if len(bg_funcs['t2']) == 1:
-            table2_res = table2_res[0]
+        query_fns = []
+        if table1.hash_query_type == 'multi':
+            for idx, seg in enumerate(segmented1):
+                query_fns.append(partial(self.query_wrapper,
+                                      seg.count_and_checksum, 
+                                      _state(seg, idx, len(segmented1))))
+        else:
+            logger.info(
+                ". " * level + "Hashing table-1 segments by group "
+                f"key-range: {table1.min_key}..{table1.max_key}, "
+                f"size <= {max_rows}"
+            )
+            query_fns.append(partial(table1.count_and_checksum_by_group, checkpoints[0], self.bisection_factor, optimizer_hints=(level == 0)))
+
+        if table2.hash_query_type == 'multi':
+            for idx, seg in enumerate(segmented2):
+                query_fns.append(partial(self.query_wrapper,
+                                seg.count_and_checksum, 
+                                _state(seg, idx, len(segmented2))))
+        else:
+            logger.info(
+                ". " * level + "Hashing table-2 segments by group "
+                f"key-range: {table2.min_key}..{table2.max_key}, "
+                f"size <= {max_rows}"
+            )
+            query_fns.insert(0, partial(table2.count_and_checksum_by_group, checkpoints[0], self.bisection_factor, optimizer_hints=(level == 0)))
+
+
+        # wait for all queries to complete.
+        all_results = ti._submit_and_block(*query_fns, priority=level)
+
+        if table2.hash_query_type != 'multi':
+            table2_res = all_results[0]
+            table1_res = all_results[1:] if table1.hash_query_type == 'multi' else all_results[1]
+        else:
+            table1_res = all_results[0]
+            table2_res = all_results[1:] if table2.hash_query_type == 'multi' else all_results[1]
 
         print_res('table1_res', table1_res)
         print_res('table2_res', table2_res)
@@ -336,14 +357,12 @@ class GroupingHashDiffer(HashDiffer):
 
     def _resolve_key_range(self, key_range_res, usr_key_range):
         key_range_res = list(key_range_res)
-        if usr_key_range[0] is not None:
-            key_range_res[0] = usr_key_range[0]
-        if usr_key_range[1] is not None:
-            key_range_res[1] = usr_key_range[1]
+        for idx, uk in enumerate(usr_key_range):
+            if uk is not None:
+                key_range_res[idx] = usr_key_range[idx]
         return tuple(key_range_res)
 
     def _bisect_and_diff_tables(self, table1, table2, info_tree):
-        logging.info('SinglePassHashDiffer._bisect_and_diff_tables')
         if len(table1.key_columns) > 1:
             raise NotImplementedError("Composite key not supported yet!")
         if len(table2.key_columns) > 1:
