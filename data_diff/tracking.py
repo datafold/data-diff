@@ -49,7 +49,7 @@ def disable_tracking():
 
 
 def is_tracking_enabled():
-    return g_tracking_enabled
+    return False
 
 
 def set_entrypoint_name(s):
