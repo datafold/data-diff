@@ -99,7 +99,7 @@ class DiffResultWrapper:
     def _get_stats(self, is_dbt: bool = False) -> DiffStats:
         list(self)  # Consume the iterator into result_list, if we haven't already
 
-        key_columns = self.info_tree.info.tables[0].key_columns
+        key_columns = self.info_tree.info.tables[0].key_indices
         len_key_columns = len(key_columns)
         diff_by_key = {}
         extra_column_diffs = None

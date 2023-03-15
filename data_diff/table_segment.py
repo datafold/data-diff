@@ -104,6 +104,15 @@ class TableSegment:
         case_sensitive (bool): If false, the case of column names will adjust according to the schema. Default is true.
         hash_query_type (str)
 
+        true_key_indices (list[int]): Hack for GroupingHashDiffer to be able to properly sort diff results 
+                                of tables with composite keys. Temporary until we properly support group_by_col.
+                                If ``None``, key_column is used (which is equivalent to [0]).
+                                ex. [0, 2, 3]  --> 3-col composite PK.
+                                0 - first one should always be 0 (corresponds to the key_column)
+                                2 - The 2nd column in the 'extras' list (TableSegment.relevant_columns)
+                                        Might want to skip 1 since it will be the update_column if it exists
+                                3 - 3rd column in the extras list 
+
     """
 
     # Location of table
@@ -126,6 +135,7 @@ class TableSegment:
     # group_by column
     group_by_column: str = None 
     hash_query_type: str = 'multi'
+    true_key_indices: list = None
 
     # use to force cast certain columns to non-standard types 
     column_type_overrides: List[Tuple] = None
@@ -240,6 +250,10 @@ class TableSegment:
     @property
     def _relevant_columns_repr(self) -> List[Expr]:
         return [NormalizeAsString(this[c]) for c in self.relevant_columns]
+
+    @property
+    def key_indices(self) -> Tuple[str]:
+        return self.true_key_indices or list(range(len(self.key_columns)))
 
     def count(self) -> int:
         """Count how many rows are in the segment, in one pass."""

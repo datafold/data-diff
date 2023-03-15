@@ -25,20 +25,27 @@ DEFAULT_BISECTION_FACTOR = 32
 logger = logging.getLogger("hashdiff_tables")
 
 
-def diff_sets(a: set, b: set) -> Iterator:
+def diff_sets(a: set, b: set, key_indices: list = None) -> Iterator:
     sa = set(a)
     sb = set(b)
 
-    # The first item is always the key (see TableDiffer.relevant_columns)
-    # TODO update when we add compound keys to hashdiff
+    if key_indices == None:
+        key_indices = [0]
+
+    # The first item of key_indices should always be the first key_column (see TableDiffer.relevant_columns)
+    assert key_indices[0] == 0
+
+    # NOTE: updated to support sorting on multiple PK columns (compound keys)
     d = defaultdict(list)
     for row in a:
+        key = tuple(row[idx] for idx in key_indices)
         if row not in sb:
-            d[row[0]].append(("-", row))
+            d[key].append(("-", row))
     for row in b:
+        key = tuple(row[idx] for idx in key_indices)
         if row not in sa:
-            d[row[0]].append(("+", row))
-
+            d[key].append(("+", row))
+    
     for _k, v in sorted(d.items(), key=lambda i: i[0]):
         yield from v
 
@@ -195,7 +202,7 @@ class HashDiffer(TableDiffer):
         # This saves time, as bisection speed is limited by ping and query performance.
         if max_rows < self.bisection_threshold or max_space_size < self.bisection_factor * 2:
             rows1, rows2 = self._threaded_call("get_values", [table1, table2])
-            diff = list(diff_sets(rows1, rows2))
+            diff = list(diff_sets(rows1, rows2, table1.key_indices))
 
             info_tree.info.set_diff(diff)
             info_tree.info.rowcounts = {1: len(rows1), 2: len(rows2)}
@@ -282,7 +289,7 @@ class GroupingHashDiffer(HashDiffer):
         #       because the approximate_size is likely a gross underestimation.
         if max_rows < self.bisection_threshold or max_rows < self.bisection_factor * 2:
             rows1, rows2 = self._threaded_call("get_values", [table1, table2])
-            diff = list(diff_sets(rows1, rows2))
+            diff = list(diff_sets(rows1, rows2, table1.key_indices))
 
             info_tree.info.set_diff(diff)
             info_tree.info.rowcounts = {1: len(rows1), 2: len(rows2)}
