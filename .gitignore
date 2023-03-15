@@ -74,6 +74,9 @@ docs/_build/
 # PyBuilder
 target/
 
+# Exception for dbt tests
+!tests/dbt_artifacts/target
+
 # Jupyter Notebook
 .ipynb_checkpoints
 

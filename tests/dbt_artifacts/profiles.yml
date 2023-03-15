@@ -1,0 +1,7 @@
+jaffle_shop:
+  target: dev
+  outputs:
+    dev:
+      type: duckdb
+      path: "./tests/dbt_artifacts/jaffle_shop.duckdb"
+      schema: dev

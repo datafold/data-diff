@@ -334,16 +334,18 @@ class TestDbtParser(unittest.TestCase):
 
 
 class TestDbtDiffer(unittest.TestCase):
-    # These two integration tests can be used to test a real diff
-    # export DATA_DIFF_DBT_PROJ=/path/to/a/dbt/project
-    # Expects a valid dbt project using a ~/.dbt/profiles.yml with run results
+    # Set DATA_DIFF_DBT_PROJ to use your own dbt project, otherwise uses the duckdb project in tests/dbt_artifacts
     def test_integration_basic_dbt(self):
-        project_dir = os.environ.get("DATA_DIFF_DBT_PROJ")
-        if project_dir is not None:
-            diff = run_datadiff_cli("--dbt", "--dbt-project-dir", project_dir)
-            assert diff[-1].decode("utf-8") == "Diffs Complete!"
-        else:
-            pass
+        artifacts_path = os.getcwd() + '/tests/dbt_artifacts'
+        test_project_path = os.environ.get("DATA_DIFF_DBT_PROJ") or artifacts_path
+        diff = run_datadiff_cli("--dbt", "--dbt-project-dir", test_project_path, "--dbt-profiles-dir", test_project_path)
+        assert diff[-1].decode("utf-8") == "Diffs Complete!"
+
+        # assertions for the diff that exists in tests/dbt_artifacts/jaffle_shop.duckdb
+        if test_project_path == artifacts_path:
+            assert diff[0].decode("utf-8") == "Found 5 successful model runs from the last dbt command."
+            assert diff[8].decode("utf-8") == "Column(s) added: ['amount_cents']"
+
 
     def test_integration_cloud_dbt(self):
         project_dir = os.environ.get("DATA_DIFF_DBT_PROJ")
