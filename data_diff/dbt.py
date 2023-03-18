@@ -101,9 +101,9 @@ def dbt_diff(
         else:
             rich.print(
                 "[red]"
-                + ".".join(diff_vars.prod_path)
+                + ".".join(filter(None, diff_vars.prod_path))
                 + " <> "
-                + ".".join(diff_vars.dev_path)
+                + ".".join(filter(None, diff_vars.dev_path))
                 + "[/] \n"
                 + "Skipped due to missing primary-key tag(s).\n"
             )
@@ -147,8 +147,8 @@ def _get_diff_vars(
 
 def _local_diff(diff_vars: DiffVars) -> None:
     column_diffs_str = ""
-    dev_qualified_string = ".".join(diff_vars.dev_path)
-    prod_qualified_string = ".".join(diff_vars.prod_path)
+    dev_qualified_string = ".".join(filter(None, diff_vars.dev_path))
+    prod_qualified_string = ".".join(filter(None, diff_vars.prod_path))
 
     table1 = connect_to_table(
         diff_vars.connection, dev_qualified_string, tuple(diff_vars.primary_keys), diff_vars.threads
@@ -252,9 +252,9 @@ def _cloud_diff(diff_vars: DiffVars) -> None:
         diff_url = f"https://app.datafold.com/datadiffs/{diff_id}/overview"
         rich.print(
             "[red]"
-            + ".".join(diff_vars.prod_path)
+            + ".".join(filter(None, diff_vars.prod_path))
             + " <> "
-            + ".".join(diff_vars.dev_path)
+            + ".".join(filter(None, diff_vars.dev_path))
             + "[/] \n    Diff in progress: \n    "
             + diff_url
             + "\n"
