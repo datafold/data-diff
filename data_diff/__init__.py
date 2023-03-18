@@ -5,7 +5,7 @@ from sqeleton.abcs import DbTime, DbPath
 
 from .tracking import disable_tracking
 from .databases import connect
-from .diff_tables import Algorithm
+from .diff_tables import Algorithm, TableDiffer
 from .hashdiff_tables import HashDiffer, DEFAULT_BISECTION_THRESHOLD, DEFAULT_BISECTION_FACTOR, GroupingHashDiffer
 from .joindiff_tables import JoinDiffer, TABLE_WRITE_LIMIT
 from .table_segment import TableSegment
@@ -84,7 +84,7 @@ def diff_tables(
     hash_query_type: str = None,
     # Optimizer hints for Select queries
     optimizer_hints: Optional[str] = None,
-) -> Iterator:
+) -> tuple[TableDiffer, Iterator]:
     """Finds the diff between table1 and table2.
 
     Parameters:
@@ -192,4 +192,4 @@ def diff_tables(
     else:
         raise ValueError(f"Unknown algorithm: {algorithm}")
 
-    return differ.diff_tables(*segments)
+    return differ, differ.diff_tables(*segments)
