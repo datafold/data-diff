@@ -8,6 +8,11 @@ from packaging.version import parse as parse_version
 from typing import List, Optional, Dict, Tuple
 from pathlib import Path
 
+from cryptography.hazmat.backends import default_backend
+from cryptography.hazmat.primitives.asymmetric import rsa
+from cryptography.hazmat.primitives.asymmetric import dsa
+from cryptography.hazmat.primitives import serialization
+
 import requests
 
 
@@ -366,22 +371,56 @@ class DbtParser:
 
         return credentials, conn_type
 
+    @staticmethod
+    def _get_snowflake_private_key(credentials):
+        """Get Snowflake private key by path, from a Base64 encoded DER bytestring or None."""
+        if credentials.get("private_key") and credentials.get("private_key_path"):
+            raise Exception("Cannot specify both `private_key`  and `private_key_path`")
+
+        if credentials.get("private_key_passphrase"):
+            encoded_passphrase = credentials.get("private_key_passphrase").encode()
+        else:
+            encoded_passphrase = None
+
+        if credentials.get("private_key"):
+            p_key = serialization.load_der_private_key(
+                base64.b64decode(credentials.get("private_key")),
+                password=encoded_passphrase,
+                backend=default_backend(),
+            )
+        elif credentials.get("private_key_path"):
+            with open(credentials.get("private_key_path"), "rb") as key:
+                p_key = serialization.load_pem_private_key(
+                    key.read(), password=encoded_passphrase, backend=default_backend()
+                )
+        else:
+            return None
+
+        return p_key.private_bytes(
+            encoding=serialization.Encoding.DER,
+            format=serialization.PrivateFormat.PKCS8,
+            encryption_algorithm=serialization.NoEncryption(),
+        )
+
     def set_connection(self):
         credentials, conn_type = self._get_connection_creds()
 
         if conn_type == "snowflake":
-            if credentials.get("password") is None or credentials.get("private_key_path") is not None:
-                raise Exception("Only password authentication is currently supported for Snowflake.")
+            if credentials.get("authenticator") is not None:
+                raise Exception("Federated authentication is not currently supported for Snowflake.")
             conn_info = {
                 "driver": conn_type,
                 "user": credentials.get("user"),
-                "password": credentials.get("password"),
                 "account": credentials.get("account"),
                 "database": credentials.get("database"),
                 "warehouse": credentials.get("warehouse"),
                 "role": credentials.get("role"),
                 "schema": credentials.get("schema"),
             }
+            if credentials.get("password") is not None:
+                conn_info["password"] = credentials.get("password")
+            else:
+                conn_info["private_key"] = self._get_snowflake_private_key(credentials)
             self.threads = credentials.get("threads")
             self.requires_upper = True
         elif conn_type == "bigquery":
