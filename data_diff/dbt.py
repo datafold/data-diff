@@ -12,6 +12,7 @@ from .utils import getLogger
 from pathlib import Path
 
 import requests
+
 logger = getLogger(__name__)
 
 
@@ -68,7 +69,6 @@ class DiffVars:
     datasource_id: str
     connection: Dict[str, str]
     threads: Optional[int]
-
 
 
 def dbt_diff(
