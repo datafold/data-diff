@@ -6,7 +6,7 @@ import rich
 from collections import defaultdict
 from dataclasses import dataclass
 from packaging.version import parse as parse_version
-from typing import List, Optional, Dict, Tuple
+from typing import List, Optional, Dict, Tuple, Set
 from .utils import getLogger
 from pathlib import Path
 
@@ -478,7 +478,7 @@ class DbtParser:
         logger.debug("Found no PKs")
         return []
 
-    def get_unique_columns(self) -> Dict[str, set[str]]:
+    def get_unique_columns(self) -> Dict[str, Set[str]]:
         manifest = self.manifest_obj
         cols_by_uid = defaultdict(set)
         for node in manifest.nodes.values():
