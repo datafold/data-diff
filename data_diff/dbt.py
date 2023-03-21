@@ -5,7 +5,6 @@ import rich
 
 from collections import defaultdict
 from dataclasses import dataclass
-from enum import Enum
 from packaging.version import parse as parse_version
 from typing import List, Optional, Dict, Tuple
 from .utils import getLogger
