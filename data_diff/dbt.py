@@ -8,6 +8,7 @@ from dataclasses import dataclass
 from packaging.version import parse as parse_version
 from typing import List, Optional, Dict, Tuple, Set
 from .utils import getLogger
+from .version import __version__
 from pathlib import Path
 
 import requests
@@ -325,7 +326,7 @@ class DbtParser:
         if not models:
             raise ValueError("Expected > 0 successful models runs from the last dbt command.")
 
-        rich.print(f"Found {str(len(models))} successful model runs from the last dbt command. Starting diffs.\n")
+        print(f"Running with data-diff={__version__}\n")
         return models
 
     def get_manifest_obj(self):
