@@ -374,9 +374,6 @@ class DbtParser:
     @staticmethod
     def _get_snowflake_private_key(credentials):
         """Get Snowflake private key by path, from a Base64 encoded DER bytestring or None."""
-        if credentials.get("private_key") and credentials.get("private_key_path"):
-            raise Exception("Cannot specify both `private_key`  and `private_key_path`")
-
         if credentials.get("private_key_passphrase"):
             encoded_passphrase = credentials.get("private_key_passphrase").encode()
         else:
@@ -417,9 +414,14 @@ class DbtParser:
                 "role": credentials.get("role"),
                 "schema": credentials.get("schema"),
             }
+
             if credentials.get("password") is not None:
+                if credentials.get("private_key") is not None or credentials.get("private_key_path") is not None:
+                    raise Exception("Cannot use password and key at the same time")
                 conn_info["password"] = credentials.get("password")
             else:
+                if credentials.get("private_key") is not None and credentials.get("private_key_path") is not None:
+                    raise Exception("Cannot specify both `private_key` and `private_key_path`")
                 conn_info["private_key"] = self._get_snowflake_private_key(credentials)
             self.threads = credentials.get("threads")
             self.requires_upper = True
