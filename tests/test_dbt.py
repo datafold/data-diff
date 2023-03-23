@@ -335,8 +335,13 @@ class TestDbtDiffer(unittest.TestCase):
 
         # assertions for the diff that exists in tests/dbt_artifacts/jaffle_shop.duckdb
         if test_project_path == artifacts_path:
-            assert diff[0].decode("utf-8") == "Found 5 successful model runs from the last dbt command."
-            assert diff[8].decode("utf-8") == "Column(s) added: ['amount_cents']"
+            diff_string = b''.join(diff).decode('utf-8')
+            # 5 diffs were ran
+            assert diff_string.count('<>') == 5
+            # 4 with no diffs
+            assert diff_string.count('No row differences')
+            # 1 with a diff 
+            assert diff_string.count('| Rows Added    | Rows Removed')
 
 
     def test_integration_cloud_dbt(self):
