@@ -82,3 +82,6 @@ class ThreadedYielder(Iterable):
                 self._futures.popleft()
             else:
                 sleep(0.001)
+
+    def abort(self) -> None:
+        self._pool.shutdown(wait=True, cancel_futures=True)

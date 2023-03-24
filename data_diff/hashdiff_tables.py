@@ -80,6 +80,8 @@ class HashDiffer(TableDiffer):
         if self.bisection_factor < 2:
             raise ValueError("Must have at least two segments per iteration (i.e. bisection_factor >= 2)")
 
+        super().__post_init__()
+        
     def _validate_and_adjust_columns(self, table1, table2):
         for c1, c2 in safezip(table1.relevant_columns, table2.relevant_columns):
             if c1 not in table1._schema:
@@ -410,8 +412,8 @@ class GroupingHashDiffer(HashDiffer):
             f"size: table1 <= {table1.approximate_size()}, table2 <= {table2.approximate_size()}"
         )
 
-        ti = ThreadedYielder(self.max_threadpool_size)
+        self.ti = ThreadedYielder(self.max_threadpool_size)
         # Bisect (split) the table into segments, and diff them recursively.
-        ti.submit(self._bisect_and_diff_segments, ti, table1, table2, info_tree)
+        self.ti.submit(self._bisect_and_diff_segments, self.ti, table1, table2, info_tree)
 
-        return ti
+        return self.ti

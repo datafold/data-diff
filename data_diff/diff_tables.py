@@ -189,6 +189,11 @@ class DiffResultWrapper:
 class TableDiffer(ThreadBase, ABC):
     bisection_factor = 32
     stats: dict = {}
+    ti: ThreadedYielder
+
+    def __post_init__(self):
+        logging.info('post_init called')
+        super().__setattr__('ti', ThreadedYielder(self.max_threadpool_size))
 
     def diff_tables(self, table1: TableSegment, table2: TableSegment, info_tree: InfoTree = None) -> DiffResultWrapper:
         """Diff the given tables.
@@ -309,9 +314,8 @@ class TableDiffer(ThreadBase, ABC):
             f"size: table1 <= {btable1.approximate_size()}, table2 <= {btable2.approximate_size()}"
         )
 
-        ti = ThreadedYielder(self.max_threadpool_size)
         # Bisect (split) the table into segments, and diff them recursively.
-        ti.submit(self._bisect_and_diff_segments, ti, btable1, btable2, info_tree)
+        self.ti.submit(self._bisect_and_diff_segments, self.ti, btable1, btable2, info_tree)
 
         # Now we check for the second min-max, to diff the portions we "missed".
         # This is achieved by subtracting the table ranges, and dividing the resulting space into aligned boxes.
@@ -335,9 +339,9 @@ class TableDiffer(ThreadBase, ABC):
 
         for p1, p2 in new_regions:
             extra_tables = [t.new_key_bounds(min_key=p1, max_key=p2) for t in (table1, table2)]
-            ti.submit(self._bisect_and_diff_segments, ti, *extra_tables, info_tree)
+            self.ti.submit(self._bisect_and_diff_segments, self.ti, *extra_tables, info_tree)
 
-        return ti
+        return self.ti
 
     def _parse_key_range_result(self, key_types, key_range) -> Tuple[Vector, Vector]:
         min_key_values, max_key_values = key_range
