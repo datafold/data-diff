@@ -1,3 +1,4 @@
+from dataclasses import field
 import math
 import time
 from typing import List, Tuple
@@ -140,6 +141,9 @@ class TableSegment:
     # use to force cast certain columns to non-standard types 
     column_type_overrides: List[Tuple] = None
 
+    # use to cast/convert certain columns to non-standard types 
+    col_conversions: dict[str, str] = field(default_factory=dict)
+
     case_sensitive: bool = True
     _schema: Schema = None
 
@@ -249,8 +253,17 @@ class TableSegment:
 
     @property
     def _relevant_columns_repr(self) -> List[Expr]:
-        return [NormalizeAsString(this[c]) for c in self.relevant_columns]
+        normalized_cols = []
+        for c in self.relevant_columns:
+            conversion = self.col_conversions.get(c.lower(), self.col_conversions.get(c.upper()))
+            if conversion:
+                placeholders = conversion.count('{}')
+                normalized_cols.append(Code(conversion.format(*([c]*placeholders))))
+            else:
+                normalized_cols.append(NormalizeAsString(this[c]))
 
+        return normalized_cols
+    
     @property
     def key_indices(self) -> Tuple[str]:
         return self.true_key_indices or list(range(len(self.key_columns)))

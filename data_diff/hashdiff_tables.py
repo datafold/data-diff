@@ -92,6 +92,13 @@ class HashDiffer(TableDiffer):
             # Update schemas to minimal mutual precision
             col1 = table1._schema[c1]
             col2 = table2._schema[c2]
+
+            # if user passed specialized conversions for either column, skip validation
+            if any(c in table1.col_conversions for c in [c1.lower(), c1.upper()]):
+                continue
+            if any(c in table2.col_conversions for c in [c2.lower(), c2.upper()]):
+                continue
+
             if isinstance(col1, PrecisionType):
                 if not isinstance(col2, PrecisionType):
                     raise TypeError(f"Incompatible types for column '{c1}':  {col1} <-> {col2}")
