@@ -232,7 +232,7 @@ def _cloud_diff(diff_vars: DiffVars) -> None:
             webbrowser.open(f"{datafold_host}/login?next={datafold_host}/users/me")
             return
         else:
-            raise ValueError('Cannot diff because the API key is not provided')
+            raise ValueError("Cannot diff because the API key is not provided")
 
     if diff_vars.datasource_id is None:
         raise ValueError(

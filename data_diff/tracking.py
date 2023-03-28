@@ -56,11 +56,14 @@ def set_entrypoint_name(s):
     global entrypoint_name
     entrypoint_name = s
 
+
 dbt_user_id = None
+
 
 def set_dbt_user_id(s):
     global dbt_user_id
     dbt_user_id = s
+
 
 def get_anonymous_id():
     global g_anonymous_id
