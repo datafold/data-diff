@@ -13,7 +13,7 @@ from .utils import dbt_diff_string_template, getLogger
 from .version import __version__
 from pathlib import Path
 
-import requests
+from .cloud import DatafoldAPI, TCloudApiDataDiff, get_or_create_data_source
 
 logger = getLogger(__name__)
 
@@ -98,7 +98,7 @@ def dbt_diff(
             raise ValueError(
                 "Datasource ID not found, include it as a dbt variable in the dbt_project.yml. \nvars:\n data_diff:\n   datasource_id: 1234"
             )
-        datafold_host, url, api_key = _setup_cloud_diff()
+        api = _initialize_api()
 
         # exit so the user can set the key
         if not api_key:
@@ -210,20 +210,50 @@ def _local_diff(diff_vars: DiffVars) -> None:
         rich.print(diff_output_str)
 
 
-def _cloud_diff(diff_vars: DiffVars, datasource_id: int, datafold_host: str, url: str, api_key: str) -> None:
-    diff_output_str = _diff_output_base(".".join(diff_vars.dev_path), ".".join(diff_vars.prod_path))
-    payload = {
-        "data_source1_id": datasource_id,
-        "data_source2_id": datasource_id,
-        "table1": diff_vars.prod_path,
-        "table2": diff_vars.dev_path,
-        "pk_columns": diff_vars.primary_keys,
-    }
+def _initialize_api() -> Optional[DatafoldAPI]:
+    datafold_host = os.environ.get("DATAFOLD_HOST")
+    if datafold_host is None:
+        datafold_host = "https://app.datafold.com"
+    datafold_host = datafold_host.rstrip("/")
+    rich.print(f"Cloud datafold host: {datafold_host}")
 
-    headers = {
-        "Authorization": f"Key {api_key}",
-        "Content-Type": "application/json",
-    }
+    api_key = os.environ.get("DATAFOLD_API_KEY")
+    if not api_key:
+        rich.print("[red]API key not found, add it as an environment variable called DATAFOLD_API_KEY.")
+        yes_or_no = Confirm.ask("Would you like to generate a new API key?")
+        if yes_or_no:
+            webbrowser.open(f"{datafold_host}/login?next={datafold_host}/users/me")
+            return None
+        else:
+            raise ValueError("Cannot initialize API because the API key is not provided")
+
+    return DatafoldAPI(api_key=api_key, host=datafold_host)
+
+
+def _cloud_diff(diff_vars: DiffVars, datasource_id: int, api: DatafoldAPI) -> None:
+    if api is None:
+        return
+
+    if diff_vars.datasource_id is None:
+        rich.print("Data source ID not found in dbt_project.yml")
+        is_create_data_source = Confirm.ask("Would you like to create a new data source?")
+        if is_create_data_source:
+            diff_vars.datasource_id = get_or_create_data_source(api=api)
+            rich.print(f'[green]Data source ID = {diff_vars.datasource_id}')
+        else:
+            raise ValueError(
+                "Datasource ID not found, include it as a dbt variable in the dbt_project.yml. \nvars:\n data_diff:\n   datasource_id: 1234"
+            )
+
+    diff_output_str = _diff_output_base(".".join(diff_vars.dev_path), ".".join(diff_vars.prod_path))
+    payload = TCloudApiDataDiff(
+        data_source1_id=diff_vars.datasource_id,
+        data_source2_id=diff_vars.datasource_id,
+        table1=diff_vars.prod_path,
+        table2=diff_vars.dev_path,
+        pk_columns=diff_vars.primary_keys,
+    )
+
     if is_tracking_enabled():
         event_json = create_start_event_json({"is_cloud": True, "datasource_id": datasource_id})
         run_as_daemon(send_event_json, event_json)
@@ -233,7 +263,12 @@ def _cloud_diff(diff_vars: DiffVars, datasource_id: int, datafold_host: str, url
     diff_id = None
     diff_url = None
     try:
-        diff_id = _cloud_submit_diff(url, payload, headers)
+        diff_id = api.create_data_diff(payload=payload)
+
+        if diff_id is None:
+            raise Exception(f"Api response did not contain a diff_id")
+        return diff_id
+
         summary_url = f"{url}/{diff_id}/summary_results"
         diff_results = _cloud_poll_and_get_summary_results(summary_url, headers)
 
@@ -294,38 +329,6 @@ def _cloud_diff(diff_vars: DiffVars, datasource_id: int, datafold_host: str, url
                 diff_url = f"{datafold_host}/datadiffs/{diff_id}/overview"
                 rich.print(f"{diff_url} \n")
             logger.error(error)
-
-
-def _setup_cloud_diff() -> Tuple[Optional[str]]:
-    datafold_host = os.environ.get("DATAFOLD_HOST")
-    if datafold_host is None:
-        datafold_host = "https://app.datafold.com"
-    datafold_host = datafold_host.rstrip("/")
-    rich.print(f"Cloud datafold host: {datafold_host}\n")
-    url = f"{datafold_host}/api/v1/datadiffs"
-
-    api_key = os.environ.get("DATAFOLD_API_KEY")
-    if not api_key:
-        rich.print("[red]API key not found, add it as an environment variable called DATAFOLD_API_KEY.")
-        yes_or_no = Confirm.ask("Would you like to generate a new API key?")
-        if yes_or_no:
-            webbrowser.open(f"{datafold_host}/login?next={datafold_host}/users/me")
-            return None, None, None
-        else:
-            raise ValueError("Cannot diff because the API key is not provided")
-
-    return datafold_host, url, api_key
-
-
-def _cloud_submit_diff(url, payload, headers) -> str:
-    response = requests.request("POST", url, headers=headers, json=payload, timeout=30)
-    response.raise_for_status()
-    response_json = response.json()
-    diff_id = str(response_json["id"])
-
-    if diff_id is None:
-        raise Exception(f"Api response did not contain a diff_id: {str(response_json)}")
-    return diff_id
 
 
 def _cloud_poll_and_get_summary_results(url, headers):

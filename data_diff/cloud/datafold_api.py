@@ -53,6 +53,7 @@ class TDsConfig(pydantic.BaseModel):
     name: str
     type: str
     temp_schema: str
+    float_tolerance: float = 0.0,
     options: Dict[str, Any]
 
 
@@ -92,9 +93,9 @@ class DatafoldAPI:
         rv.raise_for_status()
         return [TCloudApiDataSource(**item) for item in rv.json()]
 
-    def create_data_source(self, config: TDsConfig) -> int:
-        rv = self.make_post_request(url='api/data_sources', payload=config.dict())
-        return rv.json()['id']
+    def create_data_source(self, config: TDsConfig) -> TCloudApiDataSource:
+        rv = self.make_post_request(url='api/internal/data_sources', payload=config.dict())
+        return TCloudApiDataSource(**rv.json())
 
     def get_data_source_schema_config(self) -> List[TCloudApiDataSourceConfigSchema]:
         rv = self.make_get_request(url='api/internal/data_sources/types')
