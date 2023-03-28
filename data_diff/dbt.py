@@ -106,11 +106,7 @@ def dbt_diff(
             _local_diff(diff_vars)
         else:
             rich.print(
-                "[red]"
-                + ".".join(diff_vars.prod_path)
-                + " <> "
-                + ".".join(diff_vars.dev_path)
-                + "[/] \n"
+                _diff_output_base(".".join(diff_vars.dev_path), ".".join(diff_vars.prod_path))
                 + "Skipped due to unknown primary key. Add uniqueness tests, meta, or tags.\n"
             )
 
@@ -154,14 +150,13 @@ def _get_diff_vars(
 
 def _local_diff(diff_vars: DiffVars) -> None:
     column_diffs_str = ""
-    dev_qualified_string = ".".join(diff_vars.dev_path)
-    prod_qualified_string = ".".join(diff_vars.prod_path)
+    dev_qualified_str = ".".join(diff_vars.dev_path)
+    prod_qualified_str = ".".join(diff_vars.prod_path)
+    diff_output_str = _diff_output_base(dev_qualified_str, prod_qualified_str)
 
-    table1 = connect_to_table(
-        diff_vars.connection, dev_qualified_string, tuple(diff_vars.primary_keys), diff_vars.threads
-    )
+    table1 = connect_to_table(diff_vars.connection, dev_qualified_str, tuple(diff_vars.primary_keys), diff_vars.threads)
     table2 = connect_to_table(
-        diff_vars.connection, prod_qualified_string, tuple(diff_vars.primary_keys), diff_vars.threads
+        diff_vars.connection, prod_qualified_str, tuple(diff_vars.primary_keys), diff_vars.threads
     )
 
     table1_columns = list(table1.get_schema())
@@ -170,15 +165,8 @@ def _local_diff(diff_vars: DiffVars) -> None:
     # Not ideal, but we don't have more specific exceptions yet
     except Exception as ex:
         logger.debug(ex)
-        rich.print(
-            "[red]"
-            + prod_qualified_string
-            + " <> "
-            + dev_qualified_string
-            + "[/] \n"
-            + column_diffs_str
-            + "[green]New model or no access to prod table.[/] \n"
-        )
+        diff_output_str += "[red]New model or no access to prod table.[/] \n"
+        rich.print(diff_output_str)
         return
 
     mutual_set = set(table1_columns) & set(table2_columns)
@@ -197,29 +185,15 @@ def _local_diff(diff_vars: DiffVars) -> None:
     diff = diff_tables(table1, table2, threaded=True, algorithm=Algorithm.JOINDIFF, extra_columns=extra_columns)
 
     if list(diff):
-        rich.print(
-            "[red]"
-            + prod_qualified_string
-            + " <> "
-            + dev_qualified_string
-            + "[/] \n"
-            + column_diffs_str
-            + diff.get_stats_string(is_dbt=True)
-            + "\n"
-        )
+        diff_output_str += column_diffs_str + diff.get_stats_string(is_dbt=True) + "\n"
+        rich.print(diff_output_str)
     else:
-        rich.print(
-            "[red]"
-            + prod_qualified_string
-            + " <> "
-            + dev_qualified_string
-            + "[/] \n"
-            + column_diffs_str
-            + "[green]No row differences[/] \n"
-        )
+        diff_output_str += f"{column_diffs_str}[bold][green]No row differences[/][/] \n"
+        rich.print(diff_output_str)
 
 
 def _cloud_diff(diff_vars: DiffVars) -> None:
+    diff_output_str = _diff_output_base(".".join(diff_vars.dev_path), ".".join(diff_vars.prod_path))
     api_key = os.environ.get("DATAFOLD_API_KEY")
 
     if diff_vars.datasource_id is None:
@@ -257,15 +231,8 @@ def _cloud_diff(diff_vars: DiffVars) -> None:
         diff_id = data["id"]
         # TODO in future we should support self hosted datafold
         diff_url = f"https://app.datafold.com/datadiffs/{diff_id}/overview"
-        rich.print(
-            "[red]"
-            + ".".join(diff_vars.prod_path)
-            + " <> "
-            + ".".join(diff_vars.dev_path)
-            + "[/] \n    Diff in progress: \n    "
-            + diff_url
-            + "\n"
-        )
+        diff_output_str += f"    Diff in progress: \n    {diff_url}\n"
+        rich.print(diff_output_str)
     except BaseException as ex:  # Catch KeyboardInterrupt too
         error = ex
     finally:
@@ -290,6 +257,10 @@ def _cloud_diff(diff_vars: DiffVars) -> None:
 
         if error:
             raise error
+
+
+def _diff_output_base(dev_path: str, prod_path: str) -> str:
+    return "[green]" + prod_path + " <> " + dev_path + "[/] \n"
 
 
 class DbtParser:
