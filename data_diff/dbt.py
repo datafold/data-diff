@@ -222,9 +222,13 @@ def _local_diff(diff_vars: DiffVars) -> None:
 
 
 def _cloud_diff(diff_vars: DiffVars) -> None:
-    datafold_host = os.environ.get("DATAFOLD_HOST", "https://app.datafold.com").rstrip("/")
-    api_key = os.environ.get("DATAFOLD_API_KEY")
+    datafold_host = os.environ.get("DATAFOLD_HOST")
+    if datafold_host is None:
+        datafold_host = "https://app.datafold.com"
+    datafold_host = datafold_host.rstrip("/")
     rich.print(f"Cloud datafold host: {datafold_host}")
+
+    api_key = os.environ.get("DATAFOLD_API_KEY")
     if not api_key:
         rich.print("[red]API key not found, add it as an environment variable called DATAFOLD_API_KEY.")
         yes_or_no = Confirm.ask("Would you like to generate a new API key?")
