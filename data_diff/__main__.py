@@ -228,6 +228,12 @@ click.Context.formatter_class = MyHelpFormatter
     metavar="PATH",
     help="Which directory to look in for the dbt_project.yml file. Default is the current working directory and its parents.",
 )
+@click.option(
+    "--cloud-host-name",
+    envvar="DATAFOLD_API_HOST_NAME",
+    default=None,
+    help="Override the host name for on-premise Datafold deployments --cloud api calls. Can also be set via the DATAFOLD_API_HOST_NAME environment variable.",
+)
 def main(conf, run, **kw):
     if kw["table2"] is None and kw["database2"]:
         # Use the "database table table" form
@@ -264,6 +270,7 @@ def main(conf, run, **kw):
                 profiles_dir_override=kw["dbt_profiles_dir"],
                 project_dir_override=kw["dbt_project_dir"],
                 is_cloud=kw["cloud"],
+                cloud_host_name=kw["cloud_host_name"],
             )
         else:
             return _data_diff(**kw)
@@ -306,6 +313,7 @@ def _data_diff(
     cloud,
     dbt_profiles_dir,
     dbt_project_dir,
+    cloud_host_name,
     threads1=None,
     threads2=None,
     __conf__=None,

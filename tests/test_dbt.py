@@ -426,11 +426,48 @@ class TestDbtDiffer(unittest.TestCase):
 
         mock_request.assert_called_once()
         mock_print.assert_called_once()
+        request_endpoint = mock_request.call_args[0][1]
         request_data_dict = mock_request.call_args[1]["json"]
         self.assertEqual(
             mock_request.call_args[1]["headers"]["Authorization"],
             "Key " + expected_api_key,
         )
+        self.assertEqual(request_endpoint, f'https://app.datafold.com/api/v1/datadiffs')
+        self.assertEqual(request_data_dict["data_source1_id"], expected_datasource_id)
+        self.assertEqual(request_data_dict["data_source2_id"], expected_datasource_id)
+        self.assertEqual(request_data_dict["table1"], prod_qualified_list)
+        self.assertEqual(request_data_dict["table2"], dev_qualified_list)
+        self.assertEqual(request_data_dict["pk_columns"], expected_primary_keys)
+        
+    @patch("data_diff.dbt.rich.print")
+    @patch("data_diff.dbt.os.environ")
+    @patch("data_diff.dbt.requests.request")
+    def test_cloud_diff_host_name_override(self, mock_request, mock_os_environ, mock_print):
+        expected_api_key = "an_api_key"
+        mock_response = Mock()
+        mock_response.json.return_value = {"id": 123}
+        mock_request.return_value = mock_response
+        mock_os_environ.get.return_value = expected_api_key
+        dev_qualified_list = ["dev_db", "dev_schema", "dev_table"]
+        prod_qualified_list = ["prod_db", "prod_schema", "prod_table"]
+        expected_datasource_id = 1
+        expected_primary_keys = ["primary_key_column"]
+        diff_vars = DiffVars(
+            dev_qualified_list, prod_qualified_list, expected_primary_keys, expected_datasource_id, None, None
+        )
+        host_name = "a_host_name"
+        _cloud_diff(diff_vars, host_name)
+
+        mock_request.assert_called_once()
+        mock_print.assert_called_once()
+        
+        request_endpoint = mock_request.call_args[0][1]
+        request_data_dict = mock_request.call_args[1]["json"]
+        self.assertEqual(
+            mock_request.call_args[1]["headers"]["Authorization"],
+            "Key " + expected_api_key,
+        )
+        self.assertEqual(request_endpoint, f'https://{host_name}/api/v1/datadiffs')
         self.assertEqual(request_data_dict["data_source1_id"], expected_datasource_id)
         self.assertEqual(request_data_dict["data_source2_id"], expected_datasource_id)
         self.assertEqual(request_data_dict["table1"], prod_qualified_list)
@@ -500,7 +537,35 @@ class TestDbtDiffer(unittest.TestCase):
         mock_dbt_parser_inst.get_models.assert_called_once()
         mock_dbt_parser_inst.set_connection.assert_not_called()
 
-        mock_cloud_diff.assert_called_once_with(expected_diff_vars)
+        mock_cloud_diff.assert_called_once_with(expected_diff_vars, None)
+        mock_local_diff.assert_not_called()
+        mock_print.assert_called_once()
+        
+    @patch("data_diff.dbt._get_diff_vars")
+    @patch("data_diff.dbt._local_diff")
+    @patch("data_diff.dbt._cloud_diff")
+    @patch("data_diff.dbt.DbtParser.__new__")
+    @patch("data_diff.dbt.rich.print")
+    def test_diff_is_cloud(self, mock_print, mock_dbt_parser, mock_cloud_diff, mock_local_diff, mock_get_diff_vars):
+        mock_dbt_parser_inst = Mock()
+        mock_model = Mock()
+        expected_dbt_vars_dict = {
+            "prod_database": "prod_db",
+            "prod_schema": "prod_schema",
+            "datasource_id": 1,
+        }
+        host_name = 'a_host_name'
+
+        mock_dbt_parser.return_value = mock_dbt_parser_inst
+        mock_dbt_parser_inst.get_models.return_value = [mock_model]
+        mock_dbt_parser_inst.get_datadiff_variables.return_value = expected_dbt_vars_dict
+        expected_diff_vars = DiffVars(["dev"], ["prod"], ["pks"], 123, None, None)
+        mock_get_diff_vars.return_value = expected_diff_vars
+        dbt_diff(is_cloud=True, cloud_host_name=host_name)
+        mock_dbt_parser_inst.get_models.assert_called_once()
+        mock_dbt_parser_inst.set_connection.assert_not_called()
+
+        mock_cloud_diff.assert_called_once_with(expected_diff_vars, host_name)
         mock_local_diff.assert_not_called()
         mock_print.assert_called_once()
 

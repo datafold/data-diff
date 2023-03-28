@@ -73,7 +73,10 @@ class DiffVars:
 
 
 def dbt_diff(
-    profiles_dir_override: Optional[str] = None, project_dir_override: Optional[str] = None, is_cloud: bool = False
+    profiles_dir_override: Optional[str] = None,
+    project_dir_override: Optional[str] = None,
+    is_cloud: bool = False,
+    cloud_host_name: Optional[str] = None,
 ) -> None:
     set_entrypoint_name("CLI-dbt")
     dbt_parser = DbtParser(profiles_dir_override, project_dir_override, is_cloud)
@@ -101,7 +104,7 @@ def dbt_diff(
         )
 
         if is_cloud and len(diff_vars.primary_keys) > 0:
-            _cloud_diff(diff_vars)
+            _cloud_diff(diff_vars, cloud_host_name)
         elif not is_cloud and len(diff_vars.primary_keys) > 0:
             _local_diff(diff_vars)
         else:
@@ -219,8 +222,9 @@ def _local_diff(diff_vars: DiffVars) -> None:
         )
 
 
-def _cloud_diff(diff_vars: DiffVars) -> None:
+def _cloud_diff(diff_vars: DiffVars, host_name: Optional[str] = None) -> None:
     api_key = os.environ.get("DATAFOLD_API_KEY")
+    host_name = host_name or "app.datafold.com"
 
     if diff_vars.datasource_id is None:
         raise ValueError(
@@ -229,7 +233,7 @@ def _cloud_diff(diff_vars: DiffVars) -> None:
     if api_key is None:
         raise ValueError("API key not found, add it as an environment variable called DATAFOLD_API_KEY.")
 
-    url = "https://app.datafold.com/api/v1/datadiffs"
+    url = f"https://{host_name}/api/v1/datadiffs"
 
     payload = {
         "data_source1_id": diff_vars.datasource_id,
@@ -255,8 +259,8 @@ def _cloud_diff(diff_vars: DiffVars) -> None:
         response.raise_for_status()
         data = response.json()
         diff_id = data["id"]
-        # TODO in future we should support self hosted datafold
-        diff_url = f"https://app.datafold.com/datadiffs/{diff_id}/overview"
+
+        diff_url = f"https://{host_name}/datadiffs/{diff_id}/overview"
         rich.print(
             "[red]"
             + ".".join(diff_vars.prod_path)
