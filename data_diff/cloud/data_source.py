@@ -1,3 +1,4 @@
+import time
 from typing import List, Optional
 
 import rich
@@ -88,10 +89,49 @@ def _check_data_source_exists(
     return None
 
 
-def _render_table(data_source: TCloudApiDataSource, title: str) -> None:
-    table = Table(title=title)
-    table.add_column("Parameter", justify="center", style="cyan", no_wrap=True)
-    table.add_column("Value", justify="center", style="magenta", no_wrap=True)
+def _test_data_source(api: DatafoldAPI, data_source_id: int, timeout: int = 60) -> bool:
+    # TODO: replace an internal url by a public one
+    rv = api.make_post_request(f'api/internal/data_sources/{data_source_id}/test', {})
+    job_id = rv.json()['job_id']
+
+    failed_flag = True
+    start = time.monotonic()
+    tests = {'connection', 'temp_schema', 'schema_download'}
+
+    table = Table(title='Test results', min_width=80)
+    table.add_column("Test", justify="center", style="cyan", )
+    table.add_column("Status", justify="center", style="magenta")
+    table.add_column("Description", justify="center", style="magenta")
+
+    while tests:
+        # TODO: replace an internal url by a public one
+        rv = api.make_get_request(f'api/internal/data_sources/test/{job_id}')
+        steps = rv.json()['results']
+        for step in steps:
+            test_name = step['step']
+            if test_name not in tests:
+                continue
+
+            if step['status'] == 'done':
+                tests.remove(test_name)
+                description = ''
+                if step['result']['code'] != 'OK':
+                    description = step['result']['message']
+                    failed_flag = False
+                table.add_row(test_name, step['result']['code'], description)
+        if time.monotonic() - start > timeout:
+            for test_name in tests:
+                table.add_row(test_name, 'SKIPPING', f'Does not complete in {timeout} seconds')
+            break
+
+    rich.print(table)
+    return failed_flag
+
+
+def _render_data_source(data_source: TCloudApiDataSource, title: str = '') -> None:
+    table = Table(title=title, min_width=80)
+    table.add_column("Parameter", justify="center", style="cyan")
+    table.add_column("Value", justify="center", style="magenta")
     table.add_row("ID", str(data_source.id))
     table.add_row("Name", data_source.name)
     table.add_row("Type", data_source.type)
@@ -100,8 +140,9 @@ def _render_table(data_source: TCloudApiDataSource, title: str) -> None:
 
 def get_or_create_data_source(api: DatafoldAPI) -> int:
     ds_configs = api.get_data_source_schema_config()
-    config_names = [ds_config.name for ds_config in ds_configs]
+    data_sources = api.get_data_sources()
 
+    config_names = [ds_config.name for ds_config in ds_configs]
     for i, db_type in enumerate(config_names, start=1):
         rich.print(f'{i}) {db_type}')
     db_type_num = IntPrompt.ask(
@@ -114,16 +155,26 @@ def get_or_create_data_source(api: DatafoldAPI) -> int:
     default_ds_name = ds_config.name
     ds_name = Prompt.ask("Data source name", default=default_ds_name)
 
-    data_sources = api.get_data_sources()
     ds = _check_data_source_exists(data_sources=data_sources, data_source_name=ds_name)
     if ds is not None:
-        _render_table(data_source=ds, title=f'Found data source with name "{ds.name}"')
-        use_existing_ds = Confirm.ask("Would you like to continue with existing data source?")
+        rich.print(f'Found data source with name "{ds.name}"')
+        _render_data_source(data_source=ds)
+        use_existing_ds = Confirm.ask("Would you like to continue with the existing data source?")
         if not use_existing_ds:
             return get_or_create_data_source(api)
         return ds.id
 
     ds_config = create_ds_config(ds_config, ds_name)
     ds = api.create_data_source(ds_config)
-    _render_table(data_source=ds, title='Create data a new data source')
+    data_source_url = f'{api.host}/settings/integrations/dwh/{ds.type}/{ds.id}'
+    _render_data_source(data_source=ds, title=f"Create a new data source with ID = {ds.id} ({data_source_url})")
+
+    rich.print(
+        'We recommend to run tests for a new data source. '
+        'It requires some time but makes sure that the data source is configured correctly.'
+    )
+    run_tests = Confirm.ask('Would you like to run tests?')
+    if run_tests:
+        if not _test_data_source(api=api, data_source_id=ds.id):
+            raise ValueError('Data source tests failed')
     return ds.id

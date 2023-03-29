@@ -94,10 +94,12 @@ class DatafoldAPI:
         return [TCloudApiDataSource(**item) for item in rv.json()]
 
     def create_data_source(self, config: TDsConfig) -> TCloudApiDataSource:
+        # TODO: replace an internal url by a public one
         rv = self.make_post_request(url='api/internal/data_sources', payload=config.dict())
         return TCloudApiDataSource(**rv.json())
 
     def get_data_source_schema_config(self) -> List[TCloudApiDataSourceConfigSchema]:
+        # TODO: replace an internal url by a public one
         rv = self.make_get_request(url='api/internal/data_sources/types')
         return [
             TCloudApiDataSourceConfigSchema(
