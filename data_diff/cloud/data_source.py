@@ -1,11 +1,16 @@
+import enum
 import time
 from typing import List, Optional
 
+import pydantic
 import rich
 from rich.table import Table
 from rich.prompt import Confirm, Prompt, FloatPrompt, IntPrompt, InvalidResponse
 
-from .datafold_api import DatafoldAPI, TCloudApiDataSourceConfigSchema, TCloudApiDataSource, TDsConfig
+from .datafold_api import (
+    DatafoldAPI, TCloudApiDataSourceConfigSchema, TCloudApiDataSource, TCloudApiDataSourceTestResult, TDsConfig,
+    TestDataSourceStatus
+)
 
 
 DATA_SOURCE_TYPES_REQUIRED_SETTINGS = {
@@ -18,6 +23,12 @@ DATA_SOURCE_TYPES_REQUIRED_SETTINGS = {
     'redshift': {'host', 'user', 'port', 'password', 'dbname'},
     'snowflake': {'account', 'user', 'password', 'warehouse', 'role', 'default_db'},
 }
+
+
+class TDataSourceTestStage(pydantic.BaseModel):
+    name: str
+    status: TestDataSourceStatus
+    description: str = ''
 
 
 class TemporarySchemaPrompt(Prompt):
@@ -89,43 +100,42 @@ def _check_data_source_exists(
     return None
 
 
-def _test_data_source(api: DatafoldAPI, data_source_id: int, timeout: int = 60) -> bool:
-    # TODO: replace an internal url by a public one
-    rv = api.make_post_request(f'api/internal/data_sources/{data_source_id}/test', {})
-    job_id = rv.json()['job_id']
+def _test_data_source(api: DatafoldAPI, data_source_id: int, timeout: int = 64) -> List[TDataSourceTestStage]:
+    job_id = api.test_data_source(data_source_id)
 
-    failed_flag = True
+    checked_tests = {'connection', 'temp_schema', 'schema_download'}
+    seconds = 1
     start = time.monotonic()
-    tests = {'connection', 'temp_schema', 'schema_download'}
-
-    table = Table(title='Test results', min_width=80)
-    table.add_column("Test", justify="center", style="cyan", )
-    table.add_column("Status", justify="center", style="magenta")
-    table.add_column("Description", justify="center", style="magenta")
-
-    while tests:
-        # TODO: replace an internal url by a public one
-        rv = api.make_get_request(f'api/internal/data_sources/test/{job_id}')
-        steps = rv.json()['results']
-        for step in steps:
-            test_name = step['step']
-            if test_name not in tests:
+    results = []
+    while True:
+        tests = api.check_data_source_test_results(job_id)
+        for test in tests:
+            if test.name not in checked_tests:
                 continue
 
-            if step['status'] == 'done':
-                tests.remove(test_name)
-                description = ''
-                if step['result']['code'] != 'OK':
-                    description = step['result']['message']
-                    failed_flag = False
-                table.add_row(test_name, step['result']['code'], description)
-        if time.monotonic() - start > timeout:
-            for test_name in tests:
-                table.add_row(test_name, 'SKIPPING', f'Does not complete in {timeout} seconds')
+            if test.status == 'done':
+                checked_tests.remove(test.name)
+                results.append(
+                    TDataSourceTestStage(name=test.name, status=test.result.status, description=test.result.message)
+                )
+
+        if not checked_tests:
             break
 
-    rich.print(table)
-    return failed_flag
+        if time.monotonic() - start > timeout:
+            for test_name in checked_tests:
+                results.append(
+                    TDataSourceTestStage(
+                        name=test_name,
+                        status=TestDataSourceStatus.SKIP,
+                        description=f'Does not complete in {timeout} seconds',
+                    )
+                )
+            break
+        time.sleep(seconds)
+        seconds *= 2
+
+    return results
 
 
 def _render_data_source(data_source: TCloudApiDataSource, title: str = '') -> None:
@@ -135,6 +145,16 @@ def _render_data_source(data_source: TCloudApiDataSource, title: str = '') -> No
     table.add_row("ID", str(data_source.id))
     table.add_row("Name", data_source.name)
     table.add_row("Type", data_source.type)
+    rich.print(table)
+
+
+def _render_data_source_test_results(test_results: List[TDataSourceTestStage]) -> None:
+    table = Table(title='Test results', min_width=80)
+    table.add_column("Test", justify="center", style="cyan", )
+    table.add_column("Status", justify="center", style="magenta")
+    table.add_column("Description", justify="center", style="magenta")
+    for result in test_results:
+        table.add_row(result.name, result.status, result.description)
     rich.print(table)
 
 
@@ -175,6 +195,9 @@ def get_or_create_data_source(api: DatafoldAPI) -> int:
     )
     run_tests = Confirm.ask('Would you like to run tests?')
     if run_tests:
-        if not _test_data_source(api=api, data_source_id=ds.id):
+        test_results = _test_data_source(api=api, data_source_id=ds.id)
+        _render_data_source_test_results(test_results=test_results)
+        if any(result.status == TestDataSourceStatus.FAILED for result in test_results):
             raise ValueError('Data source tests failed')
+
     return ds.id

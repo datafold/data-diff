@@ -1,8 +1,16 @@
 import dataclasses
+import enum
 from typing import Any, Dict, List, Optional
 
 import pydantic
 import requests
+
+
+class TestDataSourceStatus(str, enum.Enum):
+    SUCCESS = 'ok'
+    FAILED = 'error'
+    SKIP = 'skip'
+    UNKNOWN = 'unknown'
 
 
 class TCloudApiDataSourceSchema(pydantic.BaseModel):
@@ -65,6 +73,18 @@ class TCloudApiDataDiff(pydantic.BaseModel):
     pk_columns: List[str]
 
 
+class TCloudDataSourceTestResult(pydantic.BaseModel):
+    status: TestDataSourceStatus
+    message: str
+    outcome: str
+
+
+class TCloudApiDataSourceTestResult(pydantic.BaseModel):
+    name: str
+    status: str
+    result: TCloudDataSourceTestResult
+
+
 @dataclasses.dataclass
 class DatafoldAPI:
     api_key: str
@@ -118,3 +138,24 @@ class DatafoldAPI:
     def create_data_diff(self, payload: TCloudApiDataDiff) -> int:
         rv = self.make_post_request(url='api/v1/datadiffs', payload=payload.dict())
         return rv.json()['id']
+
+    def test_data_source(self, data_source_id: int) -> int:
+        # TODO: replace an internal url by a public one
+        rv = self.make_post_request(f'api/internal/data_sources/{data_source_id}/test', {})
+        return rv.json()['job_id']
+
+    def check_data_source_test_results(self, job_id: int) -> List[TCloudApiDataSourceTestResult]:
+        # TODO: replace an internal url by a public one
+        rv = self.make_get_request(f'api/internal/data_sources/test/{job_id}')
+        return [
+            TCloudApiDataSourceTestResult(
+                name=item['step'],
+                status=item['status'],
+                result=TCloudDataSourceTestResult(
+                    status=item['result']['code'].lower(),
+                    message=item['result']['message'],
+                    outcome=item['result']['outcome'],
+                )
+            )
+            for item in rv.json()['results']
+        ]
