@@ -10,7 +10,7 @@ from .datafold_api import DatafoldAPI, TCloudApiDataSourceConfigSchema, TCloudAp
 
 DATA_SOURCE_TYPES_REQUIRED_SETTINGS = {
     'bigquery': {'projectId', 'jsonKeyFile', 'location'},
-    'databricks': {'host', 'http_password', 'database', 'http_pats'},
+    'databricks': {'host', 'http_password', 'database', 'http_path'},
     'mysql': {'host', 'user', 'passwd', 'db'},
     'pg': {'host', 'user', 'port', 'password', 'dbname'},
     'postgres_aurora': {'host', 'user', 'port', 'password', 'dbname'},
@@ -37,14 +37,14 @@ def _validate_temp_schema(temp_schema: str):
         raise ValueError('Temporary schema should has a format <database>.<schema>')
 
 
-def create_ds_config(ds_config: TCloudApiDataSourceConfigSchema, ds_name: str) -> TDsConfig:
+def create_ds_config(ds_config: TCloudApiDataSourceConfigSchema, data_source_name: str) -> TDsConfig:
     options = _parse_ds_credentials(ds_config=ds_config, only_basic_settings=True)
 
     temp_schema = TemporarySchemaPrompt.ask('Temporary schema (<database>.<schema>)')
     float_tolerance = FloatPrompt.ask('Float tolerance', default=0.000001)
 
     return TDsConfig(
-        name=ds_name,
+        name=data_source_name,
         type=ds_config.db_type,
         temp_schema=temp_schema,
         float_tolerance=float_tolerance,

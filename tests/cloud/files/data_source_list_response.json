@@ -1,0 +1,232 @@
+[
+  {
+    "id": 3,
+    "name": "BigQuery",
+    "type": "bigquery",
+    "is_paused": false,
+    "hidden": false,
+    "temp_schema": "marine-potion-312409.ilia_dev",
+    "disable_schema_indexing": false,
+    "disable_profiling": false,
+    "catalog_include_list": "",
+    "catalog_exclude_list": "",
+    "schema_indexing_schedule": null,
+    "schema_max_age_s": null,
+    "profile_schedule": null,
+    "profile_exclude_list": "",
+    "profile_include_list": "",
+    "discourage_manual_profiling": false,
+    "lineage_schedule": null,
+    "float_tolerance": 0.0001,
+    "options": null,
+    "queue_name": null,
+    "scheduled_queue_name": null,
+    "groups": null,
+    "view_only": false,
+    "created_from": null,
+    "source": null,
+    "max_allowed_connections": 25,
+    "last_test": null,
+    "secret_id": null
+  },
+  {
+    "id": 4,
+    "name": "Databricks",
+    "type": "databricks",
+    "is_paused": false,
+    "hidden": false,
+    "temp_schema": "hive_metastore.ilia_dev",
+    "disable_schema_indexing": false,
+    "disable_profiling": false,
+    "catalog_include_list": "hive_metastore.ilia_dev.*",
+    "catalog_exclude_list": "",
+    "schema_indexing_schedule": null,
+    "schema_max_age_s": null,
+    "profile_schedule": null,
+    "profile_exclude_list": "",
+    "profile_include_list": "",
+    "discourage_manual_profiling": false,
+    "lineage_schedule": null,
+    "float_tolerance": 0.0,
+    "options": null,
+    "queue_name": null,
+    "scheduled_queue_name": null,
+    "groups": null,
+    "view_only": false,
+    "created_from": null,
+    "source": null,
+    "max_allowed_connections": 25,
+    "last_test": null,
+    "secret_id": null
+  },
+  {
+    "id": 5,
+    "name": "MySQL",
+    "type": "mysql",
+    "is_paused": false,
+    "hidden": false,
+    "temp_schema": "temporary_test_schema",
+    "disable_schema_indexing": false,
+    "disable_profiling": false,
+    "catalog_include_list": "",
+    "catalog_exclude_list": "",
+    "schema_indexing_schedule": null,
+    "schema_max_age_s": null,
+    "profile_schedule": null,
+    "profile_exclude_list": "",
+    "profile_include_list": "",
+    "discourage_manual_profiling": false,
+    "lineage_schedule": null,
+    "float_tolerance": 1e-7,
+    "options": null,
+    "queue_name": null,
+    "scheduled_queue_name": null,
+    "groups": null,
+    "view_only": false,
+    "created_from": null,
+    "source": null,
+    "max_allowed_connections": 25,
+    "last_test": null,
+    "secret_id": null
+  },
+  {
+    "id": 2,
+    "name": "PostgreSQL",
+    "type": "pg",
+    "is_paused": false,
+    "hidden": false,
+    "temp_schema": "postgres.datafold_tmp",
+    "disable_schema_indexing": false,
+    "disable_profiling": false,
+    "catalog_include_list": "",
+    "catalog_exclude_list": "",
+    "schema_indexing_schedule": "*/30 * * * *",
+    "schema_max_age_s": 780,
+    "profile_schedule": null,
+    "profile_exclude_list": "",
+    "profile_include_list": "",
+    "discourage_manual_profiling": false,
+    "lineage_schedule": null,
+    "float_tolerance": 0.000001,
+    "options": null,
+    "queue_name": null,
+    "scheduled_queue_name": null,
+    "groups": null,
+    "view_only": false,
+    "created_from": null,
+    "source": null,
+    "max_allowed_connections": 10,
+    "last_test": {
+      "tested_at": "2023-03-29T11:02:05.025096+00:00",
+      "results": [
+        {
+          "step": "lineage_download",
+          "status": "done",
+          "result": {
+            "code": "OK",
+            "message": "No lineage downloader for this data source",
+            "outcome": "skipped"
+          }
+        },
+        {
+          "step": "schema_download",
+          "status": "done",
+          "result": {
+            "code": "OK",
+            "message": "Discovered 6 tables",
+            "outcome": "success"
+          }
+        },
+        {
+          "step": "temp_schema",
+          "status": "done",
+          "result": {
+            "code": "ERROR",
+            "message": "Unable to create table \"postgres\".\"datafold_tmp\".\"test_connection\": schema \"datafold_tmp\" does not exist\n",
+            "outcome": "failed"
+          }
+        },
+        {
+          "step": "connection",
+          "status": "done",
+          "result": {
+            "code": "OK",
+            "message": "Connected to the database",
+            "outcome": "success"
+          }
+        }
+      ]
+    },
+    "secret_id": null
+  },
+  {
+    "id": 1,
+    "name": "Snowflake",
+    "type": "snowflake",
+    "is_paused": false,
+    "hidden": false,
+    "temp_schema": "INTEGRATION.ILIA_DEV",
+    "disable_schema_indexing": false,
+    "disable_profiling": false,
+    "catalog_include_list": "*.ILIA_DEV.*\n*.BEERS_ILIA.*\n*.BEERS_ILIA_DEV.*",
+    "catalog_exclude_list": "",
+    "schema_indexing_schedule": null,
+    "schema_max_age_s": null,
+    "profile_schedule": null,
+    "profile_exclude_list": "",
+    "profile_include_list": "",
+    "discourage_manual_profiling": true,
+    "lineage_schedule": null,
+    "float_tolerance": 1e-7,
+    "options": null,
+    "queue_name": null,
+    "scheduled_queue_name": null,
+    "groups": null,
+    "view_only": false,
+    "created_from": null,
+    "source": null,
+    "max_allowed_connections": 25,
+    "last_test": {
+      "tested_at": "2023-03-29T11:11:05.219534+00:00",
+      "results": [
+        {
+          "step": "lineage_download",
+          "status": "done",
+          "result": {
+            "code": "OK",
+            "message": "Lineage fetched",
+            "outcome": "success"
+          }
+        },
+        {
+          "step": "schema_download",
+          "status": "done",
+          "result": {
+            "code": "OK",
+            "message": "Discovered 12493 tables",
+            "outcome": "success"
+          }
+        },
+        {
+          "step": "temp_schema",
+          "status": "done",
+          "result": {
+            "code": "OK",
+            "message": "Schema \"INTEGRATION\".\"ILIA_DEV\" is writeable",
+            "outcome": "success"
+          }
+        },
+        {
+          "step": "connection",
+          "status": "done",
+          "result": {
+            "code": "OK",
+            "message": "Connected to the database",
+            "outcome": "success"
+          }
+        }
+      ]
+    },
+    "secret_id": null
+  }
+]

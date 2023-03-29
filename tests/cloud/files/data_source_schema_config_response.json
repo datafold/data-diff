@@ -1,0 +1,548 @@
+[
+  {
+    "name": "BigQuery",
+    "type": "bigquery",
+    "configuration_schema": {
+      "title": "BigQueryConfig",
+      "type": "object",
+      "properties": {
+        "projectId": {
+          "title": "Project ID",
+          "section": "basic",
+          "type": "string"
+        },
+        "jsonKeyFile": {
+          "title": "JSON Key File",
+          "section": "basic",
+          "type": "string",
+          "writeOnly": true,
+          "format": "password"
+        },
+        "useStandardSql": {
+          "title": "Use Standard SQL",
+          "default": true,
+          "section": "config",
+          "type": "boolean"
+        },
+        "location": {
+          "title": "Processing Location",
+          "default": "US",
+          "section": "basic",
+          "examples": [
+            "US"
+          ],
+          "type": "string"
+        },
+        "totalMBytesProcessedLimit": {
+          "title": "Scanned Data Limit (MB)",
+          "section": "config",
+          "type": "integer"
+        },
+        "userDefinedFunctionResourceUri": {
+          "title": "UDF Source URIs",
+          "section": "config",
+          "example": "gs://bucket/date_utils.js",
+          "type": "string"
+        },
+        "extraProjectsToIndex": {
+          "title": "List of extra projects to index (one per line)",
+          "examples": [
+            "project1\nproject2"
+          ],
+          "section": "config",
+          "widget": "multiline",
+          "type": "string"
+        }
+      },
+      "required": [
+        "projectId",
+        "jsonKeyFile"
+      ],
+      "secret": [
+        "jsonKeyFile"
+      ]
+    },
+    "features": [
+      "datadiff",
+      "profiling",
+      "lineage",
+      "timetravel"
+    ]
+  },
+  {
+    "name": "Databricks",
+    "type": "databricks",
+    "configuration_schema": {
+      "title": "DatabricksConfig",
+      "type": "object",
+      "properties": {
+        "host": {
+          "title": "Host",
+          "maxLength": 128,
+          "type": "string"
+        },
+        "http_path": {
+          "title": "HTTP Path",
+          "default": "",
+          "type": "string"
+        },
+        "http_password": {
+          "title": "Access Token",
+          "type": "string",
+          "writeOnly": true,
+          "format": "password"
+        },
+        "database": {
+          "title": "Database",
+          "type": "string"
+        }
+      },
+      "required": [
+        "host",
+        "http_password",
+        "database"
+      ],
+      "secret": [
+        "http_password"
+      ]
+    },
+    "features": [
+      "datadiff",
+      "profiling",
+      "lineage"
+    ]
+  },
+  {
+    "name": "MySQL",
+    "type": "mysql",
+    "configuration_schema": {
+      "title": "MysqlConfig",
+      "type": "object",
+      "properties": {
+        "host": {
+          "title": "Host",
+          "maxLength": 128,
+          "type": "string"
+        },
+        "port": {
+          "title": "Port",
+          "default": 3306,
+          "type": "integer"
+        },
+        "user": {
+          "title": "User",
+          "type": "string"
+        },
+        "passwd": {
+          "title": "Passwd",
+          "type": "string",
+          "writeOnly": true,
+          "format": "password"
+        },
+        "db": {
+          "title": "Database name",
+          "type": "string"
+        }
+      },
+      "required": [
+        "host",
+        "user",
+        "passwd",
+        "db"
+      ],
+      "secret": [
+        "passwd"
+      ]
+    },
+    "features": [
+      "profiling"
+    ]
+  },
+  {
+    "name": "PostgreSQL",
+    "type": "pg",
+    "configuration_schema": {
+      "title": "PostgreSQLConfig",
+      "type": "object",
+      "properties": {
+        "host": {
+          "title": "Host",
+          "maxLength": 128,
+          "type": "string"
+        },
+        "port": {
+          "title": "Port",
+          "default": 5432,
+          "type": "integer"
+        },
+        "user": {
+          "title": "User",
+          "type": "string"
+        },
+        "password": {
+          "title": "Password",
+          "type": "string",
+          "writeOnly": true,
+          "format": "password"
+        },
+        "role": {
+          "title": "Role (case sensitive)",
+          "type": "string"
+        },
+        "dbname": {
+          "title": "Database Name",
+          "type": "string"
+        },
+        "sslmode": {
+          "title": "SSL Mode",
+          "default": "prefer",
+          "section": "config",
+          "type": "string"
+        }
+      },
+      "required": [
+        "host",
+        "user",
+        "dbname"
+      ],
+      "secret": [
+        "password"
+      ]
+    },
+    "features": [
+      "datadiff",
+      "profiling"
+    ]
+  },
+  {
+    "name": "PostgreSQLAurora",
+    "type": "postgres_aurora",
+    "configuration_schema": {
+      "title": "PostgreSQLAuroraConfig",
+      "type": "object",
+      "properties": {
+        "host": {
+          "title": "Host",
+          "maxLength": 128,
+          "type": "string"
+        },
+        "port": {
+          "title": "Port",
+          "default": 5432,
+          "type": "integer"
+        },
+        "user": {
+          "title": "User",
+          "type": "string"
+        },
+        "password": {
+          "title": "Password",
+          "type": "string",
+          "writeOnly": true,
+          "format": "password"
+        },
+        "role": {
+          "title": "Role (case sensitive)",
+          "type": "string"
+        },
+        "dbname": {
+          "title": "Database Name",
+          "type": "string"
+        },
+        "sslmode": {
+          "title": "SSL Mode",
+          "default": "prefer",
+          "section": "config",
+          "type": "string"
+        },
+        "aws_access_key_id": {
+          "title": "AWS Access Key",
+          "type": "string"
+        },
+        "aws_secret_access_key": {
+          "title": "AWS Secret",
+          "type": "string",
+          "writeOnly": true,
+          "format": "password"
+        },
+        "aws_region": {
+          "title": "AWS Region",
+          "type": "string"
+        },
+        "aws_cloudwatch_log_group": {
+          "title": "Cloudwatch Postgres Log Group",
+          "type": "string"
+        },
+        "keep_alive": {
+          "title": "Keep Alive timeout in seconds, leave empty to disable",
+          "type": "integer"
+        }
+      },
+      "required": [
+        "host",
+        "user",
+        "dbname"
+      ],
+      "secret": [
+        "password",
+        "aws_secret_access_key"
+      ]
+    },
+    "features": [
+      "datadiff",
+      "profiling",
+      "lineage"
+    ]
+  },
+  {
+    "name": "PostgreSQLRDS",
+    "type": "postgres_aws_rds",
+    "configuration_schema": {
+      "title": "PostgreSQLAuroraConfig",
+      "type": "object",
+      "properties": {
+        "host": {
+          "title": "Host",
+          "maxLength": 128,
+          "type": "string"
+        },
+        "port": {
+          "title": "Port",
+          "default": 5432,
+          "type": "integer"
+        },
+        "user": {
+          "title": "User",
+          "type": "string"
+        },
+        "password": {
+          "title": "Password",
+          "type": "string",
+          "writeOnly": true,
+          "format": "password"
+        },
+        "role": {
+          "title": "Role (case sensitive)",
+          "type": "string"
+        },
+        "dbname": {
+          "title": "Database Name",
+          "type": "string"
+        },
+        "sslmode": {
+          "title": "SSL Mode",
+          "default": "prefer",
+          "section": "config",
+          "type": "string"
+        },
+        "aws_access_key_id": {
+          "title": "AWS Access Key",
+          "type": "string"
+        },
+        "aws_secret_access_key": {
+          "title": "AWS Secret",
+          "type": "string",
+          "writeOnly": true,
+          "format": "password"
+        },
+        "aws_region": {
+          "title": "AWS Region",
+          "type": "string"
+        },
+        "aws_cloudwatch_log_group": {
+          "title": "Cloudwatch Postgres Log Group",
+          "type": "string"
+        },
+        "keep_alive": {
+          "title": "Keep Alive timeout in seconds, leave empty to disable",
+          "type": "integer"
+        }
+      },
+      "required": [
+        "host",
+        "user",
+        "dbname"
+      ],
+      "secret": [
+        "password",
+        "aws_secret_access_key"
+      ]
+    },
+    "features": [
+      "datadiff",
+      "profiling",
+      "lineage"
+    ]
+  },
+  {
+    "name": "Redshift",
+    "type": "redshift",
+    "configuration_schema": {
+      "title": "RedshiftConfig",
+      "type": "object",
+      "properties": {
+        "host": {
+          "title": "Host",
+          "maxLength": 128,
+          "type": "string"
+        },
+        "port": {
+          "title": "Port",
+          "default": 5432,
+          "type": "integer"
+        },
+        "user": {
+          "title": "User",
+          "type": "string"
+        },
+        "password": {
+          "title": "Password",
+          "type": "string",
+          "writeOnly": true,
+          "format": "password"
+        },
+        "role": {
+          "title": "Role (case sensitive)",
+          "type": "string"
+        },
+        "dbname": {
+          "title": "Database Name",
+          "type": "string"
+        },
+        "sslmode": {
+          "title": "SSL Mode",
+          "default": "prefer",
+          "section": "config",
+          "type": "string"
+        },
+        "adhoc_query_group": {
+          "title": "Query Group for Adhoc Queries",
+          "default": "default",
+          "section": "config",
+          "type": "string"
+        },
+        "scheduled_query_group": {
+          "title": "Query Group for Scheduled Queries",
+          "default": "default",
+          "section": "config",
+          "type": "string"
+        }
+      },
+      "required": [
+        "host",
+        "user",
+        "dbname"
+      ],
+      "secret": [
+        "password"
+      ]
+    },
+    "features": [
+      "datadiff",
+      "profiling",
+      "lineage"
+    ]
+  },
+  {
+    "name": "Snowflake",
+    "type": "snowflake",
+    "configuration_schema": {
+      "title": "SnowflakeConfig",
+      "type": "object",
+      "properties": {
+        "account": {
+          "title": "Account",
+          "maxLength": 128,
+          "type": "string"
+        },
+        "user": {
+          "title": "User",
+          "default": "DATAFOLD",
+          "type": "string"
+        },
+        "password": {
+          "title": "Password",
+          "type": "string",
+          "writeOnly": true,
+          "format": "password"
+        },
+        "keyPairFile": {
+          "title": "Key Pair file (private-key)",
+          "type": "string",
+          "writeOnly": true,
+          "format": "password"
+        },
+        "warehouse": {
+          "title": "Warehouse (case sensitive)",
+          "default": "COMPUTE_WH",
+          "examples": [
+            "COMPUTE_WH"
+          ],
+          "type": "string"
+        },
+        "role": {
+          "title": "Role (case sensitive)",
+          "default": "DATAFOLDROLE",
+          "examples": [
+            "PUBLIC"
+          ],
+          "type": "string"
+        },
+        "default_db": {
+          "title": "Default DB (case sensitive)",
+          "examples": [
+            "MY_DB"
+          ],
+          "type": "string"
+        },
+        "default_schema": {
+          "title": "Default schema (case sensitive)",
+          "default": "PUBLIC",
+          "examples": [
+            "PUBLIC"
+          ],
+          "section": "config",
+          "type": "string"
+        },
+        "region": {
+          "title": "Region",
+          "default": "us-west",
+          "section": "config",
+          "type": "string"
+        },
+        "metadata_database": {
+          "title": "Database containing metadata (usually SNOWFLAKE)",
+          "default": "SNOWFLAKE",
+          "section": "config",
+          "examples": [
+            "SNOWFLAKE"
+          ],
+          "type": "string"
+        },
+        "sql_variables": {
+          "title": "Session variables applied at every connection.",
+          "section": "config",
+          "widget": "multiline",
+          "examples": [
+            "variable_1=10\nvariable_2=test"
+          ],
+          "type": "string"
+        }
+      },
+      "required": [
+        "account",
+        "default_db"
+      ],
+      "secret": [
+        "password",
+        "keyPairFile"
+      ]
+    },
+    "features": [
+      "datadiff",
+      "profiling",
+      "lineage",
+      "timetravel"
+    ]
+  }
+]
