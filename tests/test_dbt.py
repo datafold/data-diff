@@ -192,7 +192,7 @@ class TestDbtParser(unittest.TestCase):
             DbtParser.set_connection(mock_self)
 
         self.assertNotIsInstance(mock_self.connection, dict)
-    
+
     def test_set_connection_snowflake_authenticator(self):
         expected_driver = "snowflake"
         expected_credentials = {"user": "user", "authenticator": "authenticator"}
@@ -476,27 +476,74 @@ class TestDbtDiffer(unittest.TestCase):
         mock_connect.assert_any_call(mock_connection, ".".join(prod_qualified_list), tuple(expected_keys), None)
         mock_diff.get_stats_string.assert_not_called()
 
-    @patch("data_diff.dbt._cloud_poll_and_get_summary_results")
-    @patch("data_diff.dbt._cloud_submit_diff")
     @patch("data_diff.dbt.rich.print")
-    def test_cloud_diff(self, mock_print, mock_submit_diff, mock_poll_results):
-        mock_submit_diff.return_value = 123
-        mock_poll_results.return_value = EXAMPLE_DIFF_RESULTS
+    @patch("data_diff.dbt.os.environ")
+    @patch("data_diff.dbt.DatafoldAPI.create_data_diff")
+    def test_cloud_diff(self, mock_create_data_diff, mock_os_environ, mock_print):
+        expected_api_key = "an_api_key"
+        mock_create_data_diff.return_value = {"id": 123}
+        mock_os_environ.get.return_value = expected_api_key
         dev_qualified_list = ["dev_db", "dev_schema", "dev_table"]
         prod_qualified_list = ["prod_db", "prod_schema", "prod_table"]
-        datasource_id = 1
+        expected_datasource_id = 1
         expected_primary_keys = ["primary_key_column"]
-        diff_vars = DiffVars(dev_qualified_list, prod_qualified_list, expected_primary_keys, None, None)
-        datafold_host = "a_host"
-        url = "a_url"
-        api_key = "an_api_key"
-        _cloud_diff(diff_vars, datasource_id, datafold_host, url, api_key)
+        diff_vars = DiffVars(
+            dev_qualified_list, prod_qualified_list, expected_primary_keys, expected_datasource_id, None, None
+        )
+        _cloud_diff(diff_vars)
 
-        mock_print.assert_called_once()
-        mock_submit_diff.assert_called_once()
-        mock_poll_results.assert_called_once()
+        mock_create_data_diff.assert_called_once()
+        self.assertEqual(len(mock_print.call_args_list), 2)
 
-    @patch("data_diff.dbt._setup_cloud_diff")
+        payload = mock_create_data_diff.call_args[1]['payload']
+        self.assertEqual(payload.data_source1_id, expected_datasource_id)
+        self.assertEqual(payload.data_source2_id, expected_datasource_id)
+        self.assertEqual(payload.table1, prod_qualified_list)
+        self.assertEqual(payload.table2, dev_qualified_list)
+        self.assertEqual(payload.pk_columns, expected_primary_keys)
+
+    @patch("data_diff.dbt.rich.print")
+    @patch("data_diff.dbt.os.environ")
+    @patch("data_diff.dbt.DatafoldAPI.create_data_diff")
+    @patch("data_diff.dbt.Confirm.ask")
+    def test_cloud_diff_ds_id_none(
+        self, mock_confirm_is_create_data_source, mock_create_data_diff, mock_os_environ, mock_print
+    ):
+        expected_api_key = "an_api_key"
+        mock_create_data_diff.return_value = {"id": 123}
+        mock_os_environ.get.return_value = expected_api_key
+        mock_confirm_is_create_data_source.return_value = False
+        dev_qualified_list = ["dev_db", "dev_schema", "dev_table"]
+        prod_qualified_list = ["prod_db", "prod_schema", "prod_table"]
+        expected_datasource_id = None
+        primary_keys = ["primary_key_column"]
+        diff_vars = DiffVars(dev_qualified_list, prod_qualified_list, primary_keys, expected_datasource_id, None, None)
+        with self.assertRaises(ValueError):
+            _cloud_diff(diff_vars)
+
+        mock_create_data_diff.assert_not_called()
+        self.assertEqual(len(mock_print.call_args_list), 2)
+
+    @patch("data_diff.dbt.rich.print")
+    @patch("data_diff.dbt.os.environ")
+    @patch("data_diff.dbt.DatafoldAPI.create_data_diff")
+    @patch("data_diff.dbt.Confirm.ask")
+    def test_cloud_diff_api_key_none(self, mock_confirm_answer, mock_create_data_diff, mock_os_environ, mock_print):
+        expected_api_key = None
+        mock_create_data_diff.return_value = {"id": 123}
+        mock_os_environ.get.return_value = expected_api_key
+        mock_confirm_answer.return_value = False
+        dev_qualified_list = ["dev_db", "dev_schema", "dev_table"]
+        prod_qualified_list = ["prod_db", "prod_schema", "prod_table"]
+        expected_datasource_id = 1
+        primary_keys = ["primary_key_column"]
+        diff_vars = DiffVars(dev_qualified_list, prod_qualified_list, primary_keys, expected_datasource_id, None, None)
+        with self.assertRaises(ValueError):
+            _cloud_diff(diff_vars)
+
+        mock_create_data_diff.assert_not_called()
+        self.assertEqual(len(mock_print.call_args_list), 2)
+
     @patch("data_diff.dbt._get_diff_vars")
     @patch("data_diff.dbt._local_diff")
     @patch("data_diff.dbt._cloud_diff")
