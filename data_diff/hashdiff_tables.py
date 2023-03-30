@@ -32,9 +32,6 @@ def diff_sets(a: set, b: set, key_indices: list = None) -> Iterator:
     if key_indices == None:
         key_indices = [0]
 
-    # The first item of key_indices should always be the first key_column (see TableDiffer.relevant_columns)
-    assert key_indices[0] == 0
-
     # NOTE: updated to support sorting on multiple PK columns (compound keys)
     d = defaultdict(list)
     for row in a:
