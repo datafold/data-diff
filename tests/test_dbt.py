@@ -331,7 +331,7 @@ class TestDbtDiffer(unittest.TestCase):
         artifacts_path = os.getcwd() + '/tests/dbt_artifacts'
         test_project_path = os.environ.get("DATA_DIFF_DBT_PROJ") or artifacts_path
         diff = run_datadiff_cli("--dbt", "--dbt-project-dir", test_project_path, "--dbt-profiles-dir", test_project_path)
-        assert diff[-1].decode("utf-8") == "Diffs Complete!"
+        assert "Diffs Complete!" in '\n'.join(d.decode("utf-8") for d in diff)
 
         # assertions for the diff that exists in tests/dbt_artifacts/jaffle_shop.duckdb
         if test_project_path == artifacts_path:
@@ -340,7 +340,7 @@ class TestDbtDiffer(unittest.TestCase):
             assert diff_string.count('<>') == 5
             # 4 with no diffs
             assert diff_string.count('No row differences') == 4
-            # 1 with a diff 
+            # 1 with a diff
             assert diff_string.count('| Rows Added    | Rows Removed') == 1
 
 
@@ -425,7 +425,7 @@ class TestDbtDiffer(unittest.TestCase):
         _cloud_diff(diff_vars)
 
         mock_request.assert_called_once()
-        mock_print.assert_called_once()
+        self.assertEqual(len(mock_print.call_args_list), 2)
         request_data_dict = mock_request.call_args[1]["json"]
         self.assertEqual(
             mock_request.call_args[1]["headers"]["Authorization"],
@@ -455,17 +455,19 @@ class TestDbtDiffer(unittest.TestCase):
             _cloud_diff(diff_vars)
 
         mock_request.assert_not_called()
-        mock_print.assert_not_called()
+        mock_print.assert_called_once()
 
     @patch("data_diff.dbt.rich.print")
     @patch("data_diff.dbt.os.environ")
     @patch("data_diff.dbt.requests.request")
-    def test_cloud_diff_api_key_none(self, mock_request, mock_os_environ, mock_print):
+    @patch("data_diff.dbt.Confirm.ask")
+    def test_cloud_diff_api_key_none(self, mock_confirm_answer, mock_request, mock_os_environ, mock_print):
         expected_api_key = None
         mock_response = Mock()
         mock_response.json.return_value = {"id": 123}
         mock_request.return_value = mock_response
         mock_os_environ.get.return_value = expected_api_key
+        mock_confirm_answer.return_value = False
         dev_qualified_list = ["dev_db", "dev_schema", "dev_table"]
         prod_qualified_list = ["prod_db", "prod_schema", "prod_table"]
         expected_datasource_id = 1
@@ -475,7 +477,7 @@ class TestDbtDiffer(unittest.TestCase):
             _cloud_diff(diff_vars)
 
         mock_request.assert_not_called()
-        mock_print.assert_not_called()
+        self.assertEqual(len(mock_print.call_args_list), 2)
 
     @patch("data_diff.dbt._get_diff_vars")
     @patch("data_diff.dbt._local_diff")

@@ -1,7 +1,9 @@
 import json
 import os
 import time
+import webbrowser
 import rich
+from rich.prompt import Confirm
 
 from collections import defaultdict
 from dataclasses import dataclass
@@ -220,16 +222,28 @@ def _local_diff(diff_vars: DiffVars) -> None:
 
 
 def _cloud_diff(diff_vars: DiffVars) -> None:
+    datafold_host = os.environ.get("DATAFOLD_HOST")
+    if datafold_host is None:
+        datafold_host = "https://app.datafold.com"
+    datafold_host = datafold_host.rstrip("/")
+    rich.print(f"Cloud datafold host: {datafold_host}")
+
     api_key = os.environ.get("DATAFOLD_API_KEY")
+    if not api_key:
+        rich.print("[red]API key not found, add it as an environment variable called DATAFOLD_API_KEY.")
+        yes_or_no = Confirm.ask("Would you like to generate a new API key?")
+        if yes_or_no:
+            webbrowser.open(f"{datafold_host}/login?next={datafold_host}/users/me")
+            return
+        else:
+            raise ValueError("Cannot diff because the API key is not provided")
 
     if diff_vars.datasource_id is None:
         raise ValueError(
             "Datasource ID not found, include it as a dbt variable in the dbt_project.yml. \nvars:\n data_diff:\n   datasource_id: 1234"
         )
-    if api_key is None:
-        raise ValueError("API key not found, add it as an environment variable called DATAFOLD_API_KEY.")
 
-    url = "https://app.datafold.com/api/v1/datadiffs"
+    url = f"{datafold_host}/api/v1/datadiffs"
 
     payload = {
         "data_source1_id": diff_vars.datasource_id,
@@ -255,8 +269,7 @@ def _cloud_diff(diff_vars: DiffVars) -> None:
         response.raise_for_status()
         data = response.json()
         diff_id = data["id"]
-        # TODO in future we should support self hosted datafold
-        diff_url = f"https://app.datafold.com/datadiffs/{diff_id}/overview"
+        diff_url = f"{datafold_host}/datadiffs/{diff_id}/overview"
         rich.print(
             "[red]"
             + ".".join(diff_vars.prod_path)

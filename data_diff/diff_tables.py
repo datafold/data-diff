@@ -153,7 +153,6 @@ class DiffResultWrapper:
                 string_output += f"\n{k}: {v}"
 
         else:
-
             string_output = ""
             string_output += f"{diff_stats.table1_count} rows in table A\n"
             string_output += f"{diff_stats.table2_count} rows in table B\n"
