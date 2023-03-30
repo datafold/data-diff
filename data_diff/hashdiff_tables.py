@@ -94,9 +94,11 @@ class HashDiffer(TableDiffer):
             col2 = table2._schema[c2]
 
             # if user passed specialized conversions for either column, skip validation
-            if any(c in table1.col_conversions for c in [c1.lower(), c1.upper()]):
+            t1_overrides = {**table1.col_conversions, **table1.column_type_overrides}
+            t2_overrides = {**table2.col_conversions, **table2.column_type_overrides}
+            if any(c in t1_overrides for c in [c1.lower(), c1.upper()]):
                 continue
-            if any(c in table2.col_conversions for c in [c2.lower(), c2.upper()]):
+            if any(c in t2_overrides for c in [c2.lower(), c2.upper()]):
                 continue
 
             if isinstance(col1, PrecisionType):
