@@ -1,6 +1,7 @@
+from dataclasses import field
 import math
 import time
-from typing import List, Tuple
+from typing import Any, List, Optional, Tuple, Union
 import logging
 from itertools import product
 
@@ -12,10 +13,31 @@ from sqeleton.databases import Database, DbPath, DbKey, DbTime
 from sqeleton.schema import Schema, create_schema
 from sqeleton.queries import Count, Checksum, SKIP, table, this, Expr, min_, max_, Code, Compiler
 from sqeleton.queries.extras import ApplyFuncAndNormalizeAsString, NormalizeAsString
+from sqeleton.abcs import database_types as DB_TYPES
 
 logger = logging.getLogger("table_segment")
 
 RECOMMENDED_CHECKSUM_DURATION = 20
+
+COL_TYPE_OVERRIDE_MAP = {
+    'String_VaryingAlphanum': DB_TYPES.String_VaryingAlphanum,
+    'String_FixedAlphanum': DB_TYPES.String_FixedAlphanum,
+    'Integer': DB_TYPES.Integer,
+    'Decimal': DB_TYPES.Decimal,
+}
+
+
+def get_database_type(type_info: Union[str, tuple]) -> Any:
+    type_str = type_info
+    if type(type_info) == tuple:
+        type_str = type_info[0]
+
+    cls = COL_TYPE_OVERRIDE_MAP[type_str]
+    
+    if type_str == 'Decimal':
+        return cls(type_info[1])
+
+    return cls()
 
 
 def split_key_space(min_key: DbKey, max_key: DbKey, count: int) -> List[DbKey]:
@@ -138,7 +160,10 @@ class TableSegment:
     true_key_indices: list = None
 
     # use to force cast certain columns to non-standard types 
-    column_type_overrides: List[Tuple] = None
+    column_type_overrides: dict[str, Tuple] = field(default_factory=dict)
+
+    # use to cast/convert certain columns to non-standard types 
+    col_conversions: dict[str, dict] = field(default_factory=dict)
 
     case_sensitive: bool = True
     _schema: Schema = None
@@ -159,14 +184,13 @@ class TableSegment:
         return f"({self.where})" if self.where else None
 
     def _with_raw_schema(self, raw_schema: dict) -> "TableSegment":
-        if self.column_type_overrides is not None:
-            for col_info in self.column_type_overrides:
-                col_name = col_info[0]
-                if col_name not in raw_schema:
-                    raise ValueError(f'Column {col_name} not found in schema for DB {self.database}')
-                raw_schema[col_name] = col_info
-
         schema = self.database._process_table_schema(self.table_path, raw_schema, self.relevant_columns, self._where())
+
+        if self.column_type_overrides is not None:
+            for col, col_info in self.column_type_overrides.items():
+                if all(c not in raw_schema for c in [col.lower(), col.upper()]):
+                    raise ValueError(f'Column {col} not found in schema for DB {self.database}')
+                schema[col] = get_database_type(col_info)
 
         return self.new(_schema=create_schema(self.database, self.table_path, schema, self.case_sensitive))
 
@@ -183,10 +207,18 @@ class TableSegment:
     def _make_key_range(self):
         if self.min_key is not None:
             for mn, k in safezip(self.min_key, self.key_columns):
-                yield mn <= this[k]
+                converted_col, _ = self.col_conversion(k)
+                if converted_col:
+                    yield Code(f"{converted_col} >= '{mn}'")
+                else:
+                    yield mn <= this[k]
         if self.max_key is not None:
             for k, mx in safezip(self.key_columns, self.max_key):
-                yield this[k] < mx
+                converted_col, _ = self.col_conversion(k)
+                if converted_col:
+                    yield Code(f"{converted_col} < '{mx}'")
+                else:
+                    yield this[k] < mx
 
     def _make_update_range(self):
         if self.min_update is not None:
@@ -198,14 +230,20 @@ class TableSegment:
     def source_table(self):
         return table(*self.table_path, schema=self._schema)
 
-    def make_select(self):
-        return self.source_table.where(
-            *self._make_key_range(), *self._make_update_range(), Code(self._where()) if self.where else SKIP
-        )
+    def make_select(self, incl_update_range=True):
+        if incl_update_range:
+            return self.source_table.where(
+                *self._make_key_range(), *self._make_update_range(), Code(self._where()) if self.where else SKIP
+            )
+        else:
+            return self.source_table.where(
+                *self._make_key_range(), Code(self._where()) if self.where else SKIP
+            )
 
     def get_values(self) -> list:
         "Download all the relevant values of the segment from the database"
-        select = self.make_select().select(*self._relevant_columns_repr)
+        select = self.make_select(incl_update_range=False).select(
+            *self._relevant_columns_repr('select_values'))
         return self.database.query(select, List[Tuple])
 
     def choose_checkpoints(self, count: int) -> List[DbKey]:
@@ -242,15 +280,31 @@ class TableSegment:
     def relevant_columns(self) -> List[str]:
         extras = list(self.extra_columns)
 
-        if self.update_column and self.update_column not in extras:
+        if self.update_column and self.update_column not in extras \
+            and self.update_column not in list(self.key_columns):
             extras = [self.update_column] + extras
 
         return list(self.key_columns) + extras
+    
+    def col_conversion(self, c: str) -> tuple[Optional[str], Optional[list]]:
+        conversion_info = self.col_conversions.get(c.lower(), self.col_conversions.get(c.upper()))
+        if conversion_info:
+            placeholders = conversion_info['template'].count('{}')
+            return conversion_info['template'].format(*([c]*placeholders)), conversion_info.get('exclude_from', [])
+        else:
+            return None, None
+        
+    def _relevant_columns_repr(self, usage: str) -> List[Expr]:
+        normalized_cols = []
+        for c in self.relevant_columns:
+            converted_col, exclude_from = self.col_conversion(c)
+            if converted_col and usage not in exclude_from:
+                normalized_cols.append(Code(converted_col))
+            else:
+                normalized_cols.append(NormalizeAsString(this[c]))
 
-    @property
-    def _relevant_columns_repr(self) -> List[Expr]:
-        return [NormalizeAsString(this[c]) for c in self.relevant_columns]
-
+        return normalized_cols
+    
     @property
     def key_indices(self) -> Tuple[str]:
         return self.true_key_indices or list(range(len(self.key_columns)))
@@ -264,7 +318,7 @@ class TableSegment:
 
         start = time.monotonic()
         q = self.make_select().select(
-            Count(), Checksum(self._relevant_columns_repr), optimizer_hints=self.optimizer_hints
+            Count(), Checksum(self._relevant_columns_repr('select_checksum')), optimizer_hints=self.optimizer_hints
         )
         count, checksum = self.database.query(q, tuple)
         duration = time.monotonic() - start
@@ -327,7 +381,7 @@ class TableSegment:
             .select(
                 Code(group_by_expr),
                 Count(), 
-                Checksum(self._relevant_columns_repr),
+                Checksum(self._relevant_columns_repr('select_checksum')),
                 **maybe_optimizer_hints)
             .order_by(Code(group_by_expr))
             .group_by(self.source_table[group_by_col])
@@ -371,8 +425,19 @@ class TableSegment:
     def query_key_range(self) -> Tuple[tuple, tuple]:
         """Query database for minimum and maximum key. This is used for setting the initial bounds."""
         # Normalizes the result (needed for UUIDs) after the min/max computation
+        logging.info(f'{self.database.name} query_key_range: {self.min_key} - {self.max_key}')
+
+        def normalize_range_select():
+            for k in self.key_columns:
+                converted_col, exclude_from = self.col_conversion(k)
+                for f in (min_, max_):
+                    if converted_col and 'key_range_select' not in exclude_from:
+                        yield ApplyFuncAndNormalizeAsString(Code(converted_col), f)
+                    else:
+                        yield ApplyFuncAndNormalizeAsString(this[k], f)
+
         select = self.make_select().select(
-            (ApplyFuncAndNormalizeAsString(this[k], f) for k in self.key_columns for f in (min_, max_)),
+            normalize_range_select(),
             optimizer_hints=self.optimizer_hints
         )
         result = tuple(self.database.query(select, tuple))

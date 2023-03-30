@@ -32,9 +32,6 @@ def diff_sets(a: set, b: set, key_indices: list = None) -> Iterator:
     if key_indices == None:
         key_indices = [0]
 
-    # The first item of key_indices should always be the first key_column (see TableDiffer.relevant_columns)
-    assert key_indices[0] == 0
-
     # NOTE: updated to support sorting on multiple PK columns (compound keys)
     d = defaultdict(list)
     for row in a:
@@ -80,6 +77,8 @@ class HashDiffer(TableDiffer):
         if self.bisection_factor < 2:
             raise ValueError("Must have at least two segments per iteration (i.e. bisection_factor >= 2)")
 
+        super().__post_init__()
+        
     def _validate_and_adjust_columns(self, table1, table2):
         for c1, c2 in safezip(table1.relevant_columns, table2.relevant_columns):
             if c1 not in table1._schema:
@@ -90,6 +89,15 @@ class HashDiffer(TableDiffer):
             # Update schemas to minimal mutual precision
             col1 = table1._schema[c1]
             col2 = table2._schema[c2]
+
+            # if user passed specialized conversions for either column, skip validation
+            t1_overrides = {**table1.col_conversions, **table1.column_type_overrides}
+            t2_overrides = {**table2.col_conversions, **table2.column_type_overrides}
+            if any(c in t1_overrides for c in [c1.lower(), c1.upper()]):
+                continue
+            if any(c in t2_overrides for c in [c2.lower(), c2.upper()]):
+                continue
+
             if isinstance(col1, PrecisionType):
                 if not isinstance(col2, PrecisionType):
                     raise TypeError(f"Incompatible types for column '{c1}':  {col1} <-> {col2}")
@@ -178,6 +186,10 @@ class HashDiffer(TableDiffer):
             info_tree.info.is_diff = False
             return
 
+        logging.info(f'Mismatch checksum {table1.min_key} - {table2.max_key}\n'
+                     f'T1: cs={checksum1}, count={count1}\n'
+                     f'T2: cs={checksum2}, count={count2}')
+
         info_tree.info.is_diff = True
         return self._bisect_and_diff_segments(ti, table1, table2, info_tree, level=level, max_rows=max(count1, count2))
 
@@ -201,6 +213,8 @@ class HashDiffer(TableDiffer):
         # If count is below the threshold, just download and compare the columns locally
         # This saves time, as bisection speed is limited by ping and query performance.
         if max_rows < self.bisection_threshold or max_space_size < self.bisection_factor * 2:
+            logging.info(f'Downloading rows from T1 {table1.min_key} - {table1.max_key}')
+            logging.info(f'Downloading rows from T2 {table2.min_key} - {table2.max_key}')
             rows1, rows2 = self._threaded_call("get_values", [table1, table2])
             diff = list(diff_sets(rows1, rows2, table1.key_indices))
 
@@ -251,6 +265,10 @@ class GroupingHashDiffer(HashDiffer):
         if checksum1 == checksum2:
             info_tree.info.is_diff = False
             return
+
+        logging.info(f'Mismatch checksum {segment1.min_key} - {segment1.max_key}\n'
+                     f'T1: cs={checksum1}, count={count1}\n'
+                     f'T2: cs={checksum2}, count={count2}')
 
         info_tree.info.is_diff = True
         return self._bisect_and_diff_segments(ti, segment1, segment2, info_tree, level=level, max_rows=max(count1, count2))
@@ -379,26 +397,34 @@ class GroupingHashDiffer(HashDiffer):
         (key1,) = table1.key_columns
         (key2,) = table2.key_columns
 
-        key_type = table1._schema[key1]
-        key_type2 = table2._schema[key2]
-        if not isinstance(key_type, IKey):
-            raise NotImplementedError(f"Cannot use column of type {key_type} as a key")
-        if not isinstance(key_type2, IKey):
-            raise NotImplementedError(f"Cannot use column of type {key_type2} as a key")
-        if key_type.python_type is not key_type2.python_type:
-            raise TypeError(f"Incompatible key types: {key_type} and {key_type2}")
+        key_types1 = [table1._schema[i] for i in table1.key_columns]
+        key_types2 = [table2._schema[i] for i in table2.key_columns]
+
+        for kt in key_types1 + key_types2:
+            if not isinstance(kt, IKey):
+                raise NotImplementedError(f"Cannot use a column of type {kt} as a key")
+
+        for kt1, kt2 in safezip(key_types1, key_types2):
+            if kt1.python_type is not kt2.python_type:
+                raise TypeError(f"Incompatible key types: {kt1} and {kt2}")
 
         # Query min/max values
-        usr_key_range = (table1.min_key, table1.max_key)
+
         if all(k is not None for k in [table1.min_key, table1.max_key, table2.min_key, table2.max_key]):
             key_ranges = (kr for kr in [(table1.min_key, table1.max_key), (table2.min_key, table2.max_key)])
+        elif all(k is not None for k in [table1.min_key, table1.max_key]):
+            t2_ranges = self._threaded_call_as_completed("query_key_range", [table2])
+            key_ranges = (kr for kr in [((table1.min_key), table1.max_key), next(t2_ranges)])
+        elif all(k is not None for k in [table2.min_key, table2.max_key]):
+            t1_ranges = self._threaded_call_as_completed("query_key_range", [table1])
+            key_ranges = (kr for kr in [next(t1_ranges), (table2.min_key, table2.max_key)])
         else:
             # Query min/max values
             key_ranges = self._threaded_call_as_completed("query_key_range", [table1, table2])
 
         # Wait for both
-        min_key1, max_key1 = self._parse_key_range_result((key_type,), self._resolve_key_range(next(key_ranges), usr_key_range))
-        min_key2, max_key2 = self._parse_key_range_result((key_type,), self._resolve_key_range(next(key_ranges), usr_key_range))
+        min_key1, max_key1 = self._parse_key_range_result(key_types1, next(key_ranges))
+        min_key2, max_key2 = self._parse_key_range_result(key_types2, next(key_ranges))
 
         min_key = min(min_key1, min_key2)
         max_key = max(max_key1, max_key2)
@@ -410,8 +436,7 @@ class GroupingHashDiffer(HashDiffer):
             f"size: table1 <= {table1.approximate_size()}, table2 <= {table2.approximate_size()}"
         )
 
-        ti = ThreadedYielder(self.max_threadpool_size)
         # Bisect (split) the table into segments, and diff them recursively.
-        ti.submit(self._bisect_and_diff_segments, ti, table1, table2, info_tree)
+        self.ti.submit(self._bisect_and_diff_segments, self.ti, table1, table2, info_tree)
 
-        return ti
+        return self.ti
