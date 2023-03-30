@@ -61,7 +61,7 @@ class TDsConfig(pydantic.BaseModel):
     name: str
     type: str
     temp_schema: str
-    float_tolerance: float = 0.0,
+    float_tolerance: float = 0.0
     options: Dict[str, Any]
 
 
