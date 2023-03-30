@@ -388,26 +388,34 @@ class GroupingHashDiffer(HashDiffer):
         (key1,) = table1.key_columns
         (key2,) = table2.key_columns
 
-        key_type = table1._schema[key1]
-        key_type2 = table2._schema[key2]
-        if not isinstance(key_type, IKey):
-            raise NotImplementedError(f"Cannot use column of type {key_type} as a key")
-        if not isinstance(key_type2, IKey):
-            raise NotImplementedError(f"Cannot use column of type {key_type2} as a key")
-        if key_type.python_type is not key_type2.python_type:
-            raise TypeError(f"Incompatible key types: {key_type} and {key_type2}")
+        key_types1 = [table1._schema[i] for i in table1.key_columns]
+        key_types2 = [table2._schema[i] for i in table2.key_columns]
+
+        for kt in key_types1 + key_types2:
+            if not isinstance(kt, IKey):
+                raise NotImplementedError(f"Cannot use a column of type {kt} as a key")
+
+        for kt1, kt2 in safezip(key_types1, key_types2):
+            if kt1.python_type is not kt2.python_type:
+                raise TypeError(f"Incompatible key types: {kt1} and {kt2}")
 
         # Query min/max values
-        usr_key_range = (table1.min_key, table1.max_key)
+
         if all(k is not None for k in [table1.min_key, table1.max_key, table2.min_key, table2.max_key]):
             key_ranges = (kr for kr in [(table1.min_key, table1.max_key), (table2.min_key, table2.max_key)])
+        elif all(k is not None for k in [table1.min_key, table1.max_key]):
+            t2_ranges = self._threaded_call_as_completed("query_key_range", [table2])
+            key_ranges = (kr for kr in [((table1.min_key), table1.max_key), next(t2_ranges)])
+        elif all(k is not None for k in [table2.min_key, table2.max_key]):
+            t1_ranges = self._threaded_call_as_completed("query_key_range", [table1])
+            key_ranges = (kr for kr in [next(t1_ranges), (table2.min_key, table2.max_key)])
         else:
             # Query min/max values
             key_ranges = self._threaded_call_as_completed("query_key_range", [table1, table2])
 
         # Wait for both
-        min_key1, max_key1 = self._parse_key_range_result((key_type,), self._resolve_key_range(next(key_ranges), usr_key_range))
-        min_key2, max_key2 = self._parse_key_range_result((key_type,), self._resolve_key_range(next(key_ranges), usr_key_range))
+        min_key1, max_key1 = self._parse_key_range_result(key_types1, next(key_ranges))
+        min_key2, max_key2 = self._parse_key_range_result(key_types2, next(key_ranges))
 
         min_key = min(min_key1, min_key2)
         max_key = max(max_key1, max_key2)
@@ -419,7 +427,6 @@ class GroupingHashDiffer(HashDiffer):
             f"size: table1 <= {table1.approximate_size()}, table2 <= {table2.approximate_size()}"
         )
 
-        self.ti = ThreadedYielder(self.max_threadpool_size)
         # Bisect (split) the table into segments, and diff them recursively.
         self.ti.submit(self._bisect_and_diff_segments, self.ti, table1, table2, info_tree)
 

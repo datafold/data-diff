@@ -296,16 +296,21 @@ class TableDiffer(ThreadBase, ABC):
             if kt1.python_type is not kt2.python_type:
                 raise TypeError(f"Incompatible key types: {kt1} and {kt2}")
 
-        usr_key_range = (table1.min_key, table1.max_key)
         if all(k is not None for k in [table1.min_key, table1.max_key, table2.min_key, table2.max_key]):
             key_ranges = (kr for kr in [(table1.min_key, table1.max_key), (table2.min_key, table2.max_key)])
+        elif all(k is not None for k in [table1.min_key, table1.max_key]):
+            t2_ranges = self._threaded_call_as_completed("query_key_range", [table2])
+            key_ranges = (kr for kr in [((table1.min_key), table1.max_key), next(t2_ranges)])
+        elif all(k is not None for k in [table2.min_key, table2.max_key]):
+            t1_ranges = self._threaded_call_as_completed("query_key_range", [table1])
+            key_ranges = (kr for kr in [next(t1_ranges), (table2.min_key, table2.max_key)])
         else:
             # Query min/max values
             key_ranges = self._threaded_call_as_completed("query_key_range", [table1, table2])
             logging.info(f'key_ranges: {key_ranges}')
 
         # Start with the first completed value, so we don't waste time waiting
-        min_key1, max_key1 = self._parse_key_range_result(key_types1, self._resolve_key_range(next(key_ranges), usr_key_range))
+        min_key1, max_key1 = self._parse_key_range_result(key_types1, next(key_ranges))
         
         btable1, btable2 = [t.new(min_key=min_key1, max_key=max_key1) for t in (table1, table2)]
 
@@ -330,7 +335,7 @@ class TableDiffer(ThreadBase, ABC):
         # └──┴──────┴──┘
         # Overall, the max number of new regions in this 2nd pass is 3^|k| - 1
 
-        min_key2, max_key2 = self._parse_key_range_result(key_types2, self._resolve_key_range(next(key_ranges), usr_key_range))
+        min_key2, max_key2 = self._parse_key_range_result(key_types2, next(key_ranges))
 
         points = [list(sorted(p)) for p in safezip(min_key1, min_key2, max_key1, max_key2)]
         box_mesh = create_mesh_from_points(*points)
@@ -338,7 +343,7 @@ class TableDiffer(ThreadBase, ABC):
         new_regions = [(p1, p2) for p1, p2 in box_mesh if p1 < p2 and not (p1 >= min_key1 and p2 <= max_key1)]
 
         for p1, p2 in new_regions:
-            extra_tables = [t.new_key_bounds(min_key=p1, max_key=p2) for t in (table1, table2)]
+            extra_tables = [t.new(min_key=p1, max_key=p2) for t in (table1, table2)]
             self.ti.submit(self._bisect_and_diff_segments, self.ti, *extra_tables, info_tree)
 
         return self.ti
