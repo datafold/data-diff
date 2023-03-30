@@ -239,7 +239,7 @@ def _cloud_diff(diff_vars: DiffVars, datasource_id: int, api: DatafoldAPI) -> No
         is_create_data_source = Confirm.ask("Would you like to create a new data source?")
         if is_create_data_source:
             diff_vars.datasource_id = get_or_create_data_source(api=api)
-            rich.print(f'[green]Data source ID = {diff_vars.datasource_id}')
+            rich.print(f"[green]Data source ID = {diff_vars.datasource_id}")
         else:
             raise ValueError(
                 "Datasource ID not found, include it as a dbt variable in the dbt_project.yml. \nvars:\n data_diff:\n   datasource_id: 1234"

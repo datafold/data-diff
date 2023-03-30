@@ -8,27 +8,30 @@ from rich.table import Table
 from rich.prompt import Confirm, Prompt, FloatPrompt, IntPrompt, InvalidResponse
 
 from .datafold_api import (
-    DatafoldAPI, TCloudApiDataSourceConfigSchema, TCloudApiDataSource, TCloudApiDataSourceTestResult, TDsConfig,
-    TestDataSourceStatus
+    DatafoldAPI,
+    TCloudApiDataSourceConfigSchema,
+    TCloudApiDataSource,
+    TDsConfig,
+    TestDataSourceStatus,
 )
 
 
 DATA_SOURCE_TYPES_REQUIRED_SETTINGS = {
-    'bigquery': {'projectId', 'jsonKeyFile', 'location'},
-    'databricks': {'host', 'http_password', 'database', 'http_path'},
-    'mysql': {'host', 'user', 'passwd', 'db'},
-    'pg': {'host', 'user', 'port', 'password', 'dbname'},
-    'postgres_aurora': {'host', 'user', 'port', 'password', 'dbname'},
-    'postgres_aws_rds': {'host', 'user', 'port', 'password', 'dbname'},
-    'redshift': {'host', 'user', 'port', 'password', 'dbname'},
-    'snowflake': {'account', 'user', 'password', 'warehouse', 'role', 'default_db'},
+    "bigquery": {"projectId", "jsonKeyFile", "location"},
+    "databricks": {"host", "http_password", "database", "http_path"},
+    "mysql": {"host", "user", "passwd", "db"},
+    "pg": {"host", "user", "port", "password", "dbname"},
+    "postgres_aurora": {"host", "user", "port", "password", "dbname"},
+    "postgres_aws_rds": {"host", "user", "port", "password", "dbname"},
+    "redshift": {"host", "user", "port", "password", "dbname"},
+    "snowflake": {"account", "user", "password", "warehouse", "role", "default_db"},
 }
 
 
 class TDataSourceTestStage(pydantic.BaseModel):
     name: str
     status: TestDataSourceStatus
-    description: str = ''
+    description: str = ""
 
 
 class TemporarySchemaPrompt(Prompt):
@@ -38,21 +41,21 @@ class TemporarySchemaPrompt(Prompt):
     def process_response(self, value: str) -> str:
         """Convert choices to a bool."""
 
-        if len(value.split('.')) != 2:
-            raise InvalidResponse('Temporary schema should has a format <database>.<schema>')
+        if len(value.split(".")) != 2:
+            raise InvalidResponse("Temporary schema should has a format <database>.<schema>")
         return value
 
 
 def _validate_temp_schema(temp_schema: str):
-    if len(temp_schema.split('.')) != 2:
-        raise ValueError('Temporary schema should has a format <database>.<schema>')
+    if len(temp_schema.split(".")) != 2:
+        raise ValueError("Temporary schema should has a format <database>.<schema>")
 
 
 def create_ds_config(ds_config: TCloudApiDataSourceConfigSchema, data_source_name: str) -> TDsConfig:
     options = _parse_ds_credentials(ds_config=ds_config, only_basic_settings=True)
 
-    temp_schema = TemporarySchemaPrompt.ask('Temporary schema (<database>.<schema>)')
-    float_tolerance = FloatPrompt.ask('Float tolerance', default=0.000001)
+    temp_schema = TemporarySchemaPrompt.ask("Temporary schema (<database>.<schema>)")
+    float_tolerance = FloatPrompt.ask("Float tolerance", default=0.000001)
 
     return TDsConfig(
         name=data_source_name,
@@ -70,14 +73,14 @@ def _parse_ds_credentials(ds_config: TCloudApiDataSourceConfigSchema, only_basic
         if only_basic_settings and param_name not in basic_required_fields:
             continue
 
-        title = param_data['title']
-        default_value = param_data.get('default')
-        is_password = bool(param_data.get('format'))
+        title = param_data["title"]
+        default_value = param_data.get("default")
+        is_password = bool(param_data.get("format"))
 
-        type_ = param_data['type']
-        if type_ == 'integer':
+        type_ = param_data["type"]
+        if type_ == "integer":
             value = IntPrompt.ask(title, default=default_value if default_value is not None else None)
-        elif type_ == 'boolean':
+        elif type_ == "boolean":
             value = Confirm.ask(title)
         else:
             value = Prompt.ask(
@@ -103,7 +106,7 @@ def _check_data_source_exists(
 def _test_data_source(api: DatafoldAPI, data_source_id: int, timeout: int = 64) -> List[TDataSourceTestStage]:
     job_id = api.test_data_source(data_source_id)
 
-    checked_tests = {'connection', 'temp_schema', 'schema_download'}
+    checked_tests = {"connection", "temp_schema", "schema_download"}
     seconds = 1
     start = time.monotonic()
     results = []
@@ -113,7 +116,7 @@ def _test_data_source(api: DatafoldAPI, data_source_id: int, timeout: int = 64) 
             if test.name not in checked_tests:
                 continue
 
-            if test.status == 'done':
+            if test.status == "done":
                 checked_tests.remove(test.name)
                 results.append(
                     TDataSourceTestStage(name=test.name, status=test.result.status, description=test.result.message)
@@ -128,7 +131,7 @@ def _test_data_source(api: DatafoldAPI, data_source_id: int, timeout: int = 64) 
                     TDataSourceTestStage(
                         name=test_name,
                         status=TestDataSourceStatus.SKIP,
-                        description=f'Does not complete in {timeout} seconds',
+                        description=f"Does not complete in {timeout} seconds",
                     )
                 )
             break
@@ -138,7 +141,7 @@ def _test_data_source(api: DatafoldAPI, data_source_id: int, timeout: int = 64) 
     return results
 
 
-def _render_data_source(data_source: TCloudApiDataSource, title: str = '') -> None:
+def _render_data_source(data_source: TCloudApiDataSource, title: str = "") -> None:
     table = Table(title=title, min_width=80)
     table.add_column("Parameter", justify="center", style="cyan")
     table.add_column("Value", justify="center", style="magenta")
@@ -160,8 +163,12 @@ def _render_available_data_sources(data_source_schema_configs: List[TCloudApiDat
 
 
 def _render_data_source_test_results(test_results: List[TDataSourceTestStage]) -> None:
-    table = Table(title='Test results', min_width=80)
-    table.add_column("Test", justify="center", style="cyan", )
+    table = Table(title="Test results", min_width=80)
+    table.add_column(
+        "Test",
+        justify="center",
+        style="cyan",
+    )
     table.add_column("Status", justify="center", style="magenta")
     table.add_column("Description", justify="center", style="magenta")
     for result in test_results:
@@ -175,9 +182,9 @@ def get_or_create_data_source(api: DatafoldAPI) -> int:
 
     _render_available_data_sources(data_source_schema_configs=ds_configs)
     db_type_num = IntPrompt.ask(
-        'What data source type you want to create? Please, select a number',
+        prompt="What data source type you want to create? Please, select a number",
         choices=list(map(str, range(1, len(ds_configs) + 1))),
-        show_choices=False
+        show_choices=False,
     )
 
     ds_config = ds_configs[db_type_num - 1]
@@ -189,23 +196,23 @@ def get_or_create_data_source(api: DatafoldAPI) -> int:
         _render_data_source(data_source=ds, title=f'Found existing data source for name "{ds.name}"')
         use_existing_ds = Confirm.ask("Would you like to continue with the existing data source?")
         if not use_existing_ds:
-            return get_or_create_data_source(api)
+            return get_or_create_data_source(api=api)
         return ds.id
 
     ds_config = create_ds_config(ds_config, ds_name)
     ds = api.create_data_source(ds_config)
-    data_source_url = f'{api.host}/settings/integrations/dwh/{ds.type}/{ds.id}'
+    data_source_url = f"{api.host}/settings/integrations/dwh/{ds.type}/{ds.id}"
     _render_data_source(data_source=ds, title=f"Create a new data source with ID = {ds.id} ({data_source_url})")
 
     rich.print(
-        'We recommend to run tests for a new data source. '
-        'It requires some time but makes sure that the data source is configured correctly.'
+        "We recommend to run tests for a new data source. "
+        "It requires some time but makes sure that the data source is configured correctly."
     )
-    run_tests = Confirm.ask('Would you like to run tests?')
+    run_tests = Confirm.ask("Would you like to run tests?")
     if run_tests:
         test_results = _test_data_source(api=api, data_source_id=ds.id)
         _render_data_source_test_results(test_results=test_results)
         if any(result.status == TestDataSourceStatus.FAILED for result in test_results):
-            raise ValueError('Data source tests failed')
+            raise ValueError("Data source tests failed")
 
     return ds.id

@@ -495,7 +495,7 @@ class TestDbtDiffer(unittest.TestCase):
         mock_create_data_diff.assert_called_once()
         self.assertEqual(len(mock_print.call_args_list), 2)
 
-        payload = mock_create_data_diff.call_args[1]['payload']
+        payload = mock_create_data_diff.call_args[1]["payload"]
         self.assertEqual(payload.data_source1_id, expected_datasource_id)
         self.assertEqual(payload.data_source2_id, expected_datasource_id)
         self.assertEqual(payload.table1, prod_qualified_list)

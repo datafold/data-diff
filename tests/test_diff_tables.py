@@ -425,7 +425,6 @@ class TestAlphanumericKeys(DiffTestCase):
         self.b = table_segment(self.connection, self.table_dst_path, "id", "text_comment", case_sensitive=False)
 
     def test_alphanum_keys(self):
-
         differ = HashDiffer(bisection_factor=2, bisection_threshold=3)
         diff = list(differ.diff_tables(self.a, self.b))
         self.assertEqual(diff, [("-", (str(self.new_alphanum), "This one is different"))])

@@ -7,10 +7,10 @@ import requests
 
 
 class TestDataSourceStatus(str, enum.Enum):
-    SUCCESS = 'ok'
-    FAILED = 'error'
-    SKIP = 'skip'
-    UNKNOWN = 'unknown'
+    SUCCESS = "ok"
+    FAILED = "error"
+    SKIP = "skip"
+    UNKNOWN = "unknown"
 
 
 class TCloudApiDataSourceSchema(pydantic.BaseModel):
@@ -88,11 +88,11 @@ class TCloudApiDataSourceTestResult(pydantic.BaseModel):
 @dataclasses.dataclass
 class DatafoldAPI:
     api_key: str
-    host: str = 'https://app.datafold.com'
+    host: str = "https://app.datafold.com"
     timeout: int = 30
 
     def __post_init__(self):
-        self.host = self.host.rstrip('/')
+        self.host = self.host.rstrip("/")
         self.headers = {
             "Authorization": f"Key {self.api_key}",
             "Content-Type": "application/json",
@@ -109,53 +109,53 @@ class DatafoldAPI:
         return rv
 
     def get_data_sources(self) -> List[TCloudApiDataSource]:
-        rv = self.make_get_request(url='api/data_sources')
+        rv = self.make_get_request(url="api/data_sources")
         rv.raise_for_status()
         return [TCloudApiDataSource(**item) for item in rv.json()]
 
     def create_data_source(self, config: TDsConfig) -> TCloudApiDataSource:
         # TODO: replace an internal url by a public one
-        rv = self.make_post_request(url='api/internal/data_sources', payload=config.dict())
+        rv = self.make_post_request(url="api/internal/data_sources", payload=config.dict())
         return TCloudApiDataSource(**rv.json())
 
     def get_data_source_schema_config(self) -> List[TCloudApiDataSourceConfigSchema]:
         # TODO: replace an internal url by a public one
-        rv = self.make_get_request(url='api/internal/data_sources/types')
+        rv = self.make_get_request(url="api/internal/data_sources/types")
         return [
             TCloudApiDataSourceConfigSchema(
-                name=item['name'],
-                db_type=item['type'],
+                name=item["name"],
+                db_type=item["type"],
                 config_schema=TCloudApiDataSourceSchema(
-                    title=item['configuration_schema']['title'],
-                    properties=item['configuration_schema']['properties'],
-                    required=item['configuration_schema']['required'],
-                    secret=item['configuration_schema']['secret'],
-                )
+                    title=item["configuration_schema"]["title"],
+                    properties=item["configuration_schema"]["properties"],
+                    required=item["configuration_schema"]["required"],
+                    secret=item["configuration_schema"]["secret"],
+                ),
             )
             for item in rv.json()
         ]
 
     def create_data_diff(self, payload: TCloudApiDataDiff) -> int:
-        rv = self.make_post_request(url='api/v1/datadiffs', payload=payload.dict())
-        return rv.json()['id']
+        rv = self.make_post_request(url="api/v1/datadiffs", payload=payload.dict())
+        return rv.json()["id"]
 
     def test_data_source(self, data_source_id: int) -> int:
         # TODO: replace an internal url by a public one
-        rv = self.make_post_request(f'api/internal/data_sources/{data_source_id}/test', {})
-        return rv.json()['job_id']
+        rv = self.make_post_request(f"api/internal/data_sources/{data_source_id}/test", {})
+        return rv.json()["job_id"]
 
     def check_data_source_test_results(self, job_id: int) -> List[TCloudApiDataSourceTestResult]:
         # TODO: replace an internal url by a public one
-        rv = self.make_get_request(f'api/internal/data_sources/test/{job_id}')
+        rv = self.make_get_request(f"api/internal/data_sources/test/{job_id}")
         return [
             TCloudApiDataSourceTestResult(
-                name=item['step'],
-                status=item['status'],
+                name=item["step"],
+                status=item["status"],
                 result=TCloudDataSourceTestResult(
-                    status=item['result']['code'].lower(),
-                    message=item['result']['message'],
-                    outcome=item['result']['outcome'],
-                )
+                    status=item["result"]["code"].lower(),
+                    message=item["result"]["message"],
+                    outcome=item["result"]["outcome"],
+                ),
             )
-            for item in rv.json()['results']
+            for item in rv.json()["results"]
         ]
