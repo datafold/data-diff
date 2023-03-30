@@ -186,6 +186,10 @@ class HashDiffer(TableDiffer):
             info_tree.info.is_diff = False
             return
 
+        logging.info(f'Mismatch checksum {table1.min_key} - {table2.max_key}\n'
+                     f'T1: cs={checksum1}, count={count1}\n'
+                     f'T2: cs={checksum2}, count={count2}')
+
         info_tree.info.is_diff = True
         return self._bisect_and_diff_segments(ti, table1, table2, info_tree, level=level, max_rows=max(count1, count2))
 
@@ -209,6 +213,8 @@ class HashDiffer(TableDiffer):
         # If count is below the threshold, just download and compare the columns locally
         # This saves time, as bisection speed is limited by ping and query performance.
         if max_rows < self.bisection_threshold or max_space_size < self.bisection_factor * 2:
+            logging.info(f'Downloading rows from T1 {table1.min_key} - {table1.max_key}')
+            logging.info(f'Downloading rows from T2 {table2.min_key} - {table2.max_key}')
             rows1, rows2 = self._threaded_call("get_values", [table1, table2])
             diff = list(diff_sets(rows1, rows2, table1.key_indices))
 
@@ -259,6 +265,10 @@ class GroupingHashDiffer(HashDiffer):
         if checksum1 == checksum2:
             info_tree.info.is_diff = False
             return
+
+        logging.info(f'Mismatch checksum {segment1.min_key} - {segment1.max_key}\n'
+                     f'T1: cs={checksum1}, count={count1}\n'
+                     f'T2: cs={checksum2}, count={count2}')
 
         info_tree.info.is_diff = True
         return self._bisect_and_diff_segments(ti, segment1, segment2, info_tree, level=level, max_rows=max(count1, count2))
