@@ -148,6 +148,17 @@ def _render_data_source(data_source: TCloudApiDataSource, title: str = '') -> No
     rich.print(table)
 
 
+def _render_available_data_sources(data_source_schema_configs: List[TCloudApiDataSourceConfigSchema]) -> None:
+    config_names = [ds_config.name for ds_config in data_source_schema_configs]
+
+    table = Table()
+    table.add_column("", justify="center", style="cyan")
+    table.add_column("Available data sources", style="magenta")
+    for i, db_type in enumerate(config_names, start=1):
+        table.add_row(str(i), db_type)
+    rich.print(table)
+
+
 def _render_data_source_test_results(test_results: List[TDataSourceTestStage]) -> None:
     table = Table(title='Test results', min_width=80)
     table.add_column("Test", justify="center", style="cyan", )
@@ -162,12 +173,10 @@ def get_or_create_data_source(api: DatafoldAPI) -> int:
     ds_configs = api.get_data_source_schema_config()
     data_sources = api.get_data_sources()
 
-    config_names = [ds_config.name for ds_config in ds_configs]
-    for i, db_type in enumerate(config_names, start=1):
-        rich.print(f'{i}) {db_type}')
+    _render_available_data_sources(data_source_schema_configs=ds_configs)
     db_type_num = IntPrompt.ask(
         'What data source type you want to create? Please, select a number',
-        choices=list(map(str, range(1, len(config_names) + 1))),
+        choices=list(map(str, range(1, len(ds_configs) + 1))),
         show_choices=False
     )
 
@@ -177,8 +186,7 @@ def get_or_create_data_source(api: DatafoldAPI) -> int:
 
     ds = _check_data_source_exists(data_sources=data_sources, data_source_name=ds_name)
     if ds is not None:
-        rich.print(f'Found data source with name "{ds.name}"')
-        _render_data_source(data_source=ds)
+        _render_data_source(data_source=ds, title=f'Found existing data source for name "{ds.name}"')
         use_existing_ds = Confirm.ask("Would you like to continue with the existing data source?")
         if not use_existing_ds:
             return get_or_create_data_source(api)
