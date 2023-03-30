@@ -4,8 +4,11 @@ from parameterized import parameterized
 import unittest
 from unittest.mock import Mock, patch
 
-from data_diff.cloud.datafold_api import TCloudApiDataSourceConfigSchema, TCloudApiDataSourceSchema, TCloudApiDataSource, TDsConfig
-from data_diff.cloud.data_source import create_ds_config, _check_data_source_exists
+from data_diff.cloud.datafold_api import (
+    TCloudApiDataSourceConfigSchema, TCloudApiDataSourceSchema, TCloudApiDataSource, TCloudApiDataSourceTestResult,
+    TCloudDataSourceTestResult, TDsConfig, TestDataSourceStatus
+)
+from data_diff.cloud.data_source import TDataSourceTestStage, TestDataSourceStatus, create_ds_config, _check_data_source_exists, _test_data_source
 
 
 DATA_SOURCE_CONFIGS = [
@@ -150,3 +153,107 @@ class TestDataSource(unittest.TestCase):
 
     def test_check_data_source_not_exists(self):
         self.assertEqual(_check_data_source_exists(self.data_sources, 'ds_with_this_name_does_not_exist'), None)
+
+    @patch('data_diff.cloud.data_source.DatafoldAPI')
+    def test_data_source_all_tests_ok(self, mock_api: Mock):
+        mock_api.test_data_source.return_value = 1
+        mock_api.check_data_source_test_results.return_value = [
+            TCloudApiDataSourceTestResult(
+                name='lineage_download',
+                status='done',
+                result=TCloudDataSourceTestResult(
+                    status=TestDataSourceStatus.SUCCESS,
+                    message='No lineage downloader for this data source',
+                    outcome='skipped',
+                ),
+            ),
+            TCloudApiDataSourceTestResult(
+                name='schema_download',
+                status='done',
+                result=TCloudDataSourceTestResult(
+                    status=TestDataSourceStatus.SUCCESS, message='Discovered 6 tables', outcome='success'
+                ),
+            ),
+            TCloudApiDataSourceTestResult(
+                name='temp_schema',
+                status='done',
+                result=TCloudDataSourceTestResult(
+                    status=TestDataSourceStatus.FAILED, message='Created table "database"."schema"',  outcome='failed'
+                ),
+            ), TCloudApiDataSourceTestResult(
+                name='connection',
+                status='done',
+                result=TCloudDataSourceTestResult(
+                    status=TestDataSourceStatus.SUCCESS, message='Connected to the database', outcome='success'
+                ),
+            ),
+        ]
+
+        expected_results = [
+            TDataSourceTestStage(
+                name='schema_download', status=TestDataSourceStatus.SUCCESS, description='Discovered 6 tables'
+            ),
+            TDataSourceTestStage(
+                name='temp_schema', status=TestDataSourceStatus.FAILED, description='Created table "database"."schema"'
+            ),
+            TDataSourceTestStage(
+                name='connection', status=TestDataSourceStatus.SUCCESS, description='Connected to the database'
+            ),
+        ]
+
+        self.assertEqual(_test_data_source(api=mock_api, data_source_id=1), expected_results)
+
+    @patch('data_diff.cloud.data_source.DatafoldAPI')
+    def test_data_source_one_test_failed(self, mock_api: Mock):
+        mock_api.test_data_source.return_value = 1
+        mock_api.check_data_source_test_results.return_value = [
+            TCloudApiDataSourceTestResult(
+                name='lineage_download',
+                status='done',
+                result=TCloudDataSourceTestResult(
+                    status=TestDataSourceStatus.SUCCESS,
+                    message='No lineage downloader for this data source',
+                    outcome='skipped',
+                ),
+            ),
+            TCloudApiDataSourceTestResult(
+                name='schema_download',
+                status='done',
+                result=TCloudDataSourceTestResult(
+                    status=TestDataSourceStatus.SUCCESS,
+                    message='Discovered 6 tables',
+                    outcome='success'),
+            ),
+            TCloudApiDataSourceTestResult(
+                name='temp_schema',
+                status='done',
+                result=TCloudDataSourceTestResult(
+                    status=TestDataSourceStatus.FAILED,
+                    message='Unable to create table "database"."schema"',
+                    outcome='failed',
+                ),
+            ), TCloudApiDataSourceTestResult(
+                name='connection',
+                status='done',
+                result=TCloudDataSourceTestResult(
+                    status=TestDataSourceStatus.SUCCESS,
+                    message='Connected to the database',
+                    outcome='success'),
+            ),
+        ]
+
+        expected_results = [
+            TDataSourceTestStage(
+                name='schema_download', status=TestDataSourceStatus.SUCCESS, description='Discovered 6 tables'
+            ),
+            TDataSourceTestStage(
+                name='temp_schema',
+                status=TestDataSourceStatus.FAILED,
+                description='Unable to create table "database"."schema"',
+            ),
+            TDataSourceTestStage(
+                name='connection', status=TestDataSourceStatus.SUCCESS, description='Connected to the database'
+            ),
+        ]
+
+        self.assertEqual(_test_data_source(api=mock_api, data_source_id=1), expected_results)
