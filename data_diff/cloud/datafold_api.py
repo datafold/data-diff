@@ -63,6 +63,8 @@ class TDsConfig(pydantic.BaseModel):
     temp_schema: str
     float_tolerance: float = 0.0
     options: Dict[str, Any]
+    disable_schema_indexing: bool = True
+    disable_profiling: bool = True
 
 
 class TCloudApiDataDiff(pydantic.BaseModel):
