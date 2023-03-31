@@ -326,7 +326,7 @@ def _cloud_diff(diff_vars: DiffVars, datasource_id: int, datafold_host: str, url
             logger.error(error)
 
 
-def _setup_cloud_diff() -> Tuple[str | None]:
+def _setup_cloud_diff() -> Tuple[Optional[str]]:
     datafold_host = os.environ.get("DATAFOLD_HOST")
     if datafold_host is None:
         datafold_host = "https://app.datafold.com"
