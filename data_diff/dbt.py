@@ -253,6 +253,7 @@ def _cloud_diff(diff_vars: DiffVars, datasource_id: int, datafold_host: str, url
     start = time.monotonic()
     error = None
     diff_id = None
+    diff_url = None
     try:
         diff_id = _cloud_submit_diff(url, payload, headers)
         summary_url = f"{url}/{diff_id}/summary_results"
@@ -327,8 +328,11 @@ def _cloud_diff(diff_vars: DiffVars, datasource_id: int, datafold_host: str, url
                 "[red]"
                 + ".".join(diff_vars.prod_path)
                 + " <> "
-                + ".".join(diff_vars.dev_path)
+                + ".".join(diff_vars.dev_path) + "[/]\n"
             )
+            if diff_id:
+                diff_url = f"{datafold_host}/datadiffs/{diff_id}/overview"
+                rich.print(f"{diff_url} \n")
             logger.error(error)
 
 
