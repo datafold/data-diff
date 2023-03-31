@@ -323,6 +323,12 @@ def _cloud_diff(diff_vars: DiffVars, datasource_id: int, datafold_host: str, url
             send_event_json(event_json)
 
         if error:
+            rich.print(
+                "[red]"
+                + ".".join(diff_vars.prod_path)
+                + " <> "
+                + ".".join(diff_vars.dev_path)
+            )
             logger.error(error)
 
 
