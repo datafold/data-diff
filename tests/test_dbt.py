@@ -136,7 +136,7 @@ class TestDbtParser(unittest.TestCase):
         self.assertEqual(project_dict, expected_dict)
         mock_open.assert_called_once_with(Path(PROJECT_FILE))
 
-    def test_set_connection_snowflake_success(self):
+    def test_set_connection_snowflake_success_password(self):
         expected_driver = "snowflake"
         expected_credentials = {"user": "user", "password": "password"}
         mock_self = Mock()
@@ -148,11 +148,60 @@ class TestDbtParser(unittest.TestCase):
         self.assertEqual(mock_self.connection.get("driver"), expected_driver)
         self.assertEqual(mock_self.connection.get("user"), expected_credentials["user"])
         self.assertEqual(mock_self.connection.get("password"), expected_credentials["password"])
+        self.assertEqual(mock_self.connection.get("key"), None)
         self.assertEqual(mock_self.requires_upper, True)
 
-    def test_set_connection_snowflake_no_password(self):
+    def test_set_connection_snowflake_success_key(self):
+        expected_driver = "snowflake"
+        expected_credentials = {"user": "user", "private_key_path": "private_key_path"}
+        mock_self = Mock()
+        mock_self._get_connection_creds.return_value = (expected_credentials, expected_driver)
+
+        DbtParser.set_connection(mock_self)
+
+        self.assertIsInstance(mock_self.connection, dict)
+        self.assertEqual(mock_self.connection.get("driver"), expected_driver)
+        self.assertEqual(mock_self.connection.get("user"), expected_credentials["user"])
+        self.assertEqual(mock_self.connection.get("password"), None)
+        self.assertEqual(mock_self.connection.get("key"), expected_credentials["private_key_path"])
+        self.assertEqual(mock_self.requires_upper, True)
+
+    def test_set_connection_snowflake_no_key_or_password(self):
         expected_driver = "snowflake"
         expected_credentials = {"user": "user"}
+        mock_self = Mock()
+        mock_self._get_connection_creds.return_value = (expected_credentials, expected_driver)
+
+        with self.assertRaises(Exception):
+            DbtParser.set_connection(mock_self)
+
+        self.assertNotIsInstance(mock_self.connection, dict)
+    
+    def test_set_connection_snowflake_authenticator(self):
+        expected_driver = "snowflake"
+        expected_credentials = {"user": "user", "authenticator": "authenticator"}
+        mock_self = Mock()
+        mock_self._get_connection_creds.return_value = (expected_credentials, expected_driver)
+
+        with self.assertRaises(Exception):
+            DbtParser.set_connection(mock_self)
+
+        self.assertNotIsInstance(mock_self.connection, dict)
+
+    def test_set_connection_snowflake_key_and_password(self):
+        expected_driver = "snowflake"
+        expected_credentials = {"user": "user", "private_key_path": "private_key_path", "password": "password"}
+        mock_self = Mock()
+        mock_self._get_connection_creds.return_value = (expected_credentials, expected_driver)
+
+        with self.assertRaises(Exception):
+            DbtParser.set_connection(mock_self)
+
+        self.assertNotIsInstance(mock_self.connection, dict)
+
+    def test_set_connection_snowflake_private_key_passphrase(self):
+        expected_driver = "snowflake"
+        expected_credentials = {"user": "user", "private_key_passphrase": "private_key_passphrase"}
         mock_self = Mock()
         mock_self._get_connection_creds.return_value = (expected_credentials, expected_driver)
 
