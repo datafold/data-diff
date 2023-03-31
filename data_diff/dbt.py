@@ -131,8 +131,6 @@ def dbt_diff(
         for thread in diff_threads:
             thread.join()
 
-    rich.print("Diffs Complete!")
-
 
 def _get_diff_vars(
     dbt_parser: "DbtParser",
@@ -223,6 +221,7 @@ def _initialize_api() -> Optional[DatafoldAPI]:
         yes_or_no = Confirm.ask("Would you like to generate a new API key?")
         if yes_or_no:
             webbrowser.open(f"{datafold_host}/login?next={datafold_host}/users/me")
+            rich.print('After generating, please, perform in the terminal "export DATAFOLD_API_KEY=<key>"')
             return None
         else:
             raise ValueError("Cannot initialize API because the API key is not provided")
@@ -235,11 +234,13 @@ def _cloud_diff(diff_vars: DiffVars, datasource_id: int, api: DatafoldAPI) -> No
         return
 
     if diff_vars.datasource_id is None:
-        rich.print("Data source ID not found in dbt_project.yml")
+        rich.print("[red]Data source ID not found in dbt_project.yml")
         is_create_data_source = Confirm.ask("Would you like to create a new data source?")
         if is_create_data_source:
             diff_vars.datasource_id = get_or_create_data_source(api=api)
-            rich.print(f"[green]Data source ID = {diff_vars.datasource_id}")
+            rich.print(f'To use the data source in next runs, please, update your "{PROJECT_FILE}" with a block:')
+            rich.print(f"[green]vars:\n  data_diff:\n    datasource_id: {diff_vars.datasource_id}\n")
+            rich.print("Read more about Datafold vars in docs: https://docs.datafold.com/os_diff/dbt_integration\n")
         else:
             raise ValueError(
                 "Datasource ID not found, include it as a dbt variable in the dbt_project.yml. \nvars:\n data_diff:\n   datasource_id: 1234"
