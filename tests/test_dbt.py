@@ -402,7 +402,6 @@ class TestDbtDiffer(unittest.TestCase):
         diff = run_datadiff_cli(
             "--dbt", "--dbt-project-dir", test_project_path, "--dbt-profiles-dir", test_project_path
         )
-        assert "Diffs Complete!" in "\n".join(d.decode("utf-8") for d in diff)
 
         # assertions for the diff that exists in tests/dbt_artifacts/jaffle_shop.duckdb
         if test_project_path == artifacts_path:
@@ -577,7 +576,7 @@ class TestDbtDiffer(unittest.TestCase):
         mock_setup_cloud_diff.assert_called_once()
         mock_cloud_diff.assert_called_once_with(expected_diff_vars, 1, host, url, api_key)
         mock_local_diff.assert_not_called()
-        mock_print.assert_called_once()
+        mock_print.assert_not_called()
 
     @patch("data_diff.dbt._setup_cloud_diff")
     @patch("data_diff.dbt._get_diff_vars")
@@ -637,7 +636,7 @@ class TestDbtDiffer(unittest.TestCase):
         mock_dbt_parser_inst.set_connection.assert_called_once()
         mock_cloud_diff.assert_not_called()
         mock_local_diff.assert_called_once_with(expected_diff_vars)
-        mock_print.assert_called_once()
+        mock_print.assert_not_called()
 
     @patch("data_diff.dbt._get_diff_vars")
     @patch("data_diff.dbt._local_diff")
@@ -691,7 +690,7 @@ class TestDbtDiffer(unittest.TestCase):
         mock_dbt_parser_inst.set_connection.assert_called_once()
         mock_cloud_diff.assert_not_called()
         mock_local_diff.assert_called_once_with(expected_diff_vars)
-        mock_print.assert_called_once()
+        mock_print.assert_not_called()
 
     @patch("data_diff.dbt._get_diff_vars")
     @patch("data_diff.dbt._local_diff")
@@ -756,7 +755,7 @@ class TestDbtDiffer(unittest.TestCase):
         mock_dbt_parser_inst.set_connection.assert_not_called()
         mock_cloud_diff.assert_not_called()
         mock_local_diff.assert_not_called()
-        self.assertEqual(mock_print.call_count, 2)
+        self.assertEqual(mock_print.call_count, 1)
 
     @patch("data_diff.dbt._get_diff_vars")
     @patch("data_diff.dbt._local_diff")
@@ -788,7 +787,7 @@ class TestDbtDiffer(unittest.TestCase):
         mock_dbt_parser_inst.set_connection.assert_called_once()
         mock_cloud_diff.assert_not_called()
         mock_local_diff.assert_not_called()
-        self.assertEqual(mock_print.call_count, 2)
+        self.assertEqual(mock_print.call_count, 1)
 
     def test_get_diff_vars_custom_schemas_prod_db_and_schema(self):
         mock_model = Mock()
