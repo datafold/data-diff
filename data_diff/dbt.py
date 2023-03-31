@@ -480,8 +480,8 @@ class DbtParser:
         credentials, conn_type = self._get_connection_creds()
 
         if conn_type == "snowflake":
-            if credentials.get("authenticator") is not None or credentials.get("private_key_passphrase") is not None:
-                raise Exception("Federated authentication and key/pair with passphrase is not yet supported for Snowflake.")
+            if credentials.get("authenticator") is not None:
+                raise Exception("Federated authentication is not yet supported for Snowflake.")
             conn_info = {
                 "driver": conn_type,
                 "user": credentials.get("user"),
@@ -498,6 +498,7 @@ class DbtParser:
                 if credentials.get("password") is not None:
                     raise Exception("Cannot use password and key at the same time")
                 conn_info["key"] = credentials.get("private_key_path")
+                conn_info["private_key_passphrase"] = credentials.get("private_key_passphrase")
             elif credentials.get("password") is not None:
                 conn_info["password"] = credentials.get("password")
             else:

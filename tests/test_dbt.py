@@ -166,6 +166,22 @@ class TestDbtParser(unittest.TestCase):
         self.assertEqual(mock_self.connection.get("key"), expected_credentials["private_key_path"])
         self.assertEqual(mock_self.requires_upper, True)
 
+    def test_set_connection_snowflake_success_key_and_passphrase(self):
+        expected_driver = "snowflake"
+        expected_credentials = {"user": "user", "private_key_path": "private_key_path", "private_key_passphrase": "private_key_passphrase"}
+        mock_self = Mock()
+        mock_self._get_connection_creds.return_value = (expected_credentials, expected_driver)
+
+        DbtParser.set_connection(mock_self)
+
+        self.assertIsInstance(mock_self.connection, dict)
+        self.assertEqual(mock_self.connection.get("driver"), expected_driver)
+        self.assertEqual(mock_self.connection.get("user"), expected_credentials["user"])
+        self.assertEqual(mock_self.connection.get("password"), None)
+        self.assertEqual(mock_self.connection.get("key"), expected_credentials["private_key_path"])
+        self.assertEqual(mock_self.connection.get("private_key_passphrase"), expected_credentials["private_key_passphrase"])
+        self.assertEqual(mock_self.requires_upper, True)
+
     def test_set_connection_snowflake_no_key_or_password(self):
         expected_driver = "snowflake"
         expected_credentials = {"user": "user"}
@@ -191,17 +207,6 @@ class TestDbtParser(unittest.TestCase):
     def test_set_connection_snowflake_key_and_password(self):
         expected_driver = "snowflake"
         expected_credentials = {"user": "user", "private_key_path": "private_key_path", "password": "password"}
-        mock_self = Mock()
-        mock_self._get_connection_creds.return_value = (expected_credentials, expected_driver)
-
-        with self.assertRaises(Exception):
-            DbtParser.set_connection(mock_self)
-
-        self.assertNotIsInstance(mock_self.connection, dict)
-
-    def test_set_connection_snowflake_private_key_passphrase(self):
-        expected_driver = "snowflake"
-        expected_credentials = {"user": "user", "private_key_passphrase": "private_key_passphrase"}
         mock_self = Mock()
         mock_self._get_connection_creds.return_value = (expected_credentials, expected_driver)
 
