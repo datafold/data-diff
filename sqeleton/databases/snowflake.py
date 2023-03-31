@@ -167,9 +167,13 @@ class Snowflake(Database):
             with open(kw.get("key"), "rb") as key:
                 if "password" in kw:
                     raise ConnectError("Cannot use password and key at the same time")
+                if kw.get("private_key_passphrase"):
+                    encoded_passphrase = kw.get("private_key_passphrase").encode()
+                else:
+                    encoded_passphrase = None
                 p_key = serialization.load_pem_private_key(
                     key.read(),
-                    password=None,
+                    password=encoded_passphrase,
                     backend=default_backend(),
                 )
 
