@@ -240,7 +240,10 @@ def _cloud_diff(diff_vars: DiffVars, datasource_id: int, api: DatafoldAPI) -> No
             diff_vars.datasource_id = get_or_create_data_source(api=api)
             rich.print(f'To use the data source in next runs, please, update your "{PROJECT_FILE}" with a block:')
             rich.print(f"[green]vars:\n  data_diff:\n    datasource_id: {diff_vars.datasource_id}\n")
-            rich.print("Read more about Datafold vars in docs: https://docs.datafold.com/os_diff/dbt_integration\n")
+            rich.print(
+                "Read more about Datafold vars in docs: "
+                "https://docs.datafold.com/os_diff/dbt_integration/#configure-a-data-source\n"
+            )
         else:
             raise ValueError(
                 "Datasource ID not found, include it as a dbt variable in the dbt_project.yml. \nvars:\n data_diff:\n   datasource_id: 1234"
