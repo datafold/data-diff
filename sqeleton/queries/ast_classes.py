@@ -91,7 +91,7 @@ class ITable(AbstractTable):
     source_table: Any
     schema: Schema = None
 
-    def select(self, *exprs, distinct=SKIP, optimizer_hints=SKIP, **named_exprs):
+    def select(self, *exprs, distinct=SKIP, optimizer_hints=SKIP, **named_exprs) -> "ITable":
         """Create a new table with the specified fields"""
         exprs = args_as_tuple(exprs)
         exprs = _drop_skips(exprs)
@@ -248,6 +248,12 @@ class LazyOps:
     def sum(self):
         return Func("SUM", [self])
 
+    def max(self):
+        return Func("MAX", [self])
+
+    def min(self):
+        return Func("MIN", [self])
+
 
 @dataclass
 class TestRegex(ExprNode, LazyOps):
@@ -261,7 +267,7 @@ class TestRegex(ExprNode, LazyOps):
         return c.compile(regex)
 
 
-@dataclass
+@dataclass(eq=False)
 class Func(ExprNode, LazyOps):
     name: str
     args: Sequence[Expr]
@@ -525,7 +531,7 @@ class Join(ExprNode, ITable, Root):
         s = self.source_tables[0].schema  # TODO validate types match between both tables
         return type(s)({c.name: c.type for c in self.columns})
 
-    def on(self, *exprs):
+    def on(self, *exprs) -> "Join":
         """Add an ON clause, for filtering the result of the cartesian product (i.e. the JOIN)"""
         if len(exprs) == 1:
             (e,) = exprs
@@ -538,7 +544,7 @@ class Join(ExprNode, ITable, Root):
 
         return self.replace(on_exprs=(self.on_exprs or []) + exprs)
 
-    def select(self, *exprs, **named_exprs):
+    def select(self, *exprs, **named_exprs) -> ITable:
         """Select fields to return from the JOIN operation
 
         See Also: ``ITable.select()``
