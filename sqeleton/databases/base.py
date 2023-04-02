@@ -316,6 +316,10 @@ class Database(AbstractDatabase[T]):
     def name(self):
         return type(self).__name__
 
+    def compile(self, sql_ast):
+        compiler = Compiler(self)
+        return compiler.compile(sql_ast)
+
     def query(self, sql_ast: Union[Expr, Generator], res_type: type = None):
         """Query the given SQL code/AST, and attempt to convert the result to type 'res_type'
 
@@ -381,6 +385,8 @@ class Database(AbstractDatabase[T]):
                 return [_one(row) for row in res]
             elif res_type.__args__ in [(Tuple,), (tuple,)]:
                 return [tuple(row) for row in res]
+            elif res_type.__args__ == (dict,):
+                return [dict(safezip(res.columns, row)) for row in res]
             else:
                 raise ValueError(res_type)
         return res

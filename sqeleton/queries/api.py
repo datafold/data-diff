@@ -8,7 +8,7 @@ from .base import args_as_tuple
 this = This()
 
 
-def join(*tables: ITable):
+def join(*tables: ITable) -> Join:
     """Inner-join a sequence of table expressions"
 
     When joining, it's recommended to use explicit tables names, instead of `this`, in order to avoid potential name collisions.
@@ -108,6 +108,11 @@ def min_(expr: Expr):
 def max_(expr: Expr):
     """Call MAX(expr)"""
     return Func("max", [expr])
+
+
+def exists(expr: Expr):
+    """Call EXISTS(expr)"""
+    return Func("exists", [expr])
 
 
 def if_(cond: Expr, then: Expr, else_: Optional[Expr] = None):
