@@ -21,4 +21,4 @@ Resources
 - :doc:`python-api`
 - The rest of the `documentation`_
 
-.. _documentation: https://docs.datafold.com/os_diff/about/
+.. _documentation: https://docs.datafold.com/guides/os_data_diff
