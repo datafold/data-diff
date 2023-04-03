@@ -110,11 +110,7 @@ In both code examples, I've used `<>` carrots to represent values that **should 
 
 We know that in some cases, the data-diff command can become long and dense. And maybe you're new to the command line.
 
-* We're here to help [on slack](https://locallyoptimistic.slack.com/archives/C03HUNGQV0S) if you have ANY questions as you use `data-diff` in your workflow.
-* You can also post a question in [GitHub Discussions](https://github.com/datafold/data-diff/discussions).
-
-
-To get a Slack invite - [click here](https://locallyoptimistic.com/community/)
+* We're here to help! Post a question in [GitHub Discussions](https://github.com/datafold/data-diff/discussions).
 
 ## How to Use
 
