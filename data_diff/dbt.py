@@ -85,8 +85,12 @@ def dbt_diff(
     config_prod_schema = datadiff_variables.get("prod_schema")
     datasource_id = datadiff_variables.get("datasource_id")
     custom_schemas = datadiff_variables.get("custom_schemas")
+    use_prod_schema = datadiff_variables.get("use_prod_schmea")
     # custom schemas is default dbt behavior, so default to True if the var doesn't exist
     custom_schemas = True if custom_schemas is None else custom_schemas
+    # dbt prefixes custom schemas with target schemas as a default behaviour, so default to True if the var doesn't exist
+    use_prod_schema = True if use_prod_schema is None else use_prod_schema
+    
     set_dbt_user_id(dbt_parser.dbt_user_id)
 
     if is_cloud:
@@ -108,7 +112,7 @@ def dbt_diff(
         )
 
     for model in models:
-        diff_vars = _get_diff_vars(dbt_parser, config_prod_database, config_prod_schema, model, custom_schemas)
+        diff_vars = _get_diff_vars(dbt_parser, config_prod_database, config_prod_schema, model, custom_schemas, use_prod_schema)
 
         if diff_vars.primary_keys:
             if is_cloud:
@@ -140,6 +144,7 @@ def _get_diff_vars(
     config_prod_schema: Optional[str],
     model,
     custom_schemas: bool,
+    use_prod_schema: bool,
 ) -> DiffVars:
     dev_database = model.database
     dev_schema = model.schema_
@@ -152,8 +157,13 @@ def _get_diff_vars(
     # if project has custom schemas (default)
     # need to construct the prod schema as <prod_target_schema>_<custom_schema>
     # https://docs.getdbt.com/docs/build/custom-schemas
-    if custom_schemas and model.config.schema_:
+    # if target schemas are removed from prod in the <generate_schema_name> macro
+    # need to construct the prod schema as <custom_schema>
+    if use_prod_schema and custom_schemas and model.config.schema_:
         prod_schema = prod_schema + "_" + model.config.schema_
+        
+    if custom_schemas and model.config.schema_:
+        prod_schema = model.config.schema_
 
     if dbt_parser.requires_upper:
         dev_qualified_list = [x.upper() for x in [dev_database, dev_schema, model.alias]]
