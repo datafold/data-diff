@@ -114,7 +114,7 @@ We know that in some cases, the data-diff command can become long and dense. And
 
 ## How to Use
 
-* [Examples with dbt, joindiff, and hasdiff](https://docs.datafold.com/reference/open_source/cli#examples)
+* [Examples with dbt, joindiff, and hashdiff](https://docs.datafold.com/reference/open_source/cli#examples)
 * [Examples with Python](https://data-diff.readthedocs.io/en/latest/python-api.html)
 * [How to use with TOML configuration file](https://docs.datafold.com/reference/open_source/cli#toml-config-file)
 

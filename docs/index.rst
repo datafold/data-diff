@@ -9,7 +9,7 @@
 data-diff
 ---------
 
-**Data-diff** is a command-line tool and Python library for compariing ables in and across databases.
+**Data-diff** is a command-line tool and Python library for comparing tables in and across databases.
 
 For more information, `See our README <https://github.com/datafold/data-diff#readme>`_
 

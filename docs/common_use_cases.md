@@ -2,7 +2,7 @@
 
 ## joindiff
 - **Inspect differences between branches**. Make sure your code results in only expected changes.
-- **Validate stability of critical downstream tables**. When refactoring a data pipeline, rest assured that the changes you make to upstream models has not impacted critical downstream models depended on by users and systems.
+- **Validate stability of critical downstream tables**. When refactoring a data pipeline, rest assured that the changes you make to upstream models have not impacted critical downstream models depended on by users and systems.
 - **Conduct better code reviews**. No matter how thoughtfully you review the code, run a diff to ensure that you don't accidentally approve an error.
 
 ## hashdiff
