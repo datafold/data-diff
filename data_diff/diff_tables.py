@@ -9,6 +9,7 @@ from contextlib import contextmanager
 from operator import methodcaller
 from typing import Dict, Tuple, Iterator, Optional
 from concurrent.futures import ThreadPoolExecutor, as_completed
+from datetime import datetime, timedelta
 
 from runtype import dataclass
 
@@ -38,13 +39,26 @@ class ThreadBase:
 
     threaded: bool = True
     max_threadpool_size: Optional[int] = 1
+    timeout: int
+
+    def __post_init__(self):
+        super().__setattr__('max_end_time', 
+                            datetime.now() + timedelta(seconds=self.timeout))
 
     def _thread_map(self, func, iterable):
+        thread_count = self.max_threadpool_size
         if not self.threaded:
-            return map(func, iterable)
+            thread_count = 1
 
-        with ThreadPoolExecutor(max_workers=self.max_threadpool_size) as task_pool:
-            return task_pool.map(func, iterable)
+
+        timeout = (self.max_end_time - datetime.now()).total_seconds()
+        if timeout < 0:
+            raise TimeoutError
+        
+        logging.info(f'Starting threadpool with max_end_time={self.max_end_time} ({timeout})')
+
+        with ThreadPoolExecutor(max_workers=thread_count) as task_pool:
+            return task_pool.map(func, iterable, timeout=timeout)
 
     def _threaded_call(self, func, iterable):
         "Calls a method for each object in iterable."
@@ -194,6 +208,7 @@ class TableDiffer(ThreadBase, ABC):
     def __post_init__(self):
         logging.info('post_init called')
         super().__setattr__('ti', ThreadedYielder(self.max_threadpool_size))
+        super().__post_init__()
 
     def diff_tables(self, table1: TableSegment, table2: TableSegment, info_tree: InfoTree = None) -> DiffResultWrapper:
         """Diff the given tables.

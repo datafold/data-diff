@@ -84,6 +84,9 @@ def diff_tables(
     hash_query_type: str = None,
     # Optimizer hints for Select queries
     optimizer_hints: Optional[str] = None,
+
+    # 8-hour timeout by default
+    timeout: int = 8*60*60
 ) -> tuple[TableDiffer, Iterator]:
     """Finds the diff between table1 and table2.
 
@@ -168,6 +171,7 @@ def diff_tables(
                 bisection_threshold=bisection_threshold,
                 threaded=threaded,
                 max_threadpool_size=max_threadpool_size,
+                timeout=timeout
             )
         else:
             logging.info('Diffing with HASHDIFF grouped query')
@@ -176,6 +180,7 @@ def diff_tables(
                 bisection_threshold=bisection_threshold,
                 threaded=threaded,
                 max_threadpool_size=max_threadpool_size,
+                timeout=timeout
             )         
     elif algorithm == Algorithm.JOINDIFF:
         if isinstance(materialize_to_table, str):
@@ -188,6 +193,7 @@ def diff_tables(
             materialize_to_table=materialize_to_table,
             materialize_all_rows=materialize_all_rows,
             table_write_limit=table_write_limit,
+            timeout=timeout
         )
     else:
         raise ValueError(f"Unknown algorithm: {algorithm}")
