@@ -85,7 +85,7 @@ def dbt_diff(
     config_prod_schema = datadiff_variables.get("prod_schema")
     datasource_id = datadiff_variables.get("datasource_id")
     custom_schemas = datadiff_variables.get("custom_schemas")
-    use_prod_schema = datadiff_variables.get("use_prod_schmea")
+    use_prod_schema = datadiff_variables.get("use_prod_schema")
     # custom schemas is default dbt behavior, so default to True if the var doesn't exist
     custom_schemas = True if custom_schemas is None else custom_schemas
     # dbt prefixes custom schemas with target schemas as a default behaviour, so default to True if the var doesn't exist
