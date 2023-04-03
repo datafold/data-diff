@@ -4,6 +4,7 @@
    :hidden:
 
    python-api
+   python_examples
 
 data-diff
 ---------
