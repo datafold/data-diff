@@ -9,7 +9,7 @@ data-diff is a **free, open-source tool** that enables data professionals to det
 
 ## Documentation
 
-[**🗎 Documentation website**](https://docs.datafold.com/os_diff/about) - our detailed documentation has everything you need to start diffing.
+[**🗎 Documentation website**](https://docs.datafold.com/guides/os_data_diff) - our detailed documentation has everything you need to start diffing.
 
 ### Databases we support
 
@@ -27,7 +27,7 @@ data-diff is a **free, open-source tool** that enables data professionals to det
 - DuckDB >=0.6
 - SQLite (coming soon)
 
-For their corresponding connection strings, check out our [detailed table](https://docs.datafold.com/os_diff/databases_we_support).
+For their corresponding connection strings, check out our [detailed table](https://github.com/datafold/data-diff/blob/master/docs/supported-databases.md).
 
 #### Looking for a database not on the list?
 If a database is not on the list, we'd still love to support it. [Please open an issue](https://github.com/datafold/data-diff/issues) to discuss it, or vote on existing requests to push them up our todo list.
@@ -92,7 +92,7 @@ Once you've installed `data-diff`, you can run it from the command line.
 data-diff DB1_URI TABLE1_NAME DB2_URI TABLE2_NAME [OPTIONS]
 ```
 
-Be sure to read [the docs](https://docs.datafold.com/os_diff/how_to_use/how_to_use_with_command_line) for detailed instructions how to build one of these commands depending on your database setup.
+Be sure to read [the docs](https://docs.datafold.com/reference/open_source/cli) for detailed instructions how to build one of these commands depending on your database setup.
 
 #### Code Example: Diff Tables Between Databases
 Here's an example command for your copy/pasting, taken from the screenshot above when we diffed data between Snowflake and Postgres.
@@ -138,14 +138,14 @@ To get a Slack invite - [click here](https://locallyoptimistic.com/community/)
 
 ## How to Use
 
-* [How to use from the shell (or: command-line)](https://docs.datafold.com/os_diff/how_to_use/how_to_use_with_command_line)
-* [How to use from Python](https://docs.datafold.com/os_diff/how_to_use/how_to_use_with_python)
-* [How to use with TOML configuration file](https://docs.datafold.com/os_diff/how_to_use/how_to_use_with_toml)
-* [Usage Analytics & Data Privacy](https://docs.datafold.com/os_diff/usage_analytics_data_privacy)
+* [Examples with dbt, joindiff, and hasdiff](https://docs.datafold.com/reference/open_source/cli#examples)
+* [Examples with Python](https://data-diff.readthedocs.io/en/latest/python-api.html)
+* [How to use with TOML configuration file](https://docs.datafold.com/reference/open_source/cli#toml-config-file)
 
 ## How to Contribute
 * Feel free to open an issue or contribute to the project by working on an existing issue.
 * Please read the [contributing guidelines](https://github.com/datafold/data-diff/blob/master/CONTRIBUTING.md) to get started.
+* To add a new database driver, check out [docs](https://github.com/datafold/data-diff/blob/master/docs/new-database-driver-guide.rst).
 
 Big thanks to everyone who contributed so far:
 
@@ -155,7 +155,10 @@ Big thanks to everyone who contributed so far:
 
 ## Technical Explanation
 
-Check out this [technical explanation](https://docs.datafold.com/os_diff/technical_explanation) of how data-diff works.
+Check out this [technical explanation](https://github.com/datafold/data-diff/blob/master/docs/technical-explanation.md) of how data-diff works.
+
+## Analytics
+- [Usage Analytics & Data Privacy](https://github.com/datafold/data-diff/blob/master/docs/usage_analytics.md)
 
 ## License
 
