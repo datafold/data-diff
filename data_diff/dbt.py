@@ -408,7 +408,12 @@ class DbtParser:
         self.unique_columns = self.get_unique_columns()
 
     def get_datadiff_variables(self) -> dict:
-        return self.project_dict.get("vars").get("data_diff")
+        vars = get_from_dict_with_raise(
+            self.project_dict, "vars", f"No vars: found in dbt_project.yml."
+        )
+        return get_from_dict_with_raise(
+            vars, "data_diff", f"data_diff: section not found in dbt_project.yml vars:."
+        )
 
     def get_models(self):
         with open(self.project_dir / RUN_RESULTS_PATH) as run_results:
