@@ -67,6 +67,7 @@ class PostgresqlDialect(BaseDialect, Mixin_Schema):
         "double precision": Float,
         "real": Float,
         "decimal": Decimal,
+        "smallint": Integer,
         "integer": Integer,
         "numeric": Decimal,
         "bigint": Integer,
