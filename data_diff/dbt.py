@@ -13,6 +13,8 @@ from .utils import dbt_diff_string_template, getLogger
 from .version import __version__
 from pathlib import Path
 
+import keyring
+
 from .cloud import DatafoldAPI, TCloudApiDataDiff, get_or_create_data_source
 
 logger = getLogger(__name__)
@@ -230,14 +232,24 @@ def _initialize_api() -> Optional[DatafoldAPI]:
 
     api_key = os.environ.get("DATAFOLD_API_KEY")
     if not api_key:
-        rich.print("[red]API key not found, add it as an environment variable called DATAFOLD_API_KEY.")
-        yes_or_no = Confirm.ask("Would you like to generate a new API key?")
-        if yes_or_no:
-            webbrowser.open(f"{datafold_host}/login?next={datafold_host}/users/me")
-            rich.print('After generating, please, perform in the terminal "export DATAFOLD_API_KEY=<key>"')
-            return None
-        else:
-            raise ValueError("Cannot initialize API because the API key is not provided")
+        rich.print("[red]API key not found. Trying to get from the system keyring service")
+        api_key = keyring.get_password("system", "DATAFOLD_API_KEY")
+        if not api_key:
+            rich.print("[red]API key not found, add it as an environment variable called DATAFOLD_API_KEY.")
+
+            yes_or_no = Confirm.ask("Would you like to generate a new API key?")
+            if yes_or_no:
+                webbrowser.open(f"{datafold_host}/login?next={datafold_host}/users/me")
+                rich.print('After generating, please, perform in the terminal "export DATAFOLD_API_KEY=<key>"')
+                return None
+            else:
+                raise ValueError("Cannot initialize API because the API key is not provided")
+
+    rich.print("Trying to save or update the API key to the system keyring service")
+    try:
+        keyring.set_password("system", "DATAFOLD_API_KEY", api_key)
+    except Exception as e:
+        rich.print(f"[red]Fail when saving the API key to the system keyring service. Reason: {e}")
 
     return DatafoldAPI(api_key=api_key, host=datafold_host)
 
