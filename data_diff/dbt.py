@@ -324,12 +324,7 @@ def _cloud_diff(diff_vars: DiffVars, datasource_id: int, datafold_host: str, url
             send_event_json(event_json)
 
         if error:
-            rich.print(
-                "[red]"
-                + ".".join(diff_vars.prod_path)
-                + " <> "
-                + ".".join(diff_vars.dev_path) + "[/]\n"
-            )
+            rich.print("[red]" + ".".join(diff_vars.prod_path) + " <> " + ".".join(diff_vars.dev_path) + "[/]\n")
             if diff_id:
                 diff_url = f"{datafold_host}/datadiffs/{diff_id}/overview"
                 rich.print(f"{diff_url} \n")
@@ -521,13 +516,15 @@ class DbtParser:
                 "filepath": credentials.get("path"),
             }
         elif conn_type == "redshift":
-            if credentials.get("password") is None or credentials.get("method") == "iam":
+            if (credentials.get("pass") is None and credentials.get("password") is None) or credentials.get(
+                "method"
+            ) == "iam":
                 raise Exception("Only password authentication is currently supported for Redshift.")
             conn_info = {
                 "driver": conn_type,
                 "host": credentials.get("host"),
                 "user": credentials.get("user"),
-                "password": credentials.get("password"),
+                "password": credentials.get("password") or credentials.get("pass"),
                 "port": credentials.get("port"),
                 "dbname": credentials.get("dbname"),
             }
