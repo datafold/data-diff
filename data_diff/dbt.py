@@ -94,15 +94,28 @@ def dbt_diff(
     set_dbt_project_id(dbt_parser.dbt_project_id)
 
     if is_cloud:
-        if datasource_id is None:
-            raise ValueError(
-                "Datasource ID not found, include it as a dbt variable in the dbt_project.yml. \nvars:\n data_diff:\n   datasource_id: 1234"
-            )
         api = _initialize_api()
-
         # exit so the user can set the key
-        if not api_key:
+        if not api:
             return
+
+        if datasource_id is None:
+            rich.print("[red]Data source ID not found in dbt_project.yml")
+            is_create_data_source = Confirm.ask("Would you like to create a new data source?")
+            if is_create_data_source:
+                datasource_id = get_or_create_data_source(api=api)
+                rich.print(f'To use the data source in next runs, please, update your "{PROJECT_FILE}" with a block:')
+                rich.print(f"[green]vars:\n  data_diff:\n    datasource_id: {datasource_id}\n")
+                rich.print(
+                    "Read more about Datafold vars in docs: "
+                    "https://docs.datafold.com/os_diff/dbt_integration/#configure-a-data-source\n"
+                )
+            else:
+                raise ValueError(
+                    "Datasource ID not found, include it as a dbt variable in the dbt_project.yml. "
+                    "\nvars:\n data_diff:\n   datasource_id: 1234"
+                )
+
     else:
         dbt_parser.set_connection()
 
@@ -116,7 +129,7 @@ def dbt_diff(
 
         if diff_vars.primary_keys:
             if is_cloud:
-                diff_thread = run_as_daemon(_cloud_diff, diff_vars, datasource_id, datafold_host, url, api_key)
+                diff_thread = run_as_daemon(_cloud_diff, diff_vars, datasource_id, api)
                 diff_threads.append(diff_thread)
             else:
                 _local_diff(diff_vars)
@@ -230,29 +243,10 @@ def _initialize_api() -> Optional[DatafoldAPI]:
 
 
 def _cloud_diff(diff_vars: DiffVars, datasource_id: int, api: DatafoldAPI) -> None:
-    if api is None:
-        return
-
-    if diff_vars.datasource_id is None:
-        rich.print("[red]Data source ID not found in dbt_project.yml")
-        is_create_data_source = Confirm.ask("Would you like to create a new data source?")
-        if is_create_data_source:
-            diff_vars.datasource_id = get_or_create_data_source(api=api)
-            rich.print(f'To use the data source in next runs, please, update your "{PROJECT_FILE}" with a block:')
-            rich.print(f"[green]vars:\n  data_diff:\n    datasource_id: {diff_vars.datasource_id}\n")
-            rich.print(
-                "Read more about Datafold vars in docs: "
-                "https://docs.datafold.com/os_diff/dbt_integration/#configure-a-data-source\n"
-            )
-        else:
-            raise ValueError(
-                "Datasource ID not found, include it as a dbt variable in the dbt_project.yml. \nvars:\n data_diff:\n   datasource_id: 1234"
-            )
-
     diff_output_str = _diff_output_base(".".join(diff_vars.dev_path), ".".join(diff_vars.prod_path))
     payload = TCloudApiDataDiff(
-        data_source1_id=diff_vars.datasource_id,
-        data_source2_id=diff_vars.datasource_id,
+        data_source1_id=datasource_id,
+        data_source2_id=datasource_id,
         table1=diff_vars.prod_path,
         table2=diff_vars.dev_path,
         pk_columns=diff_vars.primary_keys,
@@ -271,23 +265,21 @@ def _cloud_diff(diff_vars: DiffVars, datasource_id: int, api: DatafoldAPI) -> No
 
         if diff_id is None:
             raise Exception(f"Api response did not contain a diff_id")
-        return diff_id
 
-        summary_url = f"{url}/{diff_id}/summary_results"
-        diff_results = _cloud_poll_and_get_summary_results(summary_url, headers)
+        diff_results = api.poll_data_diff_results(diff_id)
 
-        diff_url = f"{datafold_host}/datadiffs/{diff_id}/overview"
+        diff_url = f"{api.host}/datadiffs/{diff_id}/overview"
 
-        rows_added_count = diff_results["pks"]["exclusives"][1]
-        rows_removed_count = diff_results["pks"]["exclusives"][0]
+        rows_added_count = diff_results.pks.exclusives[1]
+        rows_removed_count = diff_results.pks.exclusives[0]
 
-        rows_updated = diff_results["values"]["rows_with_differences"]
-        total_rows = diff_results["values"]["total_rows"]
+        rows_updated = diff_results.values.rows_with_differences
+        total_rows = diff_results.values.total_rows
         rows_unchanged = int(total_rows) - int(rows_updated)
         diff_percent_list = {
-            x["column_name"]: str(x["match"]) + "%"
-            for x in diff_results["values"]["columns_diff_stats"]
-            if x["match"] != 100.0
+            x.column_name: str(x.match) + "%"
+            for x in diff_results.values.columns_diff_stats
+            if x.match != 100.0
         }
 
         if any([rows_added_count, rows_removed_count, rows_updated]):
@@ -330,7 +322,7 @@ def _cloud_diff(diff_vars: DiffVars, datasource_id: int, api: DatafoldAPI) -> No
         if error:
             rich.print(diff_output_str)
             if diff_id:
-                diff_url = f"{datafold_host}/datadiffs/{diff_id}/overview"
+                diff_url = f"{api.host}/datadiffs/{diff_id}/overview"
                 rich.print(f"{diff_url} \n")
             logger.error(error)
 

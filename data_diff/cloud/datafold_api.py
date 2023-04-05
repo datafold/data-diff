@@ -1,6 +1,7 @@
 import dataclasses
 import enum
-from typing import Any, Dict, List, Optional
+import time
+from typing import Any, Dict, List, Optional, Type, Tuple
 
 import pydantic
 import requests
@@ -75,6 +76,57 @@ class TCloudApiDataDiff(pydantic.BaseModel):
     pk_columns: List[str]
 
 
+class TSummaryResultPrimaryKeyStats(pydantic.BaseModel):
+    total_rows: Tuple[int, int]
+    nulls: Tuple[int, int]
+    dupes: Tuple[int, int]
+    exclusives: Tuple[int, int]
+    distincts: Tuple[int, int]
+
+
+class TSummaryResultColumnDiffStats(pydantic.BaseModel):
+    column_name: str
+    match: float
+
+
+class TSummaryResultValueStats(pydantic.BaseModel):
+    total_rows: int
+    rows_with_differences: int
+    total_values: int
+    compared_columns: int
+    columns_with_differences: int
+    columns_diff_stats: List[TSummaryResultColumnDiffStats]
+
+
+class TSummaryResultSchemaStats(pydantic.BaseModel):
+    columns_mismatched: Tuple[int, int]
+    column_type_mismatches: int
+    column_reorders: int
+    column_counts: Tuple[int, int]
+
+
+class TCloudApiDataDiffSummaryResult(pydantic.BaseModel):
+    status: str
+    pks: Optional[TSummaryResultPrimaryKeyStats]
+    values: Optional[TSummaryResultValueStats]
+    schema_: Optional[TSummaryResultSchemaStats]
+    dependencies: Optional[Dict[str, Any]]
+
+    @classmethod
+    def from_orm(cls: Type['Model'], obj: Any) -> 'Model':
+        pks = TSummaryResultPrimaryKeyStats(**obj['pks']) if 'pks' in obj else None
+        values = TSummaryResultValueStats(**obj['values']) if 'values' in obj else None
+        deps = obj['deps'] if 'deps' in obj else None
+        schema = TSummaryResultSchemaStats(**obj['schema']) if 'schema' in obj else None
+        return cls(
+            status=obj['status'],
+            pks=pks,
+            values=values,
+            schema_=schema,
+            deps=deps,
+        )
+
+
 class TCloudDataSourceTestResult(pydantic.BaseModel):
     status: TestDataSourceStatus
     message: str
@@ -140,6 +192,29 @@ class DatafoldAPI:
     def create_data_diff(self, payload: TCloudApiDataDiff) -> int:
         rv = self.make_post_request(url="api/v1/datadiffs", payload=payload.dict())
         return rv.json()["id"]
+
+    def poll_data_diff_results(self, diff_id: int) -> TCloudApiDataDiffSummaryResult:
+        summary_results = None
+        start_time = time.time()
+        sleep_interval = 5  # starts at 5 sec
+        max_sleep_interval = 60
+        max_wait_time = 300
+
+        while not summary_results:
+            response = self.make_get_request(url=f"api/v1/datadiffs/{diff_id}/summary_results")
+            response_json = response.json()
+            if response_json["status"] == "success":
+                summary_results = response_json
+            elif response_json["status"] == "failed":
+                raise Exception(f"Diff failed: {str(response_json)}")
+
+            if time.time() - start_time > max_wait_time:
+                raise Exception("Timed out waiting for diff results")
+
+            time.sleep(sleep_interval)
+            sleep_interval = min(sleep_interval * 2, max_sleep_interval)
+
+        return TCloudApiDataDiffSummaryResult.from_orm(summary_results)
 
     def test_data_source(self, data_source_id: int) -> int:
         # TODO: replace an internal url by a public one
