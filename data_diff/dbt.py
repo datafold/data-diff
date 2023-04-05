@@ -327,32 +327,6 @@ def _cloud_diff(diff_vars: DiffVars, datasource_id: int, api: DatafoldAPI) -> No
             logger.error(error)
 
 
-def _cloud_poll_and_get_summary_results(url, headers):
-    summary_results = None
-    start_time = time.time()
-    sleep_interval = 5  # starts at 5 sec
-    max_sleep_interval = 60
-    max_wait_time = 300
-
-    while not summary_results:
-        response = requests.request("GET", url, headers=headers, timeout=30)
-        response.raise_for_status()
-        response_json = response.json()
-
-        if response_json["status"] == "success":
-            summary_results = response_json
-        elif response_json["status"] == "failed":
-            raise Exception(f"Diff failed: {str(response_json)}")
-
-        if time.time() - start_time > max_wait_time:
-            raise Exception("Timed out waiting for diff results")
-
-        time.sleep(sleep_interval)
-        sleep_interval = min(sleep_interval * 2, max_sleep_interval)
-
-    return summary_results
-
-
 def _diff_output_base(dev_path: str, prod_path: str) -> str:
     return f"[green]{prod_path} <> {dev_path}[/] \n"
 
