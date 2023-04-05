@@ -1,11 +1,11 @@
 [tool.poetry]
-name = "data-diff"
-version = "0.6.0"
-description = "Command-line tool and Python library to efficiently diff rows across two different databases."
-authors = ["Datafold <data-diff@datafold.com>"]
+name = "sqeleton"
+version = "0.0.8"
+description = "Python library for querying SQL databases"
+authors = ["Erez Shinan <erezshin@gmail.com>"]
 license = "MIT"
 readme = "README.md"
-repository = "https://github.com/datafold/data-diff"
+repository = "https://github.com/datafold/sqeleton"
 documentation = ""
 classifiers = [
     "Intended Audience :: Developers",
@@ -20,7 +20,7 @@ classifiers = [
     "Topic :: Database :: Database Engines/Servers",
     "Typing :: Typed"
 ]
-packages = [{ include = "data_diff" }]
+packages = [{ include = "sqeleton" }]
 
 [tool.poetry.dependencies]
 python = "^3.7"
@@ -29,7 +29,6 @@ dsnparse = "*"
 click = "^8.1"
 rich = "*"
 toml = "^0.10.2"
-sqeleton = { path = "./vendor/sqeleton", develop = true }
 mysql-connector-python = {version="8.0.29", optional=true}
 psycopg2 = {version="*", optional=true}
 snowflake-connector-python = {version="^2.7.2", optional=true}
@@ -38,13 +37,14 @@ trino = {version="^0.314.0", optional=true}
 presto-python-client = {version="*", optional=true}
 clickhouse-driver = {version="*", optional=true}
 duckdb = {version="^0.7.0", optional=true}
-dbt-artifacts-parser = {version="^0.2.5", optional=true}
-dbt-core = {version="^1.0.0", optional=true}
+textual = {version="^0.9.1", optional=true}
+textual-select = {version="*", optional=true}
 
 [tool.poetry.dev-dependencies]
 parameterized = "*"
 unittest-parallel = "*"
-preql = "^0.2.19"
+
+duckdb = "^0.7.0"
 mysql-connector-python = "*"
 psycopg2 = "*"
 snowflake-connector-python = "^2.7.2"
@@ -53,15 +53,8 @@ trino = "^0.314.0"
 presto-python-client = "*"
 clickhouse-driver = "*"
 vertica-python = "*"
-duckdb = "^0.7.0"
-dbt-artifacts-parser = "^0.2.5"
-dbt-core = "^1.0.0"
-# google-cloud-bigquery = "*"
-# databricks-sql-connector = "*"
 
 [tool.poetry.extras]
-# When adding, update also: README + dev deps just above
-preql = ["preql"]
 mysql = ["mysql-connector-python"]
 postgresql = ["psycopg2"]
 snowflake = ["snowflake-connector-python", "cryptography"]
@@ -72,14 +65,11 @@ trino = ["trino"]
 clickhouse = ["clickhouse-driver"]
 vertica = ["vertica-python"]
 duckdb = ["duckdb"]
-dbt = ["dbt-core", "dbt-artifacts-parser"]
+tui = ["textual", "textual-select"]
 
 [build-system]
 requires = ["poetry-core>=1.0.0"]
 build-backend = "poetry.core.masonry.api"
 
 [tool.poetry.scripts]
-data-diff = 'data_diff.__main__:main'
-
-[tool.black]
-line-length = 120
+sqeleton = 'sqeleton.__main__:main'
