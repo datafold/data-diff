@@ -113,13 +113,13 @@ class TCloudApiDataDiffSummaryResult(pydantic.BaseModel):
     dependencies: Optional[Dict[str, Any]]
 
     @classmethod
-    def from_orm(cls: Type['Model'], obj: Any) -> 'Model':
-        pks = TSummaryResultPrimaryKeyStats(**obj['pks']) if 'pks' in obj else None
-        values = TSummaryResultValueStats(**obj['values']) if 'values' in obj else None
-        deps = obj['deps'] if 'deps' in obj else None
-        schema = TSummaryResultSchemaStats(**obj['schema']) if 'schema' in obj else None
+    def from_orm(cls: Type["Model"], obj: Any) -> "Model":
+        pks = TSummaryResultPrimaryKeyStats(**obj["pks"]) if "pks" in obj else None
+        values = TSummaryResultValueStats(**obj["values"]) if "values" in obj else None
+        deps = obj["deps"] if "deps" in obj else None
+        schema = TSummaryResultSchemaStats(**obj["schema"]) if "schema" in obj else None
         return cls(
-            status=obj['status'],
+            status=obj["status"],
             pks=pks,
             values=values,
             schema_=schema,

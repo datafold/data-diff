@@ -169,7 +169,11 @@ class TestDbtParser(unittest.TestCase):
 
     def test_set_connection_snowflake_success_key_and_passphrase(self):
         expected_driver = "snowflake"
-        expected_credentials = {"user": "user", "private_key_path": "private_key_path", "private_key_passphrase": "private_key_passphrase"}
+        expected_credentials = {
+            "user": "user",
+            "private_key_path": "private_key_path",
+            "private_key_passphrase": "private_key_passphrase",
+        }
         mock_self = Mock()
         mock_self._get_connection_creds.return_value = (expected_credentials, expected_driver)
 
@@ -180,7 +184,9 @@ class TestDbtParser(unittest.TestCase):
         self.assertEqual(mock_self.connection.get("user"), expected_credentials["user"])
         self.assertEqual(mock_self.connection.get("password"), None)
         self.assertEqual(mock_self.connection.get("key"), expected_credentials["private_key_path"])
-        self.assertEqual(mock_self.connection.get("private_key_passphrase"), expected_credentials["private_key_passphrase"])
+        self.assertEqual(
+            mock_self.connection.get("private_key_passphrase"), expected_credentials["private_key_passphrase"]
+        )
         self.assertEqual(mock_self.requires_upper, True)
 
     def test_set_connection_snowflake_no_key_or_password(self):
@@ -487,9 +493,7 @@ class TestDbtDiffer(unittest.TestCase):
         prod_qualified_list = ["prod_db", "prod_schema", "prod_table"]
         expected_datasource_id = 1
         expected_primary_keys = ["primary_key_column"]
-        diff_vars = DiffVars(
-            dev_qualified_list, prod_qualified_list, expected_primary_keys, None, None
-        )
+        diff_vars = DiffVars(dev_qualified_list, prod_qualified_list, expected_primary_keys, None, None)
         _cloud_diff(diff_vars, expected_datasource_id, api=mock_api)
 
         mock_api.create_data_diff.assert_called_once()
@@ -543,7 +547,7 @@ class TestDbtDiffer(unittest.TestCase):
     @patch("data_diff.dbt._cloud_diff")
     @patch("data_diff.dbt.DbtParser.__new__")
     @patch("data_diff.dbt.rich.print")
-    @patch('builtins.input', return_value='n')
+    @patch("builtins.input", return_value="n")
     def test_diff_is_cloud_no_ds_id(
         self, _, mock_print, mock_dbt_parser, mock_cloud_diff, mock_local_diff, mock_get_diff_vars, mock_initialize_api
     ):
