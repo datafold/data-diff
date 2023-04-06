@@ -203,7 +203,7 @@ def _local_diff(diff_vars: DiffVars) -> None:
     diff = diff_tables(table1, table2, threaded=True, algorithm=Algorithm.JOINDIFF, extra_columns=extra_columns)
 
     if list(diff):
-        diff_output_str += column_diffs_str + diff.get_stats_string(is_dbt=True) + "\n"
+        diff_output_str += f"{column_diffs_str}{diff.get_stats_string(is_dbt=True)} \n"
         rich.print(diff_output_str)
     else:
         diff_output_str += f"{column_diffs_str}[bold][green]No row differences[/][/] \n"
@@ -260,24 +260,11 @@ def _cloud_diff(diff_vars: DiffVars, datasource_id: int, datafold_host: str, url
                 diff_percent_list,
                 "Value Match Percent:",
             )
-            rich.print(
-                "[red]"
-                + ".".join(diff_vars.prod_path)
-                + " <> "
-                + ".".join(diff_vars.dev_path)
-                + f"[/]\n{diff_url}\n"
-                + diff_output
-                + "\n"
-            )
+            diff_output_str += f"{diff_url}\n {diff_output} \n"
+            rich.print(diff_output_str)
         else:
-            rich.print(
-                "[red]"
-                + ".".join(diff_vars.prod_path)
-                + " <> "
-                + ".".join(diff_vars.dev_path)
-                + f"[/]\n{diff_url}\n"
-                + "[green]No row differences[/] \n"
-            )
+            diff_output_str += f"{diff_url}\n [green]No row differences[/] \n"
+            rich.print(diff_output_str)
 
     except BaseException as ex:  # Catch KeyboardInterrupt too
         error = ex
@@ -302,12 +289,7 @@ def _cloud_diff(diff_vars: DiffVars, datasource_id: int, datafold_host: str, url
             send_event_json(event_json)
 
         if error:
-            rich.print(
-                "[red]"
-                + ".".join(diff_vars.prod_path)
-                + " <> "
-                + ".".join(diff_vars.dev_path) + "[/]\n"
-            )
+            rich.print(diff_output_str)
             if diff_id:
                 diff_url = f"{datafold_host}/datadiffs/{diff_id}/overview"
                 rich.print(f"{diff_url} \n")
@@ -373,12 +355,7 @@ def _cloud_poll_and_get_summary_results(url, headers):
 
 
 def _diff_output_base(dev_path: str, prod_path: str) -> str:
-    return "[green]" + prod_path + " <> " + dev_path + "[/] \n"
-
-
-def _diff_output_base(dev_path: str, prod_path: str) -> str:
-    return "[green]" + prod_path + " <> " + dev_path + "[/] \n"
-
+    return f"[green]{prod_path} <> {dev_path}[/] \n"
 
 class DbtParser:
     def __init__(self, profiles_dir_override: str, project_dir_override: str) -> None:
