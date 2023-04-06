@@ -128,12 +128,7 @@ class TestDataSource(unittest.TestCase):
                 TCloudApiDataSourceConfigSchema(
                     name=item["name"],
                     db_type=item["type"],
-                    config_schema=TCloudApiDataSourceSchema(
-                        title=item["configuration_schema"]["title"],
-                        properties=item["configuration_schema"]["properties"],
-                        required=item["configuration_schema"]["required"],
-                        secret=item["configuration_schema"]["secret"],
-                    ),
+                    config_schema=TCloudApiDataSourceSchema.from_orm(item),
                 )
                 for item in json.load(file)
             ]
