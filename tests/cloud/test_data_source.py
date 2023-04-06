@@ -1,3 +1,4 @@
+from io import StringIO
 import json
 from pathlib import Path
 from parameterized import parameterized
@@ -155,6 +156,36 @@ class TestDataSource(unittest.TestCase):
                 data_source_name=config.name,
             )
             self.assertEqual(actual_config, config)
+
+    @patch("sys.stdout", new_callable=StringIO)
+    def test_create_ds_config_validate_required_parameter(self, mock_stdout):
+        """
+        Here we validate "host" as an example of a required parameter,
+        but it might be any parameter without a default value
+        """
+
+        config = TDsConfig(
+            name="ds_name",
+            type="pg",
+            options={
+                "host": "host",
+                "port": 5432,
+                "user": "user",
+                "password": "password",
+                "dbname": "database",
+            },
+            float_tolerance=0.000001,
+            temp_schema="database.temp_schema",
+        )
+
+        inputs = ["", "host", 5432, "user", "password", "database", config.temp_schema, config.float_tolerance]
+        with patch("rich.prompt.Console.input", side_effect=map(str, inputs)):
+            actual_config = create_ds_config(
+                ds_config=self.db_type_data_source_schemas[config.type],
+                data_source_name=config.name,
+            )
+            self.assertEqual(actual_config, config)
+            self.assertEqual(mock_stdout.getvalue().strip(), "Parameter must not be empty")
 
     def test_check_data_source_exists(self):
         self.assertEqual(_check_data_source_exists(self.data_sources, self.data_sources[0].name), self.data_sources[0])
