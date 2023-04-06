@@ -216,7 +216,7 @@ def get_or_create_data_source(api: DatafoldAPI) -> int:
     ds_config = create_ds_config(ds_config, ds_name)
     ds = api.create_data_source(ds_config)
     data_source_url = f"{api.host}/settings/integrations/dwh/{ds.type}/{ds.id}"
-    _render_data_source(data_source=ds, title=f"Create a new data source with ID = {ds.id} ({data_source_url})")
+    _render_data_source(data_source=ds, title=f"Created a new data source with ID = {ds.id} ({data_source_url})")
 
     rich.print(
         "We recommend to run tests for a new data source. "
