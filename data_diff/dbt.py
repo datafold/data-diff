@@ -32,6 +32,8 @@ def import_dbt():
 from .tracking import (
     set_entrypoint_name,
     set_dbt_user_id,
+    set_dbt_version,
+    set_dbt_project_id,
     create_end_event_json,
     create_start_event_json,
     send_event_json,
@@ -88,6 +90,8 @@ def dbt_diff(
     # custom schemas is default dbt behavior, so default to True if the var doesn't exist
     custom_schemas = True if custom_schemas is None else custom_schemas
     set_dbt_user_id(dbt_parser.dbt_user_id)
+    set_dbt_version(dbt_parser.dbt_version)
+    set_dbt_project_id(dbt_parser.dbt_project_id)
 
     if is_cloud:
         if datasource_id is None:
@@ -118,11 +122,7 @@ def dbt_diff(
                 _local_diff(diff_vars)
         else:
             rich.print(
-                "[red]"
-                + ".".join(diff_vars.prod_path)
-                + " <> "
-                + ".".join(diff_vars.dev_path)
-                + "[/] \n"
+                _diff_output_base(".".join(diff_vars.dev_path), ".".join(diff_vars.prod_path))
                 + "Skipped due to unknown primary key. Add uniqueness tests, meta, or tags.\n"
             )
 
@@ -168,14 +168,13 @@ def _get_diff_vars(
 
 def _local_diff(diff_vars: DiffVars) -> None:
     column_diffs_str = ""
-    dev_qualified_string = ".".join(diff_vars.dev_path)
-    prod_qualified_string = ".".join(diff_vars.prod_path)
+    dev_qualified_str = ".".join(diff_vars.dev_path)
+    prod_qualified_str = ".".join(diff_vars.prod_path)
+    diff_output_str = _diff_output_base(dev_qualified_str, prod_qualified_str)
 
-    table1 = connect_to_table(
-        diff_vars.connection, dev_qualified_string, tuple(diff_vars.primary_keys), diff_vars.threads
-    )
+    table1 = connect_to_table(diff_vars.connection, dev_qualified_str, tuple(diff_vars.primary_keys), diff_vars.threads)
     table2 = connect_to_table(
-        diff_vars.connection, prod_qualified_string, tuple(diff_vars.primary_keys), diff_vars.threads
+        diff_vars.connection, prod_qualified_str, tuple(diff_vars.primary_keys), diff_vars.threads
     )
 
     table1_columns = list(table1.get_schema())
@@ -184,15 +183,8 @@ def _local_diff(diff_vars: DiffVars) -> None:
     # Not ideal, but we don't have more specific exceptions yet
     except Exception as ex:
         logger.debug(ex)
-        rich.print(
-            "[red]"
-            + prod_qualified_string
-            + " <> "
-            + dev_qualified_string
-            + "[/] \n"
-            + column_diffs_str
-            + "[green]New model or no access to prod table.[/] \n"
-        )
+        diff_output_str += "[red]New model or no access to prod table.[/] \n"
+        rich.print(diff_output_str)
         return
 
     mutual_set = set(table1_columns) & set(table2_columns)
@@ -211,29 +203,15 @@ def _local_diff(diff_vars: DiffVars) -> None:
     diff = diff_tables(table1, table2, threaded=True, algorithm=Algorithm.JOINDIFF, extra_columns=extra_columns)
 
     if list(diff):
-        rich.print(
-            "[red]"
-            + prod_qualified_string
-            + " <> "
-            + dev_qualified_string
-            + "[/] \n"
-            + column_diffs_str
-            + diff.get_stats_string(is_dbt=True)
-            + "\n"
-        )
+        diff_output_str += f"{column_diffs_str}{diff.get_stats_string(is_dbt=True)} \n"
+        rich.print(diff_output_str)
     else:
-        rich.print(
-            "[red]"
-            + prod_qualified_string
-            + " <> "
-            + dev_qualified_string
-            + "[/] \n"
-            + column_diffs_str
-            + "[green]No row differences[/] \n"
-        )
+        diff_output_str += f"{column_diffs_str}[bold][green]No row differences[/][/] \n"
+        rich.print(diff_output_str)
 
 
 def _cloud_diff(diff_vars: DiffVars, datasource_id: int, datafold_host: str, url: str, api_key: str) -> None:
+    diff_output_str = _diff_output_base(".".join(diff_vars.dev_path), ".".join(diff_vars.prod_path))
     payload = {
         "data_source1_id": datasource_id,
         "data_source2_id": datasource_id,
@@ -282,24 +260,11 @@ def _cloud_diff(diff_vars: DiffVars, datasource_id: int, datafold_host: str, url
                 diff_percent_list,
                 "Value Match Percent:",
             )
-            rich.print(
-                "[red]"
-                + ".".join(diff_vars.prod_path)
-                + " <> "
-                + ".".join(diff_vars.dev_path)
-                + f"[/]\n{diff_url}\n"
-                + diff_output
-                + "\n"
-            )
+            diff_output_str += f"{diff_url}\n {diff_output} \n"
+            rich.print(diff_output_str)
         else:
-            rich.print(
-                "[red]"
-                + ".".join(diff_vars.prod_path)
-                + " <> "
-                + ".".join(diff_vars.dev_path)
-                + f"[/]\n{diff_url}\n"
-                + "[green]No row differences[/] \n"
-            )
+            diff_output_str += f"{diff_url}\n [green]No row differences[/] \n"
+            rich.print(diff_output_str)
 
     except BaseException as ex:  # Catch KeyboardInterrupt too
         error = ex
@@ -324,7 +289,7 @@ def _cloud_diff(diff_vars: DiffVars, datasource_id: int, datafold_host: str, url
             send_event_json(event_json)
 
         if error:
-            rich.print("[red]" + ".".join(diff_vars.prod_path) + " <> " + ".".join(diff_vars.dev_path) + "[/]\n")
+            rich.print(diff_output_str)
             if diff_id:
                 diff_url = f"{datafold_host}/datadiffs/{diff_id}/overview"
                 rich.print(f"{diff_url} \n")
@@ -389,6 +354,10 @@ def _cloud_poll_and_get_summary_results(url, headers):
     return summary_results
 
 
+def _diff_output_base(dev_path: str, prod_path: str) -> str:
+    return f"[green]{prod_path} <> {dev_path}[/] \n"
+
+
 class DbtParser:
     def __init__(self, profiles_dir_override: str, project_dir_override: str) -> None:
         self.parse_run_results, self.parse_manifest, self.ProfileRenderer, self.yaml = import_dbt()
@@ -398,12 +367,15 @@ class DbtParser:
         self.project_dict = self.get_project_dict()
         self.manifest_obj = self.get_manifest_obj()
         self.dbt_user_id = self.manifest_obj.metadata.user_id
+        self.dbt_version = self.manifest_obj.metadata.dbt_version
+        self.dbt_project_id = self.manifest_obj.metadata.project_id
         self.requires_upper = False
         self.threads = None
         self.unique_columns = self.get_unique_columns()
 
     def get_datadiff_variables(self) -> dict:
-        return self.project_dict.get("vars").get("data_diff")
+        vars = get_from_dict_with_raise(self.project_dict, "vars", f"No vars: found in dbt_project.yml.")
+        return get_from_dict_with_raise(vars, "data_diff", f"data_diff: section not found in dbt_project.yml vars:.")
 
     def get_models(self):
         with open(self.project_dir / RUN_RESULTS_PATH) as run_results:
