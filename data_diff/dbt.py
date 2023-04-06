@@ -30,6 +30,8 @@ def import_dbt():
 from .tracking import (
     set_entrypoint_name,
     set_dbt_user_id,
+    set_dbt_version,
+    set_dbt_project_id,
     create_end_event_json,
     create_start_event_json,
     send_event_json,
@@ -86,6 +88,8 @@ def dbt_diff(
     # custom schemas is default dbt behavior, so default to True if the var doesn't exist
     custom_schemas = True if custom_schemas is None else custom_schemas
     set_dbt_user_id(dbt_parser.dbt_user_id)
+    set_dbt_version(dbt_parser.dbt_version)
+    set_dbt_project_id(dbt_parser.dbt_project_id)
 
     if not is_cloud:
         dbt_parser.set_connection()
@@ -302,6 +306,8 @@ class DbtParser:
         self.project_dict = self.get_project_dict()
         self.manifest_obj = self.get_manifest_obj()
         self.dbt_user_id = self.manifest_obj.metadata.user_id
+        self.dbt_version = self.manifest_obj.metadata.dbt_version
+        self.dbt_project_id = self.manifest_obj.metadata.project_id
         self.requires_upper = False
         self.threads = None
         self.unique_columns = self.get_unique_columns()
