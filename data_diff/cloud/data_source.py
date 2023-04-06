@@ -28,6 +28,9 @@ DATA_SOURCE_TYPES_REQUIRED_SETTINGS = {
 }
 
 
+UNKNOWN_VALUE = "unknown_value"
+
+
 class TDataSourceTestStage(pydantic.BaseModel):
     name: str
     status: TestDataSourceStatus
@@ -36,19 +39,26 @@ class TDataSourceTestStage(pydantic.BaseModel):
 
 class TemporarySchemaPrompt(Prompt):
     response_type = str
-    validate_error_message = "[prompt.invalid]Please enter Y or N"
 
     def process_response(self, value: str) -> str:
         """Convert choices to a bool."""
 
         if len(value.split(".")) != 2:
-            raise InvalidResponse("Temporary schema should has a format <database>.<schema>")
+            raise InvalidResponse("Temporary schema should have a format <database>.<schema>")
+        return value
+
+
+class ValueRequiredPrompt(Prompt):
+    def process_response(self, value: str) -> str:
+        value = super().process_response(value)
+        if value == UNKNOWN_VALUE or value is None or value == "":
+            raise InvalidResponse("Parameter must not be empty")
         return value
 
 
 def _validate_temp_schema(temp_schema: str):
     if len(temp_schema.split(".")) != 2:
-        raise ValueError("Temporary schema should has a format <database>.<schema>")
+        raise ValueError("Temporary schema should have a format <database>.<schema>")
 
 
 def create_ds_config(ds_config: TCloudApiDataSourceConfigSchema, data_source_name: str) -> TDsConfig:
@@ -73,21 +83,24 @@ def _parse_ds_credentials(ds_config: TCloudApiDataSourceConfigSchema, only_basic
         if only_basic_settings and param_name not in basic_required_fields:
             continue
 
-        title = param_data["title"]
-        default_value = param_data.get("default")
+        default_value = param_data.get("default", UNKNOWN_VALUE)
         is_password = bool(param_data.get("format"))
 
+        title = param_data["title"]
         type_ = param_data["type"]
+        input_values = {
+            "prompt": title,
+            "password": is_password,
+        }
+        if default_value != UNKNOWN_VALUE:
+            input_values["default"] = default_value
+
         if type_ == "integer":
-            value = IntPrompt.ask(title, default=default_value if default_value is not None else None)
+            value = IntPrompt.ask(**input_values)
         elif type_ == "boolean":
             value = Confirm.ask(title)
         else:
-            value = Prompt.ask(
-                title,
-                default=default_value if default_value is not None else None,
-                password=is_password,
-            )
+            value = ValueRequiredPrompt.ask(**input_values)
 
         ds_options[param_name] = value
     return ds_options
@@ -182,13 +195,14 @@ def get_or_create_data_source(api: DatafoldAPI) -> int:
 
     _render_available_data_sources(data_source_schema_configs=ds_configs)
     db_type_num = IntPrompt.ask(
-        prompt="What data source type you want to create? Please, select a number",
+        prompt="What data source type do you want to create? Please, select a number",
         choices=list(map(str, range(1, len(ds_configs) + 1))),
         show_choices=False,
     )
 
     ds_config = ds_configs[db_type_num - 1]
     default_ds_name = ds_config.name
+    rich.print("Press enter to accept the (Default value)")
     ds_name = Prompt.ask("Data source name", default=default_ds_name)
 
     ds = _check_data_source_exists(data_sources=data_sources, data_source_name=ds_name)
