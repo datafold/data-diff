@@ -215,6 +215,8 @@ def get_or_create_data_source(api: DatafoldAPI) -> int:
         test_results = _test_data_source(api=api, data_source_id=ds.id)
         _render_data_source_test_results(test_results=test_results)
         if any(result.status == TestDataSourceStatus.FAILED for result in test_results):
-            raise ValueError("Data source tests failed")
+            raise ValueError(
+                f"Data source tests failed. Please, try to update or test data source in the UI: {data_source_url}"
+            )
 
     return ds.id

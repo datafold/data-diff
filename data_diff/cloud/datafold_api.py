@@ -216,11 +216,12 @@ class DatafoldAPI:
 
     def poll_data_diff_results(self, diff_id: int) -> TCloudApiDataDiffSummaryResult:
         summary_results = None
-        start_time = time.time()
+        start_time = time.monotonic()
         sleep_interval = 5  # starts at 5 sec
         max_sleep_interval = 60
         max_wait_time = 300
 
+        diff_url = f"{self.host}/datadiffs/{diff_id}/overview"
         while not summary_results:
             response = self.make_get_request(url=f"api/v1/datadiffs/{diff_id}/summary_results")
             response_json = response.json()
@@ -229,8 +230,8 @@ class DatafoldAPI:
             elif response_json["status"] == "failed":
                 raise Exception(f"Diff failed: {str(response_json)}")
 
-            if time.time() - start_time > max_wait_time:
-                raise Exception("Timed out waiting for diff results")
+            if time.monotonic() - start_time > max_wait_time:
+                raise Exception(f"Timed out waiting for diff results. Please, go to the UI for details: {diff_url}")
 
             time.sleep(sleep_interval)
             sleep_interval = min(sleep_interval * 2, max_sleep_interval)
