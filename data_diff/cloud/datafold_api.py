@@ -191,16 +191,14 @@ class DatafoldAPI:
         return [TCloudApiDataSource(**item) for item in rv.json()]
 
     def create_data_source(self, config: TDsConfig) -> TCloudApiDataSource:
-        # TODO: replace an internal url by a public one
-        rv = self.make_post_request(url="api/internal/data_sources", payload=config.dict())
+        rv = self.make_post_request(url="api/v1/data_sources", payload=config.dict())
         return TCloudApiDataSource(**rv.json())
 
     def get_data_source_schema_config(
         self,
         only_important_properties: bool = False,
     ) -> List[TCloudApiDataSourceConfigSchema]:
-        # TODO: replace an internal url by a public one
-        rv = self.make_get_request(url="api/internal/data_sources/types")
+        rv = self.make_get_request(url="api/v1/data_sources/types")
         return [
             TCloudApiDataSourceConfigSchema(
                 name=item["name"],
@@ -239,13 +237,11 @@ class DatafoldAPI:
         return TCloudApiDataDiffSummaryResult.from_orm(summary_results)
 
     def test_data_source(self, data_source_id: int) -> int:
-        # TODO: replace an internal url by a public one
-        rv = self.make_post_request(f"api/internal/data_sources/{data_source_id}/test", {})
+        rv = self.make_post_request(f"api/v1/data_sources/{data_source_id}/test", {})
         return rv.json()["job_id"]
 
     def check_data_source_test_results(self, job_id: int) -> List[TCloudApiDataSourceTestResult]:
-        # TODO: replace an internal url by a public one
-        rv = self.make_get_request(f"api/internal/data_sources/test/{job_id}")
+        rv = self.make_get_request(f"api/v1/data_sources/test/{job_id}")
         return [
             TCloudApiDataSourceTestResult(
                 name=item["step"],
