@@ -357,6 +357,7 @@ def _cloud_poll_and_get_summary_results(url, headers):
 def _diff_output_base(dev_path: str, prod_path: str) -> str:
     return f"[green]{prod_path} <> {dev_path}[/] \n"
 
+
 class DbtParser:
     def __init__(self, profiles_dir_override: str, project_dir_override: str) -> None:
         self.parse_run_results, self.parse_manifest, self.ProfileRenderer, self.yaml = import_dbt()
@@ -373,12 +374,8 @@ class DbtParser:
         self.unique_columns = self.get_unique_columns()
 
     def get_datadiff_variables(self) -> dict:
-        vars = get_from_dict_with_raise(
-            self.project_dict, "vars", f"No vars: found in dbt_project.yml."
-        )
-        return get_from_dict_with_raise(
-            vars, "data_diff", f"data_diff: section not found in dbt_project.yml vars:."
-        )
+        vars = get_from_dict_with_raise(self.project_dict, "vars", f"No vars: found in dbt_project.yml.")
+        return get_from_dict_with_raise(vars, "data_diff", f"data_diff: section not found in dbt_project.yml vars:.")
 
     def get_models(self):
         with open(self.project_dir / RUN_RESULTS_PATH) as run_results:
