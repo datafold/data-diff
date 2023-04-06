@@ -14,7 +14,7 @@ from runtype import dataclass
 
 from data_diff.info_tree import InfoTree, SegmentInfo
 
-from .utils import run_as_daemon, safezip, getLogger, truncate_error, Vector
+from .utils import dbt_diff_string_template, run_as_daemon, safezip, getLogger, truncate_error, Vector
 from .thread_utils import ThreadedYielder
 from .table_segment import TableSegment, create_mesh_from_points
 from .tracking import create_end_event_json, create_start_event_json, send_event_json, is_tracking_enabled
@@ -139,21 +139,16 @@ class DiffResultWrapper:
         diff_stats = self._get_stats(is_dbt)
 
         if is_dbt:
-            string_output = "\n| Rows Added\t| Rows Removed\n"
-            string_output += "------------------------------------------------------------\n"
-
-            string_output += f"| {diff_stats.diff_by_sign['-']}\t\t| {diff_stats.diff_by_sign['+']}\n"
-            string_output += "------------------------------------------------------------\n\n"
-            string_output += f"Updated Rows: {diff_stats.diff_by_sign['!']}\n"
-            string_output += f"Unchanged Rows: {diff_stats.unchanged}\n\n"
-
-            string_output += f"Values Updated:"
-
-            for k, v in diff_stats.extra_column_diffs.items():
-                string_output += f"\n{k}: {v}"
+            string_output = dbt_diff_string_template(
+                diff_stats.diff_by_sign["-"],
+                diff_stats.diff_by_sign["+"],
+                diff_stats.diff_by_sign["!"],
+                diff_stats.unchanged,
+                diff_stats.extra_column_diffs,
+                "Values Updated:",
+            )
 
         else:
-
             string_output = ""
             string_output += f"{diff_stats.table1_count} rows in table A\n"
             string_output += f"{diff_stats.table2_count} rows in table B\n"

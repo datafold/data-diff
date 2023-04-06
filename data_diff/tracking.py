@@ -56,11 +56,21 @@ def set_entrypoint_name(s):
     global entrypoint_name
     entrypoint_name = s
 
+
 dbt_user_id = None
+
 
 def set_dbt_user_id(s):
     global dbt_user_id
     dbt_user_id = s
+
+def set_dbt_version(s):
+    global dbt_version
+    dbt_version = s
+
+def set_dbt_project_id(s):
+    global dbt_project_id
+    dbt_project_id = s
 
 def get_anonymous_id():
     global g_anonymous_id
@@ -84,6 +94,8 @@ def create_start_event_json(diff_options: Dict[str, Any]):
             "data_diff_version:": __version__,
             "entrypoint_name": entrypoint_name,
             "dbt_user_id": dbt_user_id,
+            "dbt_version": dbt_version,
+            "dbt_project_id": dbt_project_id,
         },
     }
 
@@ -119,6 +131,8 @@ def create_end_event_json(
             "is_cloud": is_cloud,
             "diff_id": diff_id,
             "dbt_user_id": dbt_user_id,
+            "dbt_version": dbt_version,
+            "dbt_project_id": dbt_project_id,
         },
     }
 

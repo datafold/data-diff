@@ -1,13 +1,15 @@
 import json
 import os
 import time
+import webbrowser
 import rich
+from rich.prompt import Confirm
 
 from collections import defaultdict
 from dataclasses import dataclass
 from packaging.version import parse as parse_version
 from typing import List, Optional, Dict, Tuple, Set
-from .utils import getLogger
+from .utils import dbt_diff_string_template, getLogger
 from .version import __version__
 from pathlib import Path
 
@@ -30,6 +32,8 @@ def import_dbt():
 from .tracking import (
     set_entrypoint_name,
     set_dbt_user_id,
+    set_dbt_version,
+    set_dbt_project_id,
     create_end_event_json,
     create_start_event_json,
     send_event_json,
@@ -43,7 +47,7 @@ MANIFEST_PATH = "target/manifest.json"
 PROJECT_FILE = "dbt_project.yml"
 PROFILES_FILE = "profiles.yml"
 LOWER_DBT_V = "1.0.0"
-UPPER_DBT_V = "1.4.5"
+UPPER_DBT_V = "1.4.6"
 
 
 # https://github.com/dbt-labs/dbt-core/blob/c952d44ec5c2506995fbad75320acbae49125d3d/core/dbt/cli/resolvers.py#L6
@@ -67,7 +71,6 @@ class DiffVars:
     dev_path: List[str]
     prod_path: List[str]
     primary_keys: List[str]
-    datasource_id: str
     connection: Dict[str, str]
     threads: Optional[int]
 
@@ -75,8 +78,9 @@ class DiffVars:
 def dbt_diff(
     profiles_dir_override: Optional[str] = None, project_dir_override: Optional[str] = None, is_cloud: bool = False
 ) -> None:
+    diff_threads = []
     set_entrypoint_name("CLI-dbt")
-    dbt_parser = DbtParser(profiles_dir_override, project_dir_override, is_cloud)
+    dbt_parser = DbtParser(profiles_dir_override, project_dir_override)
     models = dbt_parser.get_models()
     datadiff_variables = dbt_parser.get_datadiff_variables()
     config_prod_database = datadiff_variables.get("prod_database")
@@ -86,8 +90,20 @@ def dbt_diff(
     # custom schemas is default dbt behavior, so default to True if the var doesn't exist
     custom_schemas = True if custom_schemas is None else custom_schemas
     set_dbt_user_id(dbt_parser.dbt_user_id)
+    set_dbt_version(dbt_parser.dbt_version)
+    set_dbt_project_id(dbt_parser.dbt_project_id)
 
-    if not is_cloud:
+    if is_cloud:
+        if datasource_id is None:
+            raise ValueError(
+                "Datasource ID not found, include it as a dbt variable in the dbt_project.yml. \nvars:\n data_diff:\n   datasource_id: 1234"
+            )
+        datafold_host, url, api_key = _setup_cloud_diff()
+
+        # exit so the user can set the key
+        if not api_key:
+            return
+    else:
         dbt_parser.set_connection()
 
     if config_prod_database is None:
@@ -96,19 +112,24 @@ def dbt_diff(
         )
 
     for model in models:
-        diff_vars = _get_diff_vars(
-            dbt_parser, config_prod_database, config_prod_schema, model, datasource_id, custom_schemas
-        )
+        diff_vars = _get_diff_vars(dbt_parser, config_prod_database, config_prod_schema, model, custom_schemas)
 
-        if is_cloud and len(diff_vars.primary_keys) > 0:
-            _cloud_diff(diff_vars)
-        elif not is_cloud and len(diff_vars.primary_keys) > 0:
-            _local_diff(diff_vars)
+        if diff_vars.primary_keys:
+            if is_cloud:
+                diff_thread = run_as_daemon(_cloud_diff, diff_vars, datasource_id, datafold_host, url, api_key)
+                diff_threads.append(diff_thread)
+            else:
+                _local_diff(diff_vars)
         else:
             rich.print(
                 _diff_output_base(".".join(diff_vars.dev_path), ".".join(diff_vars.prod_path))
                 + "Skipped due to unknown primary key. Add uniqueness tests, meta, or tags.\n"
             )
+
+    # wait for all threads
+    if diff_threads:
+        for thread in diff_threads:
+            thread.join()
 
     rich.print("Diffs Complete!")
 
@@ -118,7 +139,6 @@ def _get_diff_vars(
     config_prod_database: Optional[str],
     config_prod_schema: Optional[str],
     model,
-    datasource_id: int,
     custom_schemas: bool,
 ) -> DiffVars:
     dev_database = model.database
@@ -143,9 +163,7 @@ def _get_diff_vars(
         dev_qualified_list = [dev_database, dev_schema, model.alias]
         prod_qualified_list = [prod_database, prod_schema, model.alias]
 
-    return DiffVars(
-        dev_qualified_list, prod_qualified_list, primary_keys, datasource_id, dbt_parser.connection, dbt_parser.threads
-    )
+    return DiffVars(dev_qualified_list, prod_qualified_list, primary_keys, dbt_parser.connection, dbt_parser.threads)
 
 
 def _local_diff(diff_vars: DiffVars) -> None:
@@ -192,22 +210,11 @@ def _local_diff(diff_vars: DiffVars) -> None:
         rich.print(diff_output_str)
 
 
-def _cloud_diff(diff_vars: DiffVars) -> None:
+def _cloud_diff(diff_vars: DiffVars, datasource_id: int, datafold_host: str, url: str, api_key: str) -> None:
     diff_output_str = _diff_output_base(".".join(diff_vars.dev_path), ".".join(diff_vars.prod_path))
-    api_key = os.environ.get("DATAFOLD_API_KEY")
-
-    if diff_vars.datasource_id is None:
-        raise ValueError(
-            "Datasource ID not found, include it as a dbt variable in the dbt_project.yml. \nvars:\n data_diff:\n   datasource_id: 1234"
-        )
-    if api_key is None:
-        raise ValueError("API key not found, add it as an environment variable called DATAFOLD_API_KEY.")
-
-    url = "https://app.datafold.com/api/v1/datadiffs"
-
     payload = {
-        "data_source1_id": diff_vars.datasource_id,
-        "data_source2_id": diff_vars.datasource_id,
+        "data_source1_id": datasource_id,
+        "data_source2_id": datasource_id,
         "table1": diff_vars.prod_path,
         "table2": diff_vars.dev_path,
         "pk_columns": diff_vars.primary_keys,
@@ -218,21 +225,60 @@ def _cloud_diff(diff_vars: DiffVars) -> None:
         "Content-Type": "application/json",
     }
     if is_tracking_enabled():
-        event_json = create_start_event_json({"is_cloud": True, "datasource_id": diff_vars.datasource_id})
+        event_json = create_start_event_json({"is_cloud": True, "datasource_id": datasource_id})
         run_as_daemon(send_event_json, event_json)
 
     start = time.monotonic()
     error = None
     diff_id = None
+    diff_url = None
     try:
-        response = requests.request("POST", url, headers=headers, json=payload, timeout=30)
-        response.raise_for_status()
-        data = response.json()
-        diff_id = data["id"]
-        # TODO in future we should support self hosted datafold
-        diff_url = f"https://app.datafold.com/datadiffs/{diff_id}/overview"
-        diff_output_str += f"    Diff in progress: \n    {diff_url}\n"
-        rich.print(diff_output_str)
+        diff_id = _cloud_submit_diff(url, payload, headers)
+        summary_url = f"{url}/{diff_id}/summary_results"
+        diff_results = _cloud_poll_and_get_summary_results(summary_url, headers)
+
+        diff_url = f"{datafold_host}/datadiffs/{diff_id}/overview"
+
+        rows_added_count = diff_results["pks"]["exclusives"][1]
+        rows_removed_count = diff_results["pks"]["exclusives"][0]
+
+        rows_updated = diff_results["values"]["rows_with_differences"]
+        total_rows = diff_results["values"]["total_rows"]
+        rows_unchanged = int(total_rows) - int(rows_updated)
+        diff_percent_list = {
+            x["column_name"]: str(x["match"]) + "%"
+            for x in diff_results["values"]["columns_diff_stats"]
+            if x["match"] != 100.0
+        }
+
+        if any([rows_added_count, rows_removed_count, rows_updated]):
+            diff_output = dbt_diff_string_template(
+                rows_added_count,
+                rows_removed_count,
+                rows_updated,
+                str(rows_unchanged),
+                diff_percent_list,
+                "Value Match Percent:",
+            )
+            rich.print(
+                "[red]"
+                + ".".join(diff_vars.prod_path)
+                + " <> "
+                + ".".join(diff_vars.dev_path)
+                + f"[/]\n{diff_url}\n"
+                + diff_output
+                + "\n"
+            )
+        else:
+            rich.print(
+                "[red]"
+                + ".".join(diff_vars.prod_path)
+                + " <> "
+                + ".".join(diff_vars.dev_path)
+                + f"[/]\n{diff_url}\n"
+                + "[green]No row differences[/] \n"
+            )
+
     except BaseException as ex:  # Catch KeyboardInterrupt too
         error = ex
     finally:
@@ -256,7 +302,78 @@ def _cloud_diff(diff_vars: DiffVars) -> None:
             send_event_json(event_json)
 
         if error:
-            raise error
+            rich.print(
+                "[red]"
+                + ".".join(diff_vars.prod_path)
+                + " <> "
+                + ".".join(diff_vars.dev_path) + "[/]\n"
+            )
+            if diff_id:
+                diff_url = f"{datafold_host}/datadiffs/{diff_id}/overview"
+                rich.print(f"{diff_url} \n")
+            logger.error(error)
+
+
+def _setup_cloud_diff() -> Tuple[Optional[str]]:
+    datafold_host = os.environ.get("DATAFOLD_HOST")
+    if datafold_host is None:
+        datafold_host = "https://app.datafold.com"
+    datafold_host = datafold_host.rstrip("/")
+    rich.print(f"Cloud datafold host: {datafold_host}\n")
+    url = f"{datafold_host}/api/v1/datadiffs"
+
+    api_key = os.environ.get("DATAFOLD_API_KEY")
+    if not api_key:
+        rich.print("[red]API key not found, add it as an environment variable called DATAFOLD_API_KEY.")
+        yes_or_no = Confirm.ask("Would you like to generate a new API key?")
+        if yes_or_no:
+            webbrowser.open(f"{datafold_host}/login?next={datafold_host}/users/me")
+            return None, None, None
+        else:
+            raise ValueError("Cannot diff because the API key is not provided")
+
+    return datafold_host, url, api_key
+
+
+def _cloud_submit_diff(url, payload, headers) -> str:
+    response = requests.request("POST", url, headers=headers, json=payload, timeout=30)
+    response.raise_for_status()
+    response_json = response.json()
+    diff_id = str(response_json["id"])
+
+    if diff_id is None:
+        raise Exception(f"Api response did not contain a diff_id: {str(response_json)}")
+    return diff_id
+
+
+def _cloud_poll_and_get_summary_results(url, headers):
+    summary_results = None
+    start_time = time.time()
+    sleep_interval = 5  # starts at 5 sec
+    max_sleep_interval = 60
+    max_wait_time = 300
+
+    while not summary_results:
+        response = requests.request("GET", url, headers=headers, timeout=30)
+        response.raise_for_status()
+        response_json = response.json()
+
+        if response_json["status"] == "success":
+            summary_results = response_json
+        elif response_json["status"] == "failed":
+            raise Exception(f"Diff failed: {str(response_json)}")
+
+        if time.time() - start_time > max_wait_time:
+            raise Exception("Timed out waiting for diff results")
+
+        time.sleep(sleep_interval)
+        sleep_interval = min(sleep_interval * 2, max_sleep_interval)
+
+    return summary_results
+
+
+def _diff_output_base(dev_path: str, prod_path: str) -> str:
+    return "[green]" + prod_path + " <> " + dev_path + "[/] \n"
 
 
 def _diff_output_base(dev_path: str, prod_path: str) -> str:
@@ -264,21 +381,27 @@ def _diff_output_base(dev_path: str, prod_path: str) -> str:
 
 
 class DbtParser:
-    def __init__(self, profiles_dir_override: str, project_dir_override: str, is_cloud: bool) -> None:
+    def __init__(self, profiles_dir_override: str, project_dir_override: str) -> None:
         self.parse_run_results, self.parse_manifest, self.ProfileRenderer, self.yaml = import_dbt()
         self.profiles_dir = Path(profiles_dir_override or default_profiles_dir())
         self.project_dir = Path(project_dir_override or default_project_dir())
-        self.is_cloud = is_cloud
         self.connection = None
         self.project_dict = self.get_project_dict()
         self.manifest_obj = self.get_manifest_obj()
         self.dbt_user_id = self.manifest_obj.metadata.user_id
+        self.dbt_version = self.manifest_obj.metadata.dbt_version
+        self.dbt_project_id = self.manifest_obj.metadata.project_id
         self.requires_upper = False
         self.threads = None
         self.unique_columns = self.get_unique_columns()
 
     def get_datadiff_variables(self) -> dict:
-        return self.project_dict.get("vars").get("data_diff")
+        vars = get_from_dict_with_raise(
+            self.project_dict, "vars", f"No vars: found in dbt_project.yml."
+        )
+        return get_from_dict_with_raise(
+            vars, "data_diff", f"data_diff: section not found in dbt_project.yml vars:."
+        )
 
     def get_models(self):
         with open(self.project_dir / RUN_RESULTS_PATH) as run_results:
@@ -350,12 +473,11 @@ class DbtParser:
         credentials, conn_type = self._get_connection_creds()
 
         if conn_type == "snowflake":
-            if credentials.get("password") is None or credentials.get("private_key_path") is not None:
-                raise Exception("Only password authentication is currently supported for Snowflake.")
+            if credentials.get("authenticator") is not None:
+                raise Exception("Federated authentication is not yet supported for Snowflake.")
             conn_info = {
                 "driver": conn_type,
                 "user": credentials.get("user"),
-                "password": credentials.get("password"),
                 "account": credentials.get("account"),
                 "database": credentials.get("database"),
                 "warehouse": credentials.get("warehouse"),
@@ -364,6 +486,16 @@ class DbtParser:
             }
             self.threads = credentials.get("threads")
             self.requires_upper = True
+
+            if credentials.get("private_key_path") is not None:
+                if credentials.get("password") is not None:
+                    raise Exception("Cannot use password and key at the same time")
+                conn_info["key"] = credentials.get("private_key_path")
+                conn_info["private_key_passphrase"] = credentials.get("private_key_passphrase")
+            elif credentials.get("password") is not None:
+                conn_info["password"] = credentials.get("password")
+            else:
+                raise Exception("Password or key authentication not provided.")
         elif conn_type == "bigquery":
             method = credentials.get("method")
             # there are many connection types https://docs.getdbt.com/reference/warehouse-setups/bigquery-setup#oauth-via-gcloud

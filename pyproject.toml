@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "data-diff"
-version = "0.5.0"
+version = "0.6.0"
 description = "Command-line tool and Python library to efficiently diff rows across two different databases."
 authors = ["Datafold <data-diff@datafold.com>"]
 license = "MIT"
@@ -29,7 +29,7 @@ dsnparse = "*"
 click = "^8.1"
 rich = "*"
 toml = "^0.10.2"
-sqeleton = "^0.0.7"
+sqeleton = "0.0.8"
 mysql-connector-python = {version="8.0.29", optional=true}
 psycopg2 = {version="*", optional=true}
 snowflake-connector-python = {version="^2.7.2", optional=true}
@@ -80,3 +80,6 @@ build-backend = "poetry.core.masonry.api"
 
 [tool.poetry.scripts]
 data-diff = 'data_diff.__main__:main'
+
+[tool.black]
+line-length = 120
