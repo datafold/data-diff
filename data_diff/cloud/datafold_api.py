@@ -1,10 +1,13 @@
 import dataclasses
 import enum
 import time
-from typing import Any, Dict, List, Optional, Type, Tuple
+from typing import Any, Dict, List, Optional, Type, TypeVar, Tuple
 
 import pydantic
 import requests
+
+
+Self = TypeVar("Self", bound=pydantic.BaseModel)
 
 
 class TestDataSourceStatus(str, enum.Enum):
@@ -19,6 +22,26 @@ class TCloudApiDataSourceSchema(pydantic.BaseModel):
     properties: Dict[str, Dict[str, Any]]
     required: List[str]
     secret: List[str]
+
+    @classmethod
+    def from_orm(cls: Type[Self], obj: Any) -> Self:
+        data_source_types_required_parameters = {
+            "bigquery": ["projectId", "jsonKeyFile", "location"],
+            "databricks": ["host", "http_password", "database", "http_path"],
+            "mysql": ["host", "user", "passwd", "db"],
+            "pg": ["host", "user", "port", "password", "dbname"],
+            "postgres_aurora": ["host", "user", "port", "password", "dbname"],
+            "postgres_aws_rds": ["host", "user", "port", "password", "dbname"],
+            "redshift": ["host", "user", "port", "password", "dbname"],
+            "snowflake": ["account", "user", "password", "warehouse", "role", "default_db"],
+        }
+
+        return cls(
+            title=obj["configuration_schema"]["title"],
+            properties=obj["configuration_schema"]["properties"],
+            required=data_source_types_required_parameters[obj["type"]],
+            secret=obj["configuration_schema"]["secret"],
+        )
 
 
 class TCloudApiDataSourceConfigSchema(pydantic.BaseModel):
@@ -113,7 +136,7 @@ class TCloudApiDataDiffSummaryResult(pydantic.BaseModel):
     dependencies: Optional[Dict[str, Any]]
 
     @classmethod
-    def from_orm(cls: Type["Model"], obj: Any) -> "Model":
+    def from_orm(cls: Type[Self], obj: Any) -> Self:
         pks = TSummaryResultPrimaryKeyStats(**obj["pks"]) if "pks" in obj else None
         values = TSummaryResultValueStats(**obj["values"]) if "values" in obj else None
         deps = obj["deps"] if "deps" in obj else None
@@ -172,19 +195,17 @@ class DatafoldAPI:
         rv = self.make_post_request(url="api/internal/data_sources", payload=config.dict())
         return TCloudApiDataSource(**rv.json())
 
-    def get_data_source_schema_config(self) -> List[TCloudApiDataSourceConfigSchema]:
+    def get_data_source_schema_config(
+        self,
+        only_important_properties: bool = False,
+    ) -> List[TCloudApiDataSourceConfigSchema]:
         # TODO: replace an internal url by a public one
         rv = self.make_get_request(url="api/internal/data_sources/types")
         return [
             TCloudApiDataSourceConfigSchema(
                 name=item["name"],
                 db_type=item["type"],
-                config_schema=TCloudApiDataSourceSchema(
-                    title=item["configuration_schema"]["title"],
-                    properties=item["configuration_schema"]["properties"],
-                    required=item["configuration_schema"]["required"],
-                    secret=item["configuration_schema"]["secret"],
-                ),
+                config_schema=TCloudApiDataSourceSchema.from_orm(obj=item),
             )
             for item in rv.json()
         ]

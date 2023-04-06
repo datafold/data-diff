@@ -16,18 +16,6 @@ from .datafold_api import (
 )
 
 
-DATA_SOURCE_TYPES_REQUIRED_SETTINGS = {
-    "bigquery": {"projectId", "jsonKeyFile", "location"},
-    "databricks": {"host", "http_password", "database", "http_path"},
-    "mysql": {"host", "user", "passwd", "db"},
-    "pg": {"host", "user", "port", "password", "dbname"},
-    "postgres_aurora": {"host", "user", "port", "password", "dbname"},
-    "postgres_aws_rds": {"host", "user", "port", "password", "dbname"},
-    "redshift": {"host", "user", "port", "password", "dbname"},
-    "snowflake": {"account", "user", "password", "warehouse", "role", "default_db"},
-}
-
-
 UNKNOWN_VALUE = "unknown_value"
 
 
@@ -78,7 +66,7 @@ def create_ds_config(ds_config: TCloudApiDataSourceConfigSchema, data_source_nam
 
 def _parse_ds_credentials(ds_config: TCloudApiDataSourceConfigSchema, only_basic_settings: bool = True):
     ds_options = {}
-    basic_required_fields = DATA_SOURCE_TYPES_REQUIRED_SETTINGS.get(ds_config.db_type)
+    basic_required_fields = set(ds_config.config_schema.required)
     for param_name, param_data in ds_config.config_schema.properties.items():
         if only_basic_settings and param_name not in basic_required_fields:
             continue
