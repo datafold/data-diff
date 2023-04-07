@@ -64,13 +64,16 @@ def set_dbt_user_id(s):
     global dbt_user_id
     dbt_user_id = s
 
+
 def set_dbt_version(s):
     global dbt_version
     dbt_version = s
 
+
 def set_dbt_project_id(s):
     global dbt_project_id
     dbt_project_id = s
+
 
 def get_anonymous_id():
     global g_anonymous_id

@@ -277,9 +277,7 @@ def _cloud_diff(diff_vars: DiffVars, datasource_id: int, api: DatafoldAPI) -> No
         total_rows = diff_results.values.total_rows
         rows_unchanged = int(total_rows) - int(rows_updated)
         diff_percent_list = {
-            x.column_name: str(x.match) + "%"
-            for x in diff_results.values.columns_diff_stats
-            if x.match != 100.0
+            x.column_name: str(x.match) + "%" for x in diff_results.values.columns_diff_stats if x.match != 100.0
         }
 
         if any([rows_added_count, rows_removed_count, rows_updated]):
