@@ -199,10 +199,12 @@ class TestDbtParser(unittest.TestCase):
         mock_self = Mock()
         mock_self._get_connection_creds.return_value = (expected_credentials, expected_driver)
 
-        with self.assertRaises(Exception):
-            DbtParser.set_connection(mock_self)
+        DbtParser.set_connection(mock_self)
 
-        self.assertNotIsInstance(mock_self.connection, dict)
+        self.assertIsInstance(mock_self.connection, dict)
+        self.assertEqual(mock_self.connection.get("driver"), expected_driver)
+        self.assertEqual(mock_self.connection.get("authenticator"), expected_credentials["authenticator"])
+        self.assertEqual(mock_self.connection.get("user"), expected_credentials["user"])
 
     def test_set_connection_snowflake_key_and_password(self):
         expected_driver = "snowflake"

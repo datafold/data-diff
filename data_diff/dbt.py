@@ -447,8 +447,6 @@ class DbtParser:
         credentials, conn_type = self._get_connection_creds()
 
         if conn_type == "snowflake":
-            if credentials.get("authenticator") is not None:
-                raise Exception("Federated authentication is not yet supported for Snowflake.")
             conn_info = {
                 "driver": conn_type,
                 "user": credentials.get("user"),
@@ -466,10 +464,13 @@ class DbtParser:
                     raise Exception("Cannot use password and key at the same time")
                 conn_info["key"] = credentials.get("private_key_path")
                 conn_info["private_key_passphrase"] = credentials.get("private_key_passphrase")
+            elif credentials.get("authenticator") is not None:
+                conn_info["authenticator"] = credentials.get("authenticator")
+                conn_info["password"] = credentials.get("password")
             elif credentials.get("password") is not None:
                 conn_info["password"] = credentials.get("password")
             else:
-                raise Exception("Password or key authentication not provided.")
+                raise Exception("Snowflake: unsupported auth method")
         elif conn_type == "bigquery":
             method = credentials.get("method")
             # there are many connection types https://docs.getdbt.com/reference/warehouse-setups/bigquery-setup#oauth-via-gcloud
