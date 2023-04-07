@@ -567,7 +567,7 @@ class DbtParser:
                 if not (node.resource_type.value == "test" and hasattr(node, "test_metadata")):
                     continue
 
-                if node.depends_on is None or node.depends_on.nodes is []:
+                if not node.depends_on or not node.depends_on.nodes:
                     continue
 
                 uid = node.depends_on.nodes[0]
