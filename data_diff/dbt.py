@@ -574,7 +574,7 @@ class DbtParser:
 
                 # sources can have tests and are not in manifest.nodes
                 # skip as source unique columns are not needed
-                if uid.startswith('source.'):
+                if uid.startswith("source."):
                     continue
 
                 model_node = manifest.nodes[uid]
