@@ -81,11 +81,11 @@ def _parse_ds_credentials(
     creds = {}
     use_dbt_data = False
     if dbt_parser is not None:
-        use_dbt_data = Confirm.ask("Would you like to extract database credentials from dbt profile.yml?")
+        use_dbt_data = Confirm.ask("Would you like to extract database credentials from dbt profiles.yml?")
         try:
             creds = dbt_parser.get_connection_creds()[0]
         except Exception as e:
-            rich.print(f"[red]Cannot parse database credentials from dbt profile.yml. Reason: {e}")
+            rich.print(f"[red]Cannot parse database credentials from dbt profiles.yml. Reason: {e}")
 
     ds_options = {}
     basic_required_fields = set(ds_config.config_schema.required)
@@ -108,7 +108,7 @@ def _parse_ds_credentials(
         if use_dbt_data:
             value = creds.get(param_name, UNKNOWN_VALUE)
             if value == UNKNOWN_VALUE:
-                rich.print(f'[red]Cannot extract "{param_name}" from dbt profile.yml. Please, type it manually')
+                rich.print(f'[red]Cannot extract "{param_name}" from dbt profiles.yml. Please, type it manually')
             else:
                 ds_options[param_name] = cast_value(value, type_)
                 continue
