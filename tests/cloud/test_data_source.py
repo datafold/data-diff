@@ -1,9 +1,10 @@
+import copy
 from io import StringIO
 import json
 from pathlib import Path
 from parameterized import parameterized
 import unittest
-from unittest.mock import Mock, patch
+from unittest.mock import MagicMock, Mock, patch
 
 from data_diff.cloud.datafold_api import (
     TCloudApiDataSourceConfigSchema,
@@ -14,6 +15,7 @@ from data_diff.cloud.datafold_api import (
     TDsConfig,
     TestDataSourceStatus,
 )
+from data_diff.dbt_parser import DbtParser
 from data_diff.cloud.data_source import (
     TDataSourceTestStage,
     TestDataSourceStatus,
@@ -151,6 +153,39 @@ class TestDataSource(unittest.TestCase):
                 data_source_name=config.name,
             )
             self.assertEqual(actual_config, config)
+
+    @patch("data_diff.dbt_parser.DbtParser.__new__")
+    def test_create_ds_config_from_dbt_profiles(self, mock_dbt_parser):
+        config = DATA_SOURCE_CONFIGS[0]
+        mock_dbt_parser.get_connection_creds.return_value = (config.options,)
+        with patch("rich.prompt.Console.input", side_effect=["y", config.temp_schema, str(config.float_tolerance)]):
+            actual_config = create_ds_config(
+                ds_config=self.db_type_data_source_schemas[config.type],
+                data_source_name=config.name,
+                dbt_parser=mock_dbt_parser,
+            )
+            self.assertEqual(actual_config, config)
+
+    @patch("sys.stdout", new_callable=StringIO)
+    @patch("data_diff.dbt_parser.DbtParser.__new__")
+    def test_create_ds_config_from_dbt_profiles_one_param_passed_through_input(self, mock_dbt_parser, mock_stdout):
+        config = DATA_SOURCE_CONFIGS[0]
+        options = copy.copy(config.options)
+        account = options.pop("account")
+        mock_dbt_parser.get_connection_creds.return_value = (options,)
+        with patch(
+            "rich.prompt.Console.input", side_effect=["y", account, config.temp_schema, str(config.float_tolerance)]
+        ):
+            actual_config = create_ds_config(
+                ds_config=self.db_type_data_source_schemas[config.type],
+                data_source_name=config.name,
+                dbt_parser=mock_dbt_parser,
+            )
+            self.assertEqual(actual_config, config)
+            self.assertEqual(
+                mock_stdout.getvalue().strip(),
+                'Cannot extract "account" from dbt profile.yml. Please, type it manually',
+            )
 
     @patch("sys.stdout", new_callable=StringIO)
     def test_create_ds_config_validate_required_parameter(self, mock_stdout):

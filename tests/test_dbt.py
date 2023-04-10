@@ -512,7 +512,7 @@ class TestDbtDiffer(unittest.TestCase):
     @patch("data_diff.dbt._get_diff_vars")
     @patch("data_diff.dbt._local_diff")
     @patch("data_diff.dbt._cloud_diff")
-    @patch("data_diff.dbt.DbtParser.__new__")
+    @patch("data_diff.dbt_parser.DbtParser.__new__")
     @patch("data_diff.dbt.rich.print")
     def test_diff_is_cloud(
         self, mock_print, mock_dbt_parser, mock_cloud_diff, mock_local_diff, mock_get_diff_vars, mock_initialize_api
@@ -547,7 +547,7 @@ class TestDbtDiffer(unittest.TestCase):
     @patch("data_diff.dbt._get_diff_vars")
     @patch("data_diff.dbt._local_diff")
     @patch("data_diff.dbt._cloud_diff")
-    @patch("data_diff.dbt.DbtParser.__new__")
+    @patch("data_diff.dbt_parser.DbtParser.__new__")
     @patch("data_diff.dbt.rich.print")
     @patch("builtins.input", return_value="n")
     def test_diff_is_cloud_no_ds_id(
@@ -583,7 +583,7 @@ class TestDbtDiffer(unittest.TestCase):
     @patch("data_diff.dbt._get_diff_vars")
     @patch("data_diff.dbt._local_diff")
     @patch("data_diff.dbt._cloud_diff")
-    @patch("data_diff.dbt.DbtParser.__new__")
+    @patch("data_diff.dbt_parser.DbtParser.__new__")
     @patch("data_diff.dbt.rich.print")
     def test_diff_is_not_cloud(self, mock_print, mock_dbt_parser, mock_cloud_diff, mock_local_diff, mock_get_diff_vars):
         mock_dbt_parser_inst = Mock()
@@ -608,7 +608,7 @@ class TestDbtDiffer(unittest.TestCase):
     @patch("data_diff.dbt._get_diff_vars")
     @patch("data_diff.dbt._local_diff")
     @patch("data_diff.dbt._cloud_diff")
-    @patch("data_diff.dbt.DbtParser.__new__")
+    @patch("data_diff.dbt_parser.DbtParser.__new__")
     @patch("data_diff.dbt.rich.print")
     def test_diff_no_prod_configs(
         self, mock_print, mock_dbt_parser, mock_cloud_diff, mock_local_diff, mock_get_diff_vars
@@ -637,7 +637,7 @@ class TestDbtDiffer(unittest.TestCase):
     @patch("data_diff.dbt._get_diff_vars")
     @patch("data_diff.dbt._local_diff")
     @patch("data_diff.dbt._cloud_diff")
-    @patch("data_diff.dbt.DbtParser.__new__")
+    @patch("data_diff.dbt_parser.DbtParser.__new__")
     @patch("data_diff.dbt.rich.print")
     def test_diff_only_prod_db(self, mock_print, mock_dbt_parser, mock_cloud_diff, mock_local_diff, mock_get_diff_vars):
         mock_dbt_parser_inst = Mock()
@@ -662,7 +662,7 @@ class TestDbtDiffer(unittest.TestCase):
     @patch("data_diff.dbt._get_diff_vars")
     @patch("data_diff.dbt._local_diff")
     @patch("data_diff.dbt._cloud_diff")
-    @patch("data_diff.dbt.DbtParser.__new__")
+    @patch("data_diff.dbt_parser.DbtParser.__new__")
     @patch("data_diff.dbt.rich.print")
     def test_diff_only_prod_schema(
         self, mock_print, mock_dbt_parser, mock_cloud_diff, mock_local_diff, mock_get_diff_vars
@@ -693,7 +693,7 @@ class TestDbtDiffer(unittest.TestCase):
     @patch("data_diff.dbt._get_diff_vars")
     @patch("data_diff.dbt._local_diff")
     @patch("data_diff.dbt._cloud_diff")
-    @patch("data_diff.dbt.DbtParser.__new__")
+    @patch("data_diff.dbt_parser.DbtParser.__new__")
     @patch("data_diff.dbt.rich.print")
     def test_diff_is_cloud_no_pks(
         self, mock_print, mock_dbt_parser, mock_cloud_diff, mock_local_diff, mock_get_diff_vars, mock_initialize_api
@@ -727,7 +727,7 @@ class TestDbtDiffer(unittest.TestCase):
     @patch("data_diff.dbt._get_diff_vars")
     @patch("data_diff.dbt._local_diff")
     @patch("data_diff.dbt._cloud_diff")
-    @patch("data_diff.dbt.DbtParser.__new__")
+    @patch("data_diff.dbt_parser.DbtParser.__new__")
     @patch("data_diff.dbt.rich.print")
     def test_diff_not_is_cloud_no_pks(
         self, mock_print, mock_dbt_parser, mock_cloud_diff, mock_local_diff, mock_get_diff_vars
