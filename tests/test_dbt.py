@@ -15,6 +15,7 @@ from data_diff.dbt import (
     MANIFEST_PATH,
     PROJECT_FILE,
     DiffVars,
+    DatafoldAPI,
 )
 import unittest
 from unittest.mock import MagicMock, Mock, mock_open, patch, ANY
@@ -168,7 +169,11 @@ class TestDbtParser(unittest.TestCase):
 
     def test_set_connection_snowflake_success_key_and_passphrase(self):
         expected_driver = "snowflake"
-        expected_credentials = {"user": "user", "private_key_path": "private_key_path", "private_key_passphrase": "private_key_passphrase"}
+        expected_credentials = {
+            "user": "user",
+            "private_key_path": "private_key_path",
+            "private_key_passphrase": "private_key_passphrase",
+        }
         mock_self = Mock()
         mock_self._get_connection_creds.return_value = (expected_credentials, expected_driver)
 
@@ -179,7 +184,9 @@ class TestDbtParser(unittest.TestCase):
         self.assertEqual(mock_self.connection.get("user"), expected_credentials["user"])
         self.assertEqual(mock_self.connection.get("password"), None)
         self.assertEqual(mock_self.connection.get("key"), expected_credentials["private_key_path"])
-        self.assertEqual(mock_self.connection.get("private_key_passphrase"), expected_credentials["private_key_passphrase"])
+        self.assertEqual(
+            mock_self.connection.get("private_key_passphrase"), expected_credentials["private_key_passphrase"]
+        )
         self.assertEqual(mock_self.requires_upper, True)
 
     def test_set_connection_snowflake_no_key_or_password(self):
@@ -192,7 +199,7 @@ class TestDbtParser(unittest.TestCase):
             DbtParser.set_connection(mock_self)
 
         self.assertNotIsInstance(mock_self.connection, dict)
-    
+
     def test_set_connection_snowflake_authenticator(self):
         expected_driver = "snowflake"
         expected_credentials = {"user": "user", "authenticator": "authenticator"}
@@ -404,7 +411,6 @@ class TestDbtDiffer(unittest.TestCase):
         diff = run_datadiff_cli(
             "--dbt", "--dbt-project-dir", test_project_path, "--dbt-profiles-dir", test_project_path
         )
-        assert "Diffs Complete!" in "\n".join(d.decode("utf-8") for d in diff)
 
         # assertions for the diff that exists in tests/dbt_artifacts/jaffle_shop.duckdb
         if test_project_path == artifacts_path:
@@ -478,34 +484,38 @@ class TestDbtDiffer(unittest.TestCase):
         mock_connect.assert_any_call(mock_connection, ".".join(prod_qualified_list), tuple(expected_keys), None)
         mock_diff.get_stats_string.assert_not_called()
 
-    @patch("data_diff.dbt._cloud_poll_and_get_summary_results")
-    @patch("data_diff.dbt._cloud_submit_diff")
     @patch("data_diff.dbt.rich.print")
-    def test_cloud_diff(self, mock_print, mock_submit_diff, mock_poll_results):
-        mock_submit_diff.return_value = 123
-        mock_poll_results.return_value = EXAMPLE_DIFF_RESULTS
+    @patch("data_diff.dbt.os.environ")
+    @patch("data_diff.dbt.DatafoldAPI")
+    def test_cloud_diff(self, mock_api, mock_os_environ, mock_print):
+        expected_api_key = "an_api_key"
+        mock_api.create_data_diff.return_value = {"id": 123}
+        mock_os_environ.get.return_value = expected_api_key
         dev_qualified_list = ["dev_db", "dev_schema", "dev_table"]
         prod_qualified_list = ["prod_db", "prod_schema", "prod_table"]
-        datasource_id = 1
+        expected_datasource_id = 1
         expected_primary_keys = ["primary_key_column"]
         diff_vars = DiffVars(dev_qualified_list, prod_qualified_list, expected_primary_keys, None, None)
-        datafold_host = "a_host"
-        url = "a_url"
-        api_key = "an_api_key"
-        _cloud_diff(diff_vars, datasource_id, datafold_host, url, api_key)
+        _cloud_diff(diff_vars, expected_datasource_id, api=mock_api)
 
+        mock_api.create_data_diff.assert_called_once()
         mock_print.assert_called_once()
-        mock_submit_diff.assert_called_once()
-        mock_poll_results.assert_called_once()
 
-    @patch("data_diff.dbt._setup_cloud_diff")
+        payload = mock_api.create_data_diff.call_args[1]["payload"]
+        self.assertEqual(payload.data_source1_id, expected_datasource_id)
+        self.assertEqual(payload.data_source2_id, expected_datasource_id)
+        self.assertEqual(payload.table1, prod_qualified_list)
+        self.assertEqual(payload.table2, dev_qualified_list)
+        self.assertEqual(payload.pk_columns, expected_primary_keys)
+
+    @patch("data_diff.dbt._initialize_api")
     @patch("data_diff.dbt._get_diff_vars")
     @patch("data_diff.dbt._local_diff")
     @patch("data_diff.dbt._cloud_diff")
     @patch("data_diff.dbt.DbtParser.__new__")
     @patch("data_diff.dbt.rich.print")
     def test_diff_is_cloud(
-        self, mock_print, mock_dbt_parser, mock_cloud_diff, mock_local_diff, mock_get_diff_vars, mock_setup_cloud_diff
+        self, mock_print, mock_dbt_parser, mock_cloud_diff, mock_local_diff, mock_get_diff_vars, mock_initialize_api
     ):
         mock_dbt_parser_inst = Mock()
         mock_model = Mock()
@@ -515,10 +525,9 @@ class TestDbtDiffer(unittest.TestCase):
             "datasource_id": 1,
         }
         host = "a_host"
-        url = "a_url"
         api_key = "a_api_key"
-        setup_tuple = (host, url, api_key)
-        mock_setup_cloud_diff.return_value = setup_tuple
+        api = DatafoldAPI(api_key=api_key, host=host)
+        mock_initialize_api.return_value = api
 
         mock_dbt_parser.return_value = mock_dbt_parser_inst
         mock_dbt_parser_inst.get_models.return_value = [mock_model]
@@ -529,19 +538,20 @@ class TestDbtDiffer(unittest.TestCase):
         mock_dbt_parser_inst.get_models.assert_called_once()
         mock_dbt_parser_inst.set_connection.assert_not_called()
 
-        mock_setup_cloud_diff.assert_called_once()
-        mock_cloud_diff.assert_called_once_with(expected_diff_vars, 1, host, url, api_key)
+        mock_initialize_api.assert_called_once()
+        mock_cloud_diff.assert_called_once_with(expected_diff_vars, 1, api)
         mock_local_diff.assert_not_called()
-        mock_print.assert_called_once()
+        mock_print.assert_not_called()
 
-    @patch("data_diff.dbt._setup_cloud_diff")
+    @patch("data_diff.dbt._initialize_api")
     @patch("data_diff.dbt._get_diff_vars")
     @patch("data_diff.dbt._local_diff")
     @patch("data_diff.dbt._cloud_diff")
     @patch("data_diff.dbt.DbtParser.__new__")
     @patch("data_diff.dbt.rich.print")
+    @patch("builtins.input", return_value="n")
     def test_diff_is_cloud_no_ds_id(
-        self, mock_print, mock_dbt_parser, mock_cloud_diff, mock_local_diff, mock_get_diff_vars, mock_setup_cloud_diff
+        self, _, mock_print, mock_dbt_parser, mock_cloud_diff, mock_local_diff, mock_get_diff_vars, mock_initialize_api
     ):
         mock_dbt_parser_inst = Mock()
         mock_model = Mock()
@@ -550,24 +560,25 @@ class TestDbtDiffer(unittest.TestCase):
             "prod_schema": "prod_schema",
         }
         host = "a_host"
-        url = "a_url"
         api_key = "a_api_key"
-        mock_setup_cloud_diff.return_value = (host, url, api_key)
+        api = DatafoldAPI(api_key=api_key, host=host)
+        mock_initialize_api.return_value = api
 
         mock_dbt_parser.return_value = mock_dbt_parser_inst
         mock_dbt_parser_inst.get_models.return_value = [mock_model]
         mock_dbt_parser_inst.get_datadiff_variables.return_value = expected_dbt_vars_dict
         expected_diff_vars = DiffVars(["dev"], ["prod"], ["pks"], None, None)
         mock_get_diff_vars.return_value = expected_diff_vars
+
         with self.assertRaises(ValueError):
             dbt_diff(is_cloud=True)
         mock_dbt_parser_inst.get_models.assert_called_once()
         mock_dbt_parser_inst.set_connection.assert_not_called()
 
-        mock_setup_cloud_diff.assert_not_called()
+        mock_initialize_api.assert_called_once()
         mock_cloud_diff.assert_not_called()
         mock_local_diff.assert_not_called()
-        mock_print.assert_not_called()
+        mock_print.assert_called_once()
 
     @patch("data_diff.dbt._get_diff_vars")
     @patch("data_diff.dbt._local_diff")
@@ -592,7 +603,7 @@ class TestDbtDiffer(unittest.TestCase):
         mock_dbt_parser_inst.set_connection.assert_called_once()
         mock_cloud_diff.assert_not_called()
         mock_local_diff.assert_called_once_with(expected_diff_vars)
-        mock_print.assert_called_once()
+        mock_print.assert_not_called()
 
     @patch("data_diff.dbt._get_diff_vars")
     @patch("data_diff.dbt._local_diff")
@@ -646,7 +657,7 @@ class TestDbtDiffer(unittest.TestCase):
         mock_dbt_parser_inst.set_connection.assert_called_once()
         mock_cloud_diff.assert_not_called()
         mock_local_diff.assert_called_once_with(expected_diff_vars)
-        mock_print.assert_called_once()
+        mock_print.assert_not_called()
 
     @patch("data_diff.dbt._get_diff_vars")
     @patch("data_diff.dbt._local_diff")
@@ -678,14 +689,14 @@ class TestDbtDiffer(unittest.TestCase):
         mock_local_diff.assert_not_called()
         mock_print.assert_not_called()
 
-    @patch("data_diff.dbt._setup_cloud_diff")
+    @patch("data_diff.dbt._initialize_api")
     @patch("data_diff.dbt._get_diff_vars")
     @patch("data_diff.dbt._local_diff")
     @patch("data_diff.dbt._cloud_diff")
     @patch("data_diff.dbt.DbtParser.__new__")
     @patch("data_diff.dbt.rich.print")
     def test_diff_is_cloud_no_pks(
-        self, mock_print, mock_dbt_parser, mock_cloud_diff, mock_local_diff, mock_get_diff_vars, mock_setup_cloud_diff
+        self, mock_print, mock_dbt_parser, mock_cloud_diff, mock_local_diff, mock_get_diff_vars, mock_initialize_api
     ):
         mock_dbt_parser_inst = Mock()
         mock_dbt_parser.return_value = mock_dbt_parser_inst
@@ -696,9 +707,9 @@ class TestDbtDiffer(unittest.TestCase):
             "datasource_id": 1,
         }
         host = "a_host"
-        url = "a_url"
         api_key = "a_api_key"
-        mock_setup_cloud_diff.return_value = (host, url, api_key)
+        api = DatafoldAPI(api_key=api_key, host=host)
+        mock_initialize_api.return_value = api
 
         mock_dbt_parser_inst.get_models.return_value = [mock_model]
         mock_dbt_parser_inst.get_datadiff_variables.return_value = expected_dbt_vars_dict
@@ -706,12 +717,12 @@ class TestDbtDiffer(unittest.TestCase):
         mock_get_diff_vars.return_value = expected_diff_vars
         dbt_diff(is_cloud=True)
 
-        mock_setup_cloud_diff.assert_called_once()
+        mock_initialize_api.assert_called_once()
         mock_dbt_parser_inst.get_models.assert_called_once()
         mock_dbt_parser_inst.set_connection.assert_not_called()
         mock_cloud_diff.assert_not_called()
         mock_local_diff.assert_not_called()
-        self.assertEqual(mock_print.call_count, 2)
+        self.assertEqual(mock_print.call_count, 1)
 
     @patch("data_diff.dbt._get_diff_vars")
     @patch("data_diff.dbt._local_diff")
@@ -743,7 +754,7 @@ class TestDbtDiffer(unittest.TestCase):
         mock_dbt_parser_inst.set_connection.assert_called_once()
         mock_cloud_diff.assert_not_called()
         mock_local_diff.assert_not_called()
-        self.assertEqual(mock_print.call_count, 2)
+        self.assertEqual(mock_print.call_count, 1)
 
     def test_get_diff_vars_custom_schemas_prod_db_and_schema(self):
         mock_model = Mock()
