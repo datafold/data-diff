@@ -215,6 +215,8 @@ class HashDiffer(TableDiffer):
         if max_rows < self.bisection_threshold or max_space_size < self.bisection_factor * 2:
             logging.info(f'Downloading rows from T1 {table1.min_key} - {table1.max_key}')
             logging.info(f'Downloading rows from T2 {table2.min_key} - {table2.max_key}')
+            self.set_query_timeouts([table1, table2])
+
             rows1, rows2 = self._threaded_call("get_values", [table1, table2])
             diff = list(diff_sets(rows1, rows2, table1.key_indices))
 
@@ -306,6 +308,7 @@ class GroupingHashDiffer(HashDiffer):
         #       as retreived from the last query. This especially important when dealing with a composite PK table 
         #       because the approximate_size is likely a gross underestimation.
         if max_rows < self.bisection_threshold or max_rows < self.bisection_factor * 2:
+            self.set_query_timeouts([table1, table2])
             rows1, rows2 = self._threaded_call("get_values", [table1, table2])
             diff = list(diff_sets(rows1, rows2, table1.key_indices))
 
@@ -362,6 +365,8 @@ class GroupingHashDiffer(HashDiffer):
             query_fns.insert(0, partial(table2.count_and_checksum_by_group, checkpoints[0], self.bisection_factor, optimizer_hints=(level == 0)))
 
 
+        self.set_query_timeouts([table1, table2])
+
         # wait for all queries to complete.
         all_results = ti._submit_and_block(*query_fns, priority=level)
 
@@ -408,8 +413,9 @@ class GroupingHashDiffer(HashDiffer):
             if kt1.python_type is not kt2.python_type:
                 raise TypeError(f"Incompatible key types: {kt1} and {kt2}")
 
-        # Query min/max values
+        self.set_query_timeouts([table1, table2])
 
+        # Query min/max values
         if all(k is not None for k in [table1.min_key, table1.max_key, table2.min_key, table2.max_key]):
             key_ranges = (kr for kr in [(table1.min_key, table1.max_key), (table2.min_key, table2.max_key)])
         elif all(k is not None for k in [table1.min_key, table1.max_key]):

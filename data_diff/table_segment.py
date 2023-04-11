@@ -203,6 +203,9 @@ class TableSegment:
 
     def get_schema(self):
         return self.database.query_table_schema(self.table_path)
+    
+    def set_query_timeout(self, timeout: int) -> None:
+        self.database.set_query_timeout(timeout)
 
     def _make_key_range(self):
         if self.min_key is not None:
