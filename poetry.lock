@@ -734,13 +734,13 @@ wmi = ["wmi (>=1.5.1,<2.0.0)"]
 
 [[package]]
 name = "dsnparse"
-version = "0.2.0"
+version = "0.1.15"
 description = "parse dsn urls"
 category = "main"
 optional = false
 python-versions = "*"
 files = [
-    {file = "dsnparse-0.2.0.tar.gz", hash = "sha256:86334148ccdbb52911c8828edb6a5f3064cd52b3a7fd4072c391fa3fa7a87031"},
+    {file = "dsnparse-0.1.15.tar.gz", hash = "sha256:2ac5705b17cb28e8b115053c2d51cf3321dc2041b1d75e2db6157e05146d0fba"},
 ]
 
 [[package]]
@@ -2518,4 +2518,4 @@ vertica = []
 [metadata]
 lock-version = "2.0"
 python-versions = "^3.7"
-content-hash = "0024d5cef51ca7914db8def6c6ab1cadd348d96b3f33688eb541649548af72d4"
+content-hash = "0ff251bbd410af9e6882a31263b19121d237165efa25f4b95f023b42c4f1877e"

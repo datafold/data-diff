@@ -25,7 +25,7 @@ packages = [{ include = "data_diff" }]
 [tool.poetry.dependencies]
 python = "^3.7"
 runtype = "^0.2.6"
-dsnparse = "*"
+dsnparse = "<0.2.0"
 click = "^8.1"
 rich = "*"
 toml = "^0.10.2"
