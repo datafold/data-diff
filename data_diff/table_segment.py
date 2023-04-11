@@ -15,7 +15,18 @@ from sqeleton.queries import Count, Checksum, SKIP, table, this, Expr, min_, max
 from sqeleton.queries.extras import ApplyFuncAndNormalizeAsString, NormalizeAsString
 from sqeleton.abcs import database_types as DB_TYPES
 
-logger = logging.getLogger("table_segment")
+
+LOG_FORMAT = "[%(asctime)s] %(levelname)s - [%(db)s] %(message)s"
+DATE_FORMAT = "%H:%M:%S"
+FORMATTER = logging.Formatter(LOG_FORMAT, datefmt=DATE_FORMAT)
+
+base_logger = logging.getLogger("table_segment")
+base_logger.setLevel(logging.INFO)
+handler = logging.StreamHandler()
+handler.setFormatter(FORMATTER)
+base_logger.addHandler(handler)
+base_logger.propagate = False
+
 
 RECOMMENDED_CHECKSUM_DURATION = 20
 
@@ -168,6 +179,8 @@ class TableSegment:
     case_sensitive: bool = True
     _schema: Schema = None
 
+    logger: logging.LoggerAdapter = None
+
     def __post_init__(self):
         if not self.update_column and (self.min_update or self.max_update):
             raise ValueError("Error: the min_update/max_update feature requires 'update_column' to be set.")
@@ -180,11 +193,14 @@ class TableSegment:
                 f"Error: min_update expected to be smaller than max_update! ({self.min_update} >= {self.max_update})"
             )
 
+        super().__setattr__('logger', logging.LoggerAdapter(base_logger, {'db':self.database.name}))
+
     def _where(self):
         return f"({self.where})" if self.where else None
 
     def _with_raw_schema(self, raw_schema: dict) -> "TableSegment":
         schema = self.database._process_table_schema(self.table_path, raw_schema, self.relevant_columns, self._where())
+        self.logger.info(f'schema: {schema}')
 
         if self.column_type_overrides is not None:
             for col, col_info in self.column_type_overrides.items():
@@ -326,11 +342,13 @@ class TableSegment:
         count, checksum = self.database.query(q, tuple)
         duration = time.monotonic() - start
         if duration > RECOMMENDED_CHECKSUM_DURATION:
-            logger.warning(
+            self.logger.warning(
                 "Checksum is taking longer than expected (%.2f). "
                 "We recommend increasing --bisection-factor or decreasing --threads.",
                 duration,
             )
+        else:
+            self.logger.info('Checksum took %.2f seconds', duration)
 
         if count:
             assert checksum, (count, checksum)
@@ -428,7 +446,7 @@ class TableSegment:
     def query_key_range(self) -> Tuple[tuple, tuple]:
         """Query database for minimum and maximum key. This is used for setting the initial bounds."""
         # Normalizes the result (needed for UUIDs) after the min/max computation
-        logging.info(f'{self.database.name} query_key_range: {self.min_key} - {self.max_key}')
+        self.logger.info(f'query_key_range: {self.min_key} - {self.max_key}')
 
         def normalize_range_select():
             for k in self.key_columns:
