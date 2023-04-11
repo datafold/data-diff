@@ -233,7 +233,7 @@ def _initialize_api() -> Optional[DatafoldAPI]:
     api_key = os.environ.get("DATAFOLD_API_KEY")
     if not api_key:
         rich.print("[red]API key not found. Trying to get from the system keyring service")
-        api_key = keyring.get_password("system", "DATAFOLD_API_KEY")
+        api_key = keyring.get_password("data-diff", "DATAFOLD_API_KEY")
         if not api_key:
             rich.print("[red]API key not found, add it as an environment variable called DATAFOLD_API_KEY.")
 
@@ -247,7 +247,7 @@ def _initialize_api() -> Optional[DatafoldAPI]:
 
     rich.print("Trying to save or update the API key to the system keyring service")
     try:
-        keyring.set_password("system", "DATAFOLD_API_KEY", api_key)
+        keyring.set_password("data-diff", "DATAFOLD_API_KEY", api_key)
     except Exception as e:
         rich.print(f"[red]Fail when saving the API key to the system keyring service. Reason: {e}")
 
