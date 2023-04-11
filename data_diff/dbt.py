@@ -460,13 +460,15 @@ class DbtParser:
                 "filepath": credentials.get("path"),
             }
         elif conn_type == "redshift":
-            if credentials.get("password") is None or credentials.get("method") == "iam":
+            if (credentials.get("pass") is None and credentials.get("password") is None) or credentials.get(
+                "method"
+            ) == "iam":
                 raise Exception("Only password authentication is currently supported for Redshift.")
             conn_info = {
                 "driver": conn_type,
                 "host": credentials.get("host"),
                 "user": credentials.get("user"),
-                "password": credentials.get("password"),
+                "password": credentials.get("password") or credentials.get("pass"),
                 "port": credentials.get("port"),
                 "dbname": credentials.get("dbname"),
             }
