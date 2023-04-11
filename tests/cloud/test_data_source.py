@@ -184,7 +184,7 @@ class TestDataSource(unittest.TestCase):
             self.assertEqual(actual_config, config)
             self.assertEqual(
                 mock_stdout.getvalue().strip(),
-                'Cannot extract "account" from dbt profile.yml. Please, type it manually',
+                'Cannot extract "account" from dbt profiles.yml. Please, type it manually',
             )
 
     @patch("sys.stdout", new_callable=StringIO)
