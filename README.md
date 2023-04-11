@@ -9,7 +9,7 @@ data-diff is a **free, open-source tool** that enables data professionals to det
 
 ## Documentation
 
-[**🗎 Documentation website**](https://docs.datafold.com/os_diff/about) - our detailed documentation has everything you need to start diffing.
+[**🗎 Documentation**](https://docs.datafold.com/reference/open_source) - our detailed documentation has everything you need to start diffing.
 
 ### Databases we support
 
@@ -27,7 +27,7 @@ data-diff is a **free, open-source tool** that enables data professionals to det
 - DuckDB >=0.6
 - SQLite (coming soon)
 
-For their corresponding connection strings, check out our [detailed table](https://docs.datafold.com/os_diff/databases_we_support).
+For their corresponding connection strings, check out our [detailed table](https://docs.datafold.com/reference/open_source/cli#connection-methods).
 
 #### Looking for a database not on the list?
 If a database is not on the list, we'd still love to support it. [Please open an issue](https://github.com/datafold/data-diff/issues) to discuss it, or vote on existing requests to push them up our todo list.
@@ -92,7 +92,7 @@ Once you've installed `data-diff`, you can run it from the command line.
 data-diff DB1_URI TABLE1_NAME DB2_URI TABLE2_NAME [OPTIONS]
 ```
 
-Be sure to read [the docs](https://docs.datafold.com/os_diff/how_to_use/how_to_use_with_command_line) for detailed instructions how to build one of these commands depending on your database setup.
+Be sure to read [the docs](https://docs.datafold.com/reference/open_source/cli) for detailed instructions how to build one of these commands depending on your database setup.
 
 #### Code Example: Diff Tables Between Databases
 Here's an example command for your copy/pasting, taken from the screenshot above when we diffed data between Snowflake and Postgres.
@@ -109,8 +109,6 @@ data-diff \
 ```
 
 #### Code Example: Diff Tables Within a Database
-
-Here's a code example from [the video](https://www.loom.com/share/682e4b7d74e84eb4824b983311f0a3b2), where we compare data between two Snowflake tables within one database.
 
 ```
 data-diff \
@@ -130,18 +128,13 @@ In both code examples, I've used `<>` carrots to represent values that **should 
 
 We know that in some cases, the data-diff command can become long and dense. And maybe you're new to the command line.
 
-* We're here to help [on slack](https://locallyoptimistic.slack.com/archives/C03HUNGQV0S) if you have ANY questions as you use `data-diff` in your workflow.
+* We're here to help [on slack](https://getdbt.slack.com/archives/C03D25A92UU) if you have ANY questions as you use `data-diff` in your workflow.
 * You can also post a question in [GitHub Discussions](https://github.com/datafold/data-diff/discussions).
-
-
-To get a Slack invite - [click here](https://locallyoptimistic.com/community/)
 
 ## How to Use
 
-* [How to use from the shell (or: command-line)](https://docs.datafold.com/os_diff/how_to_use/how_to_use_with_command_line)
-* [How to use from Python](https://docs.datafold.com/os_diff/how_to_use/how_to_use_with_python)
-* [How to use with TOML configuration file](https://docs.datafold.com/os_diff/how_to_use/how_to_use_with_toml)
-* [Usage Analytics & Data Privacy](https://docs.datafold.com/os_diff/usage_analytics_data_privacy)
+* [How to use from the shell (or: command-line)](https://docs.datafold.com/reference/open_source/cli)
+* [How to use from Python](https://data-diff.readthedocs.io/en/latest/python-api.html)
 
 ## How to Contribute
 * Feel free to open an issue or contribute to the project by working on an existing issue.
@@ -155,7 +148,7 @@ Big thanks to everyone who contributed so far:
 
 ## Technical Explanation
 
-Check out this [technical explanation](https://docs.datafold.com/os_diff/technical_explanation) of how data-diff works.
+Check out this [technical explanation](https://github.com/datafold/data-diff/blob/master/docs/technical-explanation.md) of how data-diff works.
 
 ## License
 
