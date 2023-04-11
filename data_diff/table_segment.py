@@ -239,20 +239,22 @@ class TableSegment:
                 else:
                     yield this[k] < mx
 
-    def _make_update_range(self):
-        if self.min_update is not None:
+    def _make_update_range(self, include_min: bool = True, include_max: bool = True):
+        # TODO: add support for column conversion of update_column range
+        if include_min and self.min_update is not None:
             yield self.min_update <= this[self.update_column]
-        if self.max_update is not None:
+        if include_max and self.max_update is not None:
             yield this[self.update_column] < self.max_update
 
     @property
     def source_table(self):
         return table(*self.table_path, schema=self._schema)
 
-    def make_select(self, incl_update_range=True):
-        if incl_update_range:
+    def make_select(self, use_min_update = True, use_max_update = True):
+        if use_min_update or use_max_update:
             return self.source_table.where(
-                *self._make_key_range(), *self._make_update_range(), Code(self._where()) if self.where else SKIP
+                *self._make_key_range(), *self._make_update_range(include_min=use_min_update, include_max=use_max_update), 
+                Code(self._where()) if self.where else SKIP
             )
         else:
             return self.source_table.where(
@@ -261,7 +263,7 @@ class TableSegment:
 
     def get_values(self) -> list:
         "Download all the relevant values of the segment from the database"
-        select = self.make_select(incl_update_range=False).select(
+        select = self.make_select(use_max_update=False).select(
             *self._relevant_columns_repr('select_values'))
         return self.database.query(select, List[Tuple])
 
@@ -304,6 +306,13 @@ class TableSegment:
             extras = [self.update_column] + extras
 
         return list(self.key_columns) + extras
+    
+    @property
+    def update_col_idx(self) -> int:
+        if not self.update_column:
+            raise ValueError(f'No update_column specified for table {self.table_path}')
+        # key columns are first, so next index is the update_column
+        return len(self.key_columns)
     
     def col_conversion(self, c: str) -> tuple[Optional[str], Optional[list]]:
         conversion_info = self.col_conversions.get(c.lower(), self.col_conversions.get(c.upper()))

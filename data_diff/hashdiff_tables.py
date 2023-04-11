@@ -141,6 +141,44 @@ class HashDiffer(TableDiffer):
                         "If encoding/formatting differs between databases, it may result in false positives."
                     )
 
+    def _remove_diffs_outside_update_range(self, 
+                                           diff: list, 
+                                           tbl1: TableSegment, 
+                                           tbl2: TableSegment) -> list:
+        def keep_outside_update_range(r):
+            _, row = r
+            update_col_idx = tbl1.update_col_idx
+
+            if not row[update_col_idx]:
+                # update column is null, exclude from outside range list
+                return False
+
+            if tbl1.max_update and row[update_col_idx] >= tbl1.max_update.strftime('%Y-%m-%d %H:%M:%S'):
+                return True
+            if tbl1.min_update and row[update_col_idx] < tbl1.min_update.strftime('%Y-%m-%d %H:%M:%S'):
+                return True
+            return False
+
+        def extract_key(r):
+            _, row = r
+            return tuple(row[idx] for idx in tbl1.key_indices)
+        
+        # only filter if both tables have the same update range
+        if tbl1.update_column is not None and tbl2.update_column is not None and \
+            tbl1.max_update == tbl2.max_update and tbl1.min_update == tbl2.min_update:
+
+            # get rows outside update range
+            pks_outside_urange = [extract_key(d) for d in diff if keep_outside_update_range(d)]
+
+            # remove any row from diff whose PK is in outside_urange
+            modified = [d for d in diff if extract_key(d) not in pks_outside_urange]
+            
+            if len(modified) < len(diff):
+                logging.info(f'Discarded {len(diff) - len(modified)} rows outside update range ({tbl1.min_update} - {tbl1.max_update})')
+            return modified
+
+        return diff
+
     def _diff_segments(
         self,
         ti: ThreadedYielder,
@@ -219,6 +257,8 @@ class HashDiffer(TableDiffer):
 
             rows1, rows2 = self._threaded_call("get_values", [table1, table2])
             diff = list(diff_sets(rows1, rows2, table1.key_indices))
+
+            diff = self._remove_diffs_outside_update_range(diff, table1, table2)
 
             info_tree.info.set_diff(diff)
             info_tree.info.rowcounts = {1: len(rows1), 2: len(rows2)}
@@ -311,6 +351,8 @@ class GroupingHashDiffer(HashDiffer):
             self.set_query_timeouts([table1, table2])
             rows1, rows2 = self._threaded_call("get_values", [table1, table2])
             diff = list(diff_sets(rows1, rows2, table1.key_indices))
+
+            diff = self._remove_diffs_outside_update_range(diff, table1, table2)
 
             info_tree.info.set_diff(diff)
             info_tree.info.rowcounts = {1: len(rows1), 2: len(rows2)}
