@@ -386,6 +386,7 @@ class TableDiffer(ThreadBase, ABC):
         info_tree: InfoTree,
         level=0,
         max_rows=None,
+        seg_path=''
     ):
         assert table1.is_bounded and table2.is_bounded
 
@@ -402,6 +403,12 @@ class TableDiffer(ThreadBase, ABC):
         # Recursively compare each pair of corresponding segments between table1 and table2
         for i, (t1, t2) in enumerate(safezip(segmented1, segmented2)):
             info_node = info_tree.add_node(t1, t2, max_rows=max_rows)
+
+            if level == 0:
+                segment_path = f'{i+1}'
+            else:
+                segment_path = f'{seg_path}.{i+1}'
+
             ti.submit(
-                self._diff_segments, ti, t1, t2, info_node, max_rows, level + 1, i + 1, len(segmented1), priority=level
+                self._diff_segments, ti, t1, t2, info_node, max_rows, level + 1, i + 1, len(segmented1), priority=level, seg_path=segment_path
             )
