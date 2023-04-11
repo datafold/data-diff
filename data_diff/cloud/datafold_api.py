@@ -186,7 +186,7 @@ class DatafoldAPI:
         return rv
 
     def get_data_sources(self) -> List[TCloudApiDataSource]:
-        rv = self.make_get_request(url="api/data_sources")
+        rv = self.make_get_request(url="api/v1/data_sources")
         rv.raise_for_status()
         return [TCloudApiDataSource(**item) for item in rv.json()]
 
