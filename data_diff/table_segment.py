@@ -224,17 +224,18 @@ class TableSegment:
         self.database.set_query_timeout(timeout)
 
     def _make_key_range(self):
+        col_usage = 'where_key_range'
         if self.min_key is not None:
             for mn, k in safezip(self.min_key, self.key_columns):
-                converted_col, _ = self.col_conversion(k)
-                if converted_col:
+                converted_col, exclude_from = self.col_conversion(k)
+                if converted_col and col_usage not in exclude_from:
                     yield Code(f"{converted_col} >= '{mn}'")
                 else:
                     yield mn <= this[k]
         if self.max_key is not None:
             for k, mx in safezip(self.key_columns, self.max_key):
-                converted_col, _ = self.col_conversion(k)
-                if converted_col:
+                converted_col, exclude_from = self.col_conversion(k)
+                if converted_col and col_usage not in exclude_from:
                     yield Code(f"{converted_col} < '{mx}'")
                 else:
                     yield this[k] < mx
@@ -315,8 +316,17 @@ class TableSegment:
         return len(self.key_columns)
     
     def col_conversion(self, c: str) -> tuple[Optional[str], Optional[list]]:
-        conversion_info = self.col_conversions.get(c.lower(), self.col_conversions.get(c.upper()))
+        c_type = self._schema[c].__class__.__name__
+
+        # get conversion info for column
+        conversion_info = self.col_conversions.get(c.lower(), 
+                                                   self.col_conversions.get(c.upper()))
+
         if conversion_info:
+            allowed_types = conversion_info.get('is_type', None)
+            if allowed_types and c_type not in allowed_types:
+                return None, None
+
             placeholders = conversion_info['template'].count('{}')
             return conversion_info['template'].format(*([c]*placeholders)), conversion_info.get('exclude_from', [])
         else:
