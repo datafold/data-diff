@@ -1,10 +1,11 @@
 import time
-from typing import List, Optional
+from typing import List, Optional, Union, overload
 
 import pydantic
 import rich
 from rich.table import Table
 from rich.prompt import Confirm, Prompt, FloatPrompt, IntPrompt, InvalidResponse
+from typing_extensions import Literal
 
 from .datafold_api import (
     DatafoldAPI,
@@ -68,16 +69,32 @@ def create_ds_config(
     )
 
 
+@overload
+def _cast_value(value: str, type_: Literal["integer"]) -> int:
+    ...
+
+
+@overload
+def _cast_value(value: str, type_: Literal["boolean"]) -> bool:
+    ...
+
+
+@overload
+def _cast_value(value: str, type_: Literal["string"]) -> str:
+    ...
+
+
+def _cast_value(value: str, type_: str) -> Union[bool, int, str]:
+    if type_ == "integer":
+        return int(value)
+    elif type_ == "boolean":
+        return bool(value)
+    return value
+
+
 def _parse_ds_credentials(
     ds_config: TCloudApiDataSourceConfigSchema, only_basic_settings: bool = True, dbt_parser: Optional[DbtParser] = None
 ):
-    def cast_value(value: str, type_: str):
-        if type_ == "integer":
-            return int(value)
-        elif type_ == "boolean":
-            return bool(value)
-        return value
-
     creds = {}
     use_dbt_data = False
     if dbt_parser is not None:
@@ -110,7 +127,7 @@ def _parse_ds_credentials(
             if value == UNKNOWN_VALUE:
                 rich.print(f'[red]Cannot extract "{param_name}" from dbt profiles.yml. Please, type it manually')
             else:
-                ds_options[param_name] = cast_value(value, type_)
+                ds_options[param_name] = _cast_value(value, type_)
                 continue
 
         if type_ == "integer":
