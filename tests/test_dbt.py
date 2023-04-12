@@ -141,7 +141,7 @@ class TestDbtParser(unittest.TestCase):
         expected_driver = "snowflake"
         expected_credentials = {"user": "user", "password": "password"}
         mock_self = Mock()
-        mock_self._get_connection_creds.return_value = (expected_credentials, expected_driver)
+        mock_self.get_connection_creds.return_value = (expected_credentials, expected_driver)
 
         DbtParser.set_connection(mock_self)
 
@@ -156,7 +156,7 @@ class TestDbtParser(unittest.TestCase):
         expected_driver = "snowflake"
         expected_credentials = {"user": "user", "private_key_path": "private_key_path"}
         mock_self = Mock()
-        mock_self._get_connection_creds.return_value = (expected_credentials, expected_driver)
+        mock_self.get_connection_creds.return_value = (expected_credentials, expected_driver)
 
         DbtParser.set_connection(mock_self)
 
@@ -175,7 +175,7 @@ class TestDbtParser(unittest.TestCase):
             "private_key_passphrase": "private_key_passphrase",
         }
         mock_self = Mock()
-        mock_self._get_connection_creds.return_value = (expected_credentials, expected_driver)
+        mock_self.get_connection_creds.return_value = (expected_credentials, expected_driver)
 
         DbtParser.set_connection(mock_self)
 
@@ -193,7 +193,7 @@ class TestDbtParser(unittest.TestCase):
         expected_driver = "snowflake"
         expected_credentials = {"user": "user"}
         mock_self = Mock()
-        mock_self._get_connection_creds.return_value = (expected_credentials, expected_driver)
+        mock_self.get_connection_creds.return_value = (expected_credentials, expected_driver)
 
         with self.assertRaises(Exception):
             DbtParser.set_connection(mock_self)
@@ -204,7 +204,7 @@ class TestDbtParser(unittest.TestCase):
         expected_driver = "snowflake"
         expected_credentials = {"user": "user", "authenticator": "authenticator"}
         mock_self = Mock()
-        mock_self._get_connection_creds.return_value = (expected_credentials, expected_driver)
+        mock_self.get_connection_creds.return_value = (expected_credentials, expected_driver)
 
         DbtParser.set_connection(mock_self)
 
@@ -217,7 +217,7 @@ class TestDbtParser(unittest.TestCase):
         expected_driver = "snowflake"
         expected_credentials = {"user": "user", "private_key_path": "private_key_path", "password": "password"}
         mock_self = Mock()
-        mock_self._get_connection_creds.return_value = (expected_credentials, expected_driver)
+        mock_self.get_connection_creds.return_value = (expected_credentials, expected_driver)
 
         with self.assertRaises(Exception):
             DbtParser.set_connection(mock_self)
@@ -232,7 +232,7 @@ class TestDbtParser(unittest.TestCase):
             "dataset": "a_dataset",
         }
         mock_self = Mock()
-        mock_self._get_connection_creds.return_value = (expected_credentials, expected_driver)
+        mock_self.get_connection_creds.return_value = (expected_credentials, expected_driver)
 
         DbtParser.set_connection(mock_self)
 
@@ -250,7 +250,7 @@ class TestDbtParser(unittest.TestCase):
         }
 
         mock_self = Mock()
-        mock_self._get_connection_creds.return_value = (expected_credentials, expected_driver)
+        mock_self.get_connection_creds.return_value = (expected_credentials, expected_driver)
         with self.assertRaises(Exception):
             DbtParser.set_connection(mock_self)
 
@@ -260,7 +260,7 @@ class TestDbtParser(unittest.TestCase):
         expected_driver = "unimplemented_provider"
 
         mock_self = Mock()
-        mock_self._get_connection_creds.return_value = (None, expected_driver)
+        mock_self.get_connection_creds.return_value = (None, expected_driver)
         with self.assertRaises(NotImplementedError):
             DbtParser.set_connection(mock_self)
 
@@ -283,7 +283,7 @@ class TestDbtParser(unittest.TestCase):
         mock_self.project_dict = {"profile": "a_profile"}
         mock_self.yaml.safe_load.return_value = profiles_dict
         mock_self.ProfileRenderer().render_data.return_value = profile
-        credentials, conn_type = DbtParser._get_connection_creds(mock_self)
+        credentials, conn_type = DbtParser.get_connection_creds(mock_self)
         self.assertEqual(credentials, expected_credentials)
         self.assertEqual(conn_type, "type1")
 
@@ -297,7 +297,7 @@ class TestDbtParser(unittest.TestCase):
         profile = profiles_dict["a_profile"]
         mock_self.ProfileRenderer().render_data.return_value = profile
         with self.assertRaises(ValueError):
-            _, _ = DbtParser._get_connection_creds(mock_self)
+            _, _ = DbtParser.get_connection_creds(mock_self)
 
     @patch("builtins.open", new_callable=mock_open, read_data="")
     def test_get_connection_no_target(self, mock_open):
@@ -315,7 +315,7 @@ class TestDbtParser(unittest.TestCase):
         mock_self.project_dict = {"profile": "a_profile"}
         mock_self.yaml.safe_load.return_value = profiles_dict
         with self.assertRaises(ValueError):
-            _, _ = DbtParser._get_connection_creds(mock_self)
+            _, _ = DbtParser.get_connection_creds(mock_self)
 
     profile_yaml_no_outputs = """
     a_profile:
@@ -332,7 +332,7 @@ class TestDbtParser(unittest.TestCase):
         mock_self.ProfileRenderer().render_data.return_value = profile
         mock_self.yaml.safe_load.return_value = profiles_dict
         with self.assertRaises(ValueError):
-            _, _ = DbtParser._get_connection_creds(mock_self)
+            _, _ = DbtParser.get_connection_creds(mock_self)
 
     @patch("builtins.open", new_callable=mock_open, read_data="")
     def test_get_connection_no_credentials(self, mock_open):
@@ -349,7 +349,7 @@ class TestDbtParser(unittest.TestCase):
         profile = profiles_dict["a_profile"]
         mock_self.ProfileRenderer().render_data.return_value = profile
         with self.assertRaises(ValueError):
-            _, _ = DbtParser._get_connection_creds(mock_self)
+            _, _ = DbtParser.get_connection_creds(mock_self)
 
     @patch("builtins.open", new_callable=mock_open, read_data="")
     def test_get_connection_no_target_credentials(self, mock_open):
@@ -368,7 +368,7 @@ class TestDbtParser(unittest.TestCase):
         mock_self.ProfileRenderer().render_data.return_value = profile
         mock_self.yaml.safe_load.return_value = profiles_dict
         with self.assertRaises(ValueError):
-            _, _ = DbtParser._get_connection_creds(mock_self)
+            _, _ = DbtParser.get_connection_creds(mock_self)
 
     @patch("builtins.open", new_callable=mock_open, read_data="")
     def test_get_connection_no_type(self, mock_open):
@@ -385,7 +385,7 @@ class TestDbtParser(unittest.TestCase):
         profile = profiles_dict["a_profile"]
         mock_self.ProfileRenderer().render_data.return_value = profile
         with self.assertRaises(ValueError):
-            _, _ = DbtParser._get_connection_creds(mock_self)
+            _, _ = DbtParser.get_connection_creds(mock_self)
 
 
 EXAMPLE_DIFF_RESULTS = {
@@ -512,7 +512,7 @@ class TestDbtDiffer(unittest.TestCase):
     @patch("data_diff.dbt._get_diff_vars")
     @patch("data_diff.dbt._local_diff")
     @patch("data_diff.dbt._cloud_diff")
-    @patch("data_diff.dbt.DbtParser.__new__")
+    @patch("data_diff.dbt_parser.DbtParser.__new__")
     @patch("data_diff.dbt.rich.print")
     def test_diff_is_cloud(
         self, mock_print, mock_dbt_parser, mock_cloud_diff, mock_local_diff, mock_get_diff_vars, mock_initialize_api
@@ -547,7 +547,7 @@ class TestDbtDiffer(unittest.TestCase):
     @patch("data_diff.dbt._get_diff_vars")
     @patch("data_diff.dbt._local_diff")
     @patch("data_diff.dbt._cloud_diff")
-    @patch("data_diff.dbt.DbtParser.__new__")
+    @patch("data_diff.dbt_parser.DbtParser.__new__")
     @patch("data_diff.dbt.rich.print")
     @patch("builtins.input", return_value="n")
     def test_diff_is_cloud_no_ds_id(
@@ -583,7 +583,7 @@ class TestDbtDiffer(unittest.TestCase):
     @patch("data_diff.dbt._get_diff_vars")
     @patch("data_diff.dbt._local_diff")
     @patch("data_diff.dbt._cloud_diff")
-    @patch("data_diff.dbt.DbtParser.__new__")
+    @patch("data_diff.dbt_parser.DbtParser.__new__")
     @patch("data_diff.dbt.rich.print")
     def test_diff_is_not_cloud(self, mock_print, mock_dbt_parser, mock_cloud_diff, mock_local_diff, mock_get_diff_vars):
         mock_dbt_parser_inst = Mock()
@@ -608,7 +608,7 @@ class TestDbtDiffer(unittest.TestCase):
     @patch("data_diff.dbt._get_diff_vars")
     @patch("data_diff.dbt._local_diff")
     @patch("data_diff.dbt._cloud_diff")
-    @patch("data_diff.dbt.DbtParser.__new__")
+    @patch("data_diff.dbt_parser.DbtParser.__new__")
     @patch("data_diff.dbt.rich.print")
     def test_diff_no_prod_configs(
         self, mock_print, mock_dbt_parser, mock_cloud_diff, mock_local_diff, mock_get_diff_vars
@@ -637,7 +637,7 @@ class TestDbtDiffer(unittest.TestCase):
     @patch("data_diff.dbt._get_diff_vars")
     @patch("data_diff.dbt._local_diff")
     @patch("data_diff.dbt._cloud_diff")
-    @patch("data_diff.dbt.DbtParser.__new__")
+    @patch("data_diff.dbt_parser.DbtParser.__new__")
     @patch("data_diff.dbt.rich.print")
     def test_diff_only_prod_db(self, mock_print, mock_dbt_parser, mock_cloud_diff, mock_local_diff, mock_get_diff_vars):
         mock_dbt_parser_inst = Mock()
@@ -662,7 +662,7 @@ class TestDbtDiffer(unittest.TestCase):
     @patch("data_diff.dbt._get_diff_vars")
     @patch("data_diff.dbt._local_diff")
     @patch("data_diff.dbt._cloud_diff")
-    @patch("data_diff.dbt.DbtParser.__new__")
+    @patch("data_diff.dbt_parser.DbtParser.__new__")
     @patch("data_diff.dbt.rich.print")
     def test_diff_only_prod_schema(
         self, mock_print, mock_dbt_parser, mock_cloud_diff, mock_local_diff, mock_get_diff_vars
@@ -693,7 +693,7 @@ class TestDbtDiffer(unittest.TestCase):
     @patch("data_diff.dbt._get_diff_vars")
     @patch("data_diff.dbt._local_diff")
     @patch("data_diff.dbt._cloud_diff")
-    @patch("data_diff.dbt.DbtParser.__new__")
+    @patch("data_diff.dbt_parser.DbtParser.__new__")
     @patch("data_diff.dbt.rich.print")
     def test_diff_is_cloud_no_pks(
         self, mock_print, mock_dbt_parser, mock_cloud_diff, mock_local_diff, mock_get_diff_vars, mock_initialize_api
@@ -727,7 +727,7 @@ class TestDbtDiffer(unittest.TestCase):
     @patch("data_diff.dbt._get_diff_vars")
     @patch("data_diff.dbt._local_diff")
     @patch("data_diff.dbt._cloud_diff")
-    @patch("data_diff.dbt.DbtParser.__new__")
+    @patch("data_diff.dbt_parser.DbtParser.__new__")
     @patch("data_diff.dbt.rich.print")
     def test_diff_not_is_cloud_no_pks(
         self, mock_print, mock_dbt_parser, mock_cloud_diff, mock_local_diff, mock_get_diff_vars
