@@ -5,7 +5,7 @@
 # **data-diff**
 
 ## What is `data-diff`?
-data-diff is a **free, open-source tool** that enables data professionals to detect differences in values between any two tables. It's fast, easy to use, and reliable. Even at massive scale.
+data-diff is a **free, open-source tool** that enables data professionals to detect differences in values between any two tables.
 
 ## Documentation
 
