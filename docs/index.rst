@@ -4,22 +4,12 @@
    :hidden:
 
    python-api
+   python_examples
 
 data-diff
 ---------
 
-**Data-diff** is a command-line tool and Python library to efficiently diff
-rows across two different databases.
-
-⇄  Verifies across many different databases (e.g. *PostgreSQL* -> *Snowflake*) !
-
-🔍 Outputs diff of rows in detail
-
-🚨 Simple CLI/API to create monitoring and alerts
-
-🔥 Verify 25M+ rows in <10s, and 1B+ rows in ~5min.
-
-♾️  Works for tables with 10s of billions of rows
+**Data-diff** is a command-line tool and Python library for comparing tables in and across databases.
 
 For more information, `See our README <https://github.com/datafold/data-diff#readme>`_
 
@@ -32,4 +22,4 @@ Resources
 - :doc:`python-api`
 - The rest of the `documentation`_
 
-.. _documentation: https://docs.datafold.com/os_diff/about/
+.. _documentation: https://docs.datafold.com/guides/os_data_diff
