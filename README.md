@@ -9,7 +9,7 @@ data-diff is a **free, open-source tool** that enables data professionals to det
 
 ## Documentation
 
-[**🗎 Documentation**](https://docs.datafold.com/reference/open_source) - our detailed documentation has everything you need to start diffing.
+[**🗎 Documentation**](https://docs.datafold.com/guides/os_data_diff) - our detailed documentation has everything you need to start diffing.
 
 ### Databases we support
 
@@ -27,7 +27,7 @@ data-diff is a **free, open-source tool** that enables data professionals to det
 - DuckDB >=0.6
 - SQLite (coming soon)
 
-For their corresponding connection strings, check out our [detailed table](https://docs.datafold.com/reference/open_source/cli#connection-methods).
+For their corresponding connection strings, check out our [detailed table](https://github.com/datafold/data-diff/blob/master/docs/supported-databases.md).
 
 #### Looking for a database not on the list?
 If a database is not on the list, we'd still love to support it. [Please open an issue](https://github.com/datafold/data-diff/issues) to discuss it, or vote on existing requests to push them up our todo list.
@@ -133,12 +133,14 @@ We know that in some cases, the data-diff command can become long and dense. And
 
 ## How to Use
 
-* [How to use from the shell (or: command-line)](https://docs.datafold.com/reference/open_source/cli)
-* [How to use from Python](https://data-diff.readthedocs.io/en/latest/python-api.html)
+* [Examples with dbt, joindiff, and hashdiff](https://docs.datafold.com/reference/open_source/cli#examples)
+* [Examples with Python](https://data-diff.readthedocs.io/en/latest/python-api.html)
+* [How to use with TOML configuration file](https://docs.datafold.com/reference/open_source/cli#toml-config-file)
 
 ## How to Contribute
 * Feel free to open an issue or contribute to the project by working on an existing issue.
 * Please read the [contributing guidelines](https://github.com/datafold/data-diff/blob/master/CONTRIBUTING.md) to get started.
+* To add a new database driver, check out [docs](https://github.com/datafold/data-diff/blob/master/docs/new-database-driver-guide.rst).
 
 Big thanks to everyone who contributed so far:
 
@@ -149,6 +151,9 @@ Big thanks to everyone who contributed so far:
 ## Technical Explanation
 
 Check out this [technical explanation](https://github.com/datafold/data-diff/blob/master/docs/technical-explanation.md) of how data-diff works.
+
+## Analytics
+* [Usage Analytics & Data Privacy](https://github.com/datafold/data-diff/blob/master/docs/usage_analytics.md)
 
 ## License
 
