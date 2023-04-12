@@ -25,7 +25,10 @@ packages = [{ include = "data_diff" }]
 [tool.poetry.dependencies]
 python = "^3.7"
 runtype = "^0.2.6"
-dsnparse = "*"
+dsnparse = [
+    { version = "<0.2.0", markers = "python_version < '3.8.0'" },
+    { version = "*", markers = "python_version >= '3.8.0'" }
+]
 click = "^8.1"
 rich = "*"
 toml = "^0.10.2"
@@ -40,6 +43,7 @@ clickhouse-driver = {version="*", optional=true}
 duckdb = {version="^0.7.0", optional=true}
 dbt-artifacts-parser = {version="^0.2.5", optional=true}
 dbt-core = {version="^1.0.0", optional=true}
+keyring = "*"
 
 [tool.poetry.dev-dependencies]
 parameterized = "*"
