@@ -126,10 +126,7 @@ In both code examples, I've used `<>` carrots to represent values that **should 
 
 ### We're here to help!
 
-We know that in some cases, the data-diff command can become long and dense. And maybe you're new to the command line.
-
-* We're here to help [on slack](https://getdbt.slack.com/archives/C03D25A92UU) if you have ANY questions as you use `data-diff` in your workflow.
-* You can also post a question in [GitHub Discussions](https://github.com/datafold/data-diff/discussions).
+We're here to help! Please post any questions in [GitHub Discussions](https://github.com/datafold/data-diff/discussions).
 
 ## How to Use
 
