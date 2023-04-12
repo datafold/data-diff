@@ -744,6 +744,17 @@ files = [
 ]
 
 [[package]]
+name = "dsnparse"
+version = "0.2.0"
+description = "parse dsn urls"
+category = "main"
+optional = false
+python-versions = "*"
+files = [
+    {file = "dsnparse-0.2.0.tar.gz", hash = "sha256:86334148ccdbb52911c8828edb6a5f3064cd52b3a7fd4072c391fa3fa7a87031"},
+]
+
+[[package]]
 name = "duckdb"
 version = "0.7.1"
 description = "DuckDB embedded database"
@@ -2518,4 +2529,4 @@ vertica = []
 [metadata]
 lock-version = "2.0"
 python-versions = "^3.7"
-content-hash = "0ff251bbd410af9e6882a31263b19121d237165efa25f4b95f023b42c4f1877e"
+content-hash = "7a4d41b7b5d864046fc28ef1fc37faa50539e642929faec4b15cc45937b29b50"
