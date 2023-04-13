@@ -169,6 +169,9 @@ class TableSegment:
     group_by_column: str = None 
     hash_query_type: str = 'multi'
     true_key_indices: list = None
+    group_min: Any = None
+    group_max: Any = None
+    group_grains: list = ['month', 'day', 'minute', 'second']
 
     # use to force cast certain columns to non-standard types 
     column_type_overrides: dict[str, Tuple] = field(default_factory=dict)
@@ -247,20 +250,25 @@ class TableSegment:
         if include_max and self.max_update is not None:
             yield this[self.update_column] < self.max_update
 
+    def _make_groupby_range(self, include_min: bool = True, include_max: bool = True):
+        # TODO: add support for column conversion of group range
+        if include_min and self.group_min is not None:
+            yield self.group_min <= this[self.group_by_column]
+        if include_max and self.group_max is not None:
+            yield this[self.group_by_column] < self.group_max
+
     @property
     def source_table(self):
         return table(*self.table_path, schema=self._schema)
 
-    def make_select(self, use_min_update = True, use_max_update = True):
-        if use_min_update or use_max_update:
-            return self.source_table.where(
-                *self._make_key_range(), *self._make_update_range(include_min=use_min_update, include_max=use_max_update), 
-                Code(self._where()) if self.where else SKIP
-            )
-        else:
-            return self.source_table.where(
-                *self._make_key_range(), Code(self._where()) if self.where else SKIP
-            )
+    def make_select(self, use_min_update = True, use_max_update = True,
+                    use_group_min = True, use_group_max = True):
+        return self.source_table.where(
+            *self._make_key_range(), 
+            *self._make_update_range(include_min=use_min_update, include_max=use_max_update), 
+            *self._make_groupby_range(include_min=use_group_min, include_max=use_group_max), 
+            Code(self._where()) if self.where else SKIP
+        )
 
     def get_values(self) -> list:
         "Download all the relevant values of the segment from the database"
@@ -306,7 +314,11 @@ class TableSegment:
             and self.update_column not in list(self.key_columns):
             extras = [self.update_column] + extras
 
-        return list(self.key_columns) + extras
+        if self.group_by_column and self.group_by_column not in extras \
+            and self.group_by_column not in list(self.key_columns):
+            extras = [self.group_by_column] + extras
+
+        return list(key_cols) + extras
     
     @property
     def update_col_idx(self) -> int:
@@ -374,31 +386,8 @@ class TableSegment:
         # return count or 0, int(checksum) if count else None
         return self.min_key, count or 0, int(checksum) if count else None
 
-    def count_and_checksum_by_group(self, checkpoints: List, bisection_factor: int, optimizer_hints=False) -> Tuple[Tuple[int, int]]:
+    def count_and_checksum_by_group(self, checkpoints: List, bisection_factor: int, level=int) -> Tuple[Tuple[int, int]]:
         """Count and checksum each group"""
-
-        """
-        If group_by col is PK:
-            if PK is num: use GROUP BY FLOOR(div_factor)
-            if PK is alphanum: figure out way to group_by.
-
-                look at 'checkpoints' (which should be passed in, maybe instead of 'groups' count)
-                somehow determine how many chars to GROUP BY with 'substring(n)'
-                    - hmmmmmm... We prob don't have much control over how many groups we end up with
-                    - eg. If we group by "substring(0, 1)" there could be up to N groups (N == number of allowed chars) 
-                    - eg. If we group by "substring(0, 2)" there could be up to N*N groups
-
-                Another option is to use the CASE, WHEN version of the group by query, with all the ranges explicitly listed in the query. 
-
-            # TODO: if self.group_by_column != self.key_columns[0]:
-        """
-        # logging.info('--------')
-        # logging.info('count_and_checksum_by_group')
-        # logging.info(f'max_rows: {max_rows}')
-        # logging.info(f'groups: {len(checkpoints)}')
-        # logging.info(f'max_key: {self.max_key}')
-        # logging.info(f'min_key: {self.min_key}')
-        # logging.info('--------')
 
         # unpack min keys to value since this algo ignores composite keys until the end
         min_key = self.min_key[0]
@@ -415,7 +404,7 @@ class TableSegment:
         group_by_expr = f'FLOOR(({group_by_col} - {min_key})/{div_factor})'
 
         maybe_optimizer_hints = \
-            {'optimizer_hints': self.optimizer_hints} if optimizer_hints else {}
+            {'optimizer_hints': self.optimizer_hints} if level == 0 else {}
 
         q = (self.make_select()
             .select(
@@ -459,6 +448,72 @@ class TableSegment:
             
             # OPTION 2: remove first item (group label)
             # rows[i] = row_ls[1:]
+
+        return rows
+    
+    def count_and_checksum_by_ts_group(self, level: int) -> Tuple[Tuple[int, int]]:
+        GRAINS = {
+            'year': {
+                'ora': "TRUNC({group_by_col}, 'Y')"
+            },
+            'month': {
+                'ora': "TRUNC({group_by_col}, 'MM')"
+            },
+            'day': {
+                'ora': "TRUNC({group_by_col}, 'DD')"
+            },
+            'hour': {
+                'ora': "TRUNC({group_by_col}, 'HH')"
+            },
+            'minute': {
+                'ora': "TRUNC({group_by_col}, 'MI')"
+            },
+            'second': {
+                'ora': "cast({group_by_col} as date)"
+            }
+            # 'half_second': {
+            #     'ora': "TRUNC({group_by_col}, )"
+            # }
+            # 'tenth_second': {
+            #     'ora': "TRUNC({group_by_col}, )"
+            # }
+            # 'millisecond':  {
+            #     'ora': "TRUNC({group_by_col}, )"
+            # }
+        }
+
+
+        group_by_col = self.group_by_column
+        curr_grain = self.group_grains[level]
+
+        # temp hack (should utilize sqeleton)
+        if self.database.name in ['Redshift', 'PostgreSQL']:
+            group_by_expr = f"DATE_TRUNC('{curr_grain}', {group_by_col})"
+        elif self.database.name == 'Oracle':
+            group_by_expr = GRAINS[curr_grain]['ora'].format(group_by_col=group_by_col)
+        else:
+            raise NotImplementedError(f'Unsupported database for checksum by TS group: {self.database.name}')
+
+        maybe_optimizer_hints = \
+            {'optimizer_hints': self.optimizer_hints} if level == 0 else {}
+
+        q = (self.make_select(use_max_update=True)
+            .select(
+                Code(group_by_expr),
+                Count(), 
+                Checksum(self._relevant_columns_repr('select_checksum')),
+                **maybe_optimizer_hints)
+            .order_by(Code(group_by_expr))
+            .group_by(self.source_table[group_by_col])
+            .agg(self.source_table[group_by_col])
+            .table
+            .replace(group_by_exprs=[Code(group_by_expr)]))        
+
+        start = time.monotonic()
+        rows = self.database.query(q, list)
+        duration = time.monotonic() - start
+
+        self.logger.info('Checksum_by_ts_group query took %s seconds', duration)
 
         return rows
 

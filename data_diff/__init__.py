@@ -6,7 +6,7 @@ from sqeleton.abcs import DbTime, DbPath
 from .tracking import disable_tracking
 from .databases import connect
 from .diff_tables import Algorithm, TableDiffer
-from .hashdiff_tables import HashDiffer, DEFAULT_BISECTION_THRESHOLD, DEFAULT_BISECTION_FACTOR, GroupingHashDiffer
+from .hashdiff_tables import HashDiffer, DEFAULT_BISECTION_THRESHOLD, DEFAULT_BISECTION_FACTOR, GroupingHashDiffer, TsGroupingHashDiffer
 from .joindiff_tables import JoinDiffer, TABLE_WRITE_LIMIT
 from .table_segment import TableSegment
 from .utils import eval_name_template, Vector
@@ -167,6 +167,15 @@ def diff_tables(
             logging.info('Diffing with HASHDIFF multi-query')
 
             differ = HashDiffer(
+                bisection_factor=bisection_factor,
+                bisection_threshold=bisection_threshold,
+                threaded=threaded,
+                max_threadpool_size=max_threadpool_size,
+                timeout=timeout
+            )
+        elif segments[0].hash_query_type == 'ts_grouped' and segments[1].hash_query_type == 'ts_grouped':
+            logging.info('Diffing with HASHDIFF ts_grouped query')
+            differ = TsGroupingHashDiffer(
                 bisection_factor=bisection_factor,
                 bisection_threshold=bisection_threshold,
                 threaded=threaded,
