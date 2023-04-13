@@ -1,6 +1,7 @@
 """Provides classes for performing a table diff
 """
 
+import logging
 import re
 import time
 from abc import ABC, abstractmethod
@@ -201,7 +202,6 @@ class TableDiffer(ThreadBase, ABC):
     ti: ThreadedYielder
 
     def __post_init__(self):
-        logging.info('post_init called')
         super().__setattr__('ti', ThreadedYielder(self.max_threadpool_size))
         super().__post_init__()
 
