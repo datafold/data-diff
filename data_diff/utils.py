@@ -5,6 +5,7 @@ from urllib.parse import urlparse
 import operator
 import threading
 from datetime import datetime
+from tabulate import tabulate
 
 
 def safezip(*args):
@@ -132,12 +133,9 @@ class Vector(tuple):
 def dbt_diff_string_template(
     rows_added: str, rows_removed: str, rows_updated: str, rows_unchanged: str, extra_info_dict: Dict, extra_info_str
 ) -> str:
-    string_output = "\n| Rows Added\t| Rows Removed\n"
-    string_output += "------------------------------------------------------------\n"
+    string_output = f"\n{tabulate([[rows_added, rows_removed]], headers=['Rows Added', 'Rows Removed'])}"
 
-    string_output += f"| {rows_added}\t\t| {rows_removed}\n"
-    string_output += "------------------------------------------------------------\n\n"
-    string_output += f"Updated Rows: {rows_updated}\n"
+    string_output += f"\n\nUpdated Rows: {rows_updated}\n"
     string_output += f"Unchanged Rows: {rows_unchanged}\n\n"
 
     string_output += extra_info_str
