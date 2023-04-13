@@ -137,7 +137,7 @@ class TableSegment:
         case_sensitive (bool): If false, the case of column names will adjust according to the schema. Default is true.
         hash_query_type (str)
 
-        true_key_indices (list[int]): Hack for GroupingHashDiffer to be able to properly sort diff results 
+        true_key_columns (list[str]): Hack for GroupingHashDiffer to be able to properly sort diff results 
                                 of tables with composite keys. Temporary until we properly support group_by_col.
                                 If ``None``, key_column is used (which is equivalent to [0]).
                                 ex. [0, 2, 3]  --> 3-col composite PK.
@@ -172,6 +172,7 @@ class TableSegment:
     group_min: Any = None
     group_max: Any = None
     group_grains: list = ['month', 'day', 'minute', 'second']
+    true_key_columns: list = None
 
     # use to force cast certain columns to non-standard types 
     column_type_overrides: dict[str, Tuple] = field(default_factory=dict)
@@ -309,6 +310,7 @@ class TableSegment:
     @property
     def relevant_columns(self) -> List[str]:
         extras = list(self.extra_columns)
+        key_cols = self.true_key_columns or self.key_columns
 
         if self.update_column and self.update_column not in extras \
             and self.update_column not in list(self.key_columns):
@@ -357,7 +359,8 @@ class TableSegment:
     
     @property
     def key_indices(self) -> Tuple[str]:
-        return self.true_key_indices or list(range(len(self.key_columns)))
+        key_cols = self.true_key_columns or self.key_columns
+        return [self.relevant_columns.index(c) for c in key_cols]
 
     def count(self) -> int:
         """Count how many rows are in the segment, in one pass."""
