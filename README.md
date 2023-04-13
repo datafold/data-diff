@@ -32,26 +32,6 @@ For their corresponding connection strings, check out our [detailed table](https
 #### Looking for a database not on the list?
 If a database is not on the list, we'd still love to support it. [Please open an issue](https://github.com/datafold/data-diff/issues) to discuss it, or vote on existing requests to push them up our todo list.
 
-## Use cases
-
-### Diff Tables Between Databases
-#### Quickly identify issues when moving data between databases
-
-<p align="center">
-  <img alt="diff2" src="https://user-images.githubusercontent.com/1799931/196754998-a88c0a52-8751-443d-b052-26c03d99d9e5.png" />
-</p>
-
-### Diff Tables Within a Database
-#### Improve code reviews by identifying data problems you don't have tests for
-<p align="center">
-  <a href=https://www.loom.com/share/682e4b7d74e84eb4824b983311f0a3b2 target="_blank">
-    <img alt="Intro to Diff" src="https://user-images.githubusercontent.com/1799931/196576582-d3535395-12ef-40fd-bbbb-e205ccae1159.png" width="50%" height="50%" />
-  </a>
-</p>
-
-&nbsp;
-&nbsp;
-
 ## Get started
 
 ### Installation
@@ -126,10 +106,7 @@ In both code examples, I've used `<>` carrots to represent values that **should 
 
 ### We're here to help!
 
-We know that in some cases, the data-diff command can become long and dense. And maybe you're new to the command line.
-
-* We're here to help [on slack](https://getdbt.slack.com/archives/C03D25A92UU) if you have ANY questions as you use `data-diff` in your workflow.
-* You can also post a question in [GitHub Discussions](https://github.com/datafold/data-diff/discussions).
+We're here to help! Please post any questions in [GitHub Discussions](https://github.com/datafold/data-diff/discussions).
 
 ## How to Use
 
