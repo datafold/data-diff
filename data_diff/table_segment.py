@@ -16,7 +16,7 @@ from sqeleton.queries.extras import ApplyFuncAndNormalizeAsString, NormalizeAsSt
 from sqeleton.abcs import database_types as DB_TYPES
 
 
-LOG_FORMAT = "[%(asctime)s] %(levelname)s - [%(db)s] %(message)s"
+LOG_FORMAT = "[%(db)s] %(message)s"
 DATE_FORMAT = "%H:%M:%S"
 FORMATTER = logging.Formatter(LOG_FORMAT, datefmt=DATE_FORMAT)
 

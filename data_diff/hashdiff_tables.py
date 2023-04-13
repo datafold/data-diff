@@ -1,3 +1,4 @@
+from datetime import datetime
 from functools import partial
 import os
 from numbers import Number
@@ -9,6 +10,7 @@ from operator import attrgetter, methodcaller
 from runtype import dataclass
 
 from sqeleton.abcs import ColType_UUID, NumericType, PrecisionType, StringType, Boolean, IKey
+from sqeleton.databases import DbTime
 
 from .info_tree import InfoTree
 from .utils import safezip
@@ -227,8 +229,8 @@ class HashDiffer(TableDiffer):
             return
 
         logging.info(f'Mismatch checksum {table1.min_key} - {table2.max_key}\n'
-                     f'T1: cs={checksum1}, count={count1}\n'
-                     f'T2: cs={checksum2}, count={count2}')
+                     f' T1: cs={checksum1}, count={count1}\n'
+                     f' T2: cs={checksum2}, count={count2}')
 
         info_tree.info.is_diff = True
         return self._bisect_and_diff_segments(ti, table1, table2, info_tree, level=level, max_rows=max(count1, count2), seg_path=segment_path)
@@ -313,8 +315,8 @@ class GroupingHashDiffer(HashDiffer):
             return
 
         logging.info(f'Mismatch checksum {segment1.min_key} - {segment1.max_key}\n'
-                     f'T1: cs={checksum1}, count={count1}\n'
-                     f'T2: cs={checksum2}, count={count2}')
+                     f' T1: cs={checksum1}, count={count1}\n'
+                     f' T2: cs={checksum2}, count={count2}')
 
         info_tree.info.is_diff = True
         return self._bisect_and_diff_segments(ti, segment1, segment2, info_tree, level=level, max_rows=max(count1, count2), seg_path=seg_path)
@@ -377,7 +379,7 @@ class GroupingHashDiffer(HashDiffer):
         logger.info(f'checkpoints: {checkpoints}')
 
         if table1.hash_query_type == 'multi' and table2.hash_query_type == 'multi':
-            raise ValueError('At least 1 table must use the groupby hash query type')
+            raise ValueError('At least 1 table must use the "grouped" hash query type')
 
         segmented1 = table1.segment_by_checkpoints(checkpoints)
         segmented2 = table2.segment_by_checkpoints(checkpoints)
@@ -433,8 +435,8 @@ class GroupingHashDiffer(HashDiffer):
             table1_res = all_results[0]
             table2_res = all_results[1:] if table2.hash_query_type == 'multi' else all_results[1]
 
-        print_res('table1_res', table1_res)
-        print_res('table2_res', table2_res)
+        # print_res('table1_res', table1_res)
+        # print_res('table2_res', table2_res)
 
         # compare results for each segment in parallel
         for idx, (res1, res2, seg1, seg2) in enumerate(zip(table1_res, table2_res, segmented1, segmented2)):
