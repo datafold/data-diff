@@ -9,6 +9,7 @@ from contextlib import contextmanager
 from operator import methodcaller
 from typing import Dict, Tuple, Iterator, Optional
 from concurrent.futures import ThreadPoolExecutor, as_completed
+from datetime import datetime, timedelta
 
 from runtype import dataclass
 
@@ -38,12 +39,20 @@ class ThreadBase:
 
     threaded: bool = True
     max_threadpool_size: Optional[int] = 1
+    timeout: int
+
+    def __post_init__(self):
+        max_end_time = datetime.now() + timedelta(seconds=self.timeout)
+        logging.info(f'self.timeout: {self.timeout}')
+        logging.info(f'max_end_time: {max_end_time}')
+        super().__setattr__('max_end_time', max_end_time)
 
     def _thread_map(self, func, iterable):
         if not self.threaded:
             return map(func, iterable)
 
         with ThreadPoolExecutor(max_workers=self.max_threadpool_size) as task_pool:
+            # return task_pool.map(func, iterable, timeout=timeout)
             return task_pool.map(func, iterable)
 
     def _threaded_call(self, func, iterable):
@@ -194,6 +203,14 @@ class TableDiffer(ThreadBase, ABC):
     def __post_init__(self):
         logging.info('post_init called')
         super().__setattr__('ti', ThreadedYielder(self.max_threadpool_size))
+        super().__post_init__()
+
+    def set_query_timeouts(self, tables: list[TableSegment]) -> None:
+        if self.max_end_time:
+            timeout = int(max((self.max_end_time - datetime.now()).total_seconds(), 1))
+            logging.info(f'[diff_tables] Setting query timeout: {timeout}')
+            tables[0].set_query_timeout(timeout)
+            tables[1].set_query_timeout(timeout)
 
     def diff_tables(self, table1: TableSegment, table2: TableSegment, info_tree: InfoTree = None) -> DiffResultWrapper:
         """Diff the given tables.
@@ -296,6 +313,8 @@ class TableDiffer(ThreadBase, ABC):
             if kt1.python_type is not kt2.python_type:
                 raise TypeError(f"Incompatible key types: {kt1} and {kt2}")
 
+        self.set_query_timeouts([table1, table2])
+
         if all(k is not None for k in [table1.min_key, table1.max_key, table2.min_key, table2.max_key]):
             key_ranges = (kr for kr in [(table1.min_key, table1.max_key), (table2.min_key, table2.max_key)])
         elif all(k is not None for k in [table1.min_key, table1.max_key]):
@@ -307,7 +326,6 @@ class TableDiffer(ThreadBase, ABC):
         else:
             # Query min/max values
             key_ranges = self._threaded_call_as_completed("query_key_range", [table1, table2])
-            logging.info(f'key_ranges: {key_ranges}')
 
         # Start with the first completed value, so we don't waste time waiting
         min_key1, max_key1 = self._parse_key_range_result(key_types1, next(key_ranges))
@@ -368,6 +386,7 @@ class TableDiffer(ThreadBase, ABC):
         info_tree: InfoTree,
         level=0,
         max_rows=None,
+        seg_path=''
     ):
         assert table1.is_bounded and table2.is_bounded
 
@@ -379,9 +398,17 @@ class TableDiffer(ThreadBase, ABC):
         segmented1 = table1.segment_by_checkpoints(checkpoints)
         segmented2 = table2.segment_by_checkpoints(checkpoints)
 
+        self.set_query_timeouts([table1, table2])
+
         # Recursively compare each pair of corresponding segments between table1 and table2
         for i, (t1, t2) in enumerate(safezip(segmented1, segmented2)):
             info_node = info_tree.add_node(t1, t2, max_rows=max_rows)
+
+            if level == 0:
+                segment_path = f'{i+1}'
+            else:
+                segment_path = f'{seg_path}.{i+1}'
+
             ti.submit(
-                self._diff_segments, ti, t1, t2, info_node, max_rows, level + 1, i + 1, len(segmented1), priority=level
+                self._diff_segments, ti, t1, t2, info_node, max_rows, level + 1, i + 1, len(segmented1), priority=level, seg_path=segment_path
             )

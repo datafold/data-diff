@@ -29,7 +29,7 @@ dsnparse = "*"
 click = "^8.1"
 rich = "*"
 toml = "^0.10.2"
-sqeleton = {git = "git@github.com:wealthsimple/sqeleton.git", rev = "aa1a60d58b2cc01be04123959fe7d1e46cb701fd"}
+sqeleton = {git = "git@github.com:wealthsimple/sqeleton.git", rev = "b38c1beef0284decbd7a84555eb2861ea5fde5e5"}
 mysql-connector-python = {version="8.0.29", optional=true}
 psycopg2 = {version="*", optional=true}
 snowflake-connector-python = {version="^2.7.2", optional=true}

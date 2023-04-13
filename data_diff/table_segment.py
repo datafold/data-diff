@@ -15,7 +15,18 @@ from sqeleton.queries import Count, Checksum, SKIP, table, this, Expr, min_, max
 from sqeleton.queries.extras import ApplyFuncAndNormalizeAsString, NormalizeAsString
 from sqeleton.abcs import database_types as DB_TYPES
 
-logger = logging.getLogger("table_segment")
+
+LOG_FORMAT = "[%(db)s] %(message)s"
+DATE_FORMAT = "%H:%M:%S"
+FORMATTER = logging.Formatter(LOG_FORMAT, datefmt=DATE_FORMAT)
+
+base_logger = logging.getLogger("table_segment")
+base_logger.setLevel(logging.INFO)
+handler = logging.StreamHandler()
+handler.setFormatter(FORMATTER)
+base_logger.addHandler(handler)
+base_logger.propagate = False
+
 
 RECOMMENDED_CHECKSUM_DURATION = 20
 
@@ -126,7 +137,7 @@ class TableSegment:
         case_sensitive (bool): If false, the case of column names will adjust according to the schema. Default is true.
         hash_query_type (str)
 
-        true_key_indices (list[int]): Hack for GroupingHashDiffer to be able to properly sort diff results 
+        true_key_columns (list[str]): Hack for GroupingHashDiffer to be able to properly sort diff results 
                                 of tables with composite keys. Temporary until we properly support group_by_col.
                                 If ``None``, key_column is used (which is equivalent to [0]).
                                 ex. [0, 2, 3]  --> 3-col composite PK.
@@ -158,6 +169,10 @@ class TableSegment:
     group_by_column: str = None 
     hash_query_type: str = 'multi'
     true_key_indices: list = None
+    group_min: Any = None
+    group_max: Any = None
+    group_grains: list = ['month', 'day', 'minute', 'second']
+    true_key_columns: list = None
 
     # use to force cast certain columns to non-standard types 
     column_type_overrides: dict[str, Tuple] = field(default_factory=dict)
@@ -167,6 +182,8 @@ class TableSegment:
 
     case_sensitive: bool = True
     _schema: Schema = None
+
+    logger: logging.LoggerAdapter = None
 
     def __post_init__(self):
         if not self.update_column and (self.min_update or self.max_update):
@@ -180,11 +197,14 @@ class TableSegment:
                 f"Error: min_update expected to be smaller than max_update! ({self.min_update} >= {self.max_update})"
             )
 
+        super().__setattr__('logger', logging.LoggerAdapter(base_logger, {'db':self.database.name}))
+
     def _where(self):
         return f"({self.where})" if self.where else None
 
     def _with_raw_schema(self, raw_schema: dict) -> "TableSegment":
         schema = self.database._process_table_schema(self.table_path, raw_schema, self.relevant_columns, self._where())
+        self.logger.info(f'schema: {schema}')
 
         if self.column_type_overrides is not None:
             for col, col_info in self.column_type_overrides.items():
@@ -203,46 +223,57 @@ class TableSegment:
 
     def get_schema(self):
         return self.database.query_table_schema(self.table_path)
+    
+    def set_query_timeout(self, timeout: int) -> None:
+        self.database.set_query_timeout(timeout)
 
     def _make_key_range(self):
+        col_usage = 'where_key_range'
         if self.min_key is not None:
             for mn, k in safezip(self.min_key, self.key_columns):
-                converted_col, _ = self.col_conversion(k)
-                if converted_col:
+                converted_col, exclude_from = self.col_conversion(k)
+                if converted_col and col_usage not in exclude_from:
                     yield Code(f"{converted_col} >= '{mn}'")
                 else:
                     yield mn <= this[k]
         if self.max_key is not None:
             for k, mx in safezip(self.key_columns, self.max_key):
-                converted_col, _ = self.col_conversion(k)
-                if converted_col:
+                converted_col, exclude_from = self.col_conversion(k)
+                if converted_col and col_usage not in exclude_from:
                     yield Code(f"{converted_col} < '{mx}'")
                 else:
                     yield this[k] < mx
 
-    def _make_update_range(self):
-        if self.min_update is not None:
+    def _make_update_range(self, include_min: bool = True, include_max: bool = True):
+        # TODO: add support for column conversion of update_column range
+        if include_min and self.min_update is not None:
             yield self.min_update <= this[self.update_column]
-        if self.max_update is not None:
+        if include_max and self.max_update is not None:
             yield this[self.update_column] < self.max_update
+
+    def _make_groupby_range(self, include_min: bool = True, include_max: bool = True):
+        # TODO: add support for column conversion of group range
+        if include_min and self.group_min is not None:
+            yield self.group_min <= this[self.group_by_column]
+        if include_max and self.group_max is not None:
+            yield this[self.group_by_column] < self.group_max
 
     @property
     def source_table(self):
         return table(*self.table_path, schema=self._schema)
 
-    def make_select(self, incl_update_range=True):
-        if incl_update_range:
-            return self.source_table.where(
-                *self._make_key_range(), *self._make_update_range(), Code(self._where()) if self.where else SKIP
-            )
-        else:
-            return self.source_table.where(
-                *self._make_key_range(), Code(self._where()) if self.where else SKIP
-            )
+    def make_select(self, use_min_update = True, use_max_update = True,
+                    use_group_min = True, use_group_max = True):
+        return self.source_table.where(
+            *self._make_key_range(), 
+            *self._make_update_range(include_min=use_min_update, include_max=use_max_update), 
+            *self._make_groupby_range(include_min=use_group_min, include_max=use_group_max), 
+            Code(self._where()) if self.where else SKIP
+        )
 
     def get_values(self) -> list:
         "Download all the relevant values of the segment from the database"
-        select = self.make_select(incl_update_range=False).select(
+        select = self.make_select(use_max_update=False).select(
             *self._relevant_columns_repr('select_values'))
         return self.database.query(select, List[Tuple])
 
@@ -279,16 +310,37 @@ class TableSegment:
     @property
     def relevant_columns(self) -> List[str]:
         extras = list(self.extra_columns)
+        key_cols = self.true_key_columns or self.key_columns
 
         if self.update_column and self.update_column not in extras \
             and self.update_column not in list(self.key_columns):
             extras = [self.update_column] + extras
 
-        return list(self.key_columns) + extras
+        if self.group_by_column and self.group_by_column not in extras \
+            and self.group_by_column not in list(self.key_columns):
+            extras = [self.group_by_column] + extras
+
+        return list(key_cols) + extras
+    
+    @property
+    def update_col_idx(self) -> int:
+        if not self.update_column:
+            raise ValueError(f'No update_column specified for table {self.table_path}')
+        # key columns are first, so next index is the update_column
+        return len(self.key_columns)
     
     def col_conversion(self, c: str) -> tuple[Optional[str], Optional[list]]:
-        conversion_info = self.col_conversions.get(c.lower(), self.col_conversions.get(c.upper()))
+        c_type = self._schema[c].__class__.__name__
+
+        # get conversion info for column
+        conversion_info = self.col_conversions.get(c.lower(), 
+                                                   self.col_conversions.get(c.upper()))
+
         if conversion_info:
+            allowed_types = conversion_info.get('is_type', None)
+            if allowed_types and c_type not in allowed_types:
+                return None, None
+
             placeholders = conversion_info['template'].count('{}')
             return conversion_info['template'].format(*([c]*placeholders)), conversion_info.get('exclude_from', [])
         else:
@@ -307,7 +359,8 @@ class TableSegment:
     
     @property
     def key_indices(self) -> Tuple[str]:
-        return self.true_key_indices or list(range(len(self.key_columns)))
+        key_cols = self.true_key_columns or self.key_columns
+        return [self.relevant_columns.index(c) for c in key_cols]
 
     def count(self) -> int:
         """Count how many rows are in the segment, in one pass."""
@@ -323,42 +376,21 @@ class TableSegment:
         count, checksum = self.database.query(q, tuple)
         duration = time.monotonic() - start
         if duration > RECOMMENDED_CHECKSUM_DURATION:
-            logger.warning(
+            self.logger.warning(
                 "Checksum is taking longer than expected (%.2f). "
                 "We recommend increasing --bisection-factor or decreasing --threads.",
                 duration,
             )
+        else:
+            self.logger.info('Checksum took %.2f seconds', duration)
 
         if count:
             assert checksum, (count, checksum)
         # return count or 0, int(checksum) if count else None
         return self.min_key, count or 0, int(checksum) if count else None
 
-    def count_and_checksum_by_group(self, checkpoints: List, bisection_factor: int, optimizer_hints=False) -> Tuple[Tuple[int, int]]:
+    def count_and_checksum_by_group(self, checkpoints: List, bisection_factor: int, level=int) -> Tuple[Tuple[int, int]]:
         """Count and checksum each group"""
-
-        """
-        If group_by col is PK:
-            if PK is num: use GROUP BY FLOOR(div_factor)
-            if PK is alphanum: figure out way to group_by.
-
-                look at 'checkpoints' (which should be passed in, maybe instead of 'groups' count)
-                somehow determine how many chars to GROUP BY with 'substring(n)'
-                    - hmmmmmm... We prob don't have much control over how many groups we end up with
-                    - eg. If we group by "substring(0, 1)" there could be up to N groups (N == number of allowed chars) 
-                    - eg. If we group by "substring(0, 2)" there could be up to N*N groups
-
-                Another option is to use the CASE, WHEN version of the group by query, with all the ranges explicitly listed in the query. 
-
-            # TODO: if self.group_by_column != self.key_columns[0]:
-        """
-        # logging.info('--------')
-        # logging.info('count_and_checksum_by_group')
-        # logging.info(f'max_rows: {max_rows}')
-        # logging.info(f'groups: {len(checkpoints)}')
-        # logging.info(f'max_key: {self.max_key}')
-        # logging.info(f'min_key: {self.min_key}')
-        # logging.info('--------')
 
         # unpack min keys to value since this algo ignores composite keys until the end
         min_key = self.min_key[0]
@@ -375,7 +407,7 @@ class TableSegment:
         group_by_expr = f'FLOOR(({group_by_col} - {min_key})/{div_factor})'
 
         maybe_optimizer_hints = \
-            {'optimizer_hints': self.optimizer_hints} if optimizer_hints else {}
+            {'optimizer_hints': self.optimizer_hints} if level == 0 else {}
 
         q = (self.make_select()
             .select(
@@ -421,11 +453,77 @@ class TableSegment:
             # rows[i] = row_ls[1:]
 
         return rows
+    
+    def count_and_checksum_by_ts_group(self, level: int) -> Tuple[Tuple[int, int]]:
+        GRAINS = {
+            'year': {
+                'ora': "TRUNC({group_by_col}, 'Y')"
+            },
+            'month': {
+                'ora': "TRUNC({group_by_col}, 'MM')"
+            },
+            'day': {
+                'ora': "TRUNC({group_by_col}, 'DD')"
+            },
+            'hour': {
+                'ora': "TRUNC({group_by_col}, 'HH')"
+            },
+            'minute': {
+                'ora': "TRUNC({group_by_col}, 'MI')"
+            },
+            'second': {
+                'ora': "cast({group_by_col} as date)"
+            }
+            # 'half_second': {
+            #     'ora': "TRUNC({group_by_col}, )"
+            # }
+            # 'tenth_second': {
+            #     'ora': "TRUNC({group_by_col}, )"
+            # }
+            # 'millisecond':  {
+            #     'ora': "TRUNC({group_by_col}, )"
+            # }
+        }
+
+
+        group_by_col = self.group_by_column
+        curr_grain = self.group_grains[level]
+
+        # temp hack (should utilize sqeleton)
+        if self.database.name in ['Redshift', 'PostgreSQL']:
+            group_by_expr = f"DATE_TRUNC('{curr_grain}', {group_by_col})"
+        elif self.database.name == 'Oracle':
+            group_by_expr = GRAINS[curr_grain]['ora'].format(group_by_col=group_by_col)
+        else:
+            raise NotImplementedError(f'Unsupported database for checksum by TS group: {self.database.name}')
+
+        maybe_optimizer_hints = \
+            {'optimizer_hints': self.optimizer_hints} if level == 0 else {}
+
+        q = (self.make_select(use_max_update=True)
+            .select(
+                Code(group_by_expr),
+                Count(), 
+                Checksum(self._relevant_columns_repr('select_checksum')),
+                **maybe_optimizer_hints)
+            .order_by(Code(group_by_expr))
+            .group_by(self.source_table[group_by_col])
+            .agg(self.source_table[group_by_col])
+            .table
+            .replace(group_by_exprs=[Code(group_by_expr)]))        
+
+        start = time.monotonic()
+        rows = self.database.query(q, list)
+        duration = time.monotonic() - start
+
+        self.logger.info('Checksum_by_ts_group query took %s seconds', duration)
+
+        return rows
 
     def query_key_range(self) -> Tuple[tuple, tuple]:
         """Query database for minimum and maximum key. This is used for setting the initial bounds."""
         # Normalizes the result (needed for UUIDs) after the min/max computation
-        logging.info(f'{self.database.name} query_key_range: {self.min_key} - {self.max_key}')
+        self.logger.info(f'query_key_range: {self.min_key} - {self.max_key}')
 
         def normalize_range_select():
             for k in self.key_columns:

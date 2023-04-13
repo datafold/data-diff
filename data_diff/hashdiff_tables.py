@@ -1,3 +1,4 @@
+from datetime import datetime
 from functools import partial
 import os
 from numbers import Number
@@ -9,6 +10,7 @@ from operator import attrgetter, methodcaller
 from runtype import dataclass
 
 from sqeleton.abcs import ColType_UUID, NumericType, PrecisionType, StringType, Boolean, IKey
+from sqeleton.databases import DbTime
 
 from .info_tree import InfoTree
 from .utils import safezip
@@ -141,6 +143,44 @@ class HashDiffer(TableDiffer):
                         "If encoding/formatting differs between databases, it may result in false positives."
                     )
 
+    def _remove_diffs_outside_update_range(self, 
+                                           diff: list, 
+                                           tbl1: TableSegment, 
+                                           tbl2: TableSegment) -> list:
+        def keep_outside_update_range(r):
+            _, row = r
+            update_col_idx = tbl1.update_col_idx
+
+            if not row[update_col_idx]:
+                # update column is null, exclude from outside range list
+                return False
+
+            if tbl1.max_update and row[update_col_idx] >= tbl1.max_update.strftime('%Y-%m-%d %H:%M:%S'):
+                return True
+            if tbl1.min_update and row[update_col_idx] < tbl1.min_update.strftime('%Y-%m-%d %H:%M:%S'):
+                return True
+            return False
+
+        def extract_key(r):
+            _, row = r
+            return tuple(row[idx] for idx in tbl1.key_indices)
+        
+        # only filter if both tables have the same update range
+        if tbl1.update_column is not None and tbl2.update_column is not None and \
+            tbl1.max_update == tbl2.max_update and tbl1.min_update == tbl2.min_update:
+
+            # get rows outside update range
+            pks_outside_urange = [extract_key(d) for d in diff if keep_outside_update_range(d)]
+
+            # remove any row from diff whose PK is in outside_urange
+            modified = [d for d in diff if extract_key(d) not in pks_outside_urange]
+            
+            if len(modified) < len(diff):
+                logging.info(f'Discarded {len(diff) - len(modified)} rows outside update range ({tbl1.min_update} - {tbl1.max_update})')
+            return modified
+
+        return diff
+
     def _diff_segments(
         self,
         ti: ThreadedYielder,
@@ -151,9 +191,11 @@ class HashDiffer(TableDiffer):
         level=0,
         segment_index=None,
         segment_count=None,
+        seg_path=''
     ):
+        segment_path = f'{seg_path}' if seg_path else ''
         logger.info(
-            ". " * level + f"Diffing segment {segment_index}/{segment_count}, "
+            ". " * level + f"Diffing segment {segment_path}/{segment_count}, "
             f"key-range: {table1.min_key}..{table2.max_key}, "
             f"size <= {max_rows}"
         )
@@ -164,7 +206,7 @@ class HashDiffer(TableDiffer):
         # the threshold) and _then_ download it.
         if BENCHMARK:
             if max_rows < self.bisection_threshold:
-                return self._bisect_and_diff_segments(ti, table1, table2, info_tree, level=level, max_rows=max_rows)
+                return self._bisect_and_diff_segments(ti, table1, table2, info_tree, level=level, max_rows=max_rows, seg_path=segment_path)
 
         (_, count1, checksum1), (_, count2, checksum2) = self._threaded_call("count_and_checksum", [table1, table2])
 
@@ -187,11 +229,11 @@ class HashDiffer(TableDiffer):
             return
 
         logging.info(f'Mismatch checksum {table1.min_key} - {table2.max_key}\n'
-                     f'T1: cs={checksum1}, count={count1}\n'
-                     f'T2: cs={checksum2}, count={count2}')
+                     f' T1: cs={checksum1}, count={count1}\n'
+                     f' T2: cs={checksum2}, count={count2}')
 
         info_tree.info.is_diff = True
-        return self._bisect_and_diff_segments(ti, table1, table2, info_tree, level=level, max_rows=max(count1, count2))
+        return self._bisect_and_diff_segments(ti, table1, table2, info_tree, level=level, max_rows=max(count1, count2), seg_path=segment_path)
 
     def _bisect_and_diff_segments(
         self,
@@ -201,6 +243,7 @@ class HashDiffer(TableDiffer):
         info_tree: InfoTree,
         level=0,
         max_rows=None,
+        seg_path=''
     ):
         assert table1.is_bounded and table2.is_bounded
 
@@ -215,8 +258,12 @@ class HashDiffer(TableDiffer):
         if max_rows < self.bisection_threshold or max_space_size < self.bisection_factor * 2:
             logging.info(f'Downloading rows from T1 {table1.min_key} - {table1.max_key}')
             logging.info(f'Downloading rows from T2 {table2.min_key} - {table2.max_key}')
+            self.set_query_timeouts([table1, table2])
+
             rows1, rows2 = self._threaded_call("get_values", [table1, table2])
             diff = list(diff_sets(rows1, rows2, table1.key_indices))
+
+            diff = self._remove_diffs_outside_update_range(diff, table1, table2)
 
             info_tree.info.set_diff(diff)
             info_tree.info.rowcounts = {1: len(rows1), 2: len(rows2)}
@@ -225,7 +272,7 @@ class HashDiffer(TableDiffer):
             self.stats["rows_downloaded"] = self.stats.get("rows_downloaded", 0) + max(len(rows1), len(rows2))
             return diff
 
-        return super()._bisect_and_diff_segments(ti, table1, table2, info_tree, level, max_rows)
+        return super()._bisect_and_diff_segments(ti, table1, table2, info_tree, level, max_rows, seg_path=seg_path)
 
 
 @dataclass
@@ -245,6 +292,7 @@ class GroupingHashDiffer(HashDiffer):
         level=0,
         segment_index=None,
         segment_count=None,
+        seg_path=''
     ):
         _, count1, checksum1 = result1
         _, count2, checksum2 = result2
@@ -267,15 +315,18 @@ class GroupingHashDiffer(HashDiffer):
             return
 
         logging.info(f'Mismatch checksum {segment1.min_key} - {segment1.max_key}\n'
-                     f'T1: cs={checksum1}, count={count1}\n'
-                     f'T2: cs={checksum2}, count={count2}')
+                     f' T1: cs={checksum1}, count={count1}\n'
+                     f' T2: cs={checksum2}, count={count2}')
 
         info_tree.info.is_diff = True
-        return self._bisect_and_diff_segments(ti, segment1, segment2, info_tree, level=level, max_rows=max(count1, count2))
+        return self._bisect_and_diff_segments(ti, segment1, segment2, info_tree, level=level, max_rows=max(count1, count2), seg_path=seg_path)
 
     def query_wrapper(self, query_fn: Callable, state: dict, *args: Any, **kwargs: Any) -> Tuple[Tuple[int, int]]:
+        seg_path = state['seg_path']
+        segment_path = f'{seg_path}' if seg_path else ''
+
         logger.info(
-            ". " * state['level'] + f"Hashing segment {state['idx']+1}/{state['total']}, "
+            ". " * state['level'] + f"Hashing segment {segment_path}/{state['total']}, "
             f"key-range: {state['segment'].min_key}..{state['segment'].max_key}, "
             f"size <= {state['max_rows']}"
         )
@@ -290,6 +341,7 @@ class GroupingHashDiffer(HashDiffer):
         info_tree: InfoTree,
         level=0,
         max_rows=None,
+        seg_path=''
     ):
 
         assert table1.is_bounded and table2.is_bounded
@@ -306,8 +358,13 @@ class GroupingHashDiffer(HashDiffer):
         #       as retreived from the last query. This especially important when dealing with a composite PK table 
         #       because the approximate_size is likely a gross underestimation.
         if max_rows < self.bisection_threshold or max_rows < self.bisection_factor * 2:
+            self.set_query_timeouts([table1, table2])
             rows1, rows2 = self._threaded_call("get_values", [table1, table2])
+            logging.info(f'rows1: {len(rows1)}')
+            logging.info(f'rows2: {len(rows2)}')
             diff = list(diff_sets(rows1, rows2, table1.key_indices))
+
+            diff = self._remove_diffs_outside_update_range(diff, table1, table2)
 
             info_tree.info.set_diff(diff)
             info_tree.info.rowcounts = {1: len(rows1), 2: len(rows2)}
@@ -322,13 +379,17 @@ class GroupingHashDiffer(HashDiffer):
         logger.info(f'checkpoints: {checkpoints}')
 
         if table1.hash_query_type == 'multi' and table2.hash_query_type == 'multi':
-            raise ValueError('At least 1 table must use the groupby hash query type')
+            raise ValueError('At least 1 table must use the "grouped" hash query type')
 
         segmented1 = table1.segment_by_checkpoints(checkpoints)
         segmented2 = table2.segment_by_checkpoints(checkpoints)
 
         def _state(seg: TableSegment, idx: int, total: int) -> dict:
-            return {'level': level, 'segment': seg, 'idx': idx, 'total': total, 'max_rows': max_rows}
+            return {
+                'level': level, 'segment': seg, 
+                'idx': idx, 'total': total, 
+                'max_rows': max_rows, 'seg_path': seg_path
+            }
 
         def print_res(label, res):
             out = [str(r) for r in res]
@@ -362,6 +423,8 @@ class GroupingHashDiffer(HashDiffer):
             query_fns.insert(0, partial(table2.count_and_checksum_by_group, checkpoints[0], self.bisection_factor, optimizer_hints=(level == 0)))
 
 
+        self.set_query_timeouts([table1, table2])
+
         # wait for all queries to complete.
         all_results = ti._submit_and_block(*query_fns, priority=level)
 
@@ -372,13 +435,19 @@ class GroupingHashDiffer(HashDiffer):
             table1_res = all_results[0]
             table2_res = all_results[1:] if table2.hash_query_type == 'multi' else all_results[1]
 
-        print_res('table1_res', table1_res)
-        print_res('table2_res', table2_res)
+        # print_res('table1_res', table1_res)
+        # print_res('table2_res', table2_res)
 
         # compare results for each segment in parallel
         for idx, (res1, res2, seg1, seg2) in enumerate(zip(table1_res, table2_res, segmented1, segmented2)):
             info_node = info_tree.add_node(seg1, seg2, max_rows=max_rows)
-            ti.submit(self._diff_segments, ti, seg1, seg2, res1, res2, info_node, max_rows, level + 1, idx+1, len(segmented1)) #), priority=level)
+
+            if level == 0:
+                segment_path = f'{idx+1}'
+            else:
+                segment_path = f'{seg_path}.{idx+1}'
+
+            ti.submit(self._diff_segments, ti, seg1, seg2, res1, res2, info_node, max_rows, level + 1, idx+1, len(segmented1), seg_path=segment_path)
 
     def _resolve_key_range(self, key_range_res, usr_key_range):
         key_range_res = list(key_range_res)
@@ -408,8 +477,9 @@ class GroupingHashDiffer(HashDiffer):
             if kt1.python_type is not kt2.python_type:
                 raise TypeError(f"Incompatible key types: {kt1} and {kt2}")
 
-        # Query min/max values
+        self.set_query_timeouts([table1, table2])
 
+        # Query min/max values
         if all(k is not None for k in [table1.min_key, table1.max_key, table2.min_key, table2.max_key]):
             key_ranges = (kr for kr in [(table1.min_key, table1.max_key), (table2.min_key, table2.max_key)])
         elif all(k is not None for k in [table1.min_key, table1.max_key]):
@@ -440,3 +510,184 @@ class GroupingHashDiffer(HashDiffer):
         self.ti.submit(self._bisect_and_diff_segments, self.ti, table1, table2, info_tree)
 
         return self.ti
+
+
+@dataclass
+class TsGroupingHashDiffer(GroupingHashDiffer):
+
+    stats: dict = {}
+
+    def _diff_segments(
+        self,
+        ti: ThreadedYielder,
+        segment1: TableSegment,
+        segment2: TableSegment,
+        result1: List,
+        result2: List,
+        info_tree: InfoTree,
+        max_rows: int,
+        level=0,
+        segment_index=None,
+        segment_count=None,
+        seg_path=''
+    ):
+        _, count1, checksum1 = result1
+        _, count2, checksum2 = result2
+
+        info_tree.info.rowcounts = {1: count1, 2: count2}
+
+        if count1 == 0 and count2 == 0:
+            logger.debug(
+                "Uneven distribution of keys detected in segment %s..%s (big gaps in the key column). "
+                "For better performance, we recommend to increase the bisection-threshold.",
+                segment1.min_key,
+                segment1.max_key,
+            )
+            assert checksum1 is None and checksum2 is None
+            info_tree.info.is_diff = False
+            return
+
+        if checksum1 == checksum2:
+            info_tree.info.is_diff = False
+            return
+
+        logging.info(f'Mismatch checksum {seg_path} ({segment1.group_min} - {segment1.group_max})\n'
+                     f' T1: cs={checksum1}, count={count1}\n'
+                     f' T2: cs={checksum2}, count={count2}')
+
+        info_tree.info.is_diff = True
+        return self._bisect_and_diff_segments(ti, segment1, segment2, info_tree, level=level, max_rows=max(count1, count2), seg_path=seg_path)
+
+    def _bisect_and_diff_segments(
+        self,
+        ti: ThreadedYielder,
+        table1: TableSegment,
+        table2: TableSegment,
+        info_tree: InfoTree,
+        level=0,
+        max_rows=None,
+        seg_path=''
+    ):
+        info_tree.info.max_rows = max_rows
+
+        # If count is below the threshold, just download and compare the columns locally
+        # This saves time, as bisection speed is limited by ping and query performance.
+        # NOTE: Instead of using max_space_size for 2nd comparison, using max_rows since its the ACTUAL count of rows
+        #       as retreived from the last query. This especially important when dealing with a composite PK table 
+        #       because the approximate_size is likely a gross underestimation.
+        # TODO: if level > last grain index, we can't do any more bisections
+        if max_rows and (max_rows < self.bisection_threshold or max_rows < self.bisection_factor * 2):
+            self.set_query_timeouts([table1, table2])
+            rows1, rows2 = self._threaded_call("get_values", [table1, table2])
+            logging.info(f'rows1: {len(rows1)}')
+            logging.info(f'rows2: {len(rows2)}')
+            diff = list(diff_sets(rows1, rows2, table1.key_indices))
+
+            diff = self._remove_diffs_outside_update_range(diff, table1, table2)
+
+            info_tree.info.set_diff(diff)
+            info_tree.info.rowcounts = {1: len(rows1), 2: len(rows2)}
+
+            logger.info(". " * level + f"Diff found {len(diff)} different rows.")
+            self.stats["rows_downloaded"] = self.stats.get("rows_downloaded", 0) + max(len(rows1), len(rows2))
+            return diff
+
+        # Choose evenly spaced checkpoints (according to min_key and max_key)
+
+        if table1.hash_query_type == 'multi' or table2.hash_query_type == 'multi':
+            raise ValueError('Both tables must use the "ts_grouped" hash query type for the TsGroupingHashDiffer')
+
+        def print_res(label, res):
+            out = [str(r) for r in res]
+            logger.info('{}\n{}'.format(label, "\n".join(out)))
+
+        query_fns = []
+        seg_path_str = seg_path or "root"
+        group_range = f'{table1.group_min}..{table1.group_max}' if table1.group_min or table1.group_max else 'Full Range'
+        row_count = max_rows or '?'
+        logger.info(
+            ". " * level + f"Hashing segment by group ({seg_path_str}), "
+            f"group-range: {group_range}, "
+            f"size = {row_count}"
+        )
+        query_fns.append(partial(table1.count_and_checksum_by_ts_group, level=level))
+        query_fns.append(partial(table2.count_and_checksum_by_ts_group, level=level))
+
+
+        self.set_query_timeouts([table1, table2])
+
+        # wait for all queries to complete.
+        all_results = ti._submit_and_block(*query_fns, priority=level)
+
+        table1_res = all_results[0]
+        table2_res = all_results[1]
+
+        # print_res('table1_res', table1_res)
+        # print_res('table2_res', table2_res)
+
+        # create sets of all group keys in each result set
+        t1_groups = {r[0] for r in table1_res}
+        t2_groups = {r[0] for r in table2_res}
+
+        # insert any missing groups into each result set
+        for g in t1_groups:
+            if g not in t2_groups:
+                table2_res.append((g, 0, 0))
+        for g in t2_groups:
+            if g not in t1_groups:
+                table1_res.append((g, 0, 0))
+        assert len(table1_res) == len(table2_res)
+
+        # sort the results by group
+        table1_res = sorted(table1_res, key=lambda r: r[0])
+        table2_res = sorted(table2_res, key=lambda r: r[0])
+
+        # for clarity, log any groups that have different counts or checksums up front, before recursing
+        summary = defaultdict(list)
+        for r1, r2 in zip(table1_res, table2_res):
+            if r1[1] != r2[1]:
+                summary[r1[0]].append(f'Count mismatch: {r1[1]} != {r2[1]}')
+            if r1[2] != r2[2]:
+                summary[r1[0]].append(f'ChSum mismatch: {r1[2]} != {r2[2]}')
+        if len(summary):
+            summary_str = '\n'.join([f' - {k}: {", ".join(v)}' for k, v in summary.items()])
+            logging.info(f'Groups with discrepancies: {len(summary)}\n{summary_str}')
+
+        def str_to_dt(dt) -> DbTime:
+            if dt is None:
+                return dt
+            if isinstance(dt, str):
+                return datetime.strptime(dt, '%Y-%m-%d %H:%M:%S')
+            return dt
+
+        segmented1, segmented2 = [], []
+        # create TableSegments from each result row
+        if len(table1_res) >= 1:
+            segmented1 = [table1.new(group_min=str_to_dt(r[0]), 
+                                     group_max=str_to_dt(table1_res[idx+1][0])) for idx, r in enumerate(table1_res[:-1])]
+            segmented1.append(table1.new(group_min=str_to_dt(table1_res[-1][0]), group_max=str_to_dt(table1.group_max)))
+
+            segmented2 = [table2.new(group_min=str_to_dt(r[0]), 
+                                     group_max=str_to_dt(table2_res[idx+1][0])) for idx, r in enumerate(table2_res[:-1])]
+            segmented2.append(table2.new(group_min=str_to_dt(table2_res[-1][0]), group_max=str_to_dt(table2.group_max)))
+
+        # compare results for each segment in parallel
+        for idx, (res1, res2, seg1, seg2) in enumerate(zip(table1_res, table2_res, segmented1, segmented2)):
+            info_node = info_tree.add_node(seg1, seg2, max_rows=max_rows)
+
+            if level == 0:
+                segment_path = f'{idx+1}'
+            else:
+                segment_path = f'{seg_path}.{idx+1}'
+
+            ti.submit(self._diff_segments, ti, seg1, seg2, res1, res2, info_node, max_rows, level + 1, idx+1, len(segmented1), seg_path=segment_path)
+
+    def _bisect_and_diff_tables(self, table1, table2, info_tree):
+
+        logger.info(f"Diffing tables with TsGroupingHashDiffer")
+
+        # Bisect (split) the table into segments, and diff them recursively.
+        self.ti.submit(self._bisect_and_diff_segments, self.ti, table1, table2, info_tree)
+
+        return self.ti
+        
