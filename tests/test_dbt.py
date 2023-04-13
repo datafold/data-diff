@@ -420,7 +420,7 @@ class TestDbtDiffer(unittest.TestCase):
             # 4 with no diffs
             assert diff_string.count("No row differences") == 4
             # 1 with a diff
-            assert diff_string.count("| Rows Added    | Rows Removed") == 1
+            assert diff_string.count("  Rows Added    Rows Removed") == 1
 
     def test_integration_cloud_dbt(self):
         project_dir = os.environ.get("DATA_DIFF_DBT_PROJ")
