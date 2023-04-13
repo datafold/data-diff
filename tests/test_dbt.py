@@ -407,7 +407,7 @@ class TestDbtDiffer(unittest.TestCase):
     # Set DATA_DIFF_DBT_PROJ to use your own dbt project, otherwise uses the duckdb project in tests/dbt_artifacts
     def test_integration_basic_dbt(self):
         artifacts_path = os.getcwd() + "/tests/dbt_artifacts"
-        test_project_path = artifacts_path
+        test_project_path = os.environ.get("DATA_DIFF_DBT_PROJ") or artifacts_path
         diff = run_datadiff_cli(
             "--dbt", "--dbt-project-dir", test_project_path, "--dbt-profiles-dir", test_project_path
         )
