@@ -91,6 +91,11 @@ def dbt_diff(
     set_dbt_version(dbt_parser.dbt_version)
     set_dbt_project_id(dbt_parser.dbt_project_id)
 
+    if datadiff_variables.get("custom_schemas") is not None:
+        logger.warning(
+            "vars: data_diff: custom_schemas: is no longer used and can be removed.\nTo utilize custom schemas, see the documentation here: https://docs.datafold.com/development_testing/open_source"
+        )
+
     if is_cloud:
         api = _initialize_api()
         # exit so the user can set the key
