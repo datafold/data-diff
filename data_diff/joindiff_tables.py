@@ -173,6 +173,7 @@ class JoinDiffer(TableDiffer):
         level=0,
         segment_index=None,
         segment_count=None,
+        seg_path='' # TODO: use this to improve tracing path of diff
     ):
         assert table1.database is table2.database
 
