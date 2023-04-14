@@ -172,7 +172,8 @@ def _get_diff_vars(
         if custom_schema:
             if not config_prod_custom_schema:
                 raise ValueError(
-                    f"Found a custom schema on model {model.name}, but no value for\nvars:\n  data_diff:\n    prod_custom_schema:\nPlease set a value!"
+                    f"Found a custom schema on model {model.name}, but no value for\nvars:\n  data_diff:\n    prod_custom_schema:\nPlease set a value!\n"
+                    + "For more details see: https://docs.datafold.com/development_testing/open_source"
                 )
             prod_schema = config_prod_custom_schema.replace("<custom_schema>", custom_schema)
         # no custom schema, use the default
