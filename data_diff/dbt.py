@@ -123,7 +123,9 @@ def dbt_diff(
         )
 
     for model in models:
-        diff_vars = _get_diff_vars(dbt_parser, config_prod_database, config_prod_schema, config_prod_custom_schema, model)
+        diff_vars = _get_diff_vars(
+            dbt_parser, config_prod_database, config_prod_schema, config_prod_custom_schema, model
+        )
 
         if diff_vars.primary_keys:
             if is_cloud:
@@ -160,20 +162,19 @@ def _get_diff_vars(
     # prod schema name differs from dev schema name
     if config_prod_schema:
         custom_schema = model.config.schema_
-        
+
         # the model has a custom schema config(schema='some_schema')
         if custom_schema:
             if not config_prod_custom_schema:
-                raise ValueError(f"Found a custom schema on model {model.name}, but no value for\nvars:\n  data_diff:\n    prod_custom_schema:\nPlease set a value!")
-            prod_schema = config_prod_custom_schema.replace('<custom_schema>', custom_schema)
+                raise ValueError(
+                    f"Found a custom schema on model {model.name}, but no value for\nvars:\n  data_diff:\n    prod_custom_schema:\nPlease set a value!"
+                )
+            prod_schema = config_prod_custom_schema.replace("<custom_schema>", custom_schema)
         # no custom schema, use the default
         else:
             prod_schema = config_prod_schema
     else:
         prod_schema = dev_schema
-
-
-
 
     if dbt_parser.requires_upper:
         dev_qualified_list = [x.upper() for x in [dev_database, dev_schema, model.alias]]
