@@ -740,9 +740,6 @@ class TestDbtDiffer(unittest.TestCase):
             "prod_schema": "prod_schema",
             "datasource_id": 1,
         }
-        host = "a_host"
-        url = "a_url"
-        api_key = "a_api_key"
 
         mock_dbt_parser_inst.get_models.return_value = [mock_model]
         mock_dbt_parser_inst.get_datadiff_variables.return_value = expected_dbt_vars_dict
@@ -756,42 +753,67 @@ class TestDbtDiffer(unittest.TestCase):
         mock_local_diff.assert_not_called()
         self.assertEqual(mock_print.call_count, 1)
 
-    def test_get_diff_vars_custom_schemas_prod_db_and_schema(self):
+    def test_get_diff_vars_replace_custom_schema(self):
         mock_model = Mock()
         prod_database = "a_prod_db"
         prod_schema = "a_prod_schema"
         primary_keys = ["a_primary_key"]
         mock_model.database = "a_dev_db"
-        mock_model.schema_ = "a_custom_dev_schema"
+        mock_model.schema_ = "a_custom_schema"
         mock_model.config.schema_ = mock_model.schema_
         mock_model.alias = "a_model_name"
         mock_dbt_parser = Mock()
         mock_dbt_parser.get_pk_from_model.return_value = primary_keys
         mock_dbt_parser.requires_upper = False
 
-        diff_vars = _get_diff_vars(mock_dbt_parser, "a_prod_db", "a_prod_schema", mock_model, custom_schemas=True)
+        diff_vars = _get_diff_vars(mock_dbt_parser, prod_database, prod_schema, "prod_<custom_schema>", mock_model)
 
         assert diff_vars.dev_path == [mock_model.database, mock_model.schema_, mock_model.alias]
-        assert diff_vars.prod_path == [prod_database, prod_schema + "_" + mock_model.schema_, mock_model.alias]
+        assert diff_vars.prod_path == [prod_database, "prod_" + mock_model.schema_, mock_model.alias]
         assert diff_vars.primary_keys == primary_keys
         assert diff_vars.connection == mock_dbt_parser.connection
         assert diff_vars.threads == mock_dbt_parser.threads
+        assert prod_schema not in diff_vars.prod_path
+
         mock_dbt_parser.get_pk_from_model.assert_called_once()
 
-    def test_get_diff_vars_false_custom_schemas_prod_db_and_schema(self):
+    def test_get_diff_vars_static_custom_schema(self):
         mock_model = Mock()
         prod_database = "a_prod_db"
         prod_schema = "a_prod_schema"
         primary_keys = ["a_primary_key"]
         mock_model.database = "a_dev_db"
-        mock_model.schema_ = "a_custom_dev_schema"
+        mock_model.schema_ = "a_custom_schema"
         mock_model.config.schema_ = mock_model.schema_
         mock_model.alias = "a_model_name"
         mock_dbt_parser = Mock()
-        mock_dbt_parser.get_pk_from_model.return_value = ["a_primary_key"]
+        mock_dbt_parser.get_pk_from_model.return_value = primary_keys
         mock_dbt_parser.requires_upper = False
 
-        diff_vars = _get_diff_vars(mock_dbt_parser, "a_prod_db", "a_prod_schema", mock_model, custom_schemas=False)
+        diff_vars = _get_diff_vars(mock_dbt_parser, prod_database, prod_schema, "prod", mock_model)
+
+        assert diff_vars.dev_path == [mock_model.database, mock_model.schema_, mock_model.alias]
+        assert diff_vars.prod_path == [prod_database, "prod", mock_model.alias]
+        assert diff_vars.primary_keys == primary_keys
+        assert diff_vars.connection == mock_dbt_parser.connection
+        assert diff_vars.threads == mock_dbt_parser.threads
+        assert prod_schema not in diff_vars.prod_path
+        mock_dbt_parser.get_pk_from_model.assert_called_once()
+
+    def test_get_diff_vars_no_custom_schema_on_model(self):
+        mock_model = Mock()
+        prod_database = "a_prod_db"
+        prod_schema = "a_prod_schema"
+        primary_keys = ["a_primary_key"]
+        mock_model.database = "a_dev_db"
+        mock_model.schema_ = "a_custom_schema"
+        mock_model.config.schema_ = None
+        mock_model.alias = "a_model_name"
+        mock_dbt_parser = Mock()
+        mock_dbt_parser.get_pk_from_model.return_value = primary_keys
+        mock_dbt_parser.requires_upper = False
+
+        diff_vars = _get_diff_vars(mock_dbt_parser, prod_database, prod_schema, "prod", mock_model)
 
         assert diff_vars.dev_path == [mock_model.database, mock_model.schema_, mock_model.alias]
         assert diff_vars.prod_path == [prod_database, prod_schema, mock_model.alias]
@@ -800,23 +822,41 @@ class TestDbtDiffer(unittest.TestCase):
         assert diff_vars.threads == mock_dbt_parser.threads
         mock_dbt_parser.get_pk_from_model.assert_called_once()
 
-    def test_get_diff_vars_false_custom_schemas_prod_db(self):
+    def test_get_diff_vars_match_dev_schema(self):
         mock_model = Mock()
         prod_database = "a_prod_db"
         primary_keys = ["a_primary_key"]
         mock_model.database = "a_dev_db"
-        mock_model.schema_ = "a_custom_dev_schema"
-        mock_model.config.schema_ = mock_model.schema_
+        mock_model.schema_ = "a_schema"
+        mock_model.config.schema_ = None
         mock_model.alias = "a_model_name"
         mock_dbt_parser = Mock()
-        mock_dbt_parser.get_pk_from_model.return_value = ["a_primary_key"]
+        mock_dbt_parser.get_pk_from_model.return_value = primary_keys
         mock_dbt_parser.requires_upper = False
 
-        diff_vars = _get_diff_vars(mock_dbt_parser, "a_prod_db", None, mock_model, custom_schemas=False)
+        diff_vars = _get_diff_vars(mock_dbt_parser, prod_database, None, None, mock_model)
 
         assert diff_vars.dev_path == [mock_model.database, mock_model.schema_, mock_model.alias]
         assert diff_vars.prod_path == [prod_database, mock_model.schema_, mock_model.alias]
         assert diff_vars.primary_keys == primary_keys
         assert diff_vars.connection == mock_dbt_parser.connection
         assert diff_vars.threads == mock_dbt_parser.threads
+        mock_dbt_parser.get_pk_from_model.assert_called_once()
+
+    def test_get_diff_custom_schema_no_config_exception(self):
+        mock_model = Mock()
+        prod_database = "a_prod_db"
+        prod_schema = "a_prod_schema"
+        primary_keys = ["a_primary_key"]
+        mock_model.database = "a_dev_db"
+        mock_model.schema_ = "a_schema"
+        mock_model.config.schema_ = "a_custom_schema"
+        mock_model.alias = "a_model_name"
+        mock_dbt_parser = Mock()
+        mock_dbt_parser.get_pk_from_model.return_value = primary_keys
+        mock_dbt_parser.requires_upper = False
+
+        with self.assertRaises(ValueError):
+            _get_diff_vars(mock_dbt_parser, prod_database, prod_schema, None, mock_model)
+
         mock_dbt_parser.get_pk_from_model.assert_called_once()

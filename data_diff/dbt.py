@@ -85,13 +85,16 @@ def dbt_diff(
     datadiff_variables = dbt_parser.get_datadiff_variables()
     config_prod_database = datadiff_variables.get("prod_database")
     config_prod_schema = datadiff_variables.get("prod_schema")
+    config_prod_custom_schema = datadiff_variables.get("prod_custom_schema")
     datasource_id = datadiff_variables.get("datasource_id")
-    custom_schemas = datadiff_variables.get("custom_schemas")
-    # custom schemas is default dbt behavior, so default to True if the var doesn't exist
-    custom_schemas = True if custom_schemas is None else custom_schemas
     set_dbt_user_id(dbt_parser.dbt_user_id)
     set_dbt_version(dbt_parser.dbt_version)
     set_dbt_project_id(dbt_parser.dbt_project_id)
+
+    if datadiff_variables.get("custom_schemas") is not None:
+        logger.warning(
+            "vars: data_diff: custom_schemas: is no longer used and can be removed.\nTo utilize custom schemas, see the documentation here: https://docs.datafold.com/development_testing/open_source"
+        )
 
     if is_cloud:
         api = _initialize_api()
@@ -125,7 +128,9 @@ def dbt_diff(
         )
 
     for model in models:
-        diff_vars = _get_diff_vars(dbt_parser, config_prod_database, config_prod_schema, model, custom_schemas)
+        diff_vars = _get_diff_vars(
+            dbt_parser, config_prod_database, config_prod_schema, config_prod_custom_schema, model
+        )
 
         if diff_vars.primary_keys:
             if is_cloud:
@@ -149,8 +154,8 @@ def _get_diff_vars(
     dbt_parser: "DbtParser",
     config_prod_database: Optional[str],
     config_prod_schema: Optional[str],
+    config_prod_custom_schema: Optional[str],
     model,
-    custom_schemas: bool,
 ) -> DiffVars:
     dev_database = model.database
     dev_schema = model.schema_
@@ -158,13 +163,24 @@ def _get_diff_vars(
     primary_keys = dbt_parser.get_pk_from_model(model, dbt_parser.unique_columns, "primary-key")
 
     prod_database = config_prod_database if config_prod_database else dev_database
-    prod_schema = config_prod_schema if config_prod_schema else dev_schema
 
-    # if project has custom schemas (default)
-    # need to construct the prod schema as <prod_target_schema>_<custom_schema>
-    # https://docs.getdbt.com/docs/build/custom-schemas
-    if custom_schemas and model.config.schema_:
-        prod_schema = prod_schema + "_" + model.config.schema_
+    # prod schema name differs from dev schema name
+    if config_prod_schema:
+        custom_schema = model.config.schema_
+
+        # the model has a custom schema config(schema='some_schema')
+        if custom_schema:
+            if not config_prod_custom_schema:
+                raise ValueError(
+                    f"Found a custom schema on model {model.name}, but no value for\nvars:\n  data_diff:\n    prod_custom_schema:\nPlease set a value!\n"
+                    + "For more details see: https://docs.datafold.com/development_testing/open_source"
+                )
+            prod_schema = config_prod_custom_schema.replace("<custom_schema>", custom_schema)
+        # no custom schema, use the default
+        else:
+            prod_schema = config_prod_schema
+    else:
+        prod_schema = dev_schema
 
     if dbt_parser.requires_upper:
         dev_qualified_list = [x.upper() for x in [dev_database, dev_schema, model.alias]]
