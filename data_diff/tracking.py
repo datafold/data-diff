@@ -58,6 +58,8 @@ def set_entrypoint_name(s):
 
 
 dbt_user_id = None
+dbt_version = None
+dbt_project_id = None
 
 
 def set_dbt_user_id(s):
