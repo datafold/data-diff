@@ -145,6 +145,7 @@ class DbtParser:
                 "role": credentials.get("role"),
                 "schema": credentials.get("schema"),
                 "insecure_mode": credentials.get("insecure_mode", False),
+                "client_session_keep_alive": credentials.get("client_session_keep_alive", False)
             }
             self.threads = credentials.get("threads")
             self.requires_upper = True
