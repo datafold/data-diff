@@ -6,6 +6,9 @@ from typing import Any, Dict, List, Optional, Type, TypeVar, Tuple
 import pydantic
 import requests
 
+from ..utils import getLogger
+
+logger = getLogger(__name__)
 
 Self = TypeVar("Self", bound=pydantic.BaseModel)
 
@@ -216,11 +219,12 @@ class DatafoldAPI:
         summary_results = None
         start_time = time.monotonic()
         sleep_interval = 5  # starts at 5 sec
-        max_sleep_interval = 60
+        max_sleep_interval = 30
         max_wait_time = 300
 
         diff_url = f"{self.host}/datadiffs/{diff_id}/overview"
         while not summary_results:
+            logger.debug(f"Polling: {diff_url}")
             response = self.make_get_request(url=f"api/v1/datadiffs/{diff_id}/summary_results")
             response_json = response.json()
             if response_json["status"] == "success":
