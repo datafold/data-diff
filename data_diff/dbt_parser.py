@@ -68,6 +68,7 @@ class DbtParser:
 
     def get_models(self):
         with open(self.project_dir / RUN_RESULTS_PATH) as run_results:
+            logger.info(f"Parsing file {RUN_RESULTS_PATH}")
             run_results_dict = json.load(run_results)
             run_results_obj = self.parse_run_results(run_results=run_results_dict)
 
@@ -91,18 +92,21 @@ class DbtParser:
 
     def get_manifest_obj(self):
         with open(self.project_dir / MANIFEST_PATH) as manifest:
+            logger.info(f"Parsing file {MANIFEST_PATH}")
             manifest_dict = json.load(manifest)
             manifest_obj = self.parse_manifest(manifest=manifest_dict)
         return manifest_obj
 
     def get_project_dict(self):
         with open(self.project_dir / PROJECT_FILE) as project:
+            logger.info(f"Parsing file {PROJECT_FILE}")
             project_dict = self.yaml.safe_load(project)
         return project_dict
 
     def get_connection_creds(self) -> Tuple[Dict[str, str], str]:
         profiles_path = self.profiles_dir / PROFILES_FILE
         with open(profiles_path) as profiles:
+            logger.info(f"Parsing file {profiles_path}")
             profiles = self.yaml.safe_load(profiles)
 
         dbt_profile_var = self.project_dict.get("profile")
