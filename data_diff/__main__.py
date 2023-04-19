@@ -230,6 +230,7 @@ click.Context.formatter_class = MyHelpFormatter
 )
 @click.option(
     "--select",
+    "-s",
     default=None,
     metavar="PATH",
     help="select dbt resources to compar using dbt selection syntax",
