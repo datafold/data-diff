@@ -113,25 +113,25 @@ def _cast_value(value: str, type_: str) -> Union[bool, int, str]:
 
 
 def _get_data_from_bigquery_json(path: str):
-    with open(path, 'r') as file:
+    with open(path, "r") as file:
         return json.load(file)
 
 
 def _align_dbt_cred_params_with_datafold_params(dbt_creds: dict) -> dict:
-    db_type = dbt_creds['type']
-    if db_type == 'bigquery':
-        method = dbt_creds['method']
-        if method == 'service-account':
-            data = _get_data_from_bigquery_json(path=dbt_creds['keyfile'])
-            dbt_creds['jsonKeyFile'] = json.dumps(data)
-        elif method == 'service-account-json':
-            dbt_creds['jsonKeyFile'] = json.dumps(dbt_creds['keyfile_json'])
-        dbt_creds['projectId'] = dbt_creds['project']
-    elif db_type == 'snowflake':
-        dbt_creds['default_db'] = dbt_creds['database']
-    elif db_type == 'databricks':
-        dbt_creds['http_password'] = dbt_creds['token']
-        dbt_creds['database'] = dbt_creds.get('catalog')
+    db_type = dbt_creds["type"]
+    if db_type == "bigquery":
+        method = dbt_creds["method"]
+        if method == "service-account":
+            data = _get_data_from_bigquery_json(path=dbt_creds["keyfile"])
+            dbt_creds["jsonKeyFile"] = json.dumps(data)
+        elif method == "service-account-json":
+            dbt_creds["jsonKeyFile"] = json.dumps(dbt_creds["keyfile_json"])
+        dbt_creds["projectId"] = dbt_creds["project"]
+    elif db_type == "snowflake":
+        dbt_creds["default_db"] = dbt_creds["database"]
+    elif db_type == "databricks":
+        dbt_creds["http_password"] = dbt_creds["token"]
+        dbt_creds["database"] = dbt_creds.get("catalog")
     return dbt_creds
 
 

@@ -193,9 +193,9 @@ class DatafoldAPI:
 
     def create_data_source(self, config: TDsConfig) -> TCloudApiDataSource:
         payload = config.dict()
-        if config.type == 'bigquery':
-            json_string = payload['options']['jsonKeyFile'].encode('utf-8')
-            payload['options']['jsonKeyFile'] = base64.b64encode(json_string).decode('utf-8')
+        if config.type == "bigquery":
+            json_string = payload["options"]["jsonKeyFile"].encode("utf-8")
+            payload["options"]["jsonKeyFile"] = base64.b64encode(json_string).decode("utf-8")
         rv = self.make_post_request(url="api/v1/data_sources", payload=payload)
         return TCloudApiDataSource(**rv.json())
 
@@ -255,7 +255,9 @@ class DatafoldAPI:
                     status=item["result"]["code"].lower(),
                     message=item["result"]["message"],
                     outcome=item["result"]["outcome"],
-                ) if item["result"] is not None else None,
+                )
+                if item["result"] is not None
+                else None,
             )
             for item in rv.json()["results"]
         ]
