@@ -50,6 +50,20 @@ def _validate_temp_schema(temp_schema: str):
         raise ValueError("Temporary schema should have a format <database>.<schema>")
 
 
+def _get_temp_schema(dbt_parser: DbtParser, db_type: str) -> Optional[str]:
+    diff_vars = dbt_parser.get_datadiff_variables()
+    config_prod_database = diff_vars.get("prod_database")
+    config_prod_schema = diff_vars.get("prod_schema")
+    if config_prod_database is not None and config_prod_schema is not None:
+        temp_schema = f"{config_prod_database}.{config_prod_schema}"
+        if db_type == "snowflake":
+            return temp_schema.upper()
+        elif db_type in {"pg", "postgres_aurora", "postgres_aws_rds", "redshift"}:
+            return temp_schema.lower()
+        return temp_schema
+    return
+
+
 def create_ds_config(
     ds_config: TCloudApiDataSourceConfigSchema,
     data_source_name: str,
@@ -57,7 +71,12 @@ def create_ds_config(
 ) -> TDsConfig:
     options = _parse_ds_credentials(ds_config=ds_config, only_basic_settings=True, dbt_parser=dbt_parser)
 
-    temp_schema = TemporarySchemaPrompt.ask("Temporary schema (<database>.<schema>)")
+    temp_schema = _get_temp_schema(dbt_parser=dbt_parser, db_type=ds_config.db_type) if dbt_parser else None
+    if temp_schema:
+        temp_schema = TemporarySchemaPrompt.ask("Temporary schema", default=temp_schema)
+    else:
+        temp_schema = TemporarySchemaPrompt.ask("Temporary schema (<database>.<schema>)")
+
     float_tolerance = FloatPrompt.ask("Float tolerance", default=0.000001)
 
     return TDsConfig(
