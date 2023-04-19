@@ -118,6 +118,7 @@ def dbt_diff(
                     "Datasource ID not found, include it as a dbt variable in the dbt_project.yml. "
                     "\nvars:\n data_diff:\n   datasource_id: 1234"
                 )
+        rich.print("[green][bold]\nDiffs in progress...[/][/]\n")
 
     else:
         dbt_parser.set_connection()
@@ -288,13 +289,13 @@ def _cloud_diff(diff_vars: DiffVars, datasource_id: int, api: DatafoldAPI) -> No
     diff_url = None
     try:
         diff_id = api.create_data_diff(payload=payload)
+        diff_url = f"{api.host}/datadiffs/{diff_id}/overview"
+        rich.print(f"{diff_vars.dev_path[2]}: {diff_url}")
 
         if diff_id is None:
             raise Exception(f"Api response did not contain a diff_id")
 
         diff_results = api.poll_data_diff_results(diff_id)
-
-        diff_url = f"{api.host}/datadiffs/{diff_id}/overview"
 
         rows_added_count = diff_results.pks.exclusives[1]
         rows_removed_count = diff_results.pks.exclusives[0]
@@ -352,4 +353,4 @@ def _cloud_diff(diff_vars: DiffVars, datasource_id: int, api: DatafoldAPI) -> No
 
 
 def _diff_output_base(dev_path: str, prod_path: str) -> str:
-    return f"[green]{prod_path} <> {dev_path}[/] \n"
+    return f"\n[green]{prod_path} <> {dev_path}[/] \n"
