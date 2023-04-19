@@ -21,6 +21,7 @@ from data_diff.cloud.data_source import (
     TestDataSourceStatus,
     create_ds_config,
     _check_data_source_exists,
+    _get_temp_schema,
     _test_data_source,
 )
 
@@ -143,6 +144,22 @@ class TestDataSource(unittest.TestCase):
         self.api = Mock()
         self.api.get_data_source_schema_config.return_value = self.data_source_schema
         self.api.get_data_sources.return_value = self.data_sources
+
+    @parameterized.expand([(c,) for c in DATA_SOURCE_CONFIGS], name_func=format_data_source_config_test)
+    @patch("data_diff.dbt_parser.DbtParser.__new__")
+    def test_get_temp_schema(self, config: TDsConfig, mock_dbt_parser):
+        diff_vars = {
+            "prod_database": "db",
+            "prod_schema": "schema",
+        }
+        mock_dbt_parser.get_datadiff_variables.return_value = diff_vars
+        temp_schema = f'{diff_vars["prod_database"]}.{diff_vars["prod_schema"]}'
+        if config.type == "snowflake":
+            temp_schema = temp_schema.upper()
+        elif config.type in {"pg", "postgres_aurora", "postgres_aws_rds", "redshift"}:
+            temp_schema = temp_schema.lower()
+
+        assert _get_temp_schema(dbt_parser=mock_dbt_parser, db_type=config.type) == temp_schema
 
     @parameterized.expand([(c,) for c in DATA_SOURCE_CONFIGS], name_func=format_data_source_config_test)
     def test_create_ds_config(self, config: TDsConfig):
