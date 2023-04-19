@@ -228,6 +228,12 @@ click.Context.formatter_class = MyHelpFormatter
     metavar="PATH",
     help="Which directory to look in for the dbt_project.yml file. Default is the current working directory and its parents.",
 )
+@click.option(
+    "--select",
+    default=None,
+    metavar="PATH",
+    help="select dbt resources to compar using dbt selection syntax",
+)
 def main(conf, run, **kw):
     if kw["table2"] is None and kw["database2"]:
         # Use the "database table table" form
@@ -264,6 +270,7 @@ def main(conf, run, **kw):
                 profiles_dir_override=kw["dbt_profiles_dir"],
                 project_dir_override=kw["dbt_project_dir"],
                 is_cloud=kw["cloud"],
+                dbt_selection=kw["select"],
             )
         else:
             return _data_diff(**kw)

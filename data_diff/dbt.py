@@ -18,7 +18,7 @@ from .dbt_parser import DbtParser
 logger = getLogger(__name__)
 
 
-def import_dbt():
+def import_dbt_parsers():
     try:
         from dbt_artifacts_parser.parser import parse_run_results, parse_manifest
         from dbt.config.renderer import ProfileRenderer
@@ -47,7 +47,7 @@ MANIFEST_PATH = "target/manifest.json"
 PROJECT_FILE = "dbt_project.yml"
 PROFILES_FILE = "profiles.yml"
 LOWER_DBT_V = "1.0.0"
-UPPER_DBT_V = "1.4.6"
+UPPER_DBT_V = "1.6.0"
 
 
 # https://github.com/dbt-labs/dbt-core/blob/c952d44ec5c2506995fbad75320acbae49125d3d/core/dbt/cli/resolvers.py#L6
@@ -76,12 +76,12 @@ class DiffVars:
 
 
 def dbt_diff(
-    profiles_dir_override: Optional[str] = None, project_dir_override: Optional[str] = None, is_cloud: bool = False
+    profiles_dir_override: Optional[str] = None, project_dir_override: Optional[str] = None, is_cloud: bool = False, dbt_selection: Optional[str] = None
 ) -> None:
     diff_threads = []
     set_entrypoint_name("CLI-dbt")
     dbt_parser = DbtParser(profiles_dir_override, project_dir_override)
-    models = dbt_parser.get_models()
+    models = dbt_parser.get_models(dbt_selection)
     datadiff_variables = dbt_parser.get_datadiff_variables()
     config_prod_database = datadiff_variables.get("prod_database")
     config_prod_schema = datadiff_variables.get("prod_schema")
