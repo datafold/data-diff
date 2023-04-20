@@ -1,3 +1,7 @@
+**THE PROJECT IS MERGED INTO [data-diff](https://github.com/datafold/data-diff) ON 2023-04-20 AND IS MAINTAINED THERE.**
+
+**THIS REPO IS FOR HISTORIC REFERENCES ONLY.**
+
 # Sqeleton
 
 **Under construction!**
