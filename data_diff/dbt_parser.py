@@ -78,7 +78,7 @@ class DbtParser:
 
         if dbt_version < parse_version(LOWER_DBT_V):
             raise Exception(
-                f"Found dbt: v{dbt_version} Expected the dbt project's version to be >= {LOWER_DBT_V} and < {UPPER_DBT_V}"
+                f"Found dbt: v{dbt_version} Expected the dbt project's version to be >= {LOWER_DBT_V}"
             )
         elif dbt_version >= parse_version(UPPER_DBT_V):
             logger.warning(f"{dbt_version} is a recent version of dbt and may not be fully tested with data-diff! \nPlease report any issues to https://github.com/datafold/data-diff/issues")
