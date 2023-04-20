@@ -126,6 +126,14 @@ def _align_dbt_cred_params_with_datafold_params(dbt_creds: dict) -> dict:
             dbt_creds["jsonKeyFile"] = json.dumps(data)
         elif method == "service-account-json":
             dbt_creds["jsonKeyFile"] = json.dumps(dbt_creds["keyfile_json"])
+        else:
+            rich.print(
+                f'[red]Cannot extract bigquery credentials from dbt_project.yml for "{method}" type. '
+                f"If you want to provide credentials via dbt_project.yml, "
+                f'please, use "service-account" or "service-account-json" '
+                f"(more in docs: https://docs.getdbt.com/reference/warehouse-setups/bigquery-setup). "
+                f"Otherwise, you can provide a path to a json key file or a json key file data as an input."
+            )
         dbt_creds["projectId"] = dbt_creds["project"]
     elif db_type == "snowflake":
         dbt_creds["default_db"] = dbt_creds["database"]
