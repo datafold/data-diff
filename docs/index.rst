@@ -5,6 +5,7 @@
 
    python-api
    python_examples
+   sqeleton/index
 
 data-diff
 ---------
@@ -19,7 +20,6 @@ Resources
 ---------
 
 - Source code (git): `<https://github.com/datafold/data-diff>`_
-- :doc:`python-api`
 - The rest of the `documentation`_
 
 .. _documentation: https://docs.datafold.com/guides/os_data_diff
