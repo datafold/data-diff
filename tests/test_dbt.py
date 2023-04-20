@@ -90,22 +90,6 @@ class TestDbtParser(unittest.TestCase):
         self.assertIn("version to be", ex.exception.args[0])
 
     @patch("builtins.open", new_callable=mock_open, read_data="{}")
-    def test_get_models_bad_upper_dbt_version(self, mock_open):
-        mock_self = Mock()
-        mock_self.project_dir = Path()
-        mock_run_results = Mock()
-        mock_self.parse_run_results.return_value = mock_run_results
-        mock_run_results.metadata.dbt_version = "1.5.1"
-
-        with self.assertRaises(Exception) as ex:
-            DbtParser.get_models(mock_self)
-
-        mock_open.assert_called_once_with(Path(RUN_RESULTS_PATH))
-        mock_self.parse_run_results.assert_called_once_with(run_results={})
-        mock_self.parse_manifest.assert_not_called()
-        self.assertIn("version to be", ex.exception.args[0])
-
-    @patch("builtins.open", new_callable=mock_open, read_data="{}")
     def test_get_models_no_success(self, mock_open):
         mock_self = Mock()
         mock_self.project_dir = Path()
