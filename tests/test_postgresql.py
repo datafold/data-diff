@@ -1,6 +1,6 @@
 import unittest
 
-from sqeleton.queries import table, commit
+from data_diff.sqeleton.queries import table, commit
 
 from data_diff import TableSegment, HashDiffer
 from data_diff import databases as db

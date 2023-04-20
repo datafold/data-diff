@@ -18,7 +18,7 @@ from .utils import dbt_diff_string_template, run_as_daemon, safezip, getLogger, 
 from .thread_utils import ThreadedYielder
 from .table_segment import TableSegment, create_mesh_from_points
 from .tracking import create_end_event_json, create_start_event_json, send_event_json, is_tracking_enabled
-from sqeleton.abcs import IKey
+from data_diff.sqeleton.abcs import IKey
 
 logger = getLogger(__name__)
 

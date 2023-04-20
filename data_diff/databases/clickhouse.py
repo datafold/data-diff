@@ -1,4 +1,4 @@
-from sqeleton.databases import clickhouse
+from data_diff.sqeleton.databases import clickhouse
 from .base import DatadiffDialect
 
 

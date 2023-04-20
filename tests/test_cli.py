@@ -3,7 +3,7 @@ import subprocess
 import sys
 from datetime import datetime, timedelta
 
-from sqeleton.queries import commit, current_timestamp
+from data_diff.sqeleton.queries import commit, current_timestamp
 
 from .common import DiffTestCase, CONN_STRINGS
 from .test_diff_tables import test_each_database

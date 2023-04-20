@@ -9,8 +9,8 @@ import subprocess
 
 from parameterized import parameterized_class
 
-from sqeleton.queries import table
-from sqeleton.databases import Database
+from data_diff.sqeleton.queries import table
+from data_diff.sqeleton.databases import Database
 
 from data_diff import databases as db
 from data_diff import tracking

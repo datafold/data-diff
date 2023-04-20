@@ -1,4 +1,4 @@
-from sqeleton.databases import databricks
+from data_diff.sqeleton.databases import databricks
 from .base import DatadiffDialect
 
 
