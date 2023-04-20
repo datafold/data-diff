@@ -11,11 +11,12 @@ from data_diff.dbt import (
     _local_diff,
     _cloud_diff,
     DbtParser,
-    RUN_RESULTS_PATH,
-    MANIFEST_PATH,
-    PROJECT_FILE,
     DiffVars,
     DatafoldAPI,
+)
+from data_diff.dbt_parser import (
+    RUN_RESULTS_PATH,
+    PROJECT_FILE,
 )
 import unittest
 from unittest.mock import MagicMock, Mock, mock_open, patch, ANY
