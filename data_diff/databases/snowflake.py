@@ -1,4 +1,4 @@
-from sqeleton.databases import snowflake
+from data_diff.sqeleton.databases import snowflake
 from .base import DatadiffDialect
 
 

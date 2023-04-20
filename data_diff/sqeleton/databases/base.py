@@ -61,7 +61,7 @@ def import_helper(package: str = None, text=""):
             except ModuleNotFoundError as e:
                 s = text
                 if package:
-                    s += f"You can install it using 'pip install sqeleton[{package}]'."
+                    s += f"You can install it using 'pip install data_diff[{package}]'."
                 raise ModuleNotFoundError(f"{e}\n\n{s}\n")
 
         return _inner
@@ -300,7 +300,7 @@ class Database(AbstractDatabase[T]):
 
     Used for providing connection code and implementation specific SQL utilities.
 
-    Instanciated using :meth:`~sqeleton.connect`
+    Instanciated using :meth:`~data_diff.sqeleton.connect`
     """
 
     default_schema: str = None

@@ -3,8 +3,8 @@ from typing import Callable
 import uuid
 import unittest
 
-from sqeleton.queries import table, this, commit, code
-from sqeleton.utils import ArithAlphanumeric, numberToAlphanum
+from data_diff.sqeleton.queries import table, this, commit, code
+from data_diff.sqeleton.utils import ArithAlphanumeric, numberToAlphanum
 
 from data_diff.hashdiff_tables import HashDiffer
 from data_diff.joindiff_tables import JoinDiffer

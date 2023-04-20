@@ -20,7 +20,7 @@ classifiers = [
     "Topic :: Database :: Database Engines/Servers",
     "Typing :: Typed"
 ]
-packages = [{ include = "data_diff" }, { include = "sqeleton" }]
+packages = [{ include = "data_diff" }]
 
 [tool.poetry.dependencies]
 python = "^3.7"
@@ -87,7 +87,7 @@ build-backend = "poetry.core.masonry.api"
 
 [tool.poetry.scripts]
 data-diff = 'data_diff.__main__:main'
-sqeleton = 'sqeleton.__main__:main'
+sqeleton = 'data_diff.sqeleton.__main__:main'
 
 [tool.black]
 line-length = 120

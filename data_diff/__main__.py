@@ -10,8 +10,8 @@ from typing import Optional
 import rich
 import click
 
-from sqeleton.schema import create_schema
-from sqeleton.queries.api import current_timestamp
+from data_diff.sqeleton.schema import create_schema
+from data_diff.sqeleton.queries.api import current_timestamp
 
 from .dbt import dbt_diff
 from .utils import eval_name_template, remove_password_from_url, safezip, match_like

@@ -20,7 +20,7 @@ from ..abcs.mixins import (
     AbstractMixin_TimeTravel,
 )
 from ..abcs import Compilable
-from sqeleton.queries import table, this, SKIP, code
+from data_diff.sqeleton.queries import table, this, SKIP, code
 from .base import (
     BaseDialect,
     ConnectError,

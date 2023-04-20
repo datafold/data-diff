@@ -4,12 +4,12 @@ from typing import Callable, List, Tuple
 
 import pytz
 
-from sqeleton import connect
-from sqeleton import databases as dbs
-from sqeleton.queries import table, current_timestamp, NormalizeAsString
+from data_diff.sqeleton import connect
+from data_diff.sqeleton import databases as dbs
+from data_diff.sqeleton.queries import table, current_timestamp, NormalizeAsString
 from tests.common import TEST_MYSQL_CONN_STRING
 from tests.sqeleton.common import str_to_checksum, test_each_database_in_list, get_conn, random_table_suffix
-from sqeleton.abcs.database_types import TimestampTZ
+from data_diff.sqeleton.abcs.database_types import TimestampTZ
 
 TEST_DATABASES = {
     dbs.MySQL,

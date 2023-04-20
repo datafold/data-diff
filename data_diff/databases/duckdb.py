@@ -1,4 +1,4 @@
-from sqeleton.databases import duckdb
+from data_diff.sqeleton.databases import duckdb
 from .base import DatadiffDialect
 
 

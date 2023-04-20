@@ -4,7 +4,6 @@ import logging
 # logging.basicConfig(level=logging.DEBUG)
 
 from . import connect
-from .queries import table
 
 import sys
 
@@ -27,12 +26,15 @@ def help():
     rich.print("Otherwise, runs regular SQL query")
 
 
-def main(uri):
+def repl(uri):
     db = connect(uri)
     db_name = db.name
 
     while True:
-        q = input(f"{db_name}> ").strip()
+        try:
+            q = input(f"{db_name}> ").strip()
+        except EOFError:
+            return
         if not q:
             continue
         if q.startswith("*"):
@@ -45,21 +47,28 @@ def main(uri):
                 help()
                 continue
             try:
-                schema = db.query_table_schema((table_name,))
+                path = db.parse_table_name(table_name)
+                print("->", path)
+                schema = db.query_table_schema(path)
             except Exception as e:
                 logging.error(e)
             else:
                 print_table([(k, v[1]) for k, v in schema.items()], ["name", "type"], f"Table '{table_name}'")
         else:
+            # Normal SQL query
             try:
                 res = db.query(q)
             except Exception as e:
                 logging.error(e)
             else:
                 if res:
-                    print_table(res, [str(i) for i in range(len(res[0]))], q)
+                    print_table(res.rows, res.columns, None)
+
+
+def main():
+    uri = sys.argv[1]
+    return repl(uri)
 
 
 if __name__ == "__main__":
-    uri = sys.argv[1]
     main()

@@ -1,9 +1,9 @@
 import unittest
 
-from sqeleton import connect
+from data_diff.sqeleton import connect
 
-from sqeleton.abcs import AbstractDialect, AbstractDatabase
-from sqeleton.abcs.mixins import AbstractMixin_NormalizeValue, AbstractMixin_RandomSample, AbstractMixin_TimeTravel
+from data_diff.sqeleton.abcs import AbstractDialect, AbstractDatabase
+from data_diff.sqeleton.abcs.mixins import AbstractMixin_NormalizeValue, AbstractMixin_RandomSample, AbstractMixin_TimeTravel
 
 
 class TestMixins(unittest.TestCase):

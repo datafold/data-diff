@@ -5,7 +5,6 @@
 
    python-api
    python_examples
-   sqeleton/index
 
 data-diff
 ---------

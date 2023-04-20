@@ -1,12 +1,12 @@
 from datetime import datetime
 from typing import List, Optional
 import unittest
-from sqeleton.abcs import AbstractDatabase, AbstractDialect
-from sqeleton.utils import CaseInsensitiveDict, CaseSensitiveDict
+from data_diff.sqeleton.abcs import AbstractDatabase, AbstractDialect
+from data_diff.sqeleton.utils import CaseInsensitiveDict, CaseSensitiveDict
 
-from sqeleton.queries import this, table, Compiler, outerjoin, cte, when, coalesce, CompileError
-from sqeleton.queries.ast_classes import Random
-from sqeleton import code, this, table
+from data_diff.sqeleton.queries import this, table, Compiler, outerjoin, cte, when, coalesce, CompileError
+from data_diff.sqeleton.queries.ast_classes import Random
+from data_diff.sqeleton import code, this, table
 
 
 def normalize_spaces(s: str):

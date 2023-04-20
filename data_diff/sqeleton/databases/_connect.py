@@ -249,9 +249,9 @@ class Connect:
 
         Example:
             >>> connect("mysql://localhost/db")
-            <sqeleton.databases.mysql.MySQL object at ...>
+            <data_diff.sqeleton.databases.mysql.MySQL object at ...>
             >>> connect({"driver": "mysql", "host": "localhost", "database": "db"})
-            <sqeleton.databases.mysql.MySQL object at ...>
+            <data_diff.sqeleton.databases.mysql.MySQL object at ...>
         """
         if shared:
             with suppress(KeyError):

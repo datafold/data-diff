@@ -1,4 +1,4 @@
-from sqeleton.databases import trino
+from data_diff.sqeleton.databases import trino
 from .base import DatadiffDialect
 
 

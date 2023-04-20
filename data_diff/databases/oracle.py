@@ -1,4 +1,4 @@
-from sqeleton.databases import oracle
+from data_diff.sqeleton.databases import oracle
 from .base import DatadiffDialect
 
 

@@ -9,12 +9,12 @@ import subprocess
 
 from parameterized import parameterized_class
 
-import sqeleton
-from sqeleton import databases as db
-from sqeleton.abcs.mixins import AbstractMixin_NormalizeValue
-from sqeleton.queries import table
-from sqeleton.databases import Database
-from sqeleton.query_utils import drop_table
+import data_diff.sqeleton
+from data_diff.sqeleton import databases as db
+from data_diff.sqeleton.abcs.mixins import AbstractMixin_NormalizeValue
+from data_diff.sqeleton.queries import table
+from data_diff.sqeleton.databases import Database
+from data_diff.sqeleton.query_utils import drop_table
 from tests.common import (
     TEST_MYSQL_CONN_STRING,
     TEST_POSTGRESQL_CONN_STRING,
@@ -76,7 +76,7 @@ def get_conn(cls: type, shared: bool = True) -> Database:
             _database_instances[cls] = get_conn(cls, shared=False)
         return _database_instances[cls]
 
-    con = sqeleton.connect.load_mixins(AbstractMixin_NormalizeValue)
+    con = data_diff.sqeleton.connect.load_mixins(AbstractMixin_NormalizeValue)
     return con(CONN_STRINGS[cls], N_THREADS)
 
 

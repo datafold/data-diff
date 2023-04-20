@@ -2,8 +2,8 @@ import unittest
 
 from tests.common import TEST_MYSQL_CONN_STRING
 
-from sqeleton import connect
-from sqeleton.queries import Compiler, Count, Explain, Select, table, In, BinOp, Code
+from data_diff.sqeleton import connect
+from data_diff.sqeleton.queries import Compiler, Count, Explain, Select, table, In, BinOp, Code
 
 
 class TestSQL(unittest.TestCase):
