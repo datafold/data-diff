@@ -28,7 +28,7 @@ MANIFEST_PATH = "target/manifest.json"
 PROJECT_FILE = "dbt_project.yml"
 PROFILES_FILE = "profiles.yml"
 LOWER_DBT_V = "1.0.0"
-UPPER_DBT_V = "1.4.6"
+UPPER_DBT_V = "1.4.7"
 
 
 # https://github.com/dbt-labs/dbt-core/blob/c952d44ec5c2506995fbad75320acbae49125d3d/core/dbt/cli/resolvers.py#L6
@@ -76,10 +76,12 @@ class DbtParser:
         if dbt_version < parse_version("1.3.0"):
             self.profiles_dir = legacy_profiles_dir()
 
-        if dbt_version < parse_version(LOWER_DBT_V) or dbt_version >= parse_version(UPPER_DBT_V):
+        if dbt_version < parse_version(LOWER_DBT_V):
             raise Exception(
                 f"Found dbt: v{dbt_version} Expected the dbt project's version to be >= {LOWER_DBT_V} and < {UPPER_DBT_V}"
             )
+        elif dbt_version >= parse_version(UPPER_DBT_V):
+            logger.warning(f"{dbt_version} is a recent version of dbt and may not be fully tested with data-diff! \nPlease report any issues to https://github.com/datafold/data-diff/issues")
 
         success_models = [x.unique_id for x in run_results_obj.results if x.status.name == "success"]
         models = [self.manifest_obj.nodes.get(x) for x in success_models]
