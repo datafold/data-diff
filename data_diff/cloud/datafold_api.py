@@ -1,3 +1,4 @@
+import base64
 import dataclasses
 import enum
 import time
@@ -162,7 +163,7 @@ class TCloudDataSourceTestResult(pydantic.BaseModel):
 class TCloudApiDataSourceTestResult(pydantic.BaseModel):
     name: str
     status: str
-    result: TCloudDataSourceTestResult
+    result: Optional[TCloudDataSourceTestResult]
 
 
 @dataclasses.dataclass
@@ -194,7 +195,11 @@ class DatafoldAPI:
         return [TCloudApiDataSource(**item) for item in rv.json()]
 
     def create_data_source(self, config: TDsConfig) -> TCloudApiDataSource:
-        rv = self.make_post_request(url="api/v1/data_sources", payload=config.dict())
+        payload = config.dict()
+        if config.type == "bigquery":
+            json_string = payload["options"]["jsonKeyFile"].encode("utf-8")
+            payload["options"]["jsonKeyFile"] = base64.b64encode(json_string).decode("utf-8")
+        rv = self.make_post_request(url="api/v1/data_sources", payload=payload)
         return TCloudApiDataSource(**rv.json())
 
     def get_data_source_schema_config(
@@ -254,7 +259,9 @@ class DatafoldAPI:
                     status=item["result"]["code"].lower(),
                     message=item["result"]["message"],
                     outcome=item["result"]["outcome"],
-                ),
+                )
+                if item["result"] is not None
+                else None,
             )
             for item in rv.json()["results"]
         ]

@@ -1,3 +1,4 @@
+import json
 import time
 from typing import List, Optional, Union, overload
 
@@ -50,6 +51,20 @@ def _validate_temp_schema(temp_schema: str):
         raise ValueError("Temporary schema should have a format <database>.<schema>")
 
 
+def _get_temp_schema(dbt_parser: DbtParser, db_type: str) -> Optional[str]:
+    diff_vars = dbt_parser.get_datadiff_variables()
+    config_prod_database = diff_vars.get("prod_database")
+    config_prod_schema = diff_vars.get("prod_schema")
+    if config_prod_database is not None and config_prod_schema is not None:
+        temp_schema = f"{config_prod_database}.{config_prod_schema}"
+        if db_type == "snowflake":
+            return temp_schema.upper()
+        elif db_type in {"pg", "postgres_aurora", "postgres_aws_rds", "redshift"}:
+            return temp_schema.lower()
+        return temp_schema
+    return
+
+
 def create_ds_config(
     ds_config: TCloudApiDataSourceConfigSchema,
     data_source_name: str,
@@ -57,7 +72,12 @@ def create_ds_config(
 ) -> TDsConfig:
     options = _parse_ds_credentials(ds_config=ds_config, only_basic_settings=True, dbt_parser=dbt_parser)
 
-    temp_schema = TemporarySchemaPrompt.ask("Temporary schema (<database>.<schema>)")
+    temp_schema = _get_temp_schema(dbt_parser=dbt_parser, db_type=ds_config.db_type) if dbt_parser else None
+    if temp_schema:
+        temp_schema = TemporarySchemaPrompt.ask("Temporary schema", default=temp_schema)
+    else:
+        temp_schema = TemporarySchemaPrompt.ask("Temporary schema (<database>.<schema>)")
+
     float_tolerance = FloatPrompt.ask("Float tolerance", default=0.000001)
 
     return TDsConfig(
@@ -92,6 +112,37 @@ def _cast_value(value: str, type_: str) -> Union[bool, int, str]:
     return value
 
 
+def _get_data_from_bigquery_json(path: str):
+    with open(path, "r") as file:
+        return json.load(file)
+
+
+def _align_dbt_cred_params_with_datafold_params(dbt_creds: dict) -> dict:
+    db_type = dbt_creds["type"]
+    if db_type == "bigquery":
+        method = dbt_creds["method"]
+        if method == "service-account":
+            data = _get_data_from_bigquery_json(path=dbt_creds["keyfile"])
+            dbt_creds["jsonKeyFile"] = json.dumps(data)
+        elif method == "service-account-json":
+            dbt_creds["jsonKeyFile"] = json.dumps(dbt_creds["keyfile_json"])
+        else:
+            rich.print(
+                f'[red]Cannot extract bigquery credentials from dbt_project.yml for "{method}" type. '
+                f"If you want to provide credentials via dbt_project.yml, "
+                f'please, use "service-account" or "service-account-json" '
+                f"(more in docs: https://docs.getdbt.com/reference/warehouse-setups/bigquery-setup). "
+                f"Otherwise, you can provide a path to a json key file or a json key file data as an input."
+            )
+        dbt_creds["projectId"] = dbt_creds["project"]
+    elif db_type == "snowflake":
+        dbt_creds["default_db"] = dbt_creds["database"]
+    elif db_type == "databricks":
+        dbt_creds["http_password"] = dbt_creds["token"]
+        dbt_creds["database"] = dbt_creds.get("catalog")
+    return dbt_creds
+
+
 def _parse_ds_credentials(
     ds_config: TCloudApiDataSourceConfigSchema, only_basic_settings: bool = True, dbt_parser: Optional[DbtParser] = None
 ):
@@ -101,6 +152,7 @@ def _parse_ds_credentials(
         use_dbt_data = Confirm.ask("Would you like to extract database credentials from dbt profiles.yml?")
         try:
             creds = dbt_parser.get_connection_creds()[0]
+            creds = _align_dbt_cred_params_with_datafold_params(dbt_creds=creds)
         except Exception as e:
             rich.print(f"[red]Cannot parse database credentials from dbt profiles.yml. Reason: {e}")
 
