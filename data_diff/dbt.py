@@ -73,6 +73,7 @@ class DiffVars:
     primary_keys: List[str]
     connection: Dict[str, str]
     threads: Optional[int]
+    where_filter: Optional[str] = None
 
 
 def dbt_diff(
@@ -191,7 +192,16 @@ def _get_diff_vars(
         dev_qualified_list = [dev_database, dev_schema, model.alias]
         prod_qualified_list = [prod_database, prod_schema, model.alias]
 
-    return DiffVars(dev_qualified_list, prod_qualified_list, primary_keys, dbt_parser.connection, dbt_parser.threads)
+    where_filter = None
+    if model.meta:
+        try:
+            where_filter = model.meta["datafold"]["datadiff"]["filter"]
+        except KeyError:
+            pass
+
+    return DiffVars(
+        dev_qualified_list, prod_qualified_list, primary_keys, dbt_parser.connection, dbt_parser.threads, where_filter
+    )
 
 
 def _local_diff(diff_vars: DiffVars) -> None:
@@ -228,7 +238,14 @@ def _local_diff(diff_vars: DiffVars) -> None:
     mutual_set = mutual_set - set(diff_vars.primary_keys)
     extra_columns = tuple(mutual_set)
 
-    diff = diff_tables(table1, table2, threaded=True, algorithm=Algorithm.JOINDIFF, extra_columns=extra_columns)
+    diff = diff_tables(
+        table1,
+        table2,
+        threaded=True,
+        algorithm=Algorithm.JOINDIFF,
+        extra_columns=extra_columns,
+        where=diff_vars.where_filter,
+    )
 
     if list(diff):
         diff_output_str += f"{column_diffs_str}{diff.get_stats_string(is_dbt=True)} \n"
@@ -277,6 +294,8 @@ def _cloud_diff(diff_vars: DiffVars, datasource_id: int, api: DatafoldAPI) -> No
         table1=diff_vars.prod_path,
         table2=diff_vars.dev_path,
         pk_columns=diff_vars.primary_keys,
+        filter1=diff_vars.where_filter,
+        filter2=diff_vars.where_filter,
     )
 
     if is_tracking_enabled():
