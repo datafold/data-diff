@@ -12,7 +12,7 @@ from pathlib import Path
 import keyring
 
 from .cloud import DatafoldAPI, TCloudApiDataDiff, get_or_create_data_source
-from .dbt_parser import DbtParser
+from .dbt_parser import DbtParser, PROJECT_FILE
 
 
 logger = getLogger(__name__)
@@ -41,29 +41,6 @@ from .tracking import (
 )
 from .utils import run_as_daemon, truncate_error
 from . import connect_to_table, diff_tables, Algorithm
-
-RUN_RESULTS_PATH = "target/run_results.json"
-MANIFEST_PATH = "target/manifest.json"
-PROJECT_FILE = "dbt_project.yml"
-PROFILES_FILE = "profiles.yml"
-LOWER_DBT_V = "1.0.0"
-UPPER_DBT_V = "1.4.6"
-
-
-# https://github.com/dbt-labs/dbt-core/blob/c952d44ec5c2506995fbad75320acbae49125d3d/core/dbt/cli/resolvers.py#L6
-def default_project_dir() -> Path:
-    paths = list(Path.cwd().parents)
-    paths.insert(0, Path.cwd())
-    return next((x for x in paths if (x / PROJECT_FILE).exists()), Path.cwd())
-
-
-# https://github.com/dbt-labs/dbt-core/blob/c952d44ec5c2506995fbad75320acbae49125d3d/core/dbt/cli/resolvers.py#L12
-def default_profiles_dir() -> Path:
-    return Path.cwd() if (Path.cwd() / PROFILES_FILE).exists() else Path.home() / ".dbt"
-
-
-def legacy_profiles_dir() -> Path:
-    return Path.home() / ".dbt"
 
 
 @dataclass
