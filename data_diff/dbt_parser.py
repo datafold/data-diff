@@ -63,8 +63,10 @@ class DbtParser:
         self.unique_columns = self.get_unique_columns()
 
     def get_datadiff_variables(self) -> dict:
-        vars = get_from_dict_with_raise(self.project_dict, "vars", f"No vars: found in dbt_project.yml.")
-        return get_from_dict_with_raise(vars, "data_diff", f"data_diff: section not found in dbt_project.yml vars:.")
+        doc_url = "https://docs.datafold.com/development_testing/open_source#configure-your-dbt-project"
+        error_message = f"vars: data_diff: section not found in dbt_project.yml.\n\nTo solve this, please configure your dbt project: \n{doc_url}\n"
+        vars = get_from_dict_with_raise(self.project_dict, "vars", error_message)
+        return get_from_dict_with_raise(vars, "data_diff", error_message)
 
     def get_models(self):
         with open(self.project_dir / RUN_RESULTS_PATH) as run_results:
