@@ -101,11 +101,6 @@ def dbt_diff(
     else:
         dbt_parser.set_connection()
 
-    if config_prod_database is None:
-        raise ValueError(
-            "Expected a value for prod_database: OR prod_database: AND prod_schema: under \nvars:\n  data_diff: "
-        )
-
     for model in models:
         diff_vars = _get_diff_vars(
             dbt_parser, config_prod_database, config_prod_schema, config_prod_custom_schema, model
@@ -162,12 +157,12 @@ def _get_diff_vars(
         prod_schema = dev_schema
 
     if dbt_parser.requires_upper:
-        dev_qualified_list = [x.upper() for x in [dev_database, dev_schema, model.alias]]
-        prod_qualified_list = [x.upper() for x in [prod_database, prod_schema, model.alias]]
+        dev_qualified_list = [x.upper() for x in [dev_database, dev_schema, model.alias] if x]
+        prod_qualified_list = [x.upper() for x in [prod_database, prod_schema, model.alias] if x]
         primary_keys = [x.upper() for x in primary_keys]
     else:
-        dev_qualified_list = [dev_database, dev_schema, model.alias]
-        prod_qualified_list = [prod_database, prod_schema, model.alias]
+        dev_qualified_list = list(filter(None, [dev_database, dev_schema, model.alias]))
+        prod_qualified_list = list(filter(None, [prod_database, prod_schema, model.alias]))
 
     where_filter = None
     if model.meta:
@@ -286,7 +281,7 @@ def _cloud_diff(diff_vars: DiffVars, datasource_id: int, api: DatafoldAPI) -> No
     try:
         diff_id = api.create_data_diff(payload=payload)
         diff_url = f"{api.host}/datadiffs/{diff_id}/overview"
-        rich.print(f"{diff_vars.dev_path[2]}: {diff_url}")
+        rich.print(f"{diff_vars.dev_path[-1]}: {diff_url}")
 
         if diff_id is None:
             raise Exception(f"Api response did not contain a diff_id")
