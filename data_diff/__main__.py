@@ -233,7 +233,7 @@ click.Context.formatter_class = MyHelpFormatter
     "-s",
     default=None,
     metavar="PATH",
-    help="select dbt resources to compar using dbt selection syntax",
+    help="select dbt resources to compare using dbt selection syntax",
 )
 def main(conf, run, **kw):
     if kw["table2"] is None and kw["database2"]:
@@ -314,6 +314,7 @@ def _data_diff(
     cloud,
     dbt_profiles_dir,
     dbt_project_dir,
+    select,
     threads1=None,
     threads2=None,
     __conf__=None,
