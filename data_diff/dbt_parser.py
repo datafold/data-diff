@@ -18,7 +18,7 @@ def import_dbt():
         from dbt.config.renderer import ProfileRenderer
         import yaml
     except ImportError:
-        raise RuntimeError("Could not import 'dbt' package. You can install it using: pip install 'data-diff[dbt]'.")
+        raise RuntimeError("Please run pip install 'data-diff[dbt]' to install missing package dependencies.")
 
     return parse_run_results, parse_manifest, ProfileRenderer, yaml
 

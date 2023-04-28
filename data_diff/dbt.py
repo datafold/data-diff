@@ -18,17 +18,6 @@ from .dbt_parser import DbtParser, PROJECT_FILE
 logger = getLogger(__name__)
 
 
-def import_dbt():
-    try:
-        from dbt_artifacts_parser.parser import parse_run_results, parse_manifest
-        from dbt.config.renderer import ProfileRenderer
-        import yaml
-    except ImportError:
-        raise RuntimeError("Could not import 'dbt' package. You can install it using: pip install 'data-diff[dbt]'.")
-
-    return parse_run_results, parse_manifest, ProfileRenderer, yaml
-
-
 from .tracking import (
     set_entrypoint_name,
     set_dbt_user_id,
