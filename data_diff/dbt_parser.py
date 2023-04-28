@@ -13,7 +13,7 @@ from .version import __version__
 logger = getLogger(__name__)
 
 
-def import_dbt_parsers():
+def import_dbt_dependencies():
     try:
         from dbt_artifacts_parser.parser import parse_run_results, parse_manifest
         from dbt.config.renderer import ProfileRenderer
@@ -21,19 +21,19 @@ def import_dbt_parsers():
     except ImportError:
         raise RuntimeError("Could not import 'dbt' package. You can install it using: pip install 'data-diff[dbt]'.")
 
-    return parse_run_results, parse_manifest, ProfileRenderer, yaml
+    # dbt 1.5+ specific stuff to power selection of models
+    try:
+        from dbt.cli.main import dbtRunner
+    except ImportError:
+        dbtRunner = None
 
+    if dbtRunner is not None:
+        dbt_runner = dbtRunner()
+    else:
+        dbt_runner = None
 
-# dbt 1.5+ specific stuff to power selection of models
-try:
-    from dbt.cli.main import dbtRunner
-except ImportError:
-    dbtRunner = None
+    return parse_run_results, parse_manifest, ProfileRenderer, yaml, dbt_runner
 
-if dbtRunner is not None:
-    dbt_runner = dbtRunner()
-else:
-    dbt_runner = None
 
 RUN_RESULTS_PATH = "target/run_results.json"
 MANIFEST_PATH = "target/manifest.json"
@@ -61,7 +61,13 @@ def legacy_profiles_dir() -> Path:
 
 class DbtParser:
     def __init__(self, profiles_dir_override: str, project_dir_override: str) -> None:
-        self.parse_run_results, self.parse_manifest, self.ProfileRenderer, self.yaml = import_dbt_parsers()
+        (
+            self.parse_run_results,
+            self.parse_manifest,
+            self.ProfileRenderer,
+            self.yaml,
+            self.dbt_runner,
+        ) = import_dbt_dependencies()
         self.profiles_dir = Path(profiles_dir_override or default_profiles_dir())
         self.project_dir = Path(project_dir_override or default_project_dir())
         self.connection = None
@@ -84,38 +90,50 @@ class DbtParser:
         dbt_version = parse_version(self.dbt_version)
         if dbt_selection:
             if dbt_version.major == 1 and dbt_version.minor >= 5:
-                return self.get_dbt_selection_models(dbt_selection)
+                if self.dbt_runner:
+                    return self.get_dbt_selection_models(dbt_selection)
+                # edge case if running data-diff from a separate env than dbt (likely local development)
+                else:
+                    raise Exception(
+                        "data-diff is using a dbt-core version < 1.5, update the environment's dbt-core version via pip install 'dbt-core>=1.5' in order to use `--select`"
+                    )
             else:
                 raise Exception(
-                    f"Use of the `--select` feature requires dbt >= 1.5. Found dbt: v{dbt_version}"
+                    f"Use of the `--select` feature requires dbt >= 1.5. Found dbt manifest: v{dbt_version}"
                 )
         else:
             return self.get_run_results_models()
 
     def get_dbt_selection_models(self, dbt_selection: str) -> List[str]:
-        start_dir = os.getcwd()
-        os.chdir(self.project_dir)
         # log level and format settings needed to prevent dbt from printing to stdout
         # ls command is used to get the list of model unique_ids
-        results = dbt_runner.invoke([
-            "--log-format",
-            "json",
-            "--log-level",
-            "none",
-            "ls",
-            "--select",
-            dbt_selection,
-            "--resource-type",
-            "model",
-            "--output",
-            "json",
-            '--output-keys',
-            "unique_id"])
-        os.chdir(start_dir)
-        if results.success:
+        results = self.dbt_runner.invoke(
+            [
+                "--log-format",
+                "json",
+                "--log-level",
+                "none",
+                "ls",
+                "--select",
+                dbt_selection,
+                "--resource-type",
+                "model",
+                "--output",
+                "json",
+                "--output-keys",
+                "unique_id",
+                "--project-dir",
+                self.project_dir,
+            ]
+        )
+        if results.success and results.result:
             model_list = [json.loads(model)["unique_id"] for model in results.result]
             models = [self.manifest_obj.nodes.get(x) for x in model_list]
             return models
+        elif not results.result:
+            raise Exception(f"No dbt models found for `--select {dbt_selection}`")
+        else:
+            raise results.exception
 
     def get_run_results_models(self):
         with open(self.project_dir / RUN_RESULTS_PATH) as run_results:
@@ -129,11 +147,11 @@ class DbtParser:
             self.profiles_dir = legacy_profiles_dir()
 
         if dbt_version < parse_version(LOWER_DBT_V):
-            raise Exception(
-                f"Found dbt: v{dbt_version} Expected the dbt project's version to be >= {LOWER_DBT_V}"
-            )
+            raise Exception(f"Found dbt: v{dbt_version} Expected the dbt project's version to be >= {LOWER_DBT_V}")
         elif dbt_version >= parse_version(UPPER_DBT_V):
-            logger.warning(f"{dbt_version} is a recent version of dbt and may not be fully tested with data-diff! \nPlease report any issues to https://github.com/datafold/data-diff/issues")
+            logger.warning(
+                f"{dbt_version} is a recent version of dbt and may not be fully tested with data-diff! \nPlease report any issues to https://github.com/datafold/data-diff/issues"
+            )
 
         success_models = [x.unique_id for x in run_results_obj.results if x.status.name == "success"]
         models = [self.manifest_obj.nodes.get(x) for x in success_models]
