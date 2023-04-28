@@ -1,9 +1,10 @@
 from collections import defaultdict
 import json
 from pathlib import Path
-from typing import List, Dict, Tuple, Set
+from typing import List, Dict, Optional, Tuple, Set
 
 from packaging.version import parse as parse_version
+import pydantic
 
 from .utils import getLogger, get_from_dict_with_raise
 from .version import __version__
@@ -47,12 +48,18 @@ def legacy_profiles_dir() -> Path:
     return Path.home() / ".dbt"
 
 
+class TDatadiffModelConfig(pydantic.BaseModel):
+    where_filter: Optional[str] = None
+    include_columns: List[str] = []
+    exclude_columns: List[str] = []
+
+
 class DbtParser:
     def __init__(self, profiles_dir_override: str, project_dir_override: str) -> None:
         self.parse_run_results, self.parse_manifest, self.ProfileRenderer, self.yaml = import_dbt()
         self.profiles_dir = Path(profiles_dir_override or default_profiles_dir())
         self.project_dir = Path(project_dir_override or default_project_dir())
-        self.connection = None
+        self.connection = {}
         self.project_dict = self.get_project_dict()
         self.manifest_obj = self.get_manifest_obj()
         self.dbt_user_id = self.manifest_obj.metadata.user_id
@@ -68,6 +75,21 @@ class DbtParser:
         vars = get_from_dict_with_raise(self.project_dict, "vars", error_message)
         return get_from_dict_with_raise(vars, "data_diff", error_message)
 
+    def get_datadiff_model_config(self, model_meta: dict) -> TDatadiffModelConfig:
+        where_filter = None
+        include_columns = []
+        exclude_columns = []
+
+        if "datafold" in model_meta and "datadiff" in model_meta["datafold"]:
+            config = model_meta["datafold"]["datadiff"]
+            where_filter = config.get("filter")
+            include_columns = config.get("include_columns") or []
+            exclude_columns = config.get("exclude_columns") or []
+
+        return TDatadiffModelConfig(
+            where_filter=where_filter, include_columns=include_columns, exclude_columns=exclude_columns
+        )
+
     def get_models(self):
         with open(self.project_dir / RUN_RESULTS_PATH) as run_results:
             logger.info(f"Parsing file {RUN_RESULTS_PATH}")
@@ -80,11 +102,11 @@ class DbtParser:
             self.profiles_dir = legacy_profiles_dir()
 
         if dbt_version < parse_version(LOWER_DBT_V):
-            raise Exception(
-                f"Found dbt: v{dbt_version} Expected the dbt project's version to be >= {LOWER_DBT_V}"
-            )
+            raise Exception(f"Found dbt: v{dbt_version} Expected the dbt project's version to be >= {LOWER_DBT_V}")
         elif dbt_version >= parse_version(UPPER_DBT_V):
-            logger.warning(f"{dbt_version} is a recent version of dbt and may not be fully tested with data-diff! \nPlease report any issues to https://github.com/datafold/data-diff/issues")
+            logger.warning(
+                f"{dbt_version} is a recent version of dbt and may not be fully tested with data-diff! \nPlease report any issues to https://github.com/datafold/data-diff/issues"
+            )
 
         success_models = [x.unique_id for x in run_results_obj.results if x.status.name == "success"]
         models = [self.manifest_obj.nodes.get(x) for x in success_models]
@@ -140,7 +162,7 @@ class DbtParser:
 
         return credentials, conn_type
 
-    def set_connection(self):
+    def set_connection(self) -> dict:
         credentials, conn_type = self.get_connection_creds()
 
         if conn_type == "snowflake":

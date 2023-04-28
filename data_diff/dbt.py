@@ -1,10 +1,10 @@
 import os
 import time
 import webbrowser
+import pydantic
 import rich
 from rich.prompt import Confirm
 
-from dataclasses import dataclass
 from typing import List, Optional, Dict
 from .utils import dbt_diff_string_template, getLogger
 from pathlib import Path
@@ -43,14 +43,15 @@ from .utils import run_as_daemon, truncate_error
 from . import connect_to_table, diff_tables, Algorithm
 
 
-@dataclass
-class DiffVars:
+class TDiffVars(pydantic.BaseModel):
     dev_path: List[str]
     prod_path: List[str]
     primary_keys: List[str]
-    connection: Dict[str, str]
-    threads: Optional[int]
+    connection: Dict[str, Optional[str]]
+    threads: Optional[int] = None
     where_filter: Optional[str] = None
+    include_columns: List[str]
+    exclude_columns: List[str]
 
 
 def dbt_diff(
@@ -135,7 +136,7 @@ def _get_diff_vars(
     config_prod_schema: Optional[str],
     config_prod_custom_schema: Optional[str],
     model,
-) -> DiffVars:
+) -> TDiffVars:
     dev_database = model.database
     dev_schema = model.schema_
 
@@ -169,19 +170,21 @@ def _get_diff_vars(
         dev_qualified_list = [dev_database, dev_schema, model.alias]
         prod_qualified_list = [prod_database, prod_schema, model.alias]
 
-    where_filter = None
-    if model.meta:
-        try:
-            where_filter = model.meta["datafold"]["datadiff"]["filter"]
-        except KeyError:
-            pass
+    datadiff_model_config = dbt_parser.get_datadiff_model_config(model.meta)
 
-    return DiffVars(
-        dev_qualified_list, prod_qualified_list, primary_keys, dbt_parser.connection, dbt_parser.threads, where_filter
+    return TDiffVars(
+        dev_path=dev_qualified_list,
+        prod_path=prod_qualified_list,
+        primary_keys=primary_keys,
+        connection=dbt_parser.connection,
+        threads=dbt_parser.threads,
+        where_filter=datadiff_model_config.where_filter,
+        include_columns=datadiff_model_config.include_columns,
+        exclude_columns=datadiff_model_config.exclude_columns,
     )
 
 
-def _local_diff(diff_vars: DiffVars) -> None:
+def _local_diff(diff_vars: TDiffVars) -> None:
     column_diffs_str = ""
     dev_qualified_str = ".".join(diff_vars.dev_path)
     prod_qualified_str = ".".join(diff_vars.prod_path)
@@ -202,18 +205,25 @@ def _local_diff(diff_vars: DiffVars) -> None:
         rich.print(diff_output_str)
         return
 
-    mutual_set = set(table1_columns) & set(table2_columns)
-    table1_set_diff = list(set(table1_columns) - set(table2_columns))
-    table2_set_diff = list(set(table2_columns) - set(table1_columns))
+    column_set = set(table1_columns).intersection(table2_columns)
+    table1_diff = set(table1_columns).difference(table2_columns)
+    table2_diff = set(table2_columns).difference(table1_columns)
 
-    if table1_set_diff:
-        column_diffs_str += "Column(s) added: " + str(table1_set_diff) + "\n"
+    if table1_diff:
+        column_diffs_str += f"Column(s) added: {table1_diff}\n"
 
-    if table2_set_diff:
-        column_diffs_str += "Column(s) removed: " + str(table2_set_diff) + "\n"
+    if table2_diff:
+        column_diffs_str += f"Column(s) removed: {table2_diff}\n"
 
-    mutual_set = mutual_set - set(diff_vars.primary_keys)
-    extra_columns = tuple(mutual_set)
+    column_set = column_set - set(diff_vars.primary_keys)
+
+    if diff_vars.include_columns:
+        column_set = {x for x in column_set if x.upper() in [y.upper() for y in diff_vars.include_columns]}
+
+    if diff_vars.exclude_columns:
+        column_set = {x for x in column_set if x.upper() not in [y.upper() for y in diff_vars.exclude_columns]}
+
+    extra_columns = tuple(column_set)
 
     diff = diff_tables(
         table1,
@@ -263,7 +273,7 @@ def _initialize_api() -> Optional[DatafoldAPI]:
     return DatafoldAPI(api_key=api_key, host=datafold_host)
 
 
-def _cloud_diff(diff_vars: DiffVars, datasource_id: int, api: DatafoldAPI) -> None:
+def _cloud_diff(diff_vars: TDiffVars, datasource_id: int, api: DatafoldAPI) -> None:
     diff_output_str = _diff_output_base(".".join(diff_vars.dev_path), ".".join(diff_vars.prod_path))
     payload = TCloudApiDataDiff(
         data_source1_id=datasource_id,
@@ -273,6 +283,8 @@ def _cloud_diff(diff_vars: DiffVars, datasource_id: int, api: DatafoldAPI) -> No
         pk_columns=diff_vars.primary_keys,
         filter1=diff_vars.where_filter,
         filter2=diff_vars.where_filter,
+        include_columns=diff_vars.include_columns,
+        exclude_columns=diff_vars.exclude_columns,
     )
 
     if is_tracking_enabled():
