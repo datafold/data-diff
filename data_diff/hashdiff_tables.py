@@ -7,7 +7,7 @@ from operator import attrgetter
 
 from runtype import dataclass
 
-from sqeleton.abcs import ColType_UUID, NumericType, PrecisionType, StringType, Boolean
+from data_diff.sqeleton.abcs import ColType_UUID, NumericType, PrecisionType, StringType, Boolean
 
 from .info_tree import InfoTree
 from .utils import safezip

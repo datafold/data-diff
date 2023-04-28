@@ -75,8 +75,10 @@ class DbtParser:
         self.unique_columns = self.get_unique_columns()
 
     def get_datadiff_variables(self) -> dict:
-        vars = get_from_dict_with_raise(self.project_dict, "vars", f"No vars: found in dbt_project.yml.")
-        return get_from_dict_with_raise(vars, "data_diff", f"data_diff: section not found in dbt_project.yml vars:.")
+        doc_url = "https://docs.datafold.com/development_testing/open_source#configure-your-dbt-project"
+        error_message = f"vars: data_diff: section not found in dbt_project.yml.\n\nTo solve this, please configure your dbt project: \n{doc_url}\n"
+        vars = get_from_dict_with_raise(self.project_dict, "vars", error_message)
+        return get_from_dict_with_raise(vars, "data_diff", error_message)
 
     def get_models(self, dbt_selection: Optional[str] = None):
         dbt_version = parse_version(self.dbt_version)
@@ -117,6 +119,7 @@ class DbtParser:
 
     def get_run_results_models(self):
         with open(self.project_dir / RUN_RESULTS_PATH) as run_results:
+            logger.info(f"Parsing file {RUN_RESULTS_PATH}")
             run_results_dict = json.load(run_results)
             run_results_obj = self.parse_run_results(run_results=run_results_dict)
 
@@ -125,10 +128,12 @@ class DbtParser:
         if dbt_version < parse_version("1.3.0"):
             self.profiles_dir = legacy_profiles_dir()
 
-        if dbt_version < parse_version(LOWER_DBT_V) or dbt_version >= parse_version(UPPER_DBT_V):
+        if dbt_version < parse_version(LOWER_DBT_V):
             raise Exception(
-                f"Found dbt: v{dbt_version} Expected the dbt project's version to be >= {LOWER_DBT_V} and < {UPPER_DBT_V}"
+                f"Found dbt: v{dbt_version} Expected the dbt project's version to be >= {LOWER_DBT_V}"
             )
+        elif dbt_version >= parse_version(UPPER_DBT_V):
+            logger.warning(f"{dbt_version} is a recent version of dbt and may not be fully tested with data-diff! \nPlease report any issues to https://github.com/datafold/data-diff/issues")
 
         success_models = [x.unique_id for x in run_results_obj.results if x.status.name == "success"]
         models = [self.manifest_obj.nodes.get(x) for x in success_models]
@@ -140,18 +145,21 @@ class DbtParser:
 
     def get_manifest_obj(self):
         with open(self.project_dir / MANIFEST_PATH) as manifest:
+            logger.info(f"Parsing file {MANIFEST_PATH}")
             manifest_dict = json.load(manifest)
             manifest_obj = self.parse_manifest(manifest=manifest_dict)
         return manifest_obj
 
     def get_project_dict(self):
         with open(self.project_dir / PROJECT_FILE) as project:
+            logger.info(f"Parsing file {PROJECT_FILE}")
             project_dict = self.yaml.safe_load(project)
         return project_dict
 
     def get_connection_creds(self) -> Tuple[Dict[str, str], str]:
         profiles_path = self.profiles_dir / PROFILES_FILE
         with open(profiles_path) as profiles:
+            logger.info(f"Parsing file {profiles_path}")
             profiles = self.yaml.safe_load(profiles)
 
         dbt_profile_var = self.project_dict.get("profile")
@@ -194,7 +202,7 @@ class DbtParser:
                 "role": credentials.get("role"),
                 "schema": credentials.get("schema"),
                 "insecure_mode": credentials.get("insecure_mode", False),
-                "client_session_keep_alive": credentials.get("client_session_keep_alive", False)
+                "client_session_keep_alive": credentials.get("client_session_keep_alive", False),
             }
             self.threads = credentials.get("threads")
             self.requires_upper = True

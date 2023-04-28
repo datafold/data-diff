@@ -13,9 +13,9 @@ from itertools import islice, repeat, chain
 
 from parameterized import parameterized
 
-from sqeleton.utils import number_to_human
-from sqeleton.queries import table, commit, this, Code
-from sqeleton.queries.api import insert_rows_in_batches
+from data_diff.sqeleton.utils import number_to_human
+from data_diff.sqeleton.queries import table, commit, this, Code
+from data_diff.sqeleton.queries.api import insert_rows_in_batches
 
 from data_diff import databases as db
 from data_diff.query_utils import drop_table

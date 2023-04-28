@@ -1,10 +1,9 @@
-import copy
 from io import StringIO
 import json
 from pathlib import Path
 from parameterized import parameterized
 import unittest
-from unittest.mock import MagicMock, Mock, patch
+from unittest.mock import Mock, patch
 
 from data_diff.cloud.datafold_api import (
     TCloudApiDataSourceConfigSchema,
@@ -13,20 +12,19 @@ from data_diff.cloud.datafold_api import (
     TCloudApiDataSourceTestResult,
     TCloudDataSourceTestResult,
     TDsConfig,
-    TestDataSourceStatus,
 )
-from data_diff.dbt_parser import DbtParser
 from data_diff.cloud.data_source import (
     TDataSourceTestStage,
     TestDataSourceStatus,
     create_ds_config,
     _check_data_source_exists,
+    _get_temp_schema,
     _test_data_source,
 )
 
 
-DATA_SOURCE_CONFIGS = [
-    TDsConfig(
+DATA_SOURCE_CONFIGS = {
+    "snowflake": TDsConfig(
         name="ds_name",
         type="snowflake",
         options={
@@ -40,7 +38,7 @@ DATA_SOURCE_CONFIGS = [
         float_tolerance=0.000001,
         temp_schema="database.temp_schema",
     ),
-    TDsConfig(
+    "pg": TDsConfig(
         name="ds_name",
         type="pg",
         options={
@@ -53,18 +51,18 @@ DATA_SOURCE_CONFIGS = [
         float_tolerance=0.000001,
         temp_schema="database.temp_schema",
     ),
-    TDsConfig(
+    "bigquery": TDsConfig(
         name="ds_name",
         type="bigquery",
         options={
             "projectId": "project_id",
-            "jsonKeyFile": "some_string",
+            "jsonKeyFile": '{"key1": "value1"}',
             "location": "US",
         },
         float_tolerance=0.000001,
         temp_schema="database.temp_schema",
     ),
-    TDsConfig(
+    "databricks": TDsConfig(
         name="ds_name",
         type="databricks",
         options={
@@ -76,7 +74,7 @@ DATA_SOURCE_CONFIGS = [
         float_tolerance=0.000001,
         temp_schema="database.temp_schema",
     ),
-    TDsConfig(
+    "redshift": TDsConfig(
         name="ds_name",
         type="redshift",
         options={
@@ -89,7 +87,7 @@ DATA_SOURCE_CONFIGS = [
         float_tolerance=0.000001,
         temp_schema="database.temp_schema",
     ),
-    TDsConfig(
+    "postgres_aurora": TDsConfig(
         name="ds_name",
         type="postgres_aurora",
         options={
@@ -102,7 +100,7 @@ DATA_SOURCE_CONFIGS = [
         float_tolerance=0.000001,
         temp_schema="database.temp_schema",
     ),
-    TDsConfig(
+    "postgres_aws_rds": TDsConfig(
         name="ds_name",
         type="postgres_aws_rds",
         options={
@@ -115,7 +113,7 @@ DATA_SOURCE_CONFIGS = [
         float_tolerance=0.000001,
         temp_schema="database.temp_schema",
     ),
-]
+}
 
 
 def format_data_source_config_test(testcase_func, param_num, param):
@@ -144,7 +142,23 @@ class TestDataSource(unittest.TestCase):
         self.api.get_data_source_schema_config.return_value = self.data_source_schema
         self.api.get_data_sources.return_value = self.data_sources
 
-    @parameterized.expand([(c,) for c in DATA_SOURCE_CONFIGS], name_func=format_data_source_config_test)
+    @parameterized.expand([(c,) for c in DATA_SOURCE_CONFIGS.values()], name_func=format_data_source_config_test)
+    @patch("data_diff.dbt_parser.DbtParser.__new__")
+    def test_get_temp_schema(self, config: TDsConfig, mock_dbt_parser):
+        diff_vars = {
+            "prod_database": "db",
+            "prod_schema": "schema",
+        }
+        mock_dbt_parser.get_datadiff_variables.return_value = diff_vars
+        temp_schema = f'{diff_vars["prod_database"]}.{diff_vars["prod_schema"]}'
+        if config.type == "snowflake":
+            temp_schema = temp_schema.upper()
+        elif config.type in {"pg", "postgres_aurora", "postgres_aws_rds", "redshift"}:
+            temp_schema = temp_schema.lower()
+
+        assert _get_temp_schema(dbt_parser=mock_dbt_parser, db_type=config.type) == temp_schema
+
+    @parameterized.expand([(c,) for c in DATA_SOURCE_CONFIGS.values()], name_func=format_data_source_config_test)
     def test_create_ds_config(self, config: TDsConfig):
         inputs = list(config.options.values()) + [config.temp_schema, config.float_tolerance]
         with patch("rich.prompt.Console.input", side_effect=map(str, inputs)):
@@ -155,8 +169,8 @@ class TestDataSource(unittest.TestCase):
             self.assertEqual(actual_config, config)
 
     @patch("data_diff.dbt_parser.DbtParser.__new__")
-    def test_create_ds_config_from_dbt_profiles(self, mock_dbt_parser):
-        config = DATA_SOURCE_CONFIGS[0]
+    def test_create_snowflake_ds_config_from_dbt_profiles(self, mock_dbt_parser):
+        config = DATA_SOURCE_CONFIGS["snowflake"]
         mock_dbt_parser.get_connection_creds.return_value = (config.options,)
         with patch("rich.prompt.Console.input", side_effect=["y", config.temp_schema, str(config.float_tolerance)]):
             actual_config = create_ds_config(
@@ -166,11 +180,78 @@ class TestDataSource(unittest.TestCase):
             )
             self.assertEqual(actual_config, config)
 
+    @patch("data_diff.dbt_parser.DbtParser.__new__")
+    def test_create_bigquery_ds_config_dbt_oauth(self, mock_dbt_parser):
+        config = DATA_SOURCE_CONFIGS["bigquery"]
+        mock_dbt_parser.get_connection_creds.return_value = (config.options,)
+        with patch("rich.prompt.Console.input", side_effect=["y", config.temp_schema, str(config.float_tolerance)]):
+            actual_config = create_ds_config(
+                ds_config=self.db_type_data_source_schemas[config.type],
+                data_source_name=config.name,
+                dbt_parser=mock_dbt_parser,
+            )
+            self.assertEqual(actual_config, config)
+
+    @patch("data_diff.dbt_parser.DbtParser.__new__")
+    @patch("data_diff.cloud.data_source._get_data_from_bigquery_json")
+    def test_create_bigquery_ds_config_dbt_service_account(self, mock_get_data_from_bigquery_json, mock_dbt_parser):
+        config = DATA_SOURCE_CONFIGS["bigquery"]
+
+        mock_get_data_from_bigquery_json.return_value = json.loads(config.options["jsonKeyFile"])
+        mock_dbt_parser.get_connection_creds.return_value = (
+            {
+                "type": "bigquery",
+                "method": "service-account",
+                "project": config.options["projectId"],
+                "threads": 1,
+                "keyfile": "/some/path",
+            },
+        )
+
+        with patch(
+            "rich.prompt.Console.input",
+            side_effect=["y", config.options["location"], config.temp_schema, str(config.float_tolerance)],
+        ):
+            actual_config = create_ds_config(
+                ds_config=self.db_type_data_source_schemas[config.type],
+                data_source_name=config.name,
+                dbt_parser=mock_dbt_parser,
+            )
+            self.assertEqual(actual_config, config)
+
+    @patch("data_diff.dbt_parser.DbtParser.__new__")
+    def test_create_bigquery_ds_config_dbt_service_account_json(self, mock_dbt_parser):
+        config = DATA_SOURCE_CONFIGS["bigquery"]
+
+        mock_dbt_parser.get_connection_creds.return_value = (
+            {
+                "type": "bigquery",
+                "method": "service-account-json",
+                "project": config.options["projectId"],
+                "threads": 1,
+                "keyfile_json": json.loads(config.options["jsonKeyFile"]),
+            },
+        )
+
+        with patch(
+            "rich.prompt.Console.input",
+            side_effect=["y", config.options["location"], config.temp_schema, str(config.float_tolerance)],
+        ):
+            actual_config = create_ds_config(
+                ds_config=self.db_type_data_source_schemas[config.type],
+                data_source_name=config.name,
+                dbt_parser=mock_dbt_parser,
+            )
+            self.assertEqual(actual_config, config)
+
     @patch("sys.stdout", new_callable=StringIO)
     @patch("data_diff.dbt_parser.DbtParser.__new__")
-    def test_create_ds_config_from_dbt_profiles_one_param_passed_through_input(self, mock_dbt_parser, mock_stdout):
-        config = DATA_SOURCE_CONFIGS[0]
-        options = copy.copy(config.options)
+    def test_create_ds_snowflake_config_from_dbt_profiles_one_param_passed_through_input(
+        self, mock_dbt_parser, mock_stdout
+    ):
+        config = DATA_SOURCE_CONFIGS["snowflake"]
+        options = {**config.options, "type": "snowflake"}
+        options["database"] = options.pop("default_db")
         account = options.pop("account")
         mock_dbt_parser.get_connection_creds.return_value = (options,)
         with patch(

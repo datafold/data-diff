@@ -12,7 +12,7 @@ from pathlib import Path
 import keyring
 
 from .cloud import DatafoldAPI, TCloudApiDataDiff, get_or_create_data_source
-from .dbt_parser import DbtParser
+from .dbt_parser import DbtParser, PROJECT_FILE
 
 
 logger = getLogger(__name__)
@@ -73,6 +73,7 @@ class DiffVars:
     primary_keys: List[str]
     connection: Dict[str, str]
     threads: Optional[int]
+    where_filter: Optional[str] = None
 
 
 def dbt_diff(
@@ -118,6 +119,7 @@ def dbt_diff(
                     "Datasource ID not found, include it as a dbt variable in the dbt_project.yml. "
                     "\nvars:\n data_diff:\n   datasource_id: 1234"
                 )
+        rich.print("[green][bold]\nDiffs in progress...[/][/]\n")
 
     else:
         dbt_parser.set_connection()
@@ -190,7 +192,16 @@ def _get_diff_vars(
         dev_qualified_list = [dev_database, dev_schema, model.alias]
         prod_qualified_list = [prod_database, prod_schema, model.alias]
 
-    return DiffVars(dev_qualified_list, prod_qualified_list, primary_keys, dbt_parser.connection, dbt_parser.threads)
+    where_filter = None
+    if model.meta:
+        try:
+            where_filter = model.meta["datafold"]["datadiff"]["filter"]
+        except KeyError:
+            pass
+
+    return DiffVars(
+        dev_qualified_list, prod_qualified_list, primary_keys, dbt_parser.connection, dbt_parser.threads, where_filter
+    )
 
 
 def _local_diff(diff_vars: DiffVars) -> None:
@@ -227,7 +238,14 @@ def _local_diff(diff_vars: DiffVars) -> None:
     mutual_set = mutual_set - set(diff_vars.primary_keys)
     extra_columns = tuple(mutual_set)
 
-    diff = diff_tables(table1, table2, threaded=True, algorithm=Algorithm.JOINDIFF, extra_columns=extra_columns)
+    diff = diff_tables(
+        table1,
+        table2,
+        threaded=True,
+        algorithm=Algorithm.JOINDIFF,
+        extra_columns=extra_columns,
+        where=diff_vars.where_filter,
+    )
 
     if list(diff):
         diff_output_str += f"{column_diffs_str}{diff.get_stats_string(is_dbt=True)} \n"
@@ -276,6 +294,8 @@ def _cloud_diff(diff_vars: DiffVars, datasource_id: int, api: DatafoldAPI) -> No
         table1=diff_vars.prod_path,
         table2=diff_vars.dev_path,
         pk_columns=diff_vars.primary_keys,
+        filter1=diff_vars.where_filter,
+        filter2=diff_vars.where_filter,
     )
 
     if is_tracking_enabled():
@@ -288,13 +308,13 @@ def _cloud_diff(diff_vars: DiffVars, datasource_id: int, api: DatafoldAPI) -> No
     diff_url = None
     try:
         diff_id = api.create_data_diff(payload=payload)
+        diff_url = f"{api.host}/datadiffs/{diff_id}/overview"
+        rich.print(f"{diff_vars.dev_path[2]}: {diff_url}")
 
         if diff_id is None:
             raise Exception(f"Api response did not contain a diff_id")
 
         diff_results = api.poll_data_diff_results(diff_id)
-
-        diff_url = f"{api.host}/datadiffs/{diff_id}/overview"
 
         rows_added_count = diff_results.pks.exclusives[1]
         rows_removed_count = diff_results.pks.exclusives[0]
@@ -352,4 +372,4 @@ def _cloud_diff(diff_vars: DiffVars, datasource_id: int, api: DatafoldAPI) -> No
 
 
 def _diff_output_base(dev_path: str, prod_path: str) -> str:
-    return f"[green]{prod_path} <> {dev_path}[/] \n"
+    return f"\n[green]{prod_path} <> {dev_path}[/] \n"

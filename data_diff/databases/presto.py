@@ -1,4 +1,4 @@
-from sqeleton.databases import presto
+from data_diff.sqeleton.databases import presto
 from .base import DatadiffDialect
 
 
