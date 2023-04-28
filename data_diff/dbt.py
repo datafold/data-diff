@@ -18,17 +18,6 @@ from .dbt_parser import DbtParser, PROJECT_FILE
 logger = getLogger(__name__)
 
 
-def import_dbt_parsers():
-    try:
-        from dbt_artifacts_parser.parser import parse_run_results, parse_manifest
-        from dbt.config.renderer import ProfileRenderer
-        import yaml
-    except ImportError:
-        raise RuntimeError("Could not import 'dbt' package. You can install it using: pip install 'data-diff[dbt]'.")
-
-    return parse_run_results, parse_manifest, ProfileRenderer, yaml
-
-
 from .tracking import (
     set_entrypoint_name,
     set_dbt_user_id,
@@ -42,6 +31,7 @@ from .tracking import (
 from .utils import run_as_daemon, truncate_error
 from . import connect_to_table, diff_tables, Algorithm
 
+
 @dataclass
 class DiffVars:
     dev_path: List[str]
@@ -53,7 +43,10 @@ class DiffVars:
 
 
 def dbt_diff(
-    profiles_dir_override: Optional[str] = None, project_dir_override: Optional[str] = None, is_cloud: bool = False, dbt_selection: Optional[str] = None
+    profiles_dir_override: Optional[str] = None,
+    project_dir_override: Optional[str] = None,
+    is_cloud: bool = False,
+    dbt_selection: Optional[str] = None,
 ) -> None:
     diff_threads = []
     set_entrypoint_name("CLI-dbt")
