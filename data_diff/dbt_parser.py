@@ -133,7 +133,11 @@ class DbtParser:
         elif not results.result:
             raise Exception(f"No dbt models found for `--select {dbt_selection}`")
         else:
-            raise results.exception
+            if results.exception:
+                raise results.exception
+            else:
+                logger.debug(str(results))
+                raise Exception("Encountered an error while finding `--select` models")
 
     def get_run_results_models(self):
         with open(self.project_dir / RUN_RESULTS_PATH) as run_results:
