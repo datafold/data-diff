@@ -144,3 +144,17 @@ def dbt_diff_string_template(
         string_output += f"\n{k}: {v}"
 
     return string_output
+
+
+def columns_removed_template(table2_set_diff) -> str:
+    columns_removed = "Column(s) removed: " + str(table2_set_diff) + "\n"
+    return columns_removed
+
+
+def columns_added_template(table1_set_diff) -> str:
+    columns_added = "Column(s) added: " + str(table1_set_diff) + "\n"
+    return columns_added
+
+
+def no_differences_template() -> str:
+    return "[bold][green]No row differences[/][/]\n"
