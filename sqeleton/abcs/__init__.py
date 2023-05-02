@@ -10,5 +10,6 @@ from .database_types import (
     PrecisionType,
     StringType,
     Boolean,
+    JSONType,
 )
 from .compiler import AbstractCompiler, Compilable

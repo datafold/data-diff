@@ -1,5 +1,12 @@
 from typing import List, Dict
-from ..abcs.database_types import Float, TemporalType, FractionalType, DbPath, TimestampTZ
+from ..abcs.database_types import (
+    Float,
+    TemporalType,
+    FractionalType,
+    DbPath,
+    TimestampTZ,
+    RedShiftSuper
+)
 from ..abcs.mixins import AbstractMixin_MD5
 from .postgresql import (
     PostgreSQL,
@@ -40,6 +47,9 @@ class Mixin_NormalizeValue(Mixin_NormalizeValue):
     def normalize_number(self, value: str, coltype: FractionalType) -> str:
         return self.to_string(f"{value}::decimal(38,{coltype.precision})")
 
+    def normalize_json(self, value: str, _coltype: RedShiftSuper) -> str:
+        return f'nvl2({value}, json_serialize({value}), NULL)'
+
 
 class Dialect(PostgresqlDialect):
     name = "Redshift"
@@ -47,6 +57,8 @@ class Dialect(PostgresqlDialect):
         **PostgresqlDialect.TYPE_CLASSES,
         "double": Float,
         "real": Float,
+        # JSON
+        "super": RedShiftSuper
     }
     SUPPORTS_INDEXES = False
 

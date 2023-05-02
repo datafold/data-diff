@@ -35,6 +35,7 @@ from ..abcs.database_types import (
     DbTime,
     DbPath,
     Boolean,
+    JSONType
 )
 from ..abcs.mixins import Compilable
 from ..abcs.mixins import (
@@ -257,6 +258,9 @@ class BaseDialect(AbstractDialect):
             )
 
         elif issubclass(cls, (Text, Native_UUID)):
+            return cls()
+
+        elif issubclass(cls, JSONType):
             return cls()
 
         raise TypeError(f"Parsing {type_repr} returned an unknown type '{cls}'.")
