@@ -91,14 +91,14 @@ class ITable(AbstractTable):
     source_table: Any
     schema: Schema = None
 
-    def select(self, *exprs, distinct=SKIP, **named_exprs):
+    def select(self, *exprs, distinct=SKIP, optimizer_hints=SKIP, **named_exprs) -> "ITable":
         """Create a new table with the specified fields"""
         exprs = args_as_tuple(exprs)
         exprs = _drop_skips(exprs)
         named_exprs = _drop_skips_dict(named_exprs)
         exprs += _named_exprs_as_aliases(named_exprs)
         resolve_names(self.source_table, exprs)
-        return Select.make(self, columns=exprs, distinct=distinct)
+        return Select.make(self, columns=exprs, distinct=distinct, optimizer_hints=optimizer_hints)
 
     def where(self, *exprs):
         exprs = args_as_tuple(exprs)
@@ -248,6 +248,12 @@ class LazyOps:
     def sum(self):
         return Func("SUM", [self])
 
+    def max(self):
+        return Func("MAX", [self])
+
+    def min(self):
+        return Func("MIN", [self])
+
 
 @dataclass
 class TestRegex(ExprNode, LazyOps):
@@ -261,7 +267,7 @@ class TestRegex(ExprNode, LazyOps):
         return c.compile(regex)
 
 
-@dataclass
+@dataclass(eq=False)
 class Func(ExprNode, LazyOps):
     name: str
     args: Sequence[Expr]
@@ -525,7 +531,7 @@ class Join(ExprNode, ITable, Root):
         s = self.source_tables[0].schema  # TODO validate types match between both tables
         return type(s)({c.name: c.type for c in self.columns})
 
-    def on(self, *exprs):
+    def on(self, *exprs) -> "Join":
         """Add an ON clause, for filtering the result of the cartesian product (i.e. the JOIN)"""
         if len(exprs) == 1:
             (e,) = exprs
@@ -538,7 +544,7 @@ class Join(ExprNode, ITable, Root):
 
         return self.replace(on_exprs=(self.on_exprs or []) + exprs)
 
-    def select(self, *exprs, **named_exprs):
+    def select(self, *exprs, **named_exprs) -> ITable:
         """Select fields to return from the JOIN operation
 
         See Also: ``ITable.select()``
@@ -682,6 +688,7 @@ class Select(ExprNode, ITable, Root):
     having_exprs: Sequence[Expr] = None
     limit_expr: int = None
     distinct: bool = False
+    optimizer_hints: Sequence[Expr] = None
 
     @property
     def schema(self):
@@ -699,7 +706,8 @@ class Select(ExprNode, ITable, Root):
 
         columns = ", ".join(map(c.compile, self.columns)) if self.columns else "*"
         distinct = "DISTINCT " if self.distinct else ""
-        select = f"SELECT {distinct}{columns}"
+        optimizer_hints = c.dialect.optimizer_hints(self.optimizer_hints) if self.optimizer_hints else ""
+        select = f"SELECT {optimizer_hints}{distinct}{columns}"
 
         if self.table:
             select += " FROM " + c.compile(self.table)
@@ -729,15 +737,19 @@ class Select(ExprNode, ITable, Root):
         return select
 
     @classmethod
-    def make(cls, table: ITable, distinct: bool = SKIP, **kwargs):
+    def make(cls, table: ITable, distinct: bool = SKIP, optimizer_hints: str = SKIP, **kwargs):
         assert "table" not in kwargs
 
         if not isinstance(table, cls):  # If not Select
             if distinct is not SKIP:
                 kwargs["distinct"] = distinct
+            if optimizer_hints is not SKIP:
+                kwargs["optimizer_hints"] = optimizer_hints
             return cls(table, **kwargs)
 
         # We can safely assume isinstance(table, Select)
+        if optimizer_hints is not SKIP:
+            kwargs["optimizer_hints"] = optimizer_hints
 
         if distinct is not SKIP:
             if distinct == False and table.distinct:
@@ -752,7 +764,7 @@ class Select(ExprNode, ITable, Root):
             if getattr(table, k) is not None:
                 if k == "where_exprs":  # Additive attribute
                     kwargs[k] = getattr(table, k) + v
-                elif k == "distinct":
+                elif k in ["distinct", "optimizer_hints"]:
                     pass
                 else:
                     raise ValueError(k)

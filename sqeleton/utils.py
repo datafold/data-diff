@@ -1,4 +1,16 @@
-from typing import Iterable, Iterator, MutableMapping, Union, Any, Sequence, Dict, Hashable, TypeVar, TYPE_CHECKING
+from typing import (
+    Iterable,
+    Iterator,
+    MutableMapping,
+    Union,
+    Any,
+    Sequence,
+    Dict,
+    Hashable,
+    TypeVar,
+    TYPE_CHECKING,
+    List,
+)
 from abc import abstractmethod
 from weakref import ref
 import math
@@ -118,7 +130,7 @@ class CaseInsensitiveDict(CaseAwareMapping):
 
 class CaseSensitiveDict(dict, CaseAwareMapping):
     def get_key(self, key):
-        self[key]  # Throw KeyError is key doesn't exist
+        self[key]  # Throw KeyError if key doesn't exist
         return key
 
     def as_insensitive(self):
@@ -251,6 +263,11 @@ class ArithAlphanumeric(ArithString):
             return NotImplemented
         return self._str < other._str
 
+    def __eq__(self, other):
+        if not isinstance(other, type(self)):
+            return NotImplemented
+        return self._str == other._str
+
     def new(self, *args, **kw):
         return type(self)(*args, **kw, max_len=self._max_len)
 
@@ -266,7 +283,7 @@ def number_to_human(n):
     return "{:.0f}{}".format(n / 10 ** (3 * millidx), millnames[millidx])
 
 
-def split_space(start, end, count):
+def split_space(start, end, count) -> List[int]:
     size = end - start
     assert count <= size, (count, size)
     return list(range(start, end, (size + 1) // (count + 1)))[1 : count + 1]
@@ -305,3 +322,20 @@ def match_like(pattern: str, strs: Sequence[str]) -> Iterable[str]:
     for s in strs:
         if reo.match(s):
             yield s
+
+
+
+class UnknownMeta(type):
+    def __instancecheck__(self, instance):
+        return instance is Unknown
+
+    def __repr__(self):
+        return "Unknown"
+
+
+class Unknown(metaclass=UnknownMeta):
+    def __nonzero__(self):
+        raise TypeError()
+
+    def __new__(class_, *args, **kwargs):
+        raise RuntimeError("Unknown is a singleton")

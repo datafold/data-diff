@@ -7,10 +7,12 @@ import unittest
 import logging
 import subprocess
 
+import sqeleton
 from parameterized import parameterized_class
 
 from sqeleton import databases as db
 from sqeleton import connect
+from sqeleton.abcs.mixins import AbstractMixin_NormalizeValue
 from sqeleton.queries import table
 from sqeleton.databases import Database
 from sqeleton.query_utils import drop_table
@@ -83,7 +85,8 @@ def get_conn(cls: type, shared: bool = True) -> Database:
             _database_instances[cls] = get_conn(cls, shared=False)
         return _database_instances[cls]
 
-    return connect(CONN_STRINGS[cls], N_THREADS)
+    con = sqeleton.connect.load_mixins(AbstractMixin_NormalizeValue)
+    return con(CONN_STRINGS[cls], N_THREADS)
 
 
 def _print_used_dbs():

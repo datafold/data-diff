@@ -5,7 +5,7 @@ from datetime import datetime
 
 from runtype import dataclass
 
-from ..utils import ArithAlphanumeric, ArithUUID, Self
+from ..utils import ArithAlphanumeric, ArithUUID, Self, Unknown
 
 
 DbPath = Tuple[str, ...]
@@ -20,7 +20,7 @@ class ColType:
 @dataclass
 class PrecisionType(ColType):
     precision: int
-    rounds: bool
+    rounds: Union[bool, Unknown] = Unknown
 
 
 class Boolean(ColType):

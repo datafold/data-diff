@@ -93,6 +93,9 @@ class Dialect(BaseDialect, Mixin_Schema):
         return f"EXPLAIN (FORMAT TEXT) {query}"
 
     def type_repr(self, t) -> str:
+        if isinstance(t, TimestampTZ):
+            return f"timestamp with time zone"
+
         try:
             return {float: "REAL"}[t]
         except KeyError:

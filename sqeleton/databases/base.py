@@ -30,6 +30,7 @@ from ..abcs.database_types import (
     String_VaryingAlphanum,
     TemporalType,
     UnknownColType,
+    TimestampTZ,
     Text,
     DbTime,
     DbPath,
@@ -37,7 +38,12 @@ from ..abcs.database_types import (
     JSONType
 )
 from ..abcs.mixins import Compilable
-from ..abcs.mixins import AbstractMixin_Schema, AbstractMixin_RandomSample, AbstractMixin_NormalizeValue
+from ..abcs.mixins import (
+    AbstractMixin_Schema,
+    AbstractMixin_RandomSample,
+    AbstractMixin_NormalizeValue,
+    AbstractMixin_OptimizerHints,
+)
 from ..bound_exprs import bound_table
 
 logger = logging.getLogger("database")
@@ -135,6 +141,11 @@ class Mixin_RandomSample(AbstractMixin_RandomSample):
         return tbl.where(Random() < ratio)
 
 
+class Mixin_OptimizerHints(AbstractMixin_OptimizerHints):
+    def optimizer_hints(self, hints: str) -> str:
+        return f"/*+ {hints} */ "
+
+
 class BaseDialect(AbstractDialect):
     SUPPORTS_PRIMARY_KEY = False
     SUPPORTS_INDEXES = False
@@ -193,6 +204,8 @@ class BaseDialect(AbstractDialect):
     def type_repr(self, t) -> str:
         if isinstance(t, str):
             return t
+        elif isinstance(t, TimestampTZ):
+            return f"TIMESTAMP({min(t.precision, DEFAULT_DATETIME_PRECISION)})"
         return {
             int: "INT",
             str: "VARCHAR",
@@ -307,6 +320,10 @@ class Database(AbstractDatabase[T]):
     def name(self):
         return type(self).__name__
 
+    def compile(self, sql_ast):
+        compiler = Compiler(self)
+        return compiler.compile(sql_ast)
+
     def query(self, sql_ast: Union[Expr, Generator], res_type: type = None):
         """Query the given SQL code/AST, and attempt to convert the result to type 'res_type'
 
@@ -372,6 +389,8 @@ class Database(AbstractDatabase[T]):
                 return [_one(row) for row in res]
             elif res_type.__args__ in [(Tuple,), (tuple,)]:
                 return [tuple(row) for row in res]
+            elif res_type.__args__ == (dict,):
+                return [dict(safezip(res.columns, row)) for row in res]
             else:
                 raise ValueError(res_type)
         return res
@@ -491,7 +510,7 @@ class Database(AbstractDatabase[T]):
     def parse_table_name(self, name: str) -> DbPath:
         return parse_table_name(name)
 
-    def _query_cursor(self, c, sql_code: str):
+    def _query_cursor(self, c, sql_code: str) -> QueryResult:
         assert isinstance(sql_code, str), sql_code
         try:
             c.execute(sql_code)
@@ -503,7 +522,7 @@ class Database(AbstractDatabase[T]):
             # logger.error(f'Caused by SQL: {sql_code}')
             raise
 
-    def _query_conn(self, conn, sql_code: Union[str, ThreadLocalInterpreter]) -> list:
+    def _query_conn(self, conn, sql_code: Union[str, ThreadLocalInterpreter]) -> QueryResult:
         c = conn.cursor()
         callback = partial(self._query_cursor, c)
         return apply_query(callback, sql_code)
@@ -546,7 +565,7 @@ class ThreadedDatabase(Database):
         except Exception as e:
             self._init_error = e
 
-    def _query(self, sql_code: Union[str, ThreadLocalInterpreter]):
+    def _query(self, sql_code: Union[str, ThreadLocalInterpreter]) -> QueryResult:
         r = self._queue.submit(self._query_in_worker, sql_code)
         return r.result()
 

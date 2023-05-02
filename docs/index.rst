@@ -3,8 +3,10 @@
    :caption: API Reference
    :hidden:
 
+   install
    intro
    supported-databases
+   conn_editor
    python-api
 
 Sqeleton
@@ -26,8 +28,10 @@ For more information, `See our README <https://github.com/datafold/sqeleton#read
 Resources
 ---------
 
+- :doc:`install`
 - :doc:`intro`
 - :doc:`supported-databases`
+- :doc:`conn_editor`
 - :doc:`python-api`
 - Source code (git): `<https://github.com/datafold/sqeleton>`_
 

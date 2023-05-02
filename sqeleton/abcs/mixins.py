@@ -151,3 +151,13 @@ class AbstractMixin_TimeTravel(AbstractMixin):
 
         Must specify exactly one of `timestamp`, `offset` or `statement`.
         """
+
+
+class AbstractMixin_OptimizerHints(AbstractMixin):
+    @abstractmethod
+    def optimizer_hints(self, optimizer_hints: str) -> str:
+        """Creates a compatible optimizer_hints string
+
+        Parameters:
+            optimizer_hints - string of optimizer hints
+        """

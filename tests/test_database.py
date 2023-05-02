@@ -1,15 +1,15 @@
-from typing import Callable, List
-from datetime import datetime
 import unittest
+from datetime import datetime
+from typing import Callable, List, Tuple
 
-from .common import str_to_checksum, TEST_MYSQL_CONN_STRING
-from .common import str_to_checksum, test_each_database_in_list, get_conn, random_table_suffix
+import pytz
 
-from sqeleton.queries import table, current_timestamp
-
-from sqeleton import databases as dbs
 from sqeleton import connect
-
+from sqeleton import databases as dbs
+from sqeleton.queries import table, current_timestamp, NormalizeAsString
+from .common import TEST_MYSQL_CONN_STRING
+from .common import str_to_checksum, test_each_database_in_list, get_conn, random_table_suffix
+from sqeleton.abcs.database_types import TimestampTZ
 
 TEST_DATABASES = {
     dbs.MySQL,
@@ -73,6 +73,24 @@ class TestSchema(unittest.TestCase):
         db.query(tbl.drop())
         assert not db.query(q)
 
+    def test_type_mapping(self):
+        name = "tbl_" + random_table_suffix()
+        db = get_conn(self.db_cls)
+        tbl = table(db.parse_table_name(name), schema={
+            "int": int,
+            "float": float,
+            "datetime": datetime,
+            "str": str,
+            "bool": bool,
+        })
+        q = db.dialect.list_tables(db.default_schema, name)
+        assert not db.query(q)
+
+        db.query(tbl.create())
+        self.assertEqual(db.query(q, List[str]), [name])
+
+        db.query(tbl.drop())
+        assert not db.query(q)
 
 @test_each_database
 class TestQueries(unittest.TestCase):
@@ -80,3 +98,65 @@ class TestQueries(unittest.TestCase):
         db = get_conn(self.db_cls)
         res = db.query(current_timestamp(), datetime)
         assert isinstance(res, datetime), (res, type(res))
+
+    def test_correct_timezone(self):
+        name = "tbl_" + random_table_suffix()
+        db = get_conn(self.db_cls)
+        tbl = table(name, schema={
+            "id": int, "created_at": TimestampTZ(9), "updated_at": TimestampTZ(9)
+        })
+
+        db.query(tbl.create())
+
+        tz = pytz.timezone('Europe/Berlin')
+
+        now = datetime.now(tz)
+        if isinstance(db, dbs.Presto):
+            ms = now.microsecond // 1000 * 1000  # Presto max precision is 3
+            now = now.replace(microsecond = ms)
+
+        db.query(table(name).insert_row(1, now, now))
+        db.query(db.dialect.set_timezone_to_utc())
+
+        t = db.table(name).query_schema()
+        t.schema["created_at"] = t.schema["created_at"].replace(precision=t.schema["created_at"].precision)
+
+        tbl = table(name, schema=t.schema)
+
+        results = db.query(tbl.select(NormalizeAsString(tbl[c]) for c in ["created_at", "updated_at"]), List[Tuple])
+
+        created_at = results[0][1]
+        updated_at = results[0][1]
+
+        utc = now.astimezone(pytz.UTC)
+        expected = utc.__format__("%Y-%m-%d %H:%M:%S.%f")
+
+
+        self.assertEqual(created_at, expected)
+        self.assertEqual(updated_at, expected)
+
+        db.query(tbl.drop())
+
+@test_each_database
+class TestThreePartIds(unittest.TestCase):
+    def test_three_part_support(self):
+        if self.db_cls not in [dbs.PostgreSQL, dbs.Redshift, dbs.Snowflake, dbs.DuckDB]:
+            self.skipTest("Limited support for 3 part ids")
+
+        table_name = "tbl_" + random_table_suffix()
+        db = get_conn(self.db_cls)
+        db_res = db.query("SELECT CURRENT_DATABASE()")
+        schema_res = db.query("SELECT CURRENT_SCHEMA()")
+        db_name = db_res.rows[0][0]
+        schema_name = schema_res.rows[0][0]
+
+        table_one_part = table((table_name,), schema={"id": int})
+        table_two_part = table((schema_name, table_name), schema={"id": int})
+        table_three_part = table((db_name, schema_name, table_name), schema={"id": int})
+
+        for part in (table_one_part, table_two_part, table_three_part):
+            db.query(part.create())
+            d = db.query_table_schema(part.path)
+            assert len(d) == 1
+            db.query(part.drop())
+

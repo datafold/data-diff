@@ -440,12 +440,12 @@ from sqeleton.abcs.mixins import AbstractMixin_NormalizeValue, AbstractMixin_Ran
 
 connect = sqeleton.connect.load_mixins(AbstractMixin_NormalizeValue)
 ddb = connect("duckdb://:memory:")
-print(ddb.dialect.normalize_boolean("bool", None) == "bool::INTEGER::VARCHAR")
+print(ddb.dialect.normalize_boolean("bool", None))
 # Outputs:
 #   bool::INTEGER::VARCHAR
 ```
 
-Each database is already aware of the available mixin implementation, because it was defined with the `MIXINS` attribute. We're only using the abstract mixins to select the mixins we want to use.
+Each database is already aware of the available mixin implementations, because it was defined with the `MIXINS` attribute. We're only using the abstract mixins to select the mixins we want to use.
 
 #### List of mixins
 
@@ -462,6 +462,12 @@ List of available abstract mixins:
 - `AbstractMixin_RandomSample`
 
 - `AbstractMixin_TimeTravel` - Only snowflake & bigquery
+
+- `AbstractMixin_OptimizerHints` - Only oracle & mysql
+
+More will be added in the future.
+
+Note that it's still possible to use user-defined mixins that aren't on this list.
 
 #### Unimplemented Mixins
 
