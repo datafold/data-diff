@@ -138,18 +138,6 @@ class JSON(ColType):
     pass
 
 
-class RedShiftSuper(JSON):
-    pass
-
-
-class PostgresqlJSON(JSON):
-    pass
-
-
-class PostgresqlJSONB(JSON):
-    pass
-
-
 @dataclass
 class Integer(NumericType, IKey):
     precision: int = 0
