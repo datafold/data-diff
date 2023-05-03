@@ -7,7 +7,7 @@ from operator import attrgetter
 
 from runtype import dataclass
 
-from data_diff.sqeleton.abcs import ColType_UUID, NumericType, PrecisionType, StringType, Boolean, JSONType
+from data_diff.sqeleton.abcs import ColType_UUID, NumericType, PrecisionType, StringType, Boolean, JSON
 
 from .info_tree import InfoTree
 from .utils import safezip, diffs_are_equiv_jsons
@@ -205,7 +205,7 @@ class HashDiffer(TableDiffer):
         if max_rows < self.bisection_threshold or max_space_size < self.bisection_factor * 2:
             rows1, rows2 = self._threaded_call("get_values", [table1, table2])
             json_cols = {i: colname for i, colname in enumerate(table1.extra_columns)
-                         if isinstance(table1._schema[colname], JSONType)}
+                         if isinstance(table1._schema[colname], JSON)}
             diff = list(diff_sets(rows1, rows2, json_cols))
 
             info_tree.info.set_diff(diff)

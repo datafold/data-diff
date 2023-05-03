@@ -134,19 +134,19 @@ class Text(StringType):
     supported = False
 
 
-class JSONType(ColType):
+class JSON(ColType):
     pass
 
 
-class RedShiftSuper(JSONType):
+class RedShiftSuper(JSON):
     pass
 
 
-class PostgresqlJSON(JSONType):
+class PostgresqlJSON(JSON):
     pass
 
 
-class PostgresqlJSONB(JSONType):
+class PostgresqlJSONB(JSON):
     pass
 
 

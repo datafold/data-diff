@@ -160,7 +160,7 @@ def diffs_are_equiv_jsons(diff: list, json_cols: dict):
         return False, overriden_diff_cols
     match = True
     for i, (col_a, col_b) in enumerate(safezip(diff[0][1][1:], diff[1][1][1:])):  # index 0 is extra_columns first elem
-        # we only attempt to parse columns of JSONType, but we still need to check if non-json columns don't match
+        # we only attempt to parse columns of JSON type, but we still need to check if non-json columns don't match
         match = col_a == col_b
         if not match and (i in json_cols):
             if _jsons_equiv(col_a, col_b):

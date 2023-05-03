@@ -1,5 +1,5 @@
 from abc import ABC, abstractmethod
-from .database_types import TemporalType, FractionalType, ColType_UUID, Boolean, ColType, String_UUID, JSONType
+from .database_types import TemporalType, FractionalType, ColType_UUID, Boolean, ColType, String_UUID, JSON
 from .compiler import Compilable
 
 
@@ -49,7 +49,7 @@ class AbstractMixin_NormalizeValue(AbstractMixin):
             return f"TRIM({value})"
         return self.to_string(value)
 
-    def normalize_json(self, value: str, _coltype: JSONType) -> str:
+    def normalize_json(self, value: str, _coltype: JSON) -> str:
         """Creates an SQL expression, that converts 'value' to its minified json string representation."""
         raise NotImplementedError()
 
@@ -77,7 +77,7 @@ class AbstractMixin_NormalizeValue(AbstractMixin):
             return self.normalize_uuid(value, coltype)
         elif isinstance(coltype, Boolean):
             return self.normalize_boolean(value, coltype)
-        elif isinstance(coltype, JSONType):
+        elif isinstance(coltype, JSON):
             return self.normalize_json(value, coltype)
         return self.to_string(value)
 
