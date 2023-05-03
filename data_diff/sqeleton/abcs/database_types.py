@@ -134,6 +134,8 @@ class Text(StringType):
     supported = False
 
 
+# In majority of DBMSes, it is called JSON/JSONB. Only in Snowflake, it is OBJECT.
+@dataclass
 class JSON(ColType):
     pass
 
