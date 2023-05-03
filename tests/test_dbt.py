@@ -2,6 +2,7 @@ import os
 
 from pathlib import Path
 import yaml
+from data_diff.cloud.datafold_api import TCloudApiOrgMeta
 from data_diff.diff_tables import Algorithm
 from .test_cli import run_datadiff_cli
 
@@ -482,6 +483,7 @@ class TestDbtDiffer(unittest.TestCase):
     @patch("data_diff.dbt.os.environ")
     @patch("data_diff.dbt.DatafoldAPI")
     def test_cloud_diff(self, mock_api, mock_os_environ, mock_print):
+        org_meta = TCloudApiOrgMeta(org_id=1, org_name="", user_id=1)
         expected_api_key = "an_api_key"
         mock_api.create_data_diff.return_value = {"id": 123}
         mock_os_environ.get.return_value = expected_api_key
@@ -493,7 +495,7 @@ class TestDbtDiffer(unittest.TestCase):
         threads = None
         where = "a_string"
         diff_vars = DiffVars(dev_qualified_list, prod_qualified_list, expected_primary_keys, connection, threads, where)
-        _cloud_diff(diff_vars, expected_datasource_id, api=mock_api)
+        _cloud_diff(diff_vars, expected_datasource_id, org_meta=org_meta, api=mock_api)
 
         mock_api.create_data_diff.assert_called_once()
         self.assertEqual(mock_print.call_count, 2)
@@ -516,6 +518,7 @@ class TestDbtDiffer(unittest.TestCase):
     def test_diff_is_cloud(
         self, mock_print, mock_dbt_parser, mock_cloud_diff, mock_local_diff, mock_get_diff_vars, mock_initialize_api
     ):
+        org_meta = TCloudApiOrgMeta(org_id=1, org_name="", user_id=1)
         mock_dbt_parser_inst = Mock()
         mock_model = Mock()
         expected_dbt_vars_dict = {
@@ -523,10 +526,9 @@ class TestDbtDiffer(unittest.TestCase):
             "prod_schema": "prod_schema",
             "datasource_id": 1,
         }
-        host = "a_host"
-        api_key = "a_api_key"
-        api = DatafoldAPI(api_key=api_key, host=host)
-        mock_initialize_api.return_value = api
+        mock_api = Mock()
+        mock_initialize_api.return_value = mock_api
+        mock_api.get_org_meta.return_value = org_meta
         connection = None
         threads = None
         where = "a_string"
@@ -541,7 +543,7 @@ class TestDbtDiffer(unittest.TestCase):
         mock_dbt_parser_inst.set_connection.assert_not_called()
 
         mock_initialize_api.assert_called_once()
-        mock_cloud_diff.assert_called_once_with(expected_diff_vars, 1, api)
+        mock_cloud_diff.assert_called_once_with(expected_diff_vars, 1, mock_api, org_meta)
         mock_local_diff.assert_not_called()
         mock_print.assert_called_once()
 
@@ -555,16 +557,16 @@ class TestDbtDiffer(unittest.TestCase):
     def test_diff_is_cloud_no_ds_id(
         self, _, mock_print, mock_dbt_parser, mock_cloud_diff, mock_local_diff, mock_get_diff_vars, mock_initialize_api
     ):
+        org_meta = TCloudApiOrgMeta(org_id=1, org_name="", user_id=1)
         mock_dbt_parser_inst = Mock()
         mock_model = Mock()
         expected_dbt_vars_dict = {
             "prod_database": "prod_db",
             "prod_schema": "prod_schema",
         }
-        host = "a_host"
-        api_key = "a_api_key"
-        api = DatafoldAPI(api_key=api_key, host=host)
-        mock_initialize_api.return_value = api
+        mock_api = Mock()
+        mock_initialize_api.return_value = mock_api
+        mock_api.get_org_meta.return_value = org_meta
         connection = None
         threads = None
         where = "a_string"
@@ -723,10 +725,8 @@ class TestDbtDiffer(unittest.TestCase):
             "prod_schema": "prod_schema",
             "datasource_id": 1,
         }
-        host = "a_host"
-        api_key = "a_api_key"
-        api = DatafoldAPI(api_key=api_key, host=host)
-        mock_initialize_api.return_value = api
+        mock_api = Mock()
+        mock_initialize_api.return_value = mock_api
 
         mock_dbt_parser_inst.get_models.return_value = [mock_model]
         mock_dbt_parser_inst.get_datadiff_variables.return_value = expected_dbt_vars_dict

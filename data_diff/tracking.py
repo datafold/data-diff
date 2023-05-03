@@ -116,6 +116,9 @@ def create_end_event_json(
     error: Optional[str],
     diff_id: Optional[int] = None,
     is_cloud: bool = False,
+    org_id: Optional[int] = None,
+    org_name: Optional[str] = None,
+    user_id: Optional[int] = None,
 ):
     return {
         "event": "os_diff_run_end",
@@ -138,6 +141,9 @@ def create_end_event_json(
             "dbt_user_id": dbt_user_id,
             "dbt_version": dbt_version,
             "dbt_project_id": dbt_project_id,
+            "org_id": org_id,
+            "org_name": org_name,
+            "user_id": user_id,
         },
     }
 
