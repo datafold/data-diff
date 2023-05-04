@@ -182,8 +182,11 @@ class Connect:
                 kw["user"] = dsn.user
                 kw["password"] = dsn.password
             else:
-                kw["host"] = dsn.host
-                kw["port"] = dsn.port
+                if scheme == "oracle":
+                    kw["host"] = dsn.hostloc
+                else:
+                    kw["host"] = dsn.host
+                    kw["port"] = dsn.port
                 kw["user"] = dsn.user
                 if dsn.password:
                     kw["password"] = dsn.password
