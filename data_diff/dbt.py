@@ -161,8 +161,8 @@ def _get_diff_vars(
         prod_qualified_list = [x.upper() for x in [prod_database, prod_schema, model.alias] if x]
         primary_keys = [x.upper() for x in primary_keys]
     else:
-        dev_qualified_list = list(filter(None, [dev_database, dev_schema, model.alias]))
-        prod_qualified_list = list(filter(None, [prod_database, prod_schema, model.alias]))
+        dev_qualified_list = [x for x in [dev_database, dev_schema, model.alias] if x]
+        prod_qualified_list = [x for x in [prod_database, prod_schema, model.alias] if x]
 
     where_filter = None
     if model.meta:
