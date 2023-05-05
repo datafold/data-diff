@@ -628,9 +628,10 @@ def _create_table_with_indexes(conn, table_path, type_):
     else:
         conn.query(tbl.create())
 
-    if conn.dialect.SUPPORTS_INDEXES:
-        (index_id,) = table_path
+    (index_id,) = table_path
+    if conn.dialect.SUPPORTS_INDEXES and type_ not in ('json', 'jsonb', 'array', 'struct'):
         conn.query(f"CREATE INDEX xa_{index_id} ON {table_name} ({quote('id')}, {quote('col')})")
+    if conn.dialect.SUPPORTS_INDEXES:
         conn.query(f"CREATE INDEX xb_{index_id} ON {table_name} ({quote('id')})")
 
     conn.query(commit)
