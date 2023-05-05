@@ -1,5 +1,10 @@
-from typing import List, Union
+import re
+from typing import Any, List, Union
 from ..abcs.database_types import (
+    ColType,
+    Array,
+    JSON,
+    Struct,
     Timestamp,
     Datetime,
     Integer,
@@ -10,6 +15,7 @@ from ..abcs.database_types import (
     FractionalType,
     TemporalType,
     Boolean,
+    UnknownColType,
 )
 from ..abcs.mixins import (
     AbstractMixin_MD5,
@@ -36,6 +42,7 @@ class Mixin_MD5(AbstractMixin_MD5):
 
 
 class Mixin_NormalizeValue(AbstractMixin_NormalizeValue):
+
     def normalize_timestamp(self, value: str, coltype: TemporalType) -> str:
         if coltype.rounds:
             timestamp = f"timestamp_micros(cast(round(unix_micros(cast({value} as timestamp))/1000000, {coltype.precision})*1000000 as int))"
@@ -56,6 +63,27 @@ class Mixin_NormalizeValue(AbstractMixin_NormalizeValue):
 
     def normalize_boolean(self, value: str, _coltype: Boolean) -> str:
         return self.to_string(f"cast({value} as int)")
+
+    def normalize_json(self, value: str, _coltype: JSON) -> str:
+        # BigQuery is unable to compare arrays & structs with ==/!=/distinct from, e.g.:
+        #   Got error: 400 Grouping is not defined for arguments of type ARRAY<INT64> at …
+        # So we do the best effort and compare it as strings, hoping that the JSON forms
+        # match on both sides: i.e. have properly ordered keys, same spacing, same quotes, etc.
+        return f"to_json_string({value})"
+
+    def normalize_array(self, value: str, _coltype: Array) -> str:
+        # BigQuery is unable to compare arrays & structs with ==/!=/distinct from, e.g.:
+        #   Got error: 400 Grouping is not defined for arguments of type ARRAY<INT64> at …
+        # So we do the best effort and compare it as strings, hoping that the JSON forms
+        # match on both sides: i.e. have properly ordered keys, same spacing, same quotes, etc.
+        return f"to_json_string({value})"
+
+    def normalize_struct(self, value: str, _coltype: Struct) -> str:
+        # BigQuery is unable to compare arrays & structs with ==/!=/distinct from, e.g.:
+        #   Got error: 400 Grouping is not defined for arguments of type ARRAY<INT64> at …
+        # So we do the best effort and compare it as strings, hoping that the JSON forms
+        # match on both sides: i.e. have properly ordered keys, same spacing, same quotes, etc.
+        return f"to_json_string({value})"
 
 
 class Mixin_Schema(AbstractMixin_Schema):
@@ -112,11 +140,12 @@ class Dialect(BaseDialect, Mixin_Schema):
         "BIGNUMERIC": Decimal,
         "FLOAT64": Float,
         "FLOAT32": Float,
-        # Text
         "STRING": Text,
-        # Boolean
         "BOOL": Boolean,
+        "JSON": JSON,
     }
+    TYPE_ARRAY_RE = re.compile(r'ARRAY<(.+)>')
+    TYPE_STRUCT_RE = re.compile(r'STRUCT<(.+)>')
     MIXINS = {Mixin_Schema, Mixin_MD5, Mixin_NormalizeValue, Mixin_TimeTravel, Mixin_RandomSample}
 
     def random(self) -> str:
@@ -133,6 +162,40 @@ class Dialect(BaseDialect, Mixin_Schema):
             return {str: "STRING", float: "FLOAT64"}[t]
         except KeyError:
             return super().type_repr(t)
+
+    def parse_type(
+        self,
+        table_path: DbPath,
+        col_name: str,
+        type_repr: str,
+        *args: Any,  # pass-through args
+        **kwargs: Any,  # pass-through args
+    ) -> ColType:
+        col_type = super().parse_type(table_path, col_name, type_repr, *args, **kwargs)
+        if isinstance(col_type, UnknownColType):
+
+            m = self.TYPE_ARRAY_RE.fullmatch(type_repr)
+            if m:
+                item_type = self.parse_type(table_path, col_name, m.group(1), *args, **kwargs)
+                col_type = Array(item_type=item_type)
+
+            # We currently ignore structs' structure, but later can parse it too. Examples:
+            # - STRUCT<INT64, STRING(10)> (unnamed)
+            # - STRUCT<foo INT64, bar STRING(10)> (named)
+            # - STRUCT<foo INT64, bar ARRAY<INT64>> (with complex fields)
+            # - STRUCT<foo INT64, bar STRUCT<a INT64, b INT64>> (nested)
+            m = self.TYPE_STRUCT_RE.fullmatch(type_repr)
+            if m:
+                col_type = Struct()
+
+        return col_type
+
+    def to_comparable(self, value: str, coltype: ColType) -> str:
+        """Ensure that the expression is comparable in ``IS DISTINCT FROM``."""
+        if isinstance(coltype, (JSON, Array, Struct)):
+            return self.normalize_value_by_type(value, coltype)
+        else:
+            return super().to_comparable(value, coltype)
 
     def set_timezone_to_utc(self) -> str:
         raise NotImplementedError()

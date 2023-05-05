@@ -13,6 +13,7 @@ DbKey = Union[int, str, bytes, ArithUUID, ArithAlphanumeric]
 DbTime = datetime
 
 
+@dataclass
 class ColType:
     supported = True
 
@@ -141,6 +142,21 @@ class JSON(ColType):
 
 
 @dataclass
+class Array(ColType):
+    item_type: ColType
+
+
+# Unlike JSON, structs are not free-form and have a very specific set of fields and their types.
+# We do not parse & use those fields now, but we can do this later.
+# For example, in BigQuery:
+# - https://cloud.google.com/bigquery/docs/reference/standard-sql/data-types#struct_type
+# - https://cloud.google.com/bigquery/docs/reference/standard-sql/lexical#struct_literals
+@dataclass
+class Struct(ColType):
+    pass
+
+
+@dataclass
 class Integer(NumericType, IKey):
     precision: int = 0
     python_type: type = int
@@ -226,6 +242,10 @@ class AbstractDialect(ABC):
         numeric_scale: int = None,
     ) -> ColType:
         "Parse type info as returned by the database"
+
+    @abstractmethod
+    def to_comparable(self, value: str, coltype: ColType) -> str:
+        """Ensure that the expression is comparable in ``IS DISTINCT FROM``."""
 
 
 from typing import TypeVar, Generic
