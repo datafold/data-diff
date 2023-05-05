@@ -89,7 +89,7 @@ class DbtParser:
     def get_models(self, dbt_selection: Optional[str] = None):
         dbt_version = parse_version(self.dbt_version)
         if dbt_selection:
-            if dbt_version.major == 1 and dbt_version.minor >= 5:
+            if (dbt_version.major, dbt_version.minor) >= (1, 5):
                 if self.dbt_runner:
                     return self.get_dbt_selection_models(dbt_selection)
                 # edge case if running data-diff from a separate env than dbt (likely local development)
