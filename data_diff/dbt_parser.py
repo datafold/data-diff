@@ -198,7 +198,7 @@ class DbtParser:
             profiles, dbt_profile_var, f"No profile '{dbt_profile_var}' found in '{profiles_path}'."
         )
         # values can contain env_vars
-        rendered_profile = self.ProfileRenderer({'flags':{'DBT_MACRO_DEBUGGING': 0}}).render_data(profile)
+        rendered_profile = self.ProfileRenderer().render_data(profile)
         profile_target = get_from_dict_with_raise(
             rendered_profile, "target", f"No target found in profile '{dbt_profile_var}' in '{profiles_path}'."
         )
