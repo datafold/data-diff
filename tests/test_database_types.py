@@ -604,8 +604,15 @@ def _insert_to_table(conn, table_path, values, coltype):
     elif isinstance(conn, db.BigQuery) and coltype == "datetime":
         values = [(i, Code(f"cast(timestamp '{sample}' as datetime)")) for i, sample in values]
 
-    if isinstance(conn, db.Redshift) and coltype == "json":
-        values = [(i, Code(f"JSON_PARSE('{sample}')")) for i, sample in values]
+    elif isinstance(conn, db.Redshift) and coltype in ("json", "jsonb"):
+        values = [(i, Code(f"JSON_PARSE({sample})")) for i, sample in values]
+    elif isinstance(conn, db.PostgreSQL) and coltype in ("json", "jsonb"):
+        values = [(i, Code(
+            "'{}'".format(
+                (json.dumps(sample) if isinstance(sample, (dict, list)) else sample)
+                .replace('\'', '\'\'')
+            )
+        )) for i, sample in values]
 
     insert_rows_in_batches(conn, tbl, values, columns=["id", "col"])
     conn.query(commit)
