@@ -526,16 +526,17 @@ type_pairs = []
 for source_db, source_type_categories, target_db, target_type_categories in get_test_db_pairs():
     for type_category, source_types in source_type_categories.items():  # int, datetime, ..
         for source_type in source_types:
-            for target_type in target_type_categories[type_category]:
-                type_pairs.append(
-                    (
-                        source_db,
-                        target_db,
-                        source_type,
-                        target_type,
-                        type_category,
+            if type_category in target_type_categories:  # only cross-compatible types
+                for target_type in target_type_categories[type_category]:
+                    type_pairs.append(
+                        (
+                            source_db,
+                            target_db,
+                            source_type,
+                            target_type,
+                            type_category,
+                        )
                     )
-                )
 
 
 def sanitize(name):
