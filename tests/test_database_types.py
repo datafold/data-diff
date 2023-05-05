@@ -74,6 +74,10 @@ DATABASE_TYPES = {
         "boolean": [
             "boolean",
         ],
+        "json": [
+            "json",
+            "jsonb"
+        ]
     },
     db.MySQL: {
         # https://dev.mysql.com/doc/refman/8.0/en/integer-types.html
@@ -199,6 +203,9 @@ DATABASE_TYPES = {
         "boolean": [
             "boolean",
         ],
+        "json": [
+            "super",
+        ]
     },
     db.Oracle: {
         "int": [
@@ -469,12 +476,28 @@ class UUID_Faker:
         return (uuid.uuid1(i) for i in range(self.max))
 
 
+class JsonFaker:
+    MANUAL_FAKES = [
+        '{"keyText": "text", "keyInt": 3, "keyFloat": 5.4445, "keyBoolean": true}',
+    ]
+
+    def __init__(self, max):
+        self.max = max
+
+    def __iter__(self):
+        return iter(self.MANUAL_FAKES[: self.max])
+
+    def __len__(self):
+        return min(self.max, len(self.MANUAL_FAKES))
+
+
 TYPE_SAMPLES = {
     "int": IntFaker(N_SAMPLES),
     "datetime": DateTimeFaker(N_SAMPLES),
     "float": FloatFaker(N_SAMPLES),
     "uuid": UUID_Faker(N_SAMPLES),
     "boolean": BooleanFaker(N_SAMPLES),
+    "json": JsonFaker(N_SAMPLES)
 }
 
 
@@ -546,7 +569,7 @@ def expand_params(testcase_func, param_num, param):
     return name
 
 
-def _insert_to_table(conn, table_path, values, type):
+def _insert_to_table(conn, table_path, values, coltype):
     tbl = table(table_path)
 
     current_n_rows = conn.query(tbl.count(), int)
@@ -555,30 +578,33 @@ def _insert_to_table(conn, table_path, values, type):
         return
     elif current_n_rows > 0:
         conn.query(drop_table(table_name))
-        _create_table_with_indexes(conn, table_path, type)
+        _create_table_with_indexes(conn, table_path, coltype)
 
     # if BENCHMARK and N_SAMPLES > 10_000:
     #     description = f"{conn.name}: {table}"
     #     values = rich.progress.track(values, total=N_SAMPLES, description=description)
 
-    if type == "boolean":
+    if coltype == "boolean":
         values = [(i, bool(sample)) for i, sample in values]
-    elif re.search(r"(time zone|tz)", type):
+    elif re.search(r"(time zone|tz)", coltype):
         values = [(i, sample.replace(tzinfo=timezone.utc)) for i, sample in values]
 
     if isinstance(conn, db.Clickhouse):
-        if type.startswith("DateTime64"):
+        if coltype.startswith("DateTime64"):
             values = [(i, f"{sample.replace(tzinfo=None)}") for i, sample in values]
 
-        elif type == "DateTime":
+        elif coltype == "DateTime":
             # Clickhouse's DateTime does not allow to store micro/milli/nano seconds
             values = [(i, str(sample)[:19]) for i, sample in values]
 
-        elif type.startswith("Decimal("):
-            precision = int(type[8:].rstrip(")").split(",")[1])
+        elif coltype.startswith("Decimal("):
+            precision = int(coltype[8:].rstrip(")").split(",")[1])
             values = [(i, round(sample, precision)) for i, sample in values]
-    elif isinstance(conn, db.BigQuery) and type == "datetime":
+    elif isinstance(conn, db.BigQuery) and coltype == "datetime":
         values = [(i, Code(f"cast(timestamp '{sample}' as datetime)")) for i, sample in values]
+
+    if isinstance(conn, db.Redshift) and coltype == "json":
+        values = [(i, Code(f"JSON_PARSE('{sample}')")) for i, sample in values]
 
     insert_rows_in_batches(conn, tbl, values, columns=["id", "col"])
     conn.query(commit)
