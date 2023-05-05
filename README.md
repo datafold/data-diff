@@ -4,133 +4,75 @@
 
 # **data-diff**
 
+<h2 align="center">
+Develop dbt models faster by testing as you code.
+</h2>
+<h4 align="center">
+See how every change to dbt code affects the data produced in the modified model and downstream.
+</h4>
+<br>
+
 ## What is `data-diff`?
-data-diff is a **free, open-source tool** that enables data professionals to detect differences in values between any two tables.
 
-## Documentation
+data-diff is an open source package that you can use to see the impact of your dbt code changes on your dbt models as you code.
 
-[**🗎 Documentation**](https://docs.datafold.com/guides/os_data_diff) - our detailed documentation has everything you need to start diffing.
+<div align="center">
 
-### Databases we support
+![development_testing_gif](https://user-images.githubusercontent.com/1799931/236354286-d1d044cf-2168-4128-8a21-8c8ca7fd494c.gif)
 
-- PostgreSQL >=10
-- MySQL
-- Snowflake
-- BigQuery
-- Redshift
-- Oracle
-- Presto
-- Databricks
-- Trino
-- Clickhouse
-- Vertica
-- DuckDB >=0.6
-- SQLite (coming soon)
+</div>
 
-For their corresponding connection strings, check out our [detailed table](https://github.com/datafold/data-diff/blob/master/docs/supported-databases.md).
+<br>
 
-#### Looking for a database not on the list?
-If a database is not on the list, we'd still love to support it. [Please open an issue](https://github.com/datafold/data-diff/issues) to discuss it, or vote on existing requests to push them up our todo list.
+## Getting Started
 
-## Get started
-
-### Installation
-
-#### First, install `data-diff` using `pip`.
-
+**Install `data-diff`**
 ```
 pip install data-diff
 ```
 
-#### Then, install one or more driver(s) specific to the database(s) you want to connect to.
-
-- `pip install 'data-diff[mysql]'`
-
-- `pip install 'data-diff[postgresql]'`
-
-- `pip install 'data-diff[snowflake]'`
-
-- `pip install 'data-diff[presto]'`
-
-- `pip install 'data-diff[oracle]'`
-
-- `pip install 'data-diff[trino]'`
-
-- `pip install 'data-diff[clickhouse]'`
-
-- `pip install 'data-diff[vertica]'`
-
-- For BigQuery, see: https://pypi.org/project/google-cloud-bigquery/
-
-_Some drivers have dependencies that cannot be installed using `pip` and still need to be installed manually._
-
-### Run your first diff
-
-Once you've installed `data-diff`, you can run it from the command line.
-
+**Update a few lines in your `dbt_project.yml`**
 ```
-data-diff DB1_URI TABLE1_NAME DB2_URI TABLE2_NAME [OPTIONS]
+#dbt_project.yml
+vars:
+  data_diff:
+    prod_database: my_database
+    prod_schema: my_default_schema
 ```
 
-Be sure to read [the docs](https://docs.datafold.com/reference/open_source/cli) for detailed instructions how to build one of these commands depending on your database setup.
-
-#### Code Example: Diff Tables Between Databases
-Here's an example command for your copy/pasting, taken from the screenshot above when we diffed data between Snowflake and Postgres.
+**Run your first data diff!**
 
 ```
-data-diff \
-  postgresql://<username>:'<password>'@localhost:5432/<database> \
-  <table> \
-  "snowflake://<username>:<password>@<password>/<DATABASE>/<SCHEMA>?warehouse=<WAREHOUSE>&role=<ROLE>" \
-  <TABLE> \
-  -k activity_id \
-  -c activity \
-  -w "event_timestamp < '2022-10-10'"
+dbt run && data-diff --dbt
 ```
 
-#### Code Example: Diff Tables Within a Database
+We recommend you get started by walking through [our simple setup instructions](https://docs.datafold.com/development_testing/open_source) which contain examples and details.
 
-```
-data-diff \
-  "snowflake://<username>:<password>@<password>/<DATABASE>/<SCHEMA_1>?warehouse=<WAREHOUSE>&role=<ROLE>" <TABLE_1> \
-  <SCHEMA_2>.<TABLE_2> \
-  -k org_id \
-  -c created_at -c is_internal \
-  -w "org_id != 1 and org_id < 2000" \
-  -m test_results_%t \
-  --materialize-all-rows \
-  --table-write-limit 10000
-```
+Please reach out on the dbt Slack in [#tools-datafold](https://getdbt.slack.com/archives/C03D25A92UU) if you have any trouble whatsoever getting started!
 
-In both code examples, I've used `<>` carrots to represent values that **should be replaced with your values** in the database connection strings. For the flags (`-k`, `-c`, etc.), I opted for "real" values (`org_id`, `is_internal`) to give you a more realistic view of what your command will look like.
+<br><br>
 
-### We're here to help!
+### Diffing between databases
 
-We're here to help! Please post any questions in [GitHub Discussions](https://github.com/datafold/data-diff/discussions).
+Check out our [documentation](https://github.com/datafold/data-diff/blob/master/docs/supported-databases.md) if you're looking to compare data across databases (for example, between Postgres and Snowflake).
 
-## How to Use
+<br>
 
-* [Examples with dbt, joindiff, and hashdiff](https://docs.datafold.com/reference/open_source/cli#examples)
-* [Examples with Python](https://data-diff.readthedocs.io/en/latest/python-api.html)
-* [How to use with TOML configuration file](https://docs.datafold.com/reference/open_source/cli#toml-config-file)
+## Contributors
 
-## How to Contribute
-* Feel free to open an issue or contribute to the project by working on an existing issue.
-* Please read the [contributing guidelines](https://github.com/datafold/data-diff/blob/master/CONTRIBUTING.md) to get started.
-* To add a new database driver, check out [docs](https://github.com/datafold/data-diff/blob/master/docs/new-database-driver-guide.rst).
-
-Big thanks to everyone who contributed so far:
+We thank everyone who contributed so far!
 
 <a href="https://github.com/datafold/data-diff/graphs/contributors">
   <img src="https://contributors-img.web.app/image?repo=datafold/data-diff" />
 </a>
 
-## Technical Explanation
-
-Check out this [technical explanation](https://github.com/datafold/data-diff/blob/master/docs/technical-explanation.md) of how data-diff works.
+<br>
 
 ## Analytics
+
 * [Usage Analytics & Data Privacy](https://github.com/datafold/data-diff/blob/master/docs/usage_analytics.md)
+
+<br>
 
 ## License
 
