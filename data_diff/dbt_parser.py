@@ -1,3 +1,4 @@
+from argparse import Namespace
 from collections import defaultdict
 import json
 import os
@@ -22,6 +23,13 @@ def import_dbt_dependencies():
         raise RuntimeError("Could not import 'dbt' package. You can install it using: pip install 'data-diff[dbt]'.")
 
     # dbt 1.5+ specific stuff to power selection of models
+    try:
+        # ProfileRenderer.render_data() fails without instantiating global flag MACRO_DEBUGGING in dbt-core 1.5
+        from dbt.flags import set_flags
+        set_flags(Namespace(MACRO_DEBUGGING=False))
+    except:
+        pass
+
     try:
         from dbt.cli.main import dbtRunner
     except ImportError:
@@ -190,7 +198,7 @@ class DbtParser:
             profiles, dbt_profile_var, f"No profile '{dbt_profile_var}' found in '{profiles_path}'."
         )
         # values can contain env_vars
-        rendered_profile = self.ProfileRenderer().render_data(profile)
+        rendered_profile = self.ProfileRenderer({'flags':{'DBT_MACRO_DEBUGGING': 0}}).render_data(profile)
         profile_target = get_from_dict_with_raise(
             rendered_profile, "target", f"No target found in profile '{dbt_profile_var}' in '{profiles_path}'."
         )
