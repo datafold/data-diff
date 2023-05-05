@@ -1,5 +1,6 @@
 from ..abcs.database_types import (
     DbPath,
+    JSON,
     Timestamp,
     TimestampTZ,
     Float,
@@ -11,8 +12,6 @@ from ..abcs.database_types import (
     FractionalType,
     Boolean,
     Date,
-    PostgresqlJSON,
-    PostgresqlJSONB
 )
 from ..abcs.mixins import AbstractMixin_MD5, AbstractMixin_NormalizeValue
 from .base import BaseDialect, ThreadedDatabase, import_helper, ConnectError, Mixin_Schema
@@ -51,7 +50,7 @@ class Mixin_NormalizeValue(AbstractMixin_NormalizeValue):
     def normalize_boolean(self, value: str, _coltype: Boolean) -> str:
         return self.to_string(f"{value}::int")
 
-    def normalize_json(self, value: str, _coltype: PostgresqlJSON) -> str:
+    def normalize_json(self, value: str, _coltype: JSON) -> str:
         return f"{value}::text"
 
 
@@ -81,12 +80,10 @@ class PostgresqlDialect(BaseDialect, Mixin_Schema):
         "character varying": Text,
         "varchar": Text,
         "text": Text,
-        # JSON
-        "json": PostgresqlJSON,
-        "jsonb": PostgresqlJSONB,
-        # UUID
+
+        "json": JSON,
+        "jsonb": JSON,
         "uuid": Native_UUID,
-        # Boolean
         "boolean": Boolean,
     }
 

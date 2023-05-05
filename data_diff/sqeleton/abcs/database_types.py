@@ -134,19 +134,9 @@ class Text(StringType):
     supported = False
 
 
-class JSONType(ColType):
-    pass
-
-
-class RedShiftSuper(JSONType):
-    pass
-
-
-class PostgresqlJSON(JSONType):
-    pass
-
-
-class PostgresqlJSONB(JSONType):
+# In majority of DBMSes, it is called JSON/JSONB. Only in Snowflake, it is OBJECT.
+@dataclass
+class JSON(ColType):
     pass
 
 
