@@ -126,18 +126,17 @@ class DbtParser:
                 self.project_dir,
             ]
         )
-        if results.success and results.result:
+        if results.exception:
+            raise results.exception
+        elif results.success and results.result:
             model_list = [json.loads(model)["unique_id"] for model in results.result]
             models = [self.manifest_obj.nodes.get(x) for x in model_list]
             return models
         elif not results.result:
             raise Exception(f"No dbt models found for `--select {dbt_selection}`")
         else:
-            if results.exception:
-                raise results.exception
-            else:
-                logger.debug(str(results))
-                raise Exception("Encountered an error while finding `--select` models")
+            logger.debug(str(results))
+            raise Exception("Encountered an unexpected error while finding `--select` models")
 
     def get_run_results_models(self):
         with open(self.project_dir / RUN_RESULTS_PATH) as run_results:
