@@ -90,6 +90,10 @@ pygments_style = "sphinx"
 # If true, `todo` and `todoList` produce output, else they produce nothing.
 todo_include_todos = False
 
+autodoc_default_options = {
+    # 'special-members': '__init__',
+    'exclude-members': 'json,aslist,astuple,replace',
+}
 
 # -- Options for HTML output ----------------------------------------------
 
@@ -153,7 +157,7 @@ latex_elements = {
 # (source start file, target name, title,
 #  author, documentclass [howto, manual, or own class]).
 latex_documents = [
-    (master_doc, "Datadiff.tex", "Datadiff Documentation", "Erez Shinan", "manual"),
+    (master_doc, "Datadiff.tex", "Datadiff Documentation", author, "manual"),
 ]
 
 

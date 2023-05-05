@@ -3,12 +3,12 @@ from typing import Callable
 import uuid
 import unittest
 
-from sqeleton.queries import table, this, commit
-from sqeleton.utils import ArithAlphanumeric, numberToAlphanum
+from data_diff.sqeleton.queries import table, this, commit, code
+from data_diff.sqeleton.utils import ArithAlphanumeric, numberToAlphanum
 
 from data_diff.hashdiff_tables import HashDiffer
 from data_diff.joindiff_tables import JoinDiffer
-from data_diff.table_segment import TableSegment, split_space
+from data_diff.table_segment import TableSegment, split_space, Vector
 from data_diff import databases as db
 
 from .common import str_to_checksum, test_each_database_in_list, DiffTestCase, table_segment
@@ -425,7 +425,6 @@ class TestAlphanumericKeys(DiffTestCase):
         self.b = table_segment(self.connection, self.table_dst_path, "id", "text_comment", case_sensitive=False)
 
     def test_alphanum_keys(self):
-
         differ = HashDiffer(bisection_factor=2, bisection_threshold=3)
         diff = list(differ.diff_tables(self.a, self.b))
         self.assertEqual(diff, [("-", (str(self.new_alphanum), "This one is different"))])
@@ -507,7 +506,7 @@ class TestTableSegment(DiffTestCase):
         late = datetime(2022, 1, 1, 0, 0)
         self.assertRaises(ValueError, self.table.replace, min_update=late, max_update=early)
 
-        self.assertRaises(ValueError, self.table.replace, min_key=10, max_key=0)
+        self.assertRaises(ValueError, self.table.replace, min_key=Vector((10,)), max_key=Vector((0,)))
 
     def test_case_awareness(self):
         src_table = table(self.table_src_path, schema={"id": int, "userid": int, "timestamp": datetime})
@@ -521,7 +520,7 @@ class TestTableSegment(DiffTestCase):
         )
 
         res = tuple(self.table.replace(key_columns=("Id",), case_sensitive=False).with_schema().query_key_range())
-        assert res == ("1", "2")
+        self.assertEqual(res, (("1",), ("2",)))
 
         self.assertRaises(
             KeyError, self.table.replace(key_columns=("Id",), case_sensitive=True).with_schema().query_key_range
@@ -768,3 +767,143 @@ class TestDuplicateTables(DiffTestCase):
         differ = HashDiffer(bisection_factor=2, bisection_threshold=4)
         diff = list(differ.diff_tables(self.a, self.b))
         self.assertEqual(diff, self.diffs)
+
+
+@test_each_database
+class TestCompoundKeySimple1(DiffTestCase):
+    src_schema = {"id": int, "id2": int}
+    dst_schema = {"id": int, "id2": int}
+
+    def test_simple1(self):
+        N = 1000
+        K = N + 1
+        V1 = N + 1
+        V2 = N * 1000 + 2
+
+        diffs = [(i, i + N) for i in range(N)]
+        self.connection.query(
+            [
+                self.src_table.insert_rows(diffs + [(K, V1)]),
+                self.dst_table.insert_rows(diffs + [(K, V2)]),
+                commit,
+            ]
+        )
+
+        expected = {("-", (str(K), str(V1))), ("+", (str(K), str(V2)))}
+        differ = HashDiffer()
+
+        a = TableSegment(self.connection, self.src_table.path, ("id",), extra_columns=("id2",))
+        b = TableSegment(self.connection, self.dst_table.path, ("id",), extra_columns=("id2",))
+        diff = set(differ.diff_tables(a, b))
+        self.assertEqual(diff, expected)
+
+        aa = TableSegment(self.connection, self.src_table.path, ("id", "id2"))
+        bb = TableSegment(self.connection, self.dst_table.path, ("id", "id2"))
+        diff = set(differ.diff_tables(aa, bb))
+        self.assertEqual(diff, expected)
+
+
+@test_each_database
+class TestCompoundKeySimple2(DiffTestCase):
+    src_schema = {"id": int, "id2": int}
+    dst_schema = {"id": int, "id2": int}
+
+    def test_simple2(self):
+        N = 1000
+        K = N + 1
+        V1 = N + 1
+        V2 = N * 1000 + 2
+
+        diffs = [(i, i + N) for i in range(N)]
+        self.connection.query(
+            [
+                self.src_table.insert_rows(diffs + [(K, V1)]),
+                self.dst_table.insert_rows(diffs + [(0, V2)]),
+                commit,
+            ]
+        )
+
+        expected = {("-", (str(K), str(V1))), ("+", (str(0), str(V2)))}
+        differ = HashDiffer()
+
+        a = TableSegment(self.connection, self.src_table.path, ("id",), extra_columns=("id2",))
+        b = TableSegment(self.connection, self.dst_table.path, ("id",), extra_columns=("id2",))
+        diff = set(differ.diff_tables(a, b))
+        self.assertEqual(diff, expected)
+
+        aa = TableSegment(self.connection, self.src_table.path, ("id", "id2"))
+        bb = TableSegment(self.connection, self.dst_table.path, ("id", "id2"))
+        diff = set(differ.diff_tables(aa, bb))
+        self.assertEqual(diff, expected)
+
+
+@test_each_database
+class TestCompoundKeySimple3(DiffTestCase):
+    src_schema = {"id": int, "id2": int}
+    dst_schema = {"id": int, "id2": int}
+
+    def test_negative_keys(self):
+        N = 1000
+        K = -N + 1
+        V1 = N + 1
+        V2 = -N * 1000 + 2
+
+        diffs = [(i, i + N) for i in range(N)]
+        self.connection.query(
+            [
+                self.src_table.insert_rows(diffs + [(K, V1)]),
+                self.dst_table.insert_rows(diffs + [(K, V2)]),
+                commit,
+            ]
+        )
+
+        expected = {("-", (str(K), str(V1))), ("+", (str(K), str(V2)))}
+        differ = HashDiffer()
+
+        a = TableSegment(self.connection, self.src_table.path, ("id",), extra_columns=("id2",))
+        b = TableSegment(self.connection, self.dst_table.path, ("id",), extra_columns=("id2",))
+        diff = set(differ.diff_tables(a, b))
+        self.assertEqual(diff, expected)
+
+        aa = TableSegment(self.connection, self.src_table.path, ("id", "id2"))
+        bb = TableSegment(self.connection, self.dst_table.path, ("id", "id2"))
+        diff = set(differ.diff_tables(aa, bb))
+        self.assertEqual(diff, expected)
+
+
+@test_each_database
+class TestCompoundKeyAlphanum(DiffTestCase):
+    src_schema = {"id": str, "id2": int, "comment": str}
+    dst_schema = {"id": str, "id2": int, "comment": str}
+
+    def setUp(self):
+        super().setUp()
+
+        rows = [(uuid.uuid1(i), i, str(i)) for i in range(100)]
+        rows2 = list(rows)
+        x = rows2[9]
+        rows2[9] = (x[0], 9000, x[2])
+        self.connection.query(
+            [
+                self.src_table.insert_rows(rows),
+                self.dst_table.insert_rows(rows2),
+                commit,
+            ]
+        )
+
+    def test_compound_key(self):
+        a = TableSegment(self.connection, self.src_table.path, ("id",), extra_columns=("id2", "comment"))
+        b = TableSegment(self.connection, self.dst_table.path, ("id",), extra_columns=("id2", "comment"))
+
+        differ = HashDiffer()
+        diff = list(differ.diff_tables(a, b))
+        uuid = diff[0][1][0]
+        self.assertEqual(diff, [("-", (uuid, "9", "9")), ("+", (uuid, "9000", "9"))])
+
+        aa = TableSegment(self.connection, self.src_table.path, ("id", "id2"), "comment")
+        bb = TableSegment(self.connection, self.dst_table.path, ("id", "id2"), "comment")
+        diff = list(differ.diff_tables(aa, bb))
+        uuid = diff[0][1][0]
+        self.assertEqual(diff, [("-", (uuid, "9", "9")), ("+", (uuid, "9000", "9"))])
+
+        self.assertRaises(ValueError, list, differ.diff_tables(aa, a))

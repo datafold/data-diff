@@ -57,6 +57,26 @@ def set_entrypoint_name(s):
     entrypoint_name = s
 
 
+dbt_user_id = None
+dbt_version = None
+dbt_project_id = None
+
+
+def set_dbt_user_id(s):
+    global dbt_user_id
+    dbt_user_id = s
+
+
+def set_dbt_version(s):
+    global dbt_version
+    dbt_version = s
+
+
+def set_dbt_project_id(s):
+    global dbt_project_id
+    dbt_project_id = s
+
+
 def get_anonymous_id():
     global g_anonymous_id
     if g_anonymous_id is None:
@@ -78,6 +98,9 @@ def create_start_event_json(diff_options: Dict[str, Any]):
             "diff_options": diff_options,
             "data_diff_version:": __version__,
             "entrypoint_name": entrypoint_name,
+            "dbt_user_id": dbt_user_id,
+            "dbt_version": dbt_version,
+            "dbt_project_id": dbt_project_id,
         },
     }
 
@@ -85,12 +108,14 @@ def create_start_event_json(diff_options: Dict[str, Any]):
 def create_end_event_json(
     is_success: bool,
     runtime_seconds: float,
-    db1: str,
-    db2: str,
+    data_source_1_type: str,
+    data_source_2_type: str,
     table1_count: int,
     table2_count: int,
     diff_count: int,
     error: Optional[str],
+    diff_id: Optional[int] = None,
+    is_cloud: bool = False,
 ):
     return {
         "event": "os_diff_run_end",
@@ -100,14 +125,19 @@ def create_end_event_json(
             "time": time(),
             "is_success": is_success,
             "runtime_seconds": runtime_seconds,
-            "data_source_1_type": db1,
-            "data_source_2_type": db2,
+            "data_source_1_type": data_source_1_type,
+            "data_source_2_type": data_source_2_type,
             "table_1_rows_cnt": table1_count,
             "table_2_rows_cnt": table2_count,
             "diff_rows_cnt": diff_count,
             "error_message": error,
             "data_diff_version:": __version__,
             "entrypoint_name": entrypoint_name,
+            "is_cloud": is_cloud,
+            "diff_id": diff_id,
+            "dbt_user_id": dbt_user_id,
+            "dbt_version": dbt_version,
+            "dbt_project_id": dbt_project_id,
         },
     }
 

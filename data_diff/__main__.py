@@ -10,8 +10,8 @@ from typing import Optional
 import rich
 import click
 
-from sqeleton.schema import create_schema
-from sqeleton.queries.api import current_timestamp
+from data_diff.sqeleton.schema import create_schema
+from data_diff.sqeleton.queries.api import current_timestamp
 
 from .dbt import dbt_diff
 from .utils import eval_name_template, remove_password_from_url, safezip, match_like
@@ -217,15 +217,16 @@ click.Context.formatter_class = MyHelpFormatter
 )
 @click.option(
     "--dbt-profiles-dir",
+    envvar="DBT_PROFILES_DIR",
     default=None,
     metavar="PATH",
-    help="Override the default dbt profile location (~/.dbt).",
+    help="Which directory to look in for the profiles.yml file. If not set, we follow the default profiles.yml location for the dbt version being used. Can also be set via the DBT_PROFILES_DIR environment variable.",
 )
 @click.option(
     "--dbt-project-dir",
     default=None,
     metavar="PATH",
-    help="Override the dbt project directory. Otherwise assumed to be the current directory.",
+    help="Which directory to look in for the dbt_project.yml file. Default is the current working directory and its parents.",
 )
 def main(conf, run, **kw):
     if kw["table2"] is None and kw["database2"]:

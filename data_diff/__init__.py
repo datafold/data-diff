@@ -1,6 +1,6 @@
 from typing import Sequence, Tuple, Iterator, Optional, Union
 
-from sqeleton.abcs import DbKey, DbTime, DbPath
+from data_diff.sqeleton.abcs import DbTime, DbPath
 
 from .tracking import disable_tracking
 from .databases import connect
@@ -8,7 +8,7 @@ from .diff_tables import Algorithm
 from .hashdiff_tables import HashDiffer, DEFAULT_BISECTION_THRESHOLD, DEFAULT_BISECTION_FACTOR
 from .joindiff_tables import JoinDiffer, TABLE_WRITE_LIMIT
 from .table_segment import TableSegment
-from .utils import eval_name_template
+from .utils import eval_name_template, Vector
 
 
 def connect_to_table(
@@ -51,8 +51,8 @@ def diff_tables(
     # Extra columns to compare
     extra_columns: Tuple[str, ...] = None,
     # Start/end key_column values, used to restrict the segment
-    min_key: DbKey = None,
-    max_key: DbKey = None,
+    min_key: Vector = None,
+    max_key: Vector = None,
     # Start/end update_column values, used to restrict the segment
     min_update: DbTime = None,
     max_update: DbTime = None,
@@ -87,8 +87,8 @@ def diff_tables(
         update_column (str, optional): Name of updated column, which signals that rows changed.
                                        Usually updated_at or last_update.  Used by `min_update` and `max_update`.
         extra_columns (Tuple[str, ...], optional): Extra columns to compare
-        min_key (:data:`DbKey`, optional): Lowest key value, used to restrict the segment
-        max_key (:data:`DbKey`, optional): Highest key value, used to restrict the segment
+        min_key (:data:`Vector`, optional): Lowest key value, used to restrict the segment
+        max_key (:data:`Vector`, optional): Highest key value, used to restrict the segment
         min_update (:data:`DbTime`, optional): Lowest update_column value, used to restrict the segment
         max_update (:data:`DbTime`, optional): Highest update_column value, used to restrict the segment
         threaded (bool): Enable/disable threaded diffing. Needed to take advantage of database threads.
