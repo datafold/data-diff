@@ -726,9 +726,11 @@ class TestDiffCrossDatabaseTables(unittest.TestCase):
         checksum_duration = time.monotonic() - start
         expected = []
         self.assertEqual(expected, diff)
-        self.assertEqual(
-            0, differ.stats.get("rows_downloaded", 0)
-        )  # This may fail if the hash is different, but downloaded values are equal
+
+        # For fuzzily diffed types, some rows can be downloaded for local comparison. This happens
+        # when hashes are diferent but the essential payload is not; e.g. due to json serialization.
+        if not {source_type, target_type} & {'json', 'jsonb', 'array', 'struct'}:
+            self.assertEqual(0, differ.stats.get("rows_downloaded", 0))
 
         # This section downloads all rows to ensure that Python agrees with the
         # database, in terms of comparison.
