@@ -26,6 +26,7 @@ def import_dbt_dependencies():
     try:
         # ProfileRenderer.render_data() fails without instantiating global flag MACRO_DEBUGGING in dbt-core 1.5
         from dbt.flags import set_flags
+
         set_flags(Namespace(MACRO_DEBUGGING=False))
     except:
         pass
