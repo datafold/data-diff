@@ -43,12 +43,15 @@ class DiffVars:
 
 
 def dbt_diff(
-    profiles_dir_override: Optional[str] = None, project_dir_override: Optional[str] = None, is_cloud: bool = False
+    profiles_dir_override: Optional[str] = None,
+    project_dir_override: Optional[str] = None,
+    is_cloud: bool = False,
+    dbt_selection: Optional[str] = None,
 ) -> None:
     diff_threads = []
     set_entrypoint_name("CLI-dbt")
     dbt_parser = DbtParser(profiles_dir_override, project_dir_override)
-    models = dbt_parser.get_models()
+    models = dbt_parser.get_models(dbt_selection)
     datadiff_variables = dbt_parser.get_datadiff_variables()
     config_prod_database = datadiff_variables.get("prod_database")
     config_prod_schema = datadiff_variables.get("prod_schema")
