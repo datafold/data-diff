@@ -2,7 +2,9 @@
     <img alt="Datafold" src="https://user-images.githubusercontent.com/1799931/196497110-d3de1113-a97f-4322-b531-026d859b867a.png" width="50%" />
 </p>
 
-# **data-diff**
+<h1 align="center">
+data-diff
+</h1>
 
 <h2 align="center">
 Develop dbt models faster by testing as you code.
