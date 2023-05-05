@@ -11,10 +11,16 @@ Develop dbt models faster by testing as you code.
 See how every change to dbt code affects the data produced in the modified model and downstream.
 </h4>
 <br>
-## What is `data-diff`?
-data-diff is an open source package that you can use with dbt to gain visibility into the impact of your code changes on your dbt models.
 
-[ GIF ]
+## What is `data-diff`?
+
+data-diff is an open source package that you can use to see the impact of your dbt code changes on your dbt models as you code.
+
+<div align="center">
+
+![development_testing_gif](https://user-images.githubusercontent.com/1799931/236354286-d1d044cf-2168-4128-8a21-8c8ca7fd494c.gif)
+
+</div>
 
 <br>
 
