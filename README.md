@@ -29,11 +29,40 @@ data-diff is an open source package that you can use to see the impact of your d
 ## Getting Started
 
 **Install `data-diff`**
+
+Install `data-diff` with the command that is specific to the database you use with dbt.
+
+### Snowflake
 ```
-pip install data-diff
+pip install data-diff 'data-diff[snowflake,dbt]' -U
 ```
 
-**Update a few lines in your `dbt_project.yml`**
+### BigQuery
+```
+pip install data-diff 'data-diff[dbt]' google-cloud-bigquery -U
+```
+
+### Redshift
+```
+pip install data-diff 'data-diff[redshift,dbt]' -U
+```
+
+### Postgres
+```
+pip install data-diff 'data-diff[postgres,dbt]' -U
+```
+
+### Databricks
+```
+pip install data-diff 'data-diff[databricks,dbt]' -U
+```
+
+### DuckDB
+```
+pip install data-diff 'data-diff[duckdb,dbt]' -U
+```
+
+**Update a few lines in your `dbt_project.yml`**.
 ```
 #dbt_project.yml
 vars:
