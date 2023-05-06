@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "data-diff"
-version = "0.7.5"
+version = "0.7.6"
 description = "Command-line tool and Python library to efficiently diff rows across two different databases."
 authors = ["Datafold <data-diff@datafold.com>"]
 license = "MIT"
@@ -47,6 +47,9 @@ tabulate = "^0.9.0"
 preql = {version="^0.2.19", optional=true}
 cx_Oracle = {version="*", optional=true}
 vertica-python = {version="*", optional=true}
+pydantic = {version="*"}
+requests = {version="*"}
+packaging = {version="*"}
 
 [tool.poetry.dev-dependencies]
 parameterized = "*"
