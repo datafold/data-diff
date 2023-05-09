@@ -130,7 +130,7 @@ class DbtParser:
                     )
             else:
                 raise Exception(
-                    f"Use of the `--select` feature requires dbt >= 1.5. Found dbt manifest: v{dbt_version}"
+                    f"The `--select` feature requires dbt >= 1.5, but your project's manifest.json is from dbt v{dbt_version}. Please follow these steps to use the `--select` feature: \n 1. Update your dbt-core version via pip install 'dbt-core>=1.5'. Details: https://docs.getdbt.com/docs/core/pip-install#change-dbt-core-versions \n 2. Execute any `dbt` command (`run`, `compile`, `build`) to create a new manifest.json."
                 )
         else:
             return self.get_run_results_models()
