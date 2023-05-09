@@ -85,7 +85,7 @@ Please reach out on the dbt Slack in [#tools-datafold](https://getdbt.slack.com/
 
 ### Diffing between databases
 
-Check out our [documentation](https://github.com/datafold/data-diff/blob/master/docs/supported-databases.md) if you're looking to compare data across databases (for example, between Postgres and Snowflake).
+Check out our [documentation](https://docs.datafold.com/reference/open_source/cli) if you're looking to compare data across databases (for example, between Postgres and Snowflake).
 
 <br>
 
