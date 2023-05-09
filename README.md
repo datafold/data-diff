@@ -26,6 +26,8 @@ data-diff is an open source package that you can use to see the impact of your d
 
 <br>
 
+:eyes: **Watch 4-min demo video [here](https://www.loom.com/share/ad3df969ba6b4298939efb2fbcc14cde)**
+
 ## Getting Started
 
 **Install `data-diff`**
