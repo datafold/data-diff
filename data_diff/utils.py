@@ -156,7 +156,7 @@ def _jsons_equiv(a: str, b: str):
 
 def diffs_are_equiv_jsons(diff: list, json_cols: dict):
     overriden_diff_cols = set()
-    if (len(diff) != 2) or ({diff[0][0], diff[1][0]} != {'+', '-'}):
+    if (len(diff) != 2) or ({diff[0][0], diff[1][0]} != {"+", "-"}):
         return False, overriden_diff_cols
     match = True
     for i, (col_a, col_b) in enumerate(safezip(diff[0][1][1:], diff[1][1][1:])):  # index 0 is extra_columns first elem
