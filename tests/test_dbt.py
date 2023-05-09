@@ -1,7 +1,6 @@
 import os
 
 from pathlib import Path
-import yaml
 from data_diff.diff_tables import Algorithm
 from .test_cli import run_datadiff_cli
 
@@ -11,7 +10,7 @@ from data_diff.dbt import (
     _local_diff,
     _cloud_diff,
     DbtParser,
-    DiffVars,
+    TDiffVars,
     DatafoldAPI,
 )
 from data_diff.dbt_parser import (
@@ -19,7 +18,7 @@ from data_diff.dbt_parser import (
     PROJECT_FILE,
 )
 import unittest
-from unittest.mock import MagicMock, Mock, mock_open, patch, ANY
+from unittest.mock import MagicMock, Mock, create_autospec, mock_open, patch, ANY
 
 
 class TestDbtParser(unittest.TestCase):
@@ -74,7 +73,7 @@ class TestDbtParser(unittest.TestCase):
         with self.assertRaises(Exception):
             _ = DbtParser.get_models(mock_self, selection)
         mock_self.get_dbt_selection_models.assert_not_called()
-        
+
     def test_get_models_no_runner(self):
         mock_self = Mock()
         mock_self.project_dir = Path()
@@ -467,7 +466,7 @@ class TestDbtDiffer(unittest.TestCase):
 
     @patch("data_diff.dbt.diff_tables")
     def test_local_diff(self, mock_diff_tables):
-        mock_connection = Mock()
+        connection = {}
         mock_table1 = Mock()
         column_set = {"col1", "col2"}
         mock_table1.get_schema.return_value = column_set
@@ -480,8 +479,17 @@ class TestDbtDiffer(unittest.TestCase):
         where = "a_string"
         dev_qualified_list = ["dev_db", "dev_schema", "dev_table"]
         prod_qualified_list = ["prod_db", "prod_schema", "prod_table"]
-        expected_keys = ["key"]
-        diff_vars = DiffVars(dev_qualified_list, prod_qualified_list, expected_keys, mock_connection, threads, where)
+        expected_primary_keys = ["key"]
+        diff_vars = TDiffVars(
+            dev_path=dev_qualified_list,
+            prod_path=prod_qualified_list,
+            primary_keys=expected_primary_keys,
+            connection=connection,
+            threads=threads,
+            where_filter=where,
+            include_columns=[],
+            exclude_columns=[],
+        )
         with patch("data_diff.dbt.connect_to_table", side_effect=[mock_table1, mock_table2]) as mock_connect:
             _local_diff(diff_vars)
 
@@ -495,13 +503,13 @@ class TestDbtDiffer(unittest.TestCase):
         )
         self.assertEqual(len(mock_diff_tables.call_args[1]["extra_columns"]), 2)
         self.assertEqual(mock_connect.call_count, 2)
-        mock_connect.assert_any_call(mock_connection, ".".join(dev_qualified_list), tuple(expected_keys), threads)
-        mock_connect.assert_any_call(mock_connection, ".".join(prod_qualified_list), tuple(expected_keys), threads)
+        mock_connect.assert_any_call(connection, ".".join(dev_qualified_list), tuple(expected_primary_keys), threads)
+        mock_connect.assert_any_call(connection, ".".join(prod_qualified_list), tuple(expected_primary_keys), threads)
         mock_diff.get_stats_string.assert_called_once()
 
     @patch("data_diff.dbt.diff_tables")
     def test_local_diff_no_diffs(self, mock_diff_tables):
-        mock_connection = Mock()
+        connection = {}
         column_set = {"col1", "col2"}
         mock_table1 = Mock()
         mock_table1.get_schema.return_value = column_set
@@ -512,10 +520,19 @@ class TestDbtDiffer(unittest.TestCase):
         mock_diff.__iter__.return_value = []
         dev_qualified_list = ["dev_db", "dev_schema", "dev_table"]
         prod_qualified_list = ["prod_db", "prod_schema", "prod_table"]
-        expected_keys = ["primary_key_column"]
+        expected_primary_keys = ["primary_key_column"]
         threads = None
         where = "a_string"
-        diff_vars = DiffVars(dev_qualified_list, prod_qualified_list, expected_keys, mock_connection, threads, where)
+        diff_vars = TDiffVars(
+            dev_path=dev_qualified_list,
+            prod_path=prod_qualified_list,
+            primary_keys=expected_primary_keys,
+            connection=connection,
+            threads=threads,
+            where_filter=where,
+            include_columns=[],
+            exclude_columns=[],
+        )
         with patch("data_diff.dbt.connect_to_table", side_effect=[mock_table1, mock_table2]) as mock_connect:
             _local_diff(diff_vars)
 
@@ -524,8 +541,8 @@ class TestDbtDiffer(unittest.TestCase):
         )
         self.assertEqual(len(mock_diff_tables.call_args[1]["extra_columns"]), 2)
         self.assertEqual(mock_connect.call_count, 2)
-        mock_connect.assert_any_call(mock_connection, ".".join(dev_qualified_list), tuple(expected_keys), None)
-        mock_connect.assert_any_call(mock_connection, ".".join(prod_qualified_list), tuple(expected_keys), None)
+        mock_connect.assert_any_call(connection, ".".join(dev_qualified_list), tuple(expected_primary_keys), None)
+        mock_connect.assert_any_call(connection, ".".join(prod_qualified_list), tuple(expected_primary_keys), None)
         mock_diff.get_stats_string.assert_not_called()
 
     @patch("data_diff.dbt.rich.print")
@@ -533,16 +550,27 @@ class TestDbtDiffer(unittest.TestCase):
     @patch("data_diff.dbt.DatafoldAPI")
     def test_cloud_diff(self, mock_api, mock_os_environ, mock_print):
         expected_api_key = "an_api_key"
-        mock_api.create_data_diff.return_value = {"id": 123}
-        mock_os_environ.get.return_value = expected_api_key
         dev_qualified_list = ["dev_db", "dev_schema", "dev_table"]
         prod_qualified_list = ["prod_db", "prod_schema", "prod_table"]
         expected_datasource_id = 1
         expected_primary_keys = ["primary_key_column"]
-        connection = None
         threads = None
         where = "a_string"
-        diff_vars = DiffVars(dev_qualified_list, prod_qualified_list, expected_primary_keys, connection, threads, where)
+        connection = {}
+        mock_api.create_data_diff.return_value = {"id": 123}
+        mock_os_environ.get.return_value = expected_api_key
+
+        diff_vars = TDiffVars(
+            dev_path=dev_qualified_list,
+            prod_path=prod_qualified_list,
+            primary_keys=expected_primary_keys,
+            connection=connection,
+            threads=threads,
+            where_filter=where,
+            include_columns=[],
+            exclude_columns=[],
+        )
+
         _cloud_diff(diff_vars, expected_datasource_id, api=mock_api)
 
         mock_api.create_data_diff.assert_called_once()
@@ -566,32 +594,42 @@ class TestDbtDiffer(unittest.TestCase):
     def test_diff_is_cloud(
         self, mock_print, mock_dbt_parser, mock_cloud_diff, mock_local_diff, mock_get_diff_vars, mock_initialize_api
     ):
-        mock_dbt_parser_inst = Mock()
-        mock_model = Mock()
+        connection = {}
+        threads = None
+        where = "a_string"
+        host = "a_host"
+        api_key = "a_api_key"
         expected_dbt_vars_dict = {
             "prod_database": "prod_db",
             "prod_schema": "prod_schema",
             "datasource_id": 1,
         }
-        host = "a_host"
-        api_key = "a_api_key"
+        mock_dbt_parser_inst = Mock()
+        mock_model = Mock()
         api = DatafoldAPI(api_key=api_key, host=host)
         mock_initialize_api.return_value = api
-        connection = None
-        threads = None
-        where = "a_string"
 
         mock_dbt_parser.return_value = mock_dbt_parser_inst
         mock_dbt_parser_inst.get_models.return_value = [mock_model]
         mock_dbt_parser_inst.get_datadiff_variables.return_value = expected_dbt_vars_dict
-        expected_diff_vars = DiffVars(["dev"], ["prod"], ["pks"], connection, threads, where)
-        mock_get_diff_vars.return_value = expected_diff_vars
+
+        diff_vars = TDiffVars(
+            dev_path=["dev"],
+            prod_path=["prod"],
+            primary_keys=["pks"],
+            connection=connection,
+            threads=threads,
+            where_filter=where,
+            include_columns=[],
+            exclude_columns=[],
+        )
+        mock_get_diff_vars.return_value = diff_vars
         dbt_diff(is_cloud=True)
         mock_dbt_parser_inst.get_models.assert_called_once()
         mock_dbt_parser_inst.set_connection.assert_not_called()
 
         mock_initialize_api.assert_called_once()
-        mock_cloud_diff.assert_called_once_with(expected_diff_vars, 1, api)
+        mock_cloud_diff.assert_called_once_with(diff_vars, 1, api)
         mock_local_diff.assert_not_called()
         mock_print.assert_called_once()
 
@@ -605,25 +643,35 @@ class TestDbtDiffer(unittest.TestCase):
     def test_diff_is_cloud_no_ds_id(
         self, _, mock_print, mock_dbt_parser, mock_cloud_diff, mock_local_diff, mock_get_diff_vars, mock_initialize_api
     ):
+        connection = {}
+        threads = None
+        where = "a_string"
+        host = "a_host"
+        api_key = "a_api_key"
         mock_dbt_parser_inst = Mock()
         mock_model = Mock()
         expected_dbt_vars_dict = {
             "prod_database": "prod_db",
             "prod_schema": "prod_schema",
         }
-        host = "a_host"
-        api_key = "a_api_key"
+
         api = DatafoldAPI(api_key=api_key, host=host)
         mock_initialize_api.return_value = api
-        connection = None
-        threads = None
-        where = "a_string"
-
         mock_dbt_parser.return_value = mock_dbt_parser_inst
         mock_dbt_parser_inst.get_models.return_value = [mock_model]
         mock_dbt_parser_inst.get_datadiff_variables.return_value = expected_dbt_vars_dict
-        expected_diff_vars = DiffVars(["dev"], ["prod"], ["pks"], connection, threads, where)
-        mock_get_diff_vars.return_value = expected_diff_vars
+
+        diff_vars = TDiffVars(
+            dev_path=["dev"],
+            prod_path=["prod"],
+            primary_keys=["pks"],
+            connection=connection,
+            threads=threads,
+            where_filter=where,
+            include_columns=[],
+            exclude_columns=[],
+        )
+        mock_get_diff_vars.return_value = diff_vars
 
         with self.assertRaises(ValueError):
             dbt_diff(is_cloud=True)
@@ -641,26 +689,36 @@ class TestDbtDiffer(unittest.TestCase):
     @patch("data_diff.dbt_parser.DbtParser.__new__")
     @patch("data_diff.dbt.rich.print")
     def test_diff_is_not_cloud(self, mock_print, mock_dbt_parser, mock_cloud_diff, mock_local_diff, mock_get_diff_vars):
-        mock_dbt_parser_inst = Mock()
-        mock_dbt_parser.return_value = mock_dbt_parser_inst
-        mock_model = Mock()
         expected_dbt_vars_dict = {
             "prod_database": "prod_db",
             "prod_schema": "prod_schema",
         }
-        mock_dbt_parser_inst.get_models.return_value = [mock_model]
-        mock_dbt_parser_inst.get_datadiff_variables.return_value = expected_dbt_vars_dict
-        connection = None
+        connection = {}
         threads = None
         where = "a_string"
-        expected_diff_vars = DiffVars(["dev"], ["prod"], ["pks"], connection, threads, where)
-        mock_get_diff_vars.return_value = expected_diff_vars
+        mock_dbt_parser_inst = Mock()
+        mock_dbt_parser.return_value = mock_dbt_parser_inst
+        mock_model = Mock()
+        mock_dbt_parser_inst.get_models.return_value = [mock_model]
+        mock_dbt_parser_inst.get_datadiff_variables.return_value = expected_dbt_vars_dict
+
+        diff_vars = TDiffVars(
+            dev_path=["dev"],
+            prod_path=["prod"],
+            primary_keys=["pks"],
+            connection=connection,
+            threads=threads,
+            where_filter=where,
+            include_columns=[],
+            exclude_columns=[],
+        )
+        mock_get_diff_vars.return_value = diff_vars
         dbt_diff(is_cloud=False)
 
         mock_dbt_parser_inst.get_models.assert_called_once()
         mock_dbt_parser_inst.set_connection.assert_called_once()
         mock_cloud_diff.assert_not_called()
-        mock_local_diff.assert_called_once_with(expected_diff_vars)
+        mock_local_diff.assert_called_once_with(diff_vars)
         mock_print.assert_not_called()
 
     @patch("data_diff.dbt._get_diff_vars")
@@ -669,26 +727,36 @@ class TestDbtDiffer(unittest.TestCase):
     @patch("data_diff.dbt_parser.DbtParser.__new__")
     @patch("data_diff.dbt.rich.print")
     def test_diff_only_prod_db(self, mock_print, mock_dbt_parser, mock_cloud_diff, mock_local_diff, mock_get_diff_vars):
-        mock_dbt_parser_inst = Mock()
-        mock_dbt_parser.return_value = mock_dbt_parser_inst
-        mock_model = Mock()
+        connection = {}
+        threads = None
+        where = "a_string"
         expected_dbt_vars_dict = {
             "prod_database": "prod_db",
             "datasource_id": 1,
         }
+        mock_dbt_parser_inst = Mock()
+        mock_dbt_parser.return_value = mock_dbt_parser_inst
+        mock_model = Mock()
         mock_dbt_parser_inst.get_models.return_value = [mock_model]
         mock_dbt_parser_inst.get_datadiff_variables.return_value = expected_dbt_vars_dict
-        connection = None
-        threads = None
-        where = "a_string"
-        expected_diff_vars = DiffVars(["dev"], ["prod"], ["pks"], connection, threads, where)
-        mock_get_diff_vars.return_value = expected_diff_vars
+
+        diff_vars = TDiffVars(
+            dev_path=["dev"],
+            prod_path=["prod"],
+            primary_keys=["pks"],
+            connection=connection,
+            threads=threads,
+            where_filter=where,
+            include_columns=[],
+            exclude_columns=[],
+        )
+        mock_get_diff_vars.return_value = diff_vars
         dbt_diff(is_cloud=False)
 
         mock_dbt_parser_inst.get_models.assert_called_once()
         mock_dbt_parser_inst.set_connection.assert_called_once()
         mock_cloud_diff.assert_not_called()
-        mock_local_diff.assert_called_once_with(expected_diff_vars)
+        mock_local_diff.assert_called_once_with(diff_vars)
         mock_print.assert_not_called()
 
     @patch("data_diff.dbt._get_diff_vars")
@@ -699,27 +767,36 @@ class TestDbtDiffer(unittest.TestCase):
     def test_diff_only_prod_schema(
         self, mock_print, mock_dbt_parser, mock_cloud_diff, mock_local_diff, mock_get_diff_vars
     ):
-        mock_dbt_parser_inst = Mock()
-        mock_dbt_parser.return_value = mock_dbt_parser_inst
-        mock_model = Mock()
+        connection = {}
+        threads = None
+        where = "a_string"
         expected_dbt_vars_dict = {
             "datasource_id": 1,
             "prod_schema": "prod_schema",
         }
-
+        mock_dbt_parser_inst = Mock()
+        mock_dbt_parser.return_value = mock_dbt_parser_inst
+        mock_model = Mock()
         mock_dbt_parser_inst.get_models.return_value = [mock_model]
         mock_dbt_parser_inst.get_datadiff_variables.return_value = expected_dbt_vars_dict
-        connection = None
-        threads = None
-        where = "a_string"
-        expected_diff_vars = DiffVars(["dev"], ["prod"], ["pks"], connection, threads, where)
-        mock_get_diff_vars.return_value = expected_diff_vars
+
+        diff_vars = TDiffVars(
+            dev_path=["dev"],
+            prod_path=["prod"],
+            primary_keys=["pks"],
+            connection=connection,
+            threads=threads,
+            where_filter=where,
+            include_columns=[],
+            exclude_columns=[],
+        )
+        mock_get_diff_vars.return_value = diff_vars
         dbt_diff(is_cloud=False)
 
         mock_dbt_parser_inst.get_models.assert_called_once()
         mock_dbt_parser_inst.set_connection.assert_called_once()
         mock_cloud_diff.assert_not_called()
-        mock_local_diff.assert_called_once_with(expected_diff_vars)
+        mock_local_diff.assert_called_once_with(diff_vars)
         mock_print.assert_not_called()
 
     @patch("data_diff.dbt._initialize_api")
@@ -731,9 +808,9 @@ class TestDbtDiffer(unittest.TestCase):
     def test_diff_is_cloud_no_pks(
         self, mock_print, mock_dbt_parser, mock_cloud_diff, mock_local_diff, mock_get_diff_vars, mock_initialize_api
     ):
-        mock_dbt_parser_inst = Mock()
-        mock_dbt_parser.return_value = mock_dbt_parser_inst
-        mock_model = Mock()
+        connection = {}
+        threads = None
+        where = "a_string"
         expected_dbt_vars_dict = {
             "prod_database": "prod_db",
             "prod_schema": "prod_schema",
@@ -741,16 +818,25 @@ class TestDbtDiffer(unittest.TestCase):
         }
         host = "a_host"
         api_key = "a_api_key"
+        mock_dbt_parser_inst = Mock()
+        mock_dbt_parser.return_value = mock_dbt_parser_inst
+        mock_model = Mock()
         api = DatafoldAPI(api_key=api_key, host=host)
         mock_initialize_api.return_value = api
 
         mock_dbt_parser_inst.get_models.return_value = [mock_model]
         mock_dbt_parser_inst.get_datadiff_variables.return_value = expected_dbt_vars_dict
-        connection = None
-        threads = None
-        where = "a_string"
-        expected_diff_vars = DiffVars(["dev"], ["prod"], [], connection, threads, where)
-        mock_get_diff_vars.return_value = expected_diff_vars
+        diff_vars = TDiffVars(
+            dev_path=["dev"],
+            prod_path=["prod"],
+            primary_keys=[],
+            connection=connection,
+            threads=threads,
+            where_filter=where,
+            include_columns=[],
+            exclude_columns=[],
+        )
+        mock_get_diff_vars.return_value = diff_vars
         dbt_diff(is_cloud=True)
 
         mock_initialize_api.assert_called_once()
@@ -768,22 +854,31 @@ class TestDbtDiffer(unittest.TestCase):
     def test_diff_not_is_cloud_no_pks(
         self, mock_print, mock_dbt_parser, mock_cloud_diff, mock_local_diff, mock_get_diff_vars
     ):
-        mock_dbt_parser_inst = Mock()
-        mock_dbt_parser.return_value = mock_dbt_parser_inst
-        mock_model = Mock()
+        connection = {}
+        threads = None
+        where = "a_string"
         expected_dbt_vars_dict = {
             "prod_database": "prod_db",
             "prod_schema": "prod_schema",
             "datasource_id": 1,
         }
-
+        mock_dbt_parser_inst = Mock()
+        mock_dbt_parser.return_value = mock_dbt_parser_inst
+        mock_model = Mock()
         mock_dbt_parser_inst.get_models.return_value = [mock_model]
         mock_dbt_parser_inst.get_datadiff_variables.return_value = expected_dbt_vars_dict
-        connection = None
-        threads = None
-        where = "a_string"
-        expected_diff_vars = DiffVars(["dev"], ["prod"], [], connection, threads, where)
-        mock_get_diff_vars.return_value = expected_diff_vars
+
+        diff_vars = TDiffVars(
+            dev_path=["dev"],
+            prod_path=["prod"],
+            primary_keys=[],
+            connection=connection,
+            threads=threads,
+            where_filter=where,
+            include_columns=[],
+            exclude_columns=[],
+        )
+        mock_get_diff_vars.return_value = diff_vars
         dbt_diff(is_cloud=False)
         mock_dbt_parser_inst.get_models.assert_called_once()
         mock_dbt_parser_inst.set_connection.assert_called_once()
@@ -792,27 +887,35 @@ class TestDbtDiffer(unittest.TestCase):
         self.assertEqual(mock_print.call_count, 1)
 
     def test_get_diff_vars_replace_custom_schema(self):
-        mock_model = Mock()
         prod_database = "a_prod_db"
         prod_schema = "a_prod_schema"
         primary_keys = ["a_primary_key"]
+        mock_model = Mock()
         mock_model.database = "a_dev_db"
         mock_model.schema_ = "a_custom_schema"
         mock_model.config.schema_ = mock_model.schema_
         mock_model.alias = "a_model_name"
+        mock_tdatadiffmodelconfig = Mock()
+        mock_tdatadiffmodelconfig.where_filter = "where"
+        mock_tdatadiffmodelconfig.include_columns = ["include"]
+        mock_tdatadiffmodelconfig.exclude_columns = ["exclude"]
         mock_dbt_parser = Mock()
         mock_dbt_parser.get_pk_from_model.return_value = primary_keys
         mock_dbt_parser.requires_upper = False
+        mock_dbt_parser.get_datadiff_model_config.return_value = mock_tdatadiffmodelconfig
+        mock_dbt_parser.connection = {}
+        mock_dbt_parser.threads = 0
         mock_model.meta = None
 
         diff_vars = _get_diff_vars(mock_dbt_parser, prod_database, prod_schema, "prod_<custom_schema>", mock_model)
 
-        assert diff_vars.dev_path == [mock_model.database, mock_model.schema_, mock_model.alias]
-        assert diff_vars.prod_path == [prod_database, "prod_" + mock_model.schema_, mock_model.alias]
-        assert diff_vars.primary_keys == primary_keys
-        assert diff_vars.connection == mock_dbt_parser.connection
-        assert diff_vars.threads == mock_dbt_parser.threads
-        assert prod_schema not in diff_vars.prod_path
+        self.assertEqual(diff_vars.dev_path, [mock_model.database, mock_model.schema_, mock_model.alias])
+        self.assertEqual(diff_vars.prod_path, [prod_database, "prod_" + mock_model.schema_, mock_model.alias])
+        self.assertEqual(diff_vars.primary_keys, primary_keys)
+        self.assertEqual(diff_vars.connection, mock_dbt_parser.connection)
+        self.assertEqual(diff_vars.threads, mock_dbt_parser.threads)
+        self.assertEqual(diff_vars.threads, mock_dbt_parser.threads)
+        self.assertNotIn(prod_schema, diff_vars.prod_path)
 
         mock_dbt_parser.get_pk_from_model.assert_called_once()
 
@@ -825,19 +928,26 @@ class TestDbtDiffer(unittest.TestCase):
         mock_model.schema_ = "a_custom_schema"
         mock_model.config.schema_ = mock_model.schema_
         mock_model.alias = "a_model_name"
+        mock_tdatadiffmodelconfig = Mock()
+        mock_tdatadiffmodelconfig.where_filter = "where"
+        mock_tdatadiffmodelconfig.include_columns = ["include"]
+        mock_tdatadiffmodelconfig.exclude_columns = ["exclude"]
         mock_dbt_parser = Mock()
         mock_dbt_parser.get_pk_from_model.return_value = primary_keys
+        mock_dbt_parser.get_datadiff_model_config.return_value = mock_tdatadiffmodelconfig
+        mock_dbt_parser.connection = {}
+        mock_dbt_parser.threads = 0
         mock_dbt_parser.requires_upper = False
         mock_model.meta = None
 
         diff_vars = _get_diff_vars(mock_dbt_parser, prod_database, prod_schema, "prod", mock_model)
 
-        assert diff_vars.dev_path == [mock_model.database, mock_model.schema_, mock_model.alias]
-        assert diff_vars.prod_path == [prod_database, "prod", mock_model.alias]
-        assert diff_vars.primary_keys == primary_keys
-        assert diff_vars.connection == mock_dbt_parser.connection
-        assert diff_vars.threads == mock_dbt_parser.threads
-        assert prod_schema not in diff_vars.prod_path
+        self.assertEqual(diff_vars.dev_path, [mock_model.database, mock_model.schema_, mock_model.alias])
+        self.assertEqual(diff_vars.prod_path, [prod_database, "prod", mock_model.alias])
+        self.assertEqual(diff_vars.primary_keys, primary_keys)
+        self.assertEqual(diff_vars.connection, mock_dbt_parser.connection)
+        self.assertEqual(diff_vars.threads, mock_dbt_parser.threads)
+        self.assertNotIn(prod_schema, diff_vars.prod_path)
         mock_dbt_parser.get_pk_from_model.assert_called_once()
 
     def test_get_diff_vars_no_custom_schema_on_model(self):
@@ -849,18 +959,25 @@ class TestDbtDiffer(unittest.TestCase):
         mock_model.schema_ = "a_custom_schema"
         mock_model.config.schema_ = None
         mock_model.alias = "a_model_name"
+        mock_tdatadiffmodelconfig = Mock()
+        mock_tdatadiffmodelconfig.where_filter = "where"
+        mock_tdatadiffmodelconfig.include_columns = ["include"]
+        mock_tdatadiffmodelconfig.exclude_columns = ["exclude"]
         mock_dbt_parser = Mock()
         mock_dbt_parser.get_pk_from_model.return_value = primary_keys
+        mock_dbt_parser.get_datadiff_model_config.return_value = mock_tdatadiffmodelconfig
+        mock_dbt_parser.connection = {}
+        mock_dbt_parser.threads = 0
         mock_dbt_parser.requires_upper = False
         mock_model.meta = None
 
         diff_vars = _get_diff_vars(mock_dbt_parser, prod_database, prod_schema, "prod", mock_model)
 
-        assert diff_vars.dev_path == [mock_model.database, mock_model.schema_, mock_model.alias]
-        assert diff_vars.prod_path == [prod_database, prod_schema, mock_model.alias]
-        assert diff_vars.primary_keys == primary_keys
-        assert diff_vars.connection == mock_dbt_parser.connection
-        assert diff_vars.threads == mock_dbt_parser.threads
+        self.assertEqual(diff_vars.dev_path, [mock_model.database, mock_model.schema_, mock_model.alias])
+        self.assertEqual(diff_vars.prod_path, [prod_database, prod_schema, mock_model.alias])
+        self.assertEqual(diff_vars.primary_keys, primary_keys)
+        self.assertEqual(diff_vars.connection, mock_dbt_parser.connection)
+        self.assertEqual(diff_vars.threads, mock_dbt_parser.threads)
         mock_dbt_parser.get_pk_from_model.assert_called_once()
 
     def test_get_diff_vars_match_dev_schema(self):
@@ -871,18 +988,25 @@ class TestDbtDiffer(unittest.TestCase):
         mock_model.schema_ = "a_schema"
         mock_model.config.schema_ = None
         mock_model.alias = "a_model_name"
+        mock_tdatadiffmodelconfig = Mock()
+        mock_tdatadiffmodelconfig.where_filter = "where"
+        mock_tdatadiffmodelconfig.include_columns = ["include"]
+        mock_tdatadiffmodelconfig.exclude_columns = ["exclude"]
         mock_dbt_parser = Mock()
         mock_dbt_parser.get_pk_from_model.return_value = primary_keys
+        mock_dbt_parser.get_datadiff_model_config.return_value = mock_tdatadiffmodelconfig
+        mock_dbt_parser.connection = {}
+        mock_dbt_parser.threads = 0
         mock_dbt_parser.requires_upper = False
         mock_model.meta = None
 
         diff_vars = _get_diff_vars(mock_dbt_parser, prod_database, None, None, mock_model)
 
-        assert diff_vars.dev_path == [mock_model.database, mock_model.schema_, mock_model.alias]
-        assert diff_vars.prod_path == [prod_database, mock_model.schema_, mock_model.alias]
-        assert diff_vars.primary_keys == primary_keys
-        assert diff_vars.connection == mock_dbt_parser.connection
-        assert diff_vars.threads == mock_dbt_parser.threads
+        self.assertEqual(diff_vars.dev_path, [mock_model.database, mock_model.schema_, mock_model.alias])
+        self.assertEqual(diff_vars.prod_path, [prod_database, mock_model.schema_, mock_model.alias])
+        self.assertEqual(diff_vars.primary_keys, primary_keys)
+        self.assertEqual(diff_vars.connection, mock_dbt_parser.connection)
+        self.assertEqual(diff_vars.threads, mock_dbt_parser.threads)
         mock_dbt_parser.get_pk_from_model.assert_called_once()
 
     def test_get_diff_custom_schema_no_config_exception(self):
@@ -911,20 +1035,25 @@ class TestDbtDiffer(unittest.TestCase):
         mock_model.schema_ = "a_schema"
         mock_model.config.schema_ = None
         mock_model.alias = "a_model_name"
+        mock_tdatadiffmodelconfig = Mock()
+        mock_tdatadiffmodelconfig.where_filter = "where"
+        mock_tdatadiffmodelconfig.include_columns = ["include"]
+        mock_tdatadiffmodelconfig.exclude_columns = ["exclude"]
         mock_dbt_parser = Mock()
+        mock_dbt_parser.get_datadiff_model_config.return_value = mock_tdatadiffmodelconfig
+        mock_dbt_parser.connection = {}
+        mock_dbt_parser.threads = 0
         mock_dbt_parser.get_pk_from_model.return_value = primary_keys
         mock_dbt_parser.requires_upper = False
-        where = "a filter"
-        mock_model.meta = {"datafold": {"datadiff": {"filter": where}}}
 
         diff_vars = _get_diff_vars(mock_dbt_parser, prod_database, None, None, mock_model)
 
-        assert diff_vars.dev_path == [mock_model.database, mock_model.schema_, mock_model.alias]
-        assert diff_vars.prod_path == [prod_database, mock_model.schema_, mock_model.alias]
-        assert diff_vars.primary_keys == primary_keys
-        assert diff_vars.connection == mock_dbt_parser.connection
-        assert diff_vars.threads == mock_dbt_parser.threads
-        self.assertEqual(diff_vars.where_filter, where)
+        self.assertEqual(diff_vars.dev_path, [mock_model.database, mock_model.schema_, mock_model.alias])
+        self.assertEqual(diff_vars.prod_path, [prod_database, mock_model.schema_, mock_model.alias])
+        self.assertEqual(diff_vars.primary_keys, primary_keys)
+        self.assertEqual(diff_vars.connection, mock_dbt_parser.connection)
+        self.assertEqual(diff_vars.threads, mock_dbt_parser.threads)
+        self.assertEqual(diff_vars.where_filter, mock_tdatadiffmodelconfig.where_filter)
         mock_dbt_parser.get_pk_from_model.assert_called_once()
 
     def test_get_diff_vars_meta_unrelated(self):
@@ -935,20 +1064,25 @@ class TestDbtDiffer(unittest.TestCase):
         mock_model.schema_ = "a_schema"
         mock_model.config.schema_ = None
         mock_model.alias = "a_model_name"
+        mock_tdatadiffmodelconfig = Mock()
+        mock_tdatadiffmodelconfig.where_filter = "where"
+        mock_tdatadiffmodelconfig.include_columns = ["include"]
+        mock_tdatadiffmodelconfig.exclude_columns = ["exclude"]
         mock_dbt_parser = Mock()
+        mock_dbt_parser.get_datadiff_model_config.return_value = mock_tdatadiffmodelconfig
+        mock_dbt_parser.connection = {}
+        mock_dbt_parser.threads = 0
         mock_dbt_parser.get_pk_from_model.return_value = primary_keys
         mock_dbt_parser.requires_upper = False
-        where = None
-        mock_model.meta = {"key": "value"}
 
         diff_vars = _get_diff_vars(mock_dbt_parser, prod_database, None, None, mock_model)
 
-        assert diff_vars.dev_path == [mock_model.database, mock_model.schema_, mock_model.alias]
-        assert diff_vars.prod_path == [prod_database, mock_model.schema_, mock_model.alias]
-        assert diff_vars.primary_keys == primary_keys
-        assert diff_vars.connection == mock_dbt_parser.connection
-        assert diff_vars.threads == mock_dbt_parser.threads
-        self.assertEqual(diff_vars.where_filter, where)
+        self.assertEqual(diff_vars.dev_path, [mock_model.database, mock_model.schema_, mock_model.alias])
+        self.assertEqual(diff_vars.prod_path, [prod_database, mock_model.schema_, mock_model.alias])
+        self.assertEqual(diff_vars.primary_keys, primary_keys)
+        self.assertEqual(diff_vars.connection, mock_dbt_parser.connection)
+        self.assertEqual(diff_vars.threads, mock_dbt_parser.threads)
+        self.assertEqual(diff_vars.where_filter, mock_tdatadiffmodelconfig.where_filter)
         mock_dbt_parser.get_pk_from_model.assert_called_once()
 
     def test_get_diff_vars_meta_none(self):
@@ -959,7 +1093,14 @@ class TestDbtDiffer(unittest.TestCase):
         mock_model.schema_ = "a_schema"
         mock_model.config.schema_ = None
         mock_model.alias = "a_model_name"
+        mock_tdatadiffmodelconfig = Mock()
+        mock_tdatadiffmodelconfig.where_filter = "where"
+        mock_tdatadiffmodelconfig.include_columns = ["include"]
+        mock_tdatadiffmodelconfig.exclude_columns = ["exclude"]
         mock_dbt_parser = Mock()
+        mock_dbt_parser.get_datadiff_model_config.return_value = mock_tdatadiffmodelconfig
+        mock_dbt_parser.connection = {}
+        mock_dbt_parser.threads = 0
         mock_dbt_parser.get_pk_from_model.return_value = primary_keys
         mock_dbt_parser.requires_upper = False
         where = None
@@ -972,5 +1113,5 @@ class TestDbtDiffer(unittest.TestCase):
         assert diff_vars.primary_keys == primary_keys
         assert diff_vars.connection == mock_dbt_parser.connection
         assert diff_vars.threads == mock_dbt_parser.threads
-        self.assertEqual(diff_vars.where_filter, where)
+        self.assertEqual(diff_vars.where_filter, mock_tdatadiffmodelconfig.where_filter)
         mock_dbt_parser.get_pk_from_model.assert_called_once()

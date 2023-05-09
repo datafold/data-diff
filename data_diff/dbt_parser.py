@@ -6,6 +6,7 @@ from pathlib import Path
 from typing import List, Dict, Tuple, Set, Optional
 
 from packaging.version import parse as parse_version
+import pydantic
 
 from .utils import getLogger, get_from_dict_with_raise
 from .version import __version__
@@ -68,6 +69,12 @@ def legacy_profiles_dir() -> Path:
     return Path.home() / ".dbt"
 
 
+class TDatadiffModelConfig(pydantic.BaseModel):
+    where_filter: Optional[str] = None
+    include_columns: List[str] = []
+    exclude_columns: List[str] = []
+
+
 class DbtParser:
     def __init__(self, profiles_dir_override: str, project_dir_override: str) -> None:
         (
@@ -79,7 +86,7 @@ class DbtParser:
         ) = import_dbt_dependencies()
         self.profiles_dir = Path(profiles_dir_override or default_profiles_dir())
         self.project_dir = Path(project_dir_override or default_project_dir())
-        self.connection = None
+        self.connection = {}
         self.project_dict = self.get_project_dict()
         self.manifest_obj = self.get_manifest_obj()
         self.dbt_user_id = self.manifest_obj.metadata.user_id
@@ -94,6 +101,21 @@ class DbtParser:
         error_message = f"vars: data_diff: section not found in dbt_project.yml.\n\nTo solve this, please configure your dbt project: \n{doc_url}\n"
         vars = get_from_dict_with_raise(self.project_dict, "vars", error_message)
         return get_from_dict_with_raise(vars, "data_diff", error_message)
+
+    def get_datadiff_model_config(self, model_meta: dict) -> TDatadiffModelConfig:
+        where_filter = None
+        include_columns = []
+        exclude_columns = []
+
+        if "datafold" in model_meta and "datadiff" in model_meta["datafold"]:
+            config = model_meta["datafold"]["datadiff"]
+            where_filter = config.get("filter")
+            include_columns = config.get("include_columns") or []
+            exclude_columns = config.get("exclude_columns") or []
+
+        return TDatadiffModelConfig(
+            where_filter=where_filter, include_columns=include_columns, exclude_columns=exclude_columns
+        )
 
     def get_models(self, dbt_selection: Optional[str] = None):
         dbt_version = parse_version(self.dbt_version)
