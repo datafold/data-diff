@@ -25,5 +25,5 @@ jobs:
         stale-pr-message: 'This pull request has been marked as stale because it has been open for 60 days with no activity. If you would like the pull request to remain open, please comment on the pull request or else it will be closed in 7 days.'
         stale-issue-label: 'stale'
         stale-pr-label: 'stale'
-        close-issue-message: 'Although we are closing this issue as stale, it's not gone forever. Issues can be reopened if there is renewed community interest. Just add a comment to notify the maintainers.'
-        close-pr-message: 'Although we are closing this pull request as stale, it's not gone forever. PRs can be reopened if there is renewed community interest. Just add a comment to notify the maintainers.'
+        close-issue-message: "Although we are closing this issue as stale, it's not gone forever. Issues can be reopened if there is renewed community interest. Just add a comment to notify the maintainers."
+        close-pr-message: "Although we are closing this pull request as stale, it's not gone forever. PRs can be reopened if there is renewed community interest. Just add a comment to notify the maintainers."
