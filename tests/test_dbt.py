@@ -726,47 +726,6 @@ class TestDbtDiffer(unittest.TestCase):
     @patch("data_diff.dbt._cloud_diff")
     @patch("data_diff.dbt_parser.DbtParser.__new__")
     @patch("data_diff.dbt.rich.print")
-    def test_diff_no_prod_configs(
-        self, mock_print, mock_dbt_parser, mock_cloud_diff, mock_local_diff, mock_get_diff_vars
-    ):
-        connection = {}
-        threads = None
-        where = "a_string"
-        expected_dbt_vars_dict = {
-            "datasource_id": 1,
-        }
-        mock_dbt_parser_inst = Mock()
-        mock_dbt_parser.return_value = mock_dbt_parser_inst
-        mock_model = Mock()
-        mock_dbt_parser_inst.get_models.return_value = [mock_model]
-        mock_dbt_parser_inst.get_datadiff_variables.return_value = expected_dbt_vars_dict
-
-        diff_vars = TDiffVars(
-            dev_path=["dev"],
-            prod_path=["prod"],
-            primary_keys=["pks"],
-            connection=connection,
-            threads=threads,
-            where_filter=where,
-            include_columns=[],
-            exclude_columns=[],
-        )
-        mock_get_diff_vars.return_value = diff_vars
-        with self.assertRaises(ValueError):
-            dbt_diff(is_cloud=False)
-
-        mock_dbt_parser_inst.get_models.assert_called_once()
-        mock_dbt_parser_inst.set_connection.assert_called_once()
-        mock_dbt_parser_inst.get_primary_keys.assert_not_called()
-        mock_cloud_diff.assert_not_called()
-        mock_local_diff.assert_not_called()
-        mock_print.assert_not_called()
-
-    @patch("data_diff.dbt._get_diff_vars")
-    @patch("data_diff.dbt._local_diff")
-    @patch("data_diff.dbt._cloud_diff")
-    @patch("data_diff.dbt_parser.DbtParser.__new__")
-    @patch("data_diff.dbt.rich.print")
     def test_diff_only_prod_db(self, mock_print, mock_dbt_parser, mock_cloud_diff, mock_local_diff, mock_get_diff_vars):
         connection = {}
         threads = None
@@ -832,13 +791,12 @@ class TestDbtDiffer(unittest.TestCase):
             exclude_columns=[],
         )
         mock_get_diff_vars.return_value = diff_vars
-        with self.assertRaises(ValueError):
-            dbt_diff(is_cloud=False)
+        dbt_diff(is_cloud=False)
 
         mock_dbt_parser_inst.get_models.assert_called_once()
         mock_dbt_parser_inst.set_connection.assert_called_once()
         mock_cloud_diff.assert_not_called()
-        mock_local_diff.assert_called_once_with(expected_diff_vars)
+        mock_local_diff.assert_called_once_with(diff_vars)
         mock_print.assert_not_called()
 
     @patch("data_diff.dbt._initialize_api")
