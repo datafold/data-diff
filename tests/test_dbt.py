@@ -73,7 +73,7 @@ class TestDbtParser(unittest.TestCase):
         with self.assertRaises(Exception):
             _ = DbtParser.get_models(mock_self, selection)
         mock_self.get_dbt_selection_models.assert_not_called()
-        
+
     def test_get_models_no_runner(self):
         mock_self = Mock()
         mock_self.project_dir = Path()
