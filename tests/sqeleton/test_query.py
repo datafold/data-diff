@@ -26,6 +26,9 @@ class MockDialect(AbstractDialect):
         s = ", ".join(l)
         return f"concat({s})"
 
+    def to_comparable(self, s: str) -> str:
+        return s
+
     def to_string(self, s: str) -> str:
         return f"cast({s} as varchar)"
 

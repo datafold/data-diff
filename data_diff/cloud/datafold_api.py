@@ -103,6 +103,8 @@ class TCloudApiDataDiff(pydantic.BaseModel):
     pk_columns: List[str]
     filter1: Optional[str] = None
     filter2: Optional[str] = None
+    include_columns: Optional[List[str]]
+    exclude_columns: Optional[List[str]]
 
 
 class TSummaryResultPrimaryKeyStats(pydantic.BaseModel):

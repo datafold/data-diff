@@ -17,7 +17,8 @@ from ..queries import Expr, Compiler, table, Select, SKIP, Explain, Code, this
 from ..queries.ast_classes import Random
 from ..abcs.database_types import (
     AbstractDatabase,
-    T_Dialect,
+    Array,
+    Struct,
     AbstractDialect,
     AbstractTable,
     ColType,
@@ -35,6 +36,7 @@ from ..abcs.database_types import (
     DbTime,
     DbPath,
     Boolean,
+    JSON
 )
 from ..abcs.mixins import Compilable
 from ..abcs.mixins import (
@@ -164,6 +166,10 @@ class BaseDialect(AbstractDialect):
         joined_exprs = ", ".join(items)
         return f"concat({joined_exprs})"
 
+    def to_comparable(self, value: str, coltype: ColType) -> str:
+        """Ensure that the expression is comparable in ``IS DISTINCT FROM``."""
+        return value
+
     def is_distinct_from(self, a: str, b: str) -> str:
         return f"{a} is distinct from {b}"
 
@@ -228,7 +234,7 @@ class BaseDialect(AbstractDialect):
         """ """
 
         cls = self._parse_type_repr(type_repr)
-        if not cls:
+        if cls is None:
             return UnknownColType(type_repr)
 
         if issubclass(cls, TemporalType):
@@ -256,7 +262,7 @@ class BaseDialect(AbstractDialect):
                 )
             )
 
-        elif issubclass(cls, (Text, Native_UUID)):
+        elif issubclass(cls, (JSON, Array, Struct, Text, Native_UUID)):
             return cls()
 
         raise TypeError(f"Parsing {type_repr} returned an unknown type '{cls}'.")
