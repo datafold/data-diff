@@ -18,17 +18,6 @@ from .dbt_parser import DbtParser, PROJECT_FILE
 logger = getLogger(__name__)
 
 
-def import_dbt():
-    try:
-        from dbt_artifacts_parser.parser import parse_run_results, parse_manifest
-        from dbt.config.renderer import ProfileRenderer
-        import yaml
-    except ImportError:
-        raise RuntimeError("Could not import 'dbt' package. You can install it using: pip install 'data-diff[dbt]'.")
-
-    return parse_run_results, parse_manifest, ProfileRenderer, yaml
-
-
 from .tracking import (
     set_entrypoint_name,
     set_dbt_user_id,
@@ -55,12 +44,15 @@ class TDiffVars(pydantic.BaseModel):
 
 
 def dbt_diff(
-    profiles_dir_override: Optional[str] = None, project_dir_override: Optional[str] = None, is_cloud: bool = False
+    profiles_dir_override: Optional[str] = None,
+    project_dir_override: Optional[str] = None,
+    is_cloud: bool = False,
+    dbt_selection: Optional[str] = None,
 ) -> None:
     diff_threads = []
     set_entrypoint_name("CLI-dbt")
     dbt_parser = DbtParser(profiles_dir_override, project_dir_override)
-    models = dbt_parser.get_models()
+    models = dbt_parser.get_models(dbt_selection)
     datadiff_variables = dbt_parser.get_datadiff_variables()
     config_prod_database = datadiff_variables.get("prod_database")
     config_prod_schema = datadiff_variables.get("prod_schema")
@@ -101,11 +93,6 @@ def dbt_diff(
 
     else:
         dbt_parser.set_connection()
-
-    if config_prod_database is None:
-        raise ValueError(
-            "Expected a value for prod_database: OR prod_database: AND prod_schema: under \nvars:\n  data_diff: "
-        )
 
     for model in models:
         diff_vars = _get_diff_vars(
@@ -163,12 +150,12 @@ def _get_diff_vars(
         prod_schema = dev_schema
 
     if dbt_parser.requires_upper:
-        dev_qualified_list = [x.upper() for x in [dev_database, dev_schema, model.alias]]
-        prod_qualified_list = [x.upper() for x in [prod_database, prod_schema, model.alias]]
+        dev_qualified_list = [x.upper() for x in [dev_database, dev_schema, model.alias] if x]
+        prod_qualified_list = [x.upper() for x in [prod_database, prod_schema, model.alias] if x]
         primary_keys = [x.upper() for x in primary_keys]
     else:
-        dev_qualified_list = [dev_database, dev_schema, model.alias]
-        prod_qualified_list = [prod_database, prod_schema, model.alias]
+        dev_qualified_list = [x for x in [dev_database, dev_schema, model.alias] if x]
+        prod_qualified_list = [x for x in [prod_database, prod_schema, model.alias] if x]
 
     datadiff_model_config = dbt_parser.get_datadiff_model_config(model.meta)
 
@@ -298,7 +285,7 @@ def _cloud_diff(diff_vars: TDiffVars, datasource_id: int, api: DatafoldAPI) -> N
     try:
         diff_id = api.create_data_diff(payload=payload)
         diff_url = f"{api.host}/datadiffs/{diff_id}/overview"
-        rich.print(f"{diff_vars.dev_path[2]}: {diff_url}")
+        rich.print(f"{diff_vars.dev_path[-1]}: {diff_url}")
 
         if diff_id is None:
             raise Exception(f"Api response did not contain a diff_id")

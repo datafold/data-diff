@@ -352,7 +352,9 @@ class IsDistinctFrom(ExprNode, LazyOps):
     type = bool
 
     def compile(self, c: Compiler) -> str:
-        return c.dialect.is_distinct_from(c.compile(self.a), c.compile(self.b))
+        a = c.dialect.to_comparable(c.compile(self.a), self.a.type)
+        b = c.dialect.to_comparable(c.compile(self.b), self.b.type)
+        return c.dialect.is_distinct_from(a, b)
 
 
 @dataclass(eq=False, order=False)

@@ -92,6 +92,7 @@ class Dialect(BaseDialect, Mixin_Schema, Mixin_OptimizerHints):
         "NCHAR": Text,
         "NVARCHAR2": Text,
         "VARCHAR2": Text,
+        "DATE": Timestamp,
     }
     ROUNDS_ON_PREC_LOSS = True
     PLACEHOLDER_TABLE = "DUAL"

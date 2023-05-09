@@ -50,8 +50,58 @@ class TestDbtParser(unittest.TestCase):
         with self.assertRaises(Exception):
             DbtParser.get_datadiff_variables(mock_self)
 
+    def test_get_models(self):
+        mock_self = Mock()
+        mock_self.project_dir = Path()
+        mock_self.dbt_version = "1.5.0"
+        selection = "model+"
+        mock_return_value = Mock()
+        mock_self.get_dbt_selection_models.return_value = mock_return_value
+
+        models = DbtParser.get_models(mock_self, selection)
+        mock_self.get_dbt_selection_models.assert_called_once_with(selection)
+        self.assertEqual(models, mock_return_value)
+
+    def test_get_models_unsupported_manifest_version(self):
+        mock_self = Mock()
+        mock_self.project_dir = Path()
+        mock_self.dbt_version = "1.4.0"
+        selection = "model+"
+        mock_return_value = Mock()
+        mock_self.get_dbt_selection_models.return_value = mock_return_value
+
+        with self.assertRaises(Exception):
+            _ = DbtParser.get_models(mock_self, selection)
+        mock_self.get_dbt_selection_models.assert_not_called()
+        
+    def test_get_models_no_runner(self):
+        mock_self = Mock()
+        mock_self.project_dir = Path()
+        mock_self.dbt_version = "1.5.0"
+        mock_self.dbt_runner = None
+        selection = "model+"
+        mock_return_value = Mock()
+        mock_self.get_dbt_selection_models.return_value = mock_return_value
+
+        with self.assertRaises(Exception):
+            _ = DbtParser.get_models(mock_self, selection)
+        mock_self.get_dbt_selection_models.assert_not_called()
+
+    def test_get_models_no_selection(self):
+        mock_self = Mock()
+        mock_self.project_dir = Path()
+        mock_self.dbt_version = "1.5.0"
+        selection = None
+        mock_return_value = Mock()
+        mock_self.get_run_results_models.return_value = mock_return_value
+
+        models = DbtParser.get_models(mock_self, selection)
+        mock_self.get_dbt_selection_models.assert_not_called()
+        mock_self.get_run_results_models.assert_called()
+        self.assertEqual(models, mock_return_value)
+
     @patch("builtins.open", new_callable=mock_open, read_data="{}")
-    def test_get_models(self, mock_open):
+    def test_get_run_results_models(self, mock_open):
         mock_model = {"success_unique_id": "expected_value"}
         mock_self = Mock()
         mock_self.project_dir = Path()
@@ -67,14 +117,14 @@ class TestDbtParser(unittest.TestCase):
         mock_run_results.results = [mock_success_result, mock_failed_result]
         mock_self.manifest_obj.nodes.get.return_value = mock_model
 
-        models = DbtParser.get_models(mock_self)
+        models = DbtParser.get_run_results_models(mock_self)
 
         self.assertEqual(mock_model, models[0])
         mock_open.assert_any_call(Path(RUN_RESULTS_PATH))
         mock_self.parse_run_results.assert_called_once_with(run_results={})
 
     @patch("builtins.open", new_callable=mock_open, read_data="{}")
-    def test_get_models_bad_lower_dbt_version(self, mock_open):
+    def test_get_run_results_models_bad_lower_dbt_version(self, mock_open):
         mock_self = Mock()
         mock_self.project_dir = Path()
         mock_run_results = Mock()
@@ -82,7 +132,7 @@ class TestDbtParser(unittest.TestCase):
         mock_run_results.metadata.dbt_version = "0.19.0"
 
         with self.assertRaises(Exception) as ex:
-            DbtParser.get_models(mock_self)
+            DbtParser.get_run_results_models(mock_self)
 
         mock_open.assert_called_once_with(Path(RUN_RESULTS_PATH))
         mock_self.parse_run_results.assert_called_once_with(run_results={})
@@ -90,7 +140,7 @@ class TestDbtParser(unittest.TestCase):
         self.assertIn("version to be", ex.exception.args[0])
 
     @patch("builtins.open", new_callable=mock_open, read_data="{}")
-    def test_get_models_no_success(self, mock_open):
+    def test_get_run_results_models_no_success(self, mock_open):
         mock_self = Mock()
         mock_self.project_dir = Path()
         mock_run_results = Mock()
@@ -104,7 +154,7 @@ class TestDbtParser(unittest.TestCase):
         mock_run_results.results = [mock_failed_result]
 
         with self.assertRaises(Exception):
-            DbtParser.get_models(mock_self)
+            DbtParser.get_run_results_models(mock_self)
 
         mock_open.assert_any_call(Path(RUN_RESULTS_PATH))
         mock_self.parse_run_results.assert_called_once_with(run_results={})
@@ -787,9 +837,8 @@ class TestDbtDiffer(unittest.TestCase):
 
         mock_dbt_parser_inst.get_models.assert_called_once()
         mock_dbt_parser_inst.set_connection.assert_called_once()
-        mock_dbt_parser_inst.get_primary_keys.assert_not_called()
         mock_cloud_diff.assert_not_called()
-        mock_local_diff.assert_not_called()
+        mock_local_diff.assert_called_once_with(expected_diff_vars)
         mock_print.assert_not_called()
 
     @patch("data_diff.dbt._initialize_api")
