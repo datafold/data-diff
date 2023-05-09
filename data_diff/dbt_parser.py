@@ -162,7 +162,7 @@ class DbtParser:
 
         return credentials, conn_type
 
-    def set_connection(self) -> dict:
+    def set_connection(self):
         credentials, conn_type = self.get_connection_creds()
 
         if conn_type == "snowflake":
