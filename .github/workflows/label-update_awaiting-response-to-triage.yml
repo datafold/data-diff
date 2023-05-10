@@ -1,0 +1,23 @@
+# if a comment is added to an issue awaiting response, remove the "awaiting_response" label and add a "triage" label
+
+name: Awaiting Response --> Triage Label
+
+on: issue_comment
+
+defaults:
+  run:
+    shell: bash
+
+permissions:
+  issues: write
+
+jobs:
+  triage_label:
+    if: contains(github.event.issue.labels.*.name, 'awaiting_response')
+    runs-on: ubuntu-latest
+    steps:
+      - name: initial labeling
+        uses: andymckay/labeler@master
+        with:
+          add-labels: "triage"
+          remove-labels: "awaiting_response"
