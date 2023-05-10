@@ -1,6 +1,6 @@
 # if a comment is added to a stale issue, remove the "stale" label and add a "triage" label
 
-name: Update Triage Label
+name: Stale --> Triage Label
 
 on: issue_comment
 
