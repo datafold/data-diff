@@ -21,9 +21,10 @@ jobs:
     - uses: actions/stale@v5
       with:
         repo-token: ${{ secrets.GITHUB_TOKEN }}
-        stale-issue-message: 'This issue has been marked as stale because it has been open for 60 days with no activity. If you would like the issue to remain open, please comment on the issue or else it will be closed in 7 days.'
-        stale-pr-message: 'This pull request has been marked as stale because it has been open for 60 days with no activity. If you would like the pull request to remain open, please comment on the pull request or else it will be closed in 7 days.'
+        stale-issue-message: 'This issue has been marked as stale because it has been open for 60 days with no activity. If you would like the issue to remain open, please comment on the issue and it will be added to the triage queue. Otherwise, it will be closed in 7 days.'
+        stale-pr-message: 'This pull request has been marked as stale because it has been open for 60 days with no activity. If you would like the pull request to remain open, please comment on the pull request and it will be added to the triage queue. Otherwise, it will be closed in 7 days.'
         stale-issue-label: 'stale'
         stale-pr-label: 'stale'
-        close-issue-message: "Although we are closing this issue as stale, it's not gone forever. Issues can be reopened if there is renewed community interest. Just add a comment to notify the maintainers."
-        close-pr-message: "Although we are closing this pull request as stale, it's not gone forever. PRs can be reopened if there is renewed community interest. Just add a comment to notify the maintainers."
+        close-issue-message: "Although we are closing this issue as stale, it's not gone forever. Issues can be reopened if there is renewed community interest. Just add a comment and it will be reopened for triage."
+        close-pr-message: "Although we are closing this pull request as stale, it's not gone forever. PRs can be reopened if there is renewed community interest. Just add a comment and it will be reopened for triage."
+        labels-to-add-when-unstale: 'triage'
