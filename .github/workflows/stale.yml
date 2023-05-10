@@ -27,3 +27,4 @@ jobs:
         stale-pr-label: 'stale'
         close-issue-message: "Although we are closing this issue as stale, it's not gone forever. Issues can be reopened if there is renewed community interest. Just add a comment to notify the maintainers."
         close-pr-message: "Although we are closing this pull request as stale, it's not gone forever. PRs can be reopened if there is renewed community interest. Just add a comment to notify the maintainers."
+        labels-to-add-when-unstale: 'triage'
