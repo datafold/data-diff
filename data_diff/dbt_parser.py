@@ -4,9 +4,12 @@ import json
 import os
 from pathlib import Path
 from typing import List, Dict, Tuple, Set, Optional
+import yaml
 
 from packaging.version import parse as parse_version
 import pydantic
+from dbt_artifacts_parser.parser import parse_run_results, parse_manifest
+from dbt.config.renderer import ProfileRenderer
 
 from .utils import getLogger, get_from_dict_with_raise
 from .version import __version__
@@ -15,23 +18,9 @@ from .version import __version__
 logger = getLogger(__name__)
 
 
-def import_dbt_dependencies():
-    try:
-        from dbt_artifacts_parser.parser import parse_run_results, parse_manifest
-        from dbt.config.renderer import ProfileRenderer
-        import yaml
-    except ImportError:
-        raise RuntimeError("Could not import 'dbt' package. You can install it using: pip install 'data-diff[dbt]'.")
-
-    # dbt 1.5+ specific stuff to power selection of models
-    try:
-        # ProfileRenderer.render_data() fails without instantiating global flag MACRO_DEBUGGING in dbt-core 1.5
-        from dbt.flags import set_flags
-
-        set_flags(Namespace(MACRO_DEBUGGING=False))
-    except:
-        pass
-
+# getting this dbt_runner will only succeed in dbt-core>=1.5
+# it's needed for `--select` functionality
+def try_get_dbt_runner():
     try:
         from dbt.cli.main import dbtRunner
     except ImportError:
@@ -42,7 +31,18 @@ def import_dbt_dependencies():
     else:
         dbt_runner = None
 
-    return parse_run_results, parse_manifest, ProfileRenderer, yaml, dbt_runner
+    return dbt_runner
+
+
+# ProfileRenderer.render_data() fails without instantiating global flag MACRO_DEBUGGING in dbt-core 1.5
+# hacky but seems to be a bug on dbt's end
+def try_set_dbt_flags():
+    try:
+        from dbt.flags import set_flags
+
+        set_flags(Namespace(MACRO_DEBUGGING=False))
+    except:
+        pass
 
 
 RUN_RESULTS_PATH = "target/run_results.json"
@@ -77,13 +77,8 @@ class TDatadiffModelConfig(pydantic.BaseModel):
 
 class DbtParser:
     def __init__(self, profiles_dir_override: str, project_dir_override: str) -> None:
-        (
-            self.parse_run_results,
-            self.parse_manifest,
-            self.ProfileRenderer,
-            self.yaml,
-            self.dbt_runner,
-        ) = import_dbt_dependencies()
+        try_set_dbt_flags()
+        self.dbt_runner = try_get_dbt_runner()
         self.profiles_dir = Path(profiles_dir_override or default_profiles_dir())
         self.project_dir = Path(project_dir_override or default_project_dir())
         self.connection = {}
@@ -173,7 +168,7 @@ class DbtParser:
         with open(self.project_dir / RUN_RESULTS_PATH) as run_results:
             logger.info(f"Parsing file {RUN_RESULTS_PATH}")
             run_results_dict = json.load(run_results)
-            run_results_obj = self.parse_run_results(run_results=run_results_dict)
+            run_results_obj = parse_run_results(run_results=run_results_dict)
 
         dbt_version = parse_version(run_results_obj.metadata.dbt_version)
 
@@ -199,20 +194,20 @@ class DbtParser:
         with open(self.project_dir / MANIFEST_PATH) as manifest:
             logger.info(f"Parsing file {MANIFEST_PATH}")
             manifest_dict = json.load(manifest)
-            manifest_obj = self.parse_manifest(manifest=manifest_dict)
+            manifest_obj = parse_manifest(manifest=manifest_dict)
         return manifest_obj
 
     def get_project_dict(self):
         with open(self.project_dir / PROJECT_FILE) as project:
             logger.info(f"Parsing file {PROJECT_FILE}")
-            project_dict = self.yaml.safe_load(project)
+            project_dict = yaml.safe_load(project)
         return project_dict
 
     def get_connection_creds(self) -> Tuple[Dict[str, str], str]:
         profiles_path = self.profiles_dir / PROFILES_FILE
         with open(profiles_path) as profiles:
             logger.info(f"Parsing file {profiles_path}")
-            profiles = self.yaml.safe_load(profiles)
+            profiles = yaml.safe_load(profiles)
 
         dbt_profile_var = self.project_dict.get("profile")
 
@@ -220,7 +215,7 @@ class DbtParser:
             profiles, dbt_profile_var, f"No profile '{dbt_profile_var}' found in '{profiles_path}'."
         )
         # values can contain env_vars
-        rendered_profile = self.ProfileRenderer().render_data(profile)
+        rendered_profile = ProfileRenderer().render_data(profile)
         profile_target = get_from_dict_with_raise(
             rendered_profile, "target", f"No target found in profile '{dbt_profile_var}' in '{profiles_path}'."
         )

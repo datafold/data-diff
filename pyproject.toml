@@ -40,8 +40,8 @@ trino = {version="^0.314.0", optional=true}
 presto-python-client = {version="*", optional=true}
 clickhouse-driver = {version="*", optional=true}
 duckdb = {version="^0.7.0", optional=true}
-dbt-artifacts-parser = {version="^0.3.0", optional=true}
-dbt-core = {version="^1.0.0", optional=true}
+dbt-artifacts-parser = {version="^0.3.0"}
+dbt-core = {version="^1.0.0"}
 keyring = "*"
 tabulate = "^0.9.0"
 preql = {version="^0.2.19", optional=true}
@@ -71,6 +71,7 @@ dbt-core = "^1.0.0"
 preql = ["preql"]
 mysql = ["mysql-connector-python"]
 postgresql = ["psycopg2"]
+redshift = ["psycopg2"]
 snowflake = ["snowflake-connector-python", "cryptography"]
 presto = ["presto-python-client"]
 oracle = ["cx_Oracle"]
@@ -79,7 +80,6 @@ trino = ["trino"]
 clickhouse = ["clickhouse-driver"]
 vertica = ["vertica-python"]
 duckdb = ["duckdb"]
-dbt = ["dbt-core", "dbt-artifacts-parser"]
 
 [build-system]
 requires = ["poetry-core>=1.0.0"]

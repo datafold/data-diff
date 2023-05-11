@@ -36,7 +36,7 @@ from ..abcs.database_types import (
     DbTime,
     DbPath,
     Boolean,
-    JSON
+    JSON,
 )
 from ..abcs.mixins import Compilable
 from ..abcs.mixins import (
@@ -63,7 +63,7 @@ def import_helper(package: str = None, text=""):
             except ModuleNotFoundError as e:
                 s = text
                 if package:
-                    s += f"You can install it using 'pip install data_diff[{package}]'."
+                    s += f"Please complete setup by running: pip install 'data_diff[{package}]'."
                 raise ModuleNotFoundError(f"{e}\n\n{s}\n")
 
         return _inner

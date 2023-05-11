@@ -100,15 +100,16 @@ class TestDbtParser(unittest.TestCase):
         mock_self.get_run_results_models.assert_called()
         self.assertEqual(models, mock_return_value)
 
+    @patch("data_diff.dbt_parser.parse_run_results")
     @patch("builtins.open", new_callable=mock_open, read_data="{}")
-    def test_get_run_results_models(self, mock_open):
+    def test_get_run_results_models(self, mock_open, mock_artifact_parser):
         mock_model = {"success_unique_id": "expected_value"}
         mock_self = Mock()
         mock_self.project_dir = Path()
         mock_run_results = Mock()
         mock_success_result = Mock()
         mock_failed_result = Mock()
-        mock_self.parse_run_results.return_value = mock_run_results
+        mock_artifact_parser.return_value = mock_run_results
         mock_run_results.metadata.dbt_version = "1.0.0"
         mock_success_result.unique_id = "success_unique_id"
         mock_failed_result.unique_id = "failed_unique_id"
@@ -121,32 +122,34 @@ class TestDbtParser(unittest.TestCase):
 
         self.assertEqual(mock_model, models[0])
         mock_open.assert_any_call(Path(RUN_RESULTS_PATH))
-        mock_self.parse_run_results.assert_called_once_with(run_results={})
+        mock_artifact_parser.assert_called_once_with(run_results={})
 
+    @patch("data_diff.dbt_parser.parse_run_results")
     @patch("builtins.open", new_callable=mock_open, read_data="{}")
-    def test_get_run_results_models_bad_lower_dbt_version(self, mock_open):
+    def test_get_run_results_models_bad_lower_dbt_version(self, mock_open, mock_artifact_parser):
         mock_self = Mock()
         mock_self.project_dir = Path()
         mock_run_results = Mock()
-        mock_self.parse_run_results.return_value = mock_run_results
+        mock_artifact_parser.return_value = mock_run_results
         mock_run_results.metadata.dbt_version = "0.19.0"
 
         with self.assertRaises(Exception) as ex:
             DbtParser.get_run_results_models(mock_self)
 
         mock_open.assert_called_once_with(Path(RUN_RESULTS_PATH))
-        mock_self.parse_run_results.assert_called_once_with(run_results={})
+        mock_artifact_parser.assert_called_once_with(run_results={})
         mock_self.parse_manifest.assert_not_called()
         self.assertIn("version to be", ex.exception.args[0])
 
+    @patch("data_diff.dbt_parser.parse_run_results")
     @patch("builtins.open", new_callable=mock_open, read_data="{}")
-    def test_get_run_results_models_no_success(self, mock_open):
+    def test_get_run_results_models_no_success(self, mock_open, mock_artifact_parser):
         mock_self = Mock()
         mock_self.project_dir = Path()
         mock_run_results = Mock()
         mock_success_result = Mock()
         mock_failed_result = Mock()
-        mock_self.parse_run_results.return_value = mock_run_results
+        mock_artifact_parser.return_value = mock_run_results
         mock_run_results.metadata.dbt_version = "1.0.0"
         mock_failed_result.unique_id = "failed_unique_id"
         mock_success_result.status.name = "success"
@@ -157,15 +160,16 @@ class TestDbtParser(unittest.TestCase):
             DbtParser.get_run_results_models(mock_self)
 
         mock_open.assert_any_call(Path(RUN_RESULTS_PATH))
-        mock_self.parse_run_results.assert_called_once_with(run_results={})
+        mock_artifact_parser.assert_called_once_with(run_results={})
 
+    @patch("data_diff.dbt_parser.yaml")
     @patch("builtins.open", new_callable=mock_open, read_data="key:\n  value")
-    def test_get_project_dict(self, mock_open):
+    def test_get_project_dict(self, mock_open, mock_yaml):
         expected_dict = {"key1": "value1"}
         mock_self = Mock()
 
         mock_self.project_dir = Path()
-        mock_self.yaml.safe_load.return_value = expected_dict
+        mock_yaml.safe_load.return_value = expected_dict
         project_dict = DbtParser.get_project_dict(mock_self)
 
         self.assertEqual(project_dict, expected_dict)
@@ -300,8 +304,10 @@ class TestDbtParser(unittest.TestCase):
 
         self.assertNotIsInstance(mock_self.connection, dict)
 
+    @patch("data_diff.dbt_parser.yaml")
+    @patch("data_diff.dbt_parser.ProfileRenderer")
     @patch("builtins.open", new_callable=mock_open, read_data="")
-    def test_get_connection_creds_success(self, mock_open):
+    def test_get_connection_creds_success(self, mock_open, mock_profile_renderer, mock_yaml):
         profiles_dict = {
             "a_profile": {
                 "outputs": {
@@ -315,26 +321,30 @@ class TestDbtParser(unittest.TestCase):
         mock_self = Mock()
         mock_self.profiles_dir = Path()
         mock_self.project_dict = {"profile": "a_profile"}
-        mock_self.yaml.safe_load.return_value = profiles_dict
-        mock_self.ProfileRenderer().render_data.return_value = profile
+        mock_yaml.safe_load.return_value = profiles_dict
+        mock_profile_renderer().render_data.return_value = profile
         credentials, conn_type = DbtParser.get_connection_creds(mock_self)
         self.assertEqual(credentials, expected_credentials)
         self.assertEqual(conn_type, "type1")
 
+    @patch("data_diff.dbt_parser.yaml")
+    @patch("data_diff.dbt_parser.ProfileRenderer")
     @patch("builtins.open", new_callable=mock_open, read_data="")
-    def test_get_connection_no_matching_profile(self, mock_open):
+    def test_get_connection_no_matching_profile(self, mock_open, mock_profile_renderer, mock_yaml):
         profiles_dict = {"a_profile": {}}
         mock_self = Mock()
         mock_self.profiles_dir = Path()
         mock_self.project_dict = {"profile": "wrong_profile"}
-        mock_self.yaml.safe_load.return_value = profiles_dict
+        mock_yaml.safe_load.return_value = profiles_dict
         profile = profiles_dict["a_profile"]
-        mock_self.ProfileRenderer().render_data.return_value = profile
+        mock_profile_renderer().render_data.return_value = profile
         with self.assertRaises(ValueError):
             _, _ = DbtParser.get_connection_creds(mock_self)
 
+    @patch("data_diff.dbt_parser.yaml")
+    @patch("data_diff.dbt_parser.ProfileRenderer")
     @patch("builtins.open", new_callable=mock_open, read_data="")
-    def test_get_connection_no_target(self, mock_open):
+    def test_get_connection_no_target(self, mock_open, mock_profile_renderer, mock_yaml):
         profiles_dict = {
             "a_profile": {
                 "outputs": {
@@ -345,9 +355,9 @@ class TestDbtParser(unittest.TestCase):
         mock_self = Mock()
         mock_self.profiles_dir = Path()
         profile = profiles_dict["a_profile"]
-        mock_self.ProfileRenderer().render_data.return_value = profile
+        mock_profile_renderer().render_data.return_value = profile
         mock_self.project_dict = {"profile": "a_profile"}
-        mock_self.yaml.safe_load.return_value = profiles_dict
+        mock_yaml.safe_load.return_value = profiles_dict
         with self.assertRaises(ValueError):
             _, _ = DbtParser.get_connection_creds(mock_self)
 
@@ -356,20 +366,24 @@ class TestDbtParser(unittest.TestCase):
       target: a_target
     """
 
+    @patch("data_diff.dbt_parser.yaml")
+    @patch("data_diff.dbt_parser.ProfileRenderer")
     @patch("builtins.open", new_callable=mock_open, read_data="")
-    def test_get_connection_no_outputs(self, mock_open):
+    def test_get_connection_no_outputs(self, mock_open, mock_profile_renderer, mock_yaml):
         profiles_dict = {"a_profile": {"target": "a_target"}}
         mock_self = Mock()
         mock_self.profiles_dir = Path()
         mock_self.project_dict = {"profile": "a_profile"}
         profile = profiles_dict["a_profile"]
-        mock_self.ProfileRenderer().render_data.return_value = profile
-        mock_self.yaml.safe_load.return_value = profiles_dict
+        mock_profile_renderer().render_data.return_value = profile
+        mock_yaml.safe_load.return_value = profiles_dict
         with self.assertRaises(ValueError):
             _, _ = DbtParser.get_connection_creds(mock_self)
 
+    @patch("data_diff.dbt_parser.yaml")
+    @patch("data_diff.dbt_parser.ProfileRenderer")
     @patch("builtins.open", new_callable=mock_open, read_data="")
-    def test_get_connection_no_credentials(self, mock_open):
+    def test_get_connection_no_credentials(self, mock_open, mock_profile_renderer, mock_yaml):
         profiles_dict = {
             "a_profile": {
                 "outputs": {"a_target": {}},
@@ -379,14 +393,16 @@ class TestDbtParser(unittest.TestCase):
         mock_self = Mock()
         mock_self.profiles_dir = Path()
         mock_self.project_dict = {"profile": "a_profile"}
-        mock_self.yaml.safe_load.return_value = profiles_dict
+        mock_yaml.safe_load.return_value = profiles_dict
         profile = profiles_dict["a_profile"]
-        mock_self.ProfileRenderer().render_data.return_value = profile
+        mock_profile_renderer().render_data.return_value = profile
         with self.assertRaises(ValueError):
             _, _ = DbtParser.get_connection_creds(mock_self)
 
+    @patch("data_diff.dbt_parser.yaml")
+    @patch("data_diff.dbt_parser.ProfileRenderer")
     @patch("builtins.open", new_callable=mock_open, read_data="")
-    def test_get_connection_no_target_credentials(self, mock_open):
+    def test_get_connection_no_target_credentials(self, mock_open, mock_profile_renderer, mock_yaml):
         profiles_dict = {
             "a_profile": {
                 "outputs": {
@@ -399,13 +415,15 @@ class TestDbtParser(unittest.TestCase):
         mock_self.profiles_dir = Path()
         mock_self.project_dict = {"profile": "a_profile"}
         profile = profiles_dict["a_profile"]
-        mock_self.ProfileRenderer().render_data.return_value = profile
-        mock_self.yaml.safe_load.return_value = profiles_dict
+        mock_profile_renderer().render_data.return_value = profile
+        mock_yaml.safe_load.return_value = profiles_dict
         with self.assertRaises(ValueError):
             _, _ = DbtParser.get_connection_creds(mock_self)
 
+    @patch("data_diff.dbt_parser.yaml")
+    @patch("data_diff.dbt_parser.ProfileRenderer")
     @patch("builtins.open", new_callable=mock_open, read_data="")
-    def test_get_connection_no_type(self, mock_open):
+    def test_get_connection_no_type(self, mock_open, mock_profile_renderer, mock_yaml):
         profiles_dict = {
             "a_profile": {
                 "outputs": {"a_target": {"credential_1": "credential_1", "credential_2": "credential_2"}},
@@ -415,9 +433,9 @@ class TestDbtParser(unittest.TestCase):
         mock_self = Mock()
         mock_self.profiles_dir = Path()
         mock_self.project_dict = {"profile": "a_profile"}
-        mock_self.yaml.safe_load.return_value = profiles_dict
+        mock_yaml.safe_load.return_value = profiles_dict
         profile = profiles_dict["a_profile"]
-        mock_self.ProfileRenderer().render_data.return_value = profile
+        mock_profile_renderer().render_data.return_value = profile
         with self.assertRaises(ValueError):
             _, _ = DbtParser.get_connection_creds(mock_self)
 
