@@ -63,7 +63,7 @@ def import_helper(package: str = None, text=""):
             except ModuleNotFoundError as e:
                 s = text
                 if package:
-                    s += f"Please complete setup by running 'pip install data_diff[{package}]'."
+                    s += f"Please complete setup by running: pip install 'data_diff[{package}]'."
                 raise ModuleNotFoundError(f"{e}\n\n{s}\n")
 
         return _inner
