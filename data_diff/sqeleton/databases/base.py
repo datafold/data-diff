@@ -36,7 +36,7 @@ from ..abcs.database_types import (
     DbTime,
     DbPath,
     Boolean,
-    JSON
+    JSON,
 )
 from ..abcs.mixins import Compilable
 from ..abcs.mixins import (
