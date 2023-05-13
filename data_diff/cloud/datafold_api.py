@@ -198,6 +198,11 @@ class DatafoldAPI:
         rv.raise_for_status()
         return [TCloudApiDataSource(**item) for item in rv.json()]
 
+    def get_data_source(self, data_source_id: int) -> TCloudApiDataSource:
+        rv = self.make_get_request(url=f"api/v1/data_sources/{data_source_id}")
+        rv.raise_for_status()
+        return TCloudApiDataSource(**rv.json())
+
     def create_data_source(self, config: TDsConfig) -> TCloudApiDataSource:
         payload = config.dict()
         if config.type == "bigquery":

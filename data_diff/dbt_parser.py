@@ -238,6 +238,7 @@ class DbtParser:
 
     def set_connection(self):
         credentials, conn_type = self.get_connection_creds()
+        self.set_casing_policy_for(conn_type)
 
         if conn_type == "snowflake":
             conn_info = {
@@ -252,7 +253,6 @@ class DbtParser:
                 "client_session_keep_alive": credentials.get("client_session_keep_alive", False),
             }
             self.threads = credentials.get("threads")
-            self.requires_upper = True
 
             if credentials.get("private_key_path") is not None:
                 if credentials.get("password") is not None:
@@ -405,3 +405,11 @@ class DbtParser:
 
         stripped_columns = [col.strip('" ()') for col in columns]
         return stripped_columns
+
+    def set_casing_policy_for(self, connection_type: str):
+        """
+        Set casing policy for identifiers: database, schema, table, column, etc.
+        Correct policy depends on the type of the database, because some databases (e.g. Snowflake)
+        use upper case identifiers by default, while others (e.g. Postgres) use lower case.
+        """
+        self.requires_upper = connection_type == "snowflake"

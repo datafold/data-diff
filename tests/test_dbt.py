@@ -1,6 +1,8 @@
 import os
 
 from pathlib import Path
+
+from data_diff.cloud.datafold_api import TCloudApiDataSource
 from data_diff.diff_tables import Algorithm
 from .test_cli import run_datadiff_cli
 
@@ -183,12 +185,12 @@ class TestDbtParser(unittest.TestCase):
 
         DbtParser.set_connection(mock_self)
 
+        mock_self.set_casing_policy_for.assert_called_once_with("snowflake")
         self.assertIsInstance(mock_self.connection, dict)
         self.assertEqual(mock_self.connection.get("driver"), expected_driver)
         self.assertEqual(mock_self.connection.get("user"), expected_credentials["user"])
         self.assertEqual(mock_self.connection.get("password"), expected_credentials["password"])
         self.assertEqual(mock_self.connection.get("key"), None)
-        self.assertEqual(mock_self.requires_upper, True)
 
     def test_set_connection_snowflake_success_key(self):
         expected_driver = "snowflake"
@@ -198,12 +200,12 @@ class TestDbtParser(unittest.TestCase):
 
         DbtParser.set_connection(mock_self)
 
+        mock_self.set_casing_policy_for.assert_called_once_with("snowflake")
         self.assertIsInstance(mock_self.connection, dict)
         self.assertEqual(mock_self.connection.get("driver"), expected_driver)
         self.assertEqual(mock_self.connection.get("user"), expected_credentials["user"])
         self.assertEqual(mock_self.connection.get("password"), None)
         self.assertEqual(mock_self.connection.get("key"), expected_credentials["private_key_path"])
-        self.assertEqual(mock_self.requires_upper, True)
 
     def test_set_connection_snowflake_success_key_and_passphrase(self):
         expected_driver = "snowflake"
@@ -217,6 +219,7 @@ class TestDbtParser(unittest.TestCase):
 
         DbtParser.set_connection(mock_self)
 
+        mock_self.set_casing_policy_for.assert_called_once_with("snowflake")
         self.assertIsInstance(mock_self.connection, dict)
         self.assertEqual(mock_self.connection.get("driver"), expected_driver)
         self.assertEqual(mock_self.connection.get("user"), expected_credentials["user"])
@@ -225,7 +228,6 @@ class TestDbtParser(unittest.TestCase):
         self.assertEqual(
             mock_self.connection.get("private_key_passphrase"), expected_credentials["private_key_passphrase"]
         )
-        self.assertEqual(mock_self.requires_upper, True)
 
     def test_set_connection_snowflake_no_key_or_password(self):
         expected_driver = "snowflake"
@@ -609,14 +611,13 @@ class TestDbtDiffer(unittest.TestCase):
     @patch("data_diff.dbt._cloud_diff")
     @patch("data_diff.dbt_parser.DbtParser.__new__")
     @patch("data_diff.dbt.rich.print")
+    @patch("data_diff.dbt.DatafoldAPI")
     def test_diff_is_cloud(
-        self, mock_print, mock_dbt_parser, mock_cloud_diff, mock_local_diff, mock_get_diff_vars, mock_initialize_api
+        self, mock_api, mock_print, mock_dbt_parser, mock_cloud_diff, mock_local_diff, mock_get_diff_vars, mock_initialize_api,
     ):
         connection = {}
         threads = None
         where = "a_string"
-        host = "a_host"
-        api_key = "a_api_key"
         expected_dbt_vars_dict = {
             "prod_database": "prod_db",
             "prod_schema": "prod_schema",
@@ -624,9 +625,8 @@ class TestDbtDiffer(unittest.TestCase):
         }
         mock_dbt_parser_inst = Mock()
         mock_model = Mock()
-        api = DatafoldAPI(api_key=api_key, host=host)
-        mock_initialize_api.return_value = api
-
+        mock_api.get_data_source.return_value = TCloudApiDataSource(id=1, type="snowflake", name="snowflake")
+        mock_initialize_api.return_value = mock_api
         mock_dbt_parser.return_value = mock_dbt_parser_inst
         mock_dbt_parser_inst.get_models.return_value = [mock_model]
         mock_dbt_parser_inst.get_datadiff_variables.return_value = expected_dbt_vars_dict
@@ -645,9 +645,11 @@ class TestDbtDiffer(unittest.TestCase):
         dbt_diff(is_cloud=True)
         mock_dbt_parser_inst.get_models.assert_called_once()
         mock_dbt_parser_inst.set_connection.assert_not_called()
+        mock_dbt_parser_inst.set_casing_policy_for.assert_called_once()
 
         mock_initialize_api.assert_called_once()
-        mock_cloud_diff.assert_called_once_with(diff_vars, 1, api)
+        mock_api.get_data_source.assert_called_once_with(1)
+        mock_cloud_diff.assert_called_once_with(diff_vars, 1, mock_api)
         mock_local_diff.assert_not_called()
         mock_print.assert_called_once()
 
@@ -823,8 +825,9 @@ class TestDbtDiffer(unittest.TestCase):
     @patch("data_diff.dbt._cloud_diff")
     @patch("data_diff.dbt_parser.DbtParser.__new__")
     @patch("data_diff.dbt.rich.print")
+    @patch("data_diff.dbt.DatafoldAPI")
     def test_diff_is_cloud_no_pks(
-        self, mock_print, mock_dbt_parser, mock_cloud_diff, mock_local_diff, mock_get_diff_vars, mock_initialize_api
+        self, mock_api, mock_print, mock_dbt_parser, mock_cloud_diff, mock_local_diff, mock_get_diff_vars, mock_initialize_api
     ):
         connection = {}
         threads = None
@@ -834,13 +837,11 @@ class TestDbtDiffer(unittest.TestCase):
             "prod_schema": "prod_schema",
             "datasource_id": 1,
         }
-        host = "a_host"
-        api_key = "a_api_key"
         mock_dbt_parser_inst = Mock()
         mock_dbt_parser.return_value = mock_dbt_parser_inst
         mock_model = Mock()
-        api = DatafoldAPI(api_key=api_key, host=host)
-        mock_initialize_api.return_value = api
+        mock_initialize_api.return_value = mock_api
+        mock_api.get_data_source.return_value = TCloudApiDataSource(id=1, type="snowflake", name="snowflake")
 
         mock_dbt_parser_inst.get_models.return_value = [mock_model]
         mock_dbt_parser_inst.get_datadiff_variables.return_value = expected_dbt_vars_dict
@@ -858,6 +859,7 @@ class TestDbtDiffer(unittest.TestCase):
         dbt_diff(is_cloud=True)
 
         mock_initialize_api.assert_called_once()
+        mock_api.get_data_source.assert_called_once_with(1)
         mock_dbt_parser_inst.get_models.assert_called_once()
         mock_dbt_parser_inst.set_connection.assert_not_called()
         mock_cloud_diff.assert_not_called()

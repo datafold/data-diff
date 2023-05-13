@@ -89,6 +89,9 @@ def dbt_diff(
                     "Datasource ID not found, include it as a dbt variable in the dbt_project.yml. "
                     "\nvars:\n data_diff:\n   datasource_id: 1234"
                 )
+
+        data_source = api.get_data_source(datasource_id)
+        dbt_parser.set_casing_policy_for(connection_type=data_source.type)
         rich.print("[green][bold]\nDiffs in progress...[/][/]\n")
 
     else:
