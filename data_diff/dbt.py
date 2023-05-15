@@ -6,7 +6,13 @@ import rich
 from rich.prompt import Confirm
 
 from typing import List, Optional, Dict
-from .utils import dbt_diff_string_template, getLogger
+from .utils import (
+    dbt_diff_string_template,
+    getLogger,
+    columns_added_template,
+    columns_removed_template,
+    no_differences_template,
+)
 from pathlib import Path
 
 import keyring
@@ -175,7 +181,6 @@ def _get_diff_vars(
 
 
 def _local_diff(diff_vars: TDiffVars) -> None:
-    column_diffs_str = ""
     dev_qualified_str = ".".join(diff_vars.dev_path)
     prod_qualified_str = ".".join(diff_vars.prod_path)
     diff_output_str = _diff_output_base(dev_qualified_str, prod_qualified_str)
@@ -196,14 +201,14 @@ def _local_diff(diff_vars: TDiffVars) -> None:
         return
 
     column_set = set(table1_columns).intersection(table2_columns)
-    table1_diff = set(table1_columns).difference(table2_columns)
-    table2_diff = set(table2_columns).difference(table1_columns)
+    columns_added = set(table1_columns).difference(table2_columns)
+    columns_removed = set(table2_columns).difference(table1_columns)
 
-    if table1_diff:
-        column_diffs_str += f"Column(s) added: {table1_diff}\n"
+    if columns_added:
+        diff_output_str += columns_added_template(columns_added)
 
-    if table2_diff:
-        column_diffs_str += f"Column(s) removed: {table2_diff}\n"
+    if columns_removed:
+        diff_output_str += columns_removed_template(columns_removed)
 
     column_set = column_set - set(diff_vars.primary_keys)
 
@@ -225,10 +230,10 @@ def _local_diff(diff_vars: TDiffVars) -> None:
     )
 
     if list(diff):
-        diff_output_str += f"{column_diffs_str}{diff.get_stats_string(is_dbt=True)} \n"
+        diff_output_str += f"{diff.get_stats_string(is_dbt=True)} \n"
         rich.print(diff_output_str)
     else:
-        diff_output_str += f"{column_diffs_str}[bold][green]No row differences[/][/] \n"
+        diff_output_str += no_differences_template()
         rich.print(diff_output_str)
 
 
@@ -304,6 +309,18 @@ def _cloud_diff(diff_vars: TDiffVars, datasource_id: int, api: DatafoldAPI) -> N
         diff_percent_list = {
             x.column_name: str(x.match) + "%" for x in diff_results.values.columns_diff_stats if x.match != 100.0
         }
+        columns_added = diff_results.schema_.exclusive_columns[1]
+        columns_removed = diff_results.schema_.exclusive_columns[0]
+        column_type_changes = diff_results.schema_.column_type_differs
+
+        if columns_added:
+            diff_output_str += columns_added_template(columns_added)
+
+        if columns_removed:
+            diff_output_str += columns_removed_template(columns_removed)
+
+        if column_type_changes:
+            diff_output_str += "Type change: " + str(column_type_changes) + "\n"
 
         if any([rows_added_count, rows_removed_count, rows_updated]):
             diff_output = dbt_diff_string_template(
@@ -314,10 +331,10 @@ def _cloud_diff(diff_vars: TDiffVars, datasource_id: int, api: DatafoldAPI) -> N
                 diff_percent_list,
                 "Value Match Percent:",
             )
-            diff_output_str += f"{diff_url}\n {diff_output} \n"
+            diff_output_str += f"\n{diff_url}\n {diff_output} \n"
             rich.print(diff_output_str)
         else:
-            diff_output_str += f"{diff_url}\n [green]No row differences[/] \n"
+            diff_output_str += f"\n{diff_url}\n{no_differences_template()}\n"
             rich.print(diff_output_str)
 
     except BaseException as ex:  # Catch KeyboardInterrupt too

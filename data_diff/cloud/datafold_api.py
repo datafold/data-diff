@@ -134,6 +134,8 @@ class TSummaryResultSchemaStats(pydantic.BaseModel):
     column_type_mismatches: int
     column_reorders: int
     column_counts: Tuple[int, int]
+    column_type_differs: List[str]
+    exclusive_columns: Tuple[List[str], List[str]]
 
 
 class TCloudApiDataDiffSummaryResult(pydantic.BaseModel):
