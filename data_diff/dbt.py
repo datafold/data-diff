@@ -17,7 +17,7 @@ from pathlib import Path
 
 import keyring
 
-from .cloud import DatafoldAPI, TCloudApiDataDiff, get_or_create_data_source
+from .cloud import DatafoldAPI, TCloudApiDataDiff, TCloudApiOrgMeta, get_or_create_data_source
 from .dbt_parser import DbtParser, PROJECT_FILE
 
 
@@ -78,6 +78,7 @@ def dbt_diff(
         # exit so the user can set the key
         if not api:
             return
+        org_meta = api.get_org_meta()
 
         if datasource_id is None:
             rich.print("[red]Data source ID not found in dbt_project.yml")
@@ -110,7 +111,7 @@ def dbt_diff(
 
         if diff_vars.primary_keys:
             if is_cloud:
-                diff_thread = run_as_daemon(_cloud_diff, diff_vars, datasource_id, api)
+                diff_thread = run_as_daemon(_cloud_diff, diff_vars, datasource_id, api, org_meta)
                 diff_threads.append(diff_thread)
             else:
                 _local_diff(diff_vars)
@@ -268,7 +269,7 @@ def _initialize_api() -> Optional[DatafoldAPI]:
     return DatafoldAPI(api_key=api_key, host=datafold_host)
 
 
-def _cloud_diff(diff_vars: TDiffVars, datasource_id: int, api: DatafoldAPI) -> None:
+def _cloud_diff(diff_vars: TDiffVars, datasource_id: int, api: DatafoldAPI, org_meta: TCloudApiOrgMeta) -> None:
     diff_output_str = _diff_output_base(".".join(diff_vars.dev_path), ".".join(diff_vars.prod_path))
     payload = TCloudApiDataDiff(
         data_source1_id=datasource_id,
@@ -356,6 +357,9 @@ def _cloud_diff(diff_vars: TDiffVars, datasource_id: int, api: DatafoldAPI) -> N
                 error=err_message,
                 diff_id=diff_id,
                 is_cloud=True,
+                org_id=org_meta.org_id,
+                org_name=org_meta.org_name,
+                user_id=org_meta.user_id,
             )
             send_event_json(event_json)
 

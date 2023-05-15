@@ -1,8 +1,8 @@
 import os
 
 from pathlib import Path
-
 from data_diff.cloud.datafold_api import TCloudApiDataSource
+from data_diff.cloud.datafold_api import TCloudApiOrgMeta
 from data_diff.diff_tables import Algorithm
 from .test_cli import run_datadiff_cli
 
@@ -569,6 +569,7 @@ class TestDbtDiffer(unittest.TestCase):
     @patch("data_diff.dbt.os.environ")
     @patch("data_diff.dbt.DatafoldAPI")
     def test_cloud_diff(self, mock_api, mock_os_environ, mock_print):
+        org_meta = TCloudApiOrgMeta(org_id=1, org_name="", user_id=1)
         expected_api_key = "an_api_key"
         dev_qualified_list = ["dev_db", "dev_schema", "dev_table"]
         prod_qualified_list = ["prod_db", "prod_schema", "prod_table"]
@@ -591,7 +592,7 @@ class TestDbtDiffer(unittest.TestCase):
             exclude_columns=[],
         )
 
-        _cloud_diff(diff_vars, expected_datasource_id, api=mock_api)
+        _cloud_diff(diff_vars, expected_datasource_id, org_meta=org_meta, api=mock_api)
 
         mock_api.create_data_diff.assert_called_once()
         self.assertEqual(mock_print.call_count, 2)
@@ -613,8 +614,16 @@ class TestDbtDiffer(unittest.TestCase):
     @patch("data_diff.dbt.rich.print")
     @patch("data_diff.dbt.DatafoldAPI")
     def test_diff_is_cloud(
-        self, mock_api, mock_print, mock_dbt_parser, mock_cloud_diff, mock_local_diff, mock_get_diff_vars, mock_initialize_api,
+        self,
+        mock_api,
+        mock_print,
+        mock_dbt_parser,
+        mock_cloud_diff,
+        mock_local_diff,
+        mock_get_diff_vars,
+        mock_initialize_api,
     ):
+        org_meta = TCloudApiOrgMeta(org_id=1, org_name="", user_id=1)
         connection = {}
         threads = None
         where = "a_string"
@@ -627,6 +636,8 @@ class TestDbtDiffer(unittest.TestCase):
         mock_model = Mock()
         mock_api.get_data_source.return_value = TCloudApiDataSource(id=1, type="snowflake", name="snowflake")
         mock_initialize_api.return_value = mock_api
+        mock_api.get_org_meta.return_value = org_meta
+
         mock_dbt_parser.return_value = mock_dbt_parser_inst
         mock_dbt_parser_inst.get_models.return_value = [mock_model]
         mock_dbt_parser_inst.get_datadiff_variables.return_value = expected_dbt_vars_dict
@@ -649,7 +660,7 @@ class TestDbtDiffer(unittest.TestCase):
 
         mock_initialize_api.assert_called_once()
         mock_api.get_data_source.assert_called_once_with(1)
-        mock_cloud_diff.assert_called_once_with(diff_vars, 1, mock_api)
+        mock_cloud_diff.assert_called_once_with(diff_vars, 1, mock_api, org_meta)
         mock_local_diff.assert_not_called()
         mock_print.assert_called_once()
 
@@ -663,20 +674,20 @@ class TestDbtDiffer(unittest.TestCase):
     def test_diff_is_cloud_no_ds_id(
         self, _, mock_print, mock_dbt_parser, mock_cloud_diff, mock_local_diff, mock_get_diff_vars, mock_initialize_api
     ):
+        org_meta = TCloudApiOrgMeta(org_id=1, org_name="", user_id=1)
         connection = {}
         threads = None
         where = "a_string"
-        host = "a_host"
-        api_key = "a_api_key"
         mock_dbt_parser_inst = Mock()
         mock_model = Mock()
         expected_dbt_vars_dict = {
             "prod_database": "prod_db",
             "prod_schema": "prod_schema",
         }
+        mock_api = Mock()
+        mock_initialize_api.return_value = mock_api
+        mock_api.get_org_meta.return_value = org_meta
 
-        api = DatafoldAPI(api_key=api_key, host=host)
-        mock_initialize_api.return_value = api
         mock_dbt_parser.return_value = mock_dbt_parser_inst
         mock_dbt_parser_inst.get_models.return_value = [mock_model]
         mock_dbt_parser_inst.get_datadiff_variables.return_value = expected_dbt_vars_dict
@@ -827,8 +838,18 @@ class TestDbtDiffer(unittest.TestCase):
     @patch("data_diff.dbt.rich.print")
     @patch("data_diff.dbt.DatafoldAPI")
     def test_diff_is_cloud_no_pks(
-        self, mock_api, mock_print, mock_dbt_parser, mock_cloud_diff, mock_local_diff, mock_get_diff_vars, mock_initialize_api
+        self,
+        mock_api,
+        mock_print,
+        mock_dbt_parser,
+        mock_cloud_diff,
+        mock_local_diff,
+        mock_get_diff_vars,
+        mock_initialize_api,
     ):
+        mock_dbt_parser_inst = Mock()
+        mock_dbt_parser.return_value = mock_dbt_parser_inst
+        mock_model = Mock()
         connection = {}
         threads = None
         where = "a_string"
@@ -837,11 +858,8 @@ class TestDbtDiffer(unittest.TestCase):
             "prod_schema": "prod_schema",
             "datasource_id": 1,
         }
-        mock_dbt_parser_inst = Mock()
-        mock_dbt_parser.return_value = mock_dbt_parser_inst
-        mock_model = Mock()
+        mock_api = Mock()
         mock_initialize_api.return_value = mock_api
-        mock_api.get_data_source.return_value = TCloudApiDataSource(id=1, type="snowflake", name="snowflake")
 
         mock_dbt_parser_inst.get_models.return_value = [mock_model]
         mock_dbt_parser_inst.get_datadiff_variables.return_value = expected_dbt_vars_dict

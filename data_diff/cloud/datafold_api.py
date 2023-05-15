@@ -107,6 +107,12 @@ class TCloudApiDataDiff(pydantic.BaseModel):
     exclude_columns: Optional[List[str]]
 
 
+class TCloudApiOrgMeta(pydantic.BaseModel):
+    org_id: int
+    org_name: str
+    user_id: int
+
+
 class TSummaryResultPrimaryKeyStats(pydantic.BaseModel):
     total_rows: Tuple[int, int]
     nulls: Tuple[int, int]
@@ -276,3 +282,10 @@ class DatafoldAPI:
             )
             for item in rv.json()["results"]
         ]
+
+    def get_org_meta(self) -> TCloudApiOrgMeta:
+        response = self.make_get_request(f"api/v1/organization/meta")
+        response_json = response.json()
+        return TCloudApiOrgMeta(
+            org_id=response_json["org_id"], org_name=response_json["org_name"], user_id=response_json["user_id"]
+        )
