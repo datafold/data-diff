@@ -1,9 +1,15 @@
+from argparse import Namespace
 from collections import defaultdict
 import json
+import os
 from pathlib import Path
-from typing import List, Dict, Tuple, Set
+from typing import List, Dict, Tuple, Set, Optional
+import yaml
 
 from packaging.version import parse as parse_version
+import pydantic
+from dbt_artifacts_parser.parser import parse_run_results, parse_manifest
+from dbt.config.renderer import ProfileRenderer
 
 from .utils import getLogger, get_from_dict_with_raise
 from .version import __version__
@@ -12,15 +18,31 @@ from .version import __version__
 logger = getLogger(__name__)
 
 
-def import_dbt():
+# getting this dbt_runner will only succeed in dbt-core>=1.5
+# it's needed for `--select` functionality
+def try_get_dbt_runner():
     try:
-        from dbt_artifacts_parser.parser import parse_run_results, parse_manifest
-        from dbt.config.renderer import ProfileRenderer
-        import yaml
+        from dbt.cli.main import dbtRunner
     except ImportError:
-        raise RuntimeError("Could not import 'dbt' package. You can install it using: pip install 'data-diff[dbt]'.")
+        dbtRunner = None
 
-    return parse_run_results, parse_manifest, ProfileRenderer, yaml
+    if dbtRunner is not None:
+        dbt_runner = dbtRunner()
+    else:
+        dbt_runner = None
+
+    return dbt_runner
+
+
+# ProfileRenderer.render_data() fails without instantiating global flag MACRO_DEBUGGING in dbt-core 1.5
+# hacky but seems to be a bug on dbt's end
+def try_set_dbt_flags():
+    try:
+        from dbt.flags import set_flags
+
+        set_flags(Namespace(MACRO_DEBUGGING=False))
+    except:
+        pass
 
 
 RUN_RESULTS_PATH = "target/run_results.json"
@@ -28,7 +50,7 @@ MANIFEST_PATH = "target/manifest.json"
 PROJECT_FILE = "dbt_project.yml"
 PROFILES_FILE = "profiles.yml"
 LOWER_DBT_V = "1.0.0"
-UPPER_DBT_V = "1.4.7"
+UPPER_DBT_V = "1.6.0"
 
 
 # https://github.com/dbt-labs/dbt-core/blob/c952d44ec5c2506995fbad75320acbae49125d3d/core/dbt/cli/resolvers.py#L6
@@ -47,12 +69,19 @@ def legacy_profiles_dir() -> Path:
     return Path.home() / ".dbt"
 
 
+class TDatadiffModelConfig(pydantic.BaseModel):
+    where_filter: Optional[str] = None
+    include_columns: List[str] = []
+    exclude_columns: List[str] = []
+
+
 class DbtParser:
     def __init__(self, profiles_dir_override: str, project_dir_override: str) -> None:
-        self.parse_run_results, self.parse_manifest, self.ProfileRenderer, self.yaml = import_dbt()
+        try_set_dbt_flags()
+        self.dbt_runner = try_get_dbt_runner()
         self.profiles_dir = Path(profiles_dir_override or default_profiles_dir())
         self.project_dir = Path(project_dir_override or default_project_dir())
-        self.connection = None
+        self.connection = {}
         self.project_dict = self.get_project_dict()
         self.manifest_obj = self.get_manifest_obj()
         self.dbt_user_id = self.manifest_obj.metadata.user_id
@@ -68,11 +97,78 @@ class DbtParser:
         vars = get_from_dict_with_raise(self.project_dict, "vars", error_message)
         return get_from_dict_with_raise(vars, "data_diff", error_message)
 
-    def get_models(self):
+    def get_datadiff_model_config(self, model_meta: dict) -> TDatadiffModelConfig:
+        where_filter = None
+        include_columns = []
+        exclude_columns = []
+
+        if "datafold" in model_meta and "datadiff" in model_meta["datafold"]:
+            config = model_meta["datafold"]["datadiff"]
+            where_filter = config.get("filter")
+            include_columns = config.get("include_columns") or []
+            exclude_columns = config.get("exclude_columns") or []
+
+        return TDatadiffModelConfig(
+            where_filter=where_filter, include_columns=include_columns, exclude_columns=exclude_columns
+        )
+
+    def get_models(self, dbt_selection: Optional[str] = None):
+        dbt_version = parse_version(self.dbt_version)
+        if dbt_selection:
+            if (dbt_version.major, dbt_version.minor) >= (1, 5):
+                if self.dbt_runner:
+                    return self.get_dbt_selection_models(dbt_selection)
+                # edge case if running data-diff from a separate env than dbt (likely local development)
+                else:
+                    raise Exception(
+                        "data-diff is using a dbt-core version < 1.5, update the environment's dbt-core version via pip install 'dbt-core>=1.5' in order to use `--select`"
+                    )
+            else:
+                raise Exception(
+                    f"The `--select` feature requires dbt >= 1.5, but your project's manifest.json is from dbt v{dbt_version}. Please follow these steps to use the `--select` feature: \n 1. Update your dbt-core version via pip install 'dbt-core>=1.5'. Details: https://docs.getdbt.com/docs/core/pip-install#change-dbt-core-versions \n 2. Execute any `dbt` command (`run`, `compile`, `build`) to create a new manifest.json."
+                )
+        else:
+            return self.get_run_results_models()
+
+    def get_dbt_selection_models(self, dbt_selection: str) -> List[str]:
+        # log level and format settings needed to prevent dbt from printing to stdout
+        # ls command is used to get the list of model unique_ids
+        results = self.dbt_runner.invoke(
+            [
+                "--log-format",
+                "json",
+                "--log-level",
+                "none",
+                "ls",
+                "--select",
+                dbt_selection,
+                "--resource-type",
+                "model",
+                "--output",
+                "json",
+                "--output-keys",
+                "unique_id",
+                "--project-dir",
+                self.project_dir,
+            ]
+        )
+        if results.exception:
+            raise results.exception
+        elif results.success and results.result:
+            model_list = [json.loads(model)["unique_id"] for model in results.result]
+            models = [self.manifest_obj.nodes.get(x) for x in model_list]
+            return models
+        elif not results.result:
+            raise Exception(f"No dbt models found for `--select {dbt_selection}`")
+        else:
+            logger.debug(str(results))
+            raise Exception("Encountered an unexpected error while finding `--select` models")
+
+    def get_run_results_models(self):
         with open(self.project_dir / RUN_RESULTS_PATH) as run_results:
             logger.info(f"Parsing file {RUN_RESULTS_PATH}")
             run_results_dict = json.load(run_results)
-            run_results_obj = self.parse_run_results(run_results=run_results_dict)
+            run_results_obj = parse_run_results(run_results=run_results_dict)
 
         dbt_version = parse_version(run_results_obj.metadata.dbt_version)
 
@@ -80,11 +176,11 @@ class DbtParser:
             self.profiles_dir = legacy_profiles_dir()
 
         if dbt_version < parse_version(LOWER_DBT_V):
-            raise Exception(
-                f"Found dbt: v{dbt_version} Expected the dbt project's version to be >= {LOWER_DBT_V}"
-            )
+            raise Exception(f"Found dbt: v{dbt_version} Expected the dbt project's version to be >= {LOWER_DBT_V}")
         elif dbt_version >= parse_version(UPPER_DBT_V):
-            logger.warning(f"{dbt_version} is a recent version of dbt and may not be fully tested with data-diff! \nPlease report any issues to https://github.com/datafold/data-diff/issues")
+            logger.warning(
+                f"{dbt_version} is a recent version of dbt and may not be fully tested with data-diff! \nPlease report any issues to https://github.com/datafold/data-diff/issues"
+            )
 
         success_models = [x.unique_id for x in run_results_obj.results if x.status.name == "success"]
         models = [self.manifest_obj.nodes.get(x) for x in success_models]
@@ -98,20 +194,20 @@ class DbtParser:
         with open(self.project_dir / MANIFEST_PATH) as manifest:
             logger.info(f"Parsing file {MANIFEST_PATH}")
             manifest_dict = json.load(manifest)
-            manifest_obj = self.parse_manifest(manifest=manifest_dict)
+            manifest_obj = parse_manifest(manifest=manifest_dict)
         return manifest_obj
 
     def get_project_dict(self):
         with open(self.project_dir / PROJECT_FILE) as project:
             logger.info(f"Parsing file {PROJECT_FILE}")
-            project_dict = self.yaml.safe_load(project)
+            project_dict = yaml.safe_load(project)
         return project_dict
 
     def get_connection_creds(self) -> Tuple[Dict[str, str], str]:
         profiles_path = self.profiles_dir / PROFILES_FILE
         with open(profiles_path) as profiles:
             logger.info(f"Parsing file {profiles_path}")
-            profiles = self.yaml.safe_load(profiles)
+            profiles = yaml.safe_load(profiles)
 
         dbt_profile_var = self.project_dict.get("profile")
 
@@ -119,7 +215,7 @@ class DbtParser:
             profiles, dbt_profile_var, f"No profile '{dbt_profile_var}' found in '{profiles_path}'."
         )
         # values can contain env_vars
-        rendered_profile = self.ProfileRenderer().render_data(profile)
+        rendered_profile = ProfileRenderer().render_data(profile)
         profile_target = get_from_dict_with_raise(
             rendered_profile, "target", f"No target found in profile '{dbt_profile_var}' in '{profiles_path}'."
         )
@@ -142,6 +238,7 @@ class DbtParser:
 
     def set_connection(self):
         credentials, conn_type = self.get_connection_creds()
+        self.set_casing_policy_for(conn_type)
 
         if conn_type == "snowflake":
             conn_info = {
@@ -156,7 +253,6 @@ class DbtParser:
                 "client_session_keep_alive": credentials.get("client_session_keep_alive", False),
             }
             self.threads = credentials.get("threads")
-            self.requires_upper = True
 
             if credentials.get("private_key_path") is not None:
                 if credentials.get("password") is not None:
@@ -309,3 +405,11 @@ class DbtParser:
 
         stripped_columns = [col.strip('" ()') for col in columns]
         return stripped_columns
+
+    def set_casing_policy_for(self, connection_type: str):
+        """
+        Set casing policy for identifiers: database, schema, table, column, etc.
+        Correct policy depends on the type of the database, because some databases (e.g. Snowflake)
+        use upper case identifiers by default, while others (e.g. Postgres) use lower case.
+        """
+        self.requires_upper = connection_type == "snowflake"

@@ -103,6 +103,8 @@ class TCloudApiDataDiff(pydantic.BaseModel):
     pk_columns: List[str]
     filter1: Optional[str] = None
     filter2: Optional[str] = None
+    include_columns: Optional[List[str]]
+    exclude_columns: Optional[List[str]]
 
 
 class TCloudApiOrgMeta(pydantic.BaseModel):
@@ -138,6 +140,8 @@ class TSummaryResultSchemaStats(pydantic.BaseModel):
     column_type_mismatches: int
     column_reorders: int
     column_counts: Tuple[int, int]
+    column_type_differs: List[str]
+    exclusive_columns: Tuple[List[str], List[str]]
 
 
 class TCloudApiDataDiffSummaryResult(pydantic.BaseModel):
@@ -201,6 +205,11 @@ class DatafoldAPI:
         rv = self.make_get_request(url="api/v1/data_sources")
         rv.raise_for_status()
         return [TCloudApiDataSource(**item) for item in rv.json()]
+
+    def get_data_source(self, data_source_id: int) -> TCloudApiDataSource:
+        rv = self.make_get_request(url=f"api/v1/data_sources/{data_source_id}")
+        rv.raise_for_status()
+        return TCloudApiDataSource(**rv.json())
 
     def create_data_source(self, config: TDsConfig) -> TCloudApiDataSource:
         payload = config.dict()

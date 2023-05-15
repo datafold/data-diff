@@ -1,0 +1,23 @@
+# if a comment is added to a stale issue, remove the "stale" label and add a "triage" label
+
+name: Stale --> Triage Label
+
+on: issue_comment
+
+defaults:
+  run:
+    shell: bash
+
+permissions:
+  issues: write
+
+jobs:
+  triage_label:
+    if: contains(github.event.issue.labels.*.name, 'stale')
+    runs-on: ubuntu-latest
+    steps:
+      - name: initial labeling
+        uses: andymckay/labeler@master
+        with:
+          add-labels: "triage"
+          remove-labels: "stale"
