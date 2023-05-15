@@ -1,7 +1,6 @@
 import os
 
 from pathlib import Path
-import yaml
 from data_diff.cloud.datafold_api import TCloudApiDataSource
 from data_diff.cloud.datafold_api import TCloudApiOrgMeta
 from data_diff.diff_tables import Algorithm
@@ -615,7 +614,14 @@ class TestDbtDiffer(unittest.TestCase):
     @patch("data_diff.dbt.rich.print")
     @patch("data_diff.dbt.DatafoldAPI")
     def test_diff_is_cloud(
-        self, mock_api, mock_print, mock_dbt_parser, mock_cloud_diff, mock_local_diff, mock_get_diff_vars, mock_initialize_api,
+        self,
+        mock_api,
+        mock_print,
+        mock_dbt_parser,
+        mock_cloud_diff,
+        mock_local_diff,
+        mock_get_diff_vars,
+        mock_initialize_api,
     ):
         org_meta = TCloudApiOrgMeta(org_id=1, org_name="", user_id=1)
         connection = {}
@@ -832,7 +838,14 @@ class TestDbtDiffer(unittest.TestCase):
     @patch("data_diff.dbt.rich.print")
     @patch("data_diff.dbt.DatafoldAPI")
     def test_diff_is_cloud_no_pks(
-        self, mock_api, mock_print, mock_dbt_parser, mock_cloud_diff, mock_local_diff, mock_get_diff_vars, mock_initialize_api
+        self,
+        mock_api,
+        mock_print,
+        mock_dbt_parser,
+        mock_cloud_diff,
+        mock_local_diff,
+        mock_get_diff_vars,
+        mock_initialize_api,
     ):
         mock_dbt_parser_inst = Mock()
         mock_dbt_parser.return_value = mock_dbt_parser_inst

@@ -359,7 +359,7 @@ def _cloud_diff(diff_vars: TDiffVars, datasource_id: int, api: DatafoldAPI, org_
                 is_cloud=True,
                 org_id=org_meta.org_id,
                 org_name=org_meta.org_name,
-                user_id=org_meta.user_id
+                user_id=org_meta.user_id,
             )
             send_event_json(event_json)
 
