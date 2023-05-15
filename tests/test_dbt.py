@@ -631,9 +631,6 @@ class TestDbtDiffer(unittest.TestCase):
         mock_api.get_data_source.return_value = TCloudApiDataSource(id=1, type="snowflake", name="snowflake")
         mock_initialize_api.return_value = mock_api
         mock_api.get_org_meta.return_value = org_meta
-        connection = None
-        threads = None
-        where = "a_string"
 
         mock_dbt_parser.return_value = mock_dbt_parser_inst
         mock_dbt_parser_inst.get_models.return_value = [mock_model]
@@ -675,8 +672,6 @@ class TestDbtDiffer(unittest.TestCase):
         connection = {}
         threads = None
         where = "a_string"
-        host = "a_host"
-        api_key = "a_api_key"
         mock_dbt_parser_inst = Mock()
         mock_model = Mock()
         expected_dbt_vars_dict = {
@@ -686,9 +681,6 @@ class TestDbtDiffer(unittest.TestCase):
         mock_api = Mock()
         mock_initialize_api.return_value = mock_api
         mock_api.get_org_meta.return_value = org_meta
-        connection = None
-        threads = None
-        where = "a_string"
 
         mock_dbt_parser.return_value = mock_dbt_parser_inst
         mock_dbt_parser_inst.get_models.return_value = [mock_model]
