@@ -238,6 +238,7 @@ def _local_diff(diff_vars: TDiffVars) -> None:
         algorithm=Algorithm.JOINDIFF,
         extra_columns=extra_columns,
         where=diff_vars.where_filter,
+        skip_null_keys=True,
     )
 
     if list(diff):

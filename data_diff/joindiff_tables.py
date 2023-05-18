@@ -131,6 +131,7 @@ class JoinDiffer(TableDiffer):
         materialize_to_table (DbPath, optional): Path of new table to write diff results to. Disabled if not provided.
         materialize_all_rows (bool): Materialize every row, not just those that are different. (default: False)
         table_write_limit (int): Maximum number of rows to write when materializing, per thread.
+        skip_null_keys (bool): Skips diffing any rows with null PKs (displays a warning if any are null) (default: False)
     """
 
     validate_unique_key: bool = True
@@ -138,6 +139,7 @@ class JoinDiffer(TableDiffer):
     materialize_to_table: DbPath = None
     materialize_all_rows: bool = False
     table_write_limit: int = TABLE_WRITE_LIMIT
+    skip_null_keys: bool = False
 
     stats: dict = {}
 
@@ -209,7 +211,11 @@ class JoinDiffer(TableDiffer):
                 if is_xa and is_xb:
                     # Can't both be exclusive, meaning a pk is NULL
                     # This can happen if the explicit null test didn't finish running yet
-                    raise ValueError("NULL values in one or more primary keys")
+                    if self.skip_null_keys:
+                        # warning is thrown in explicit null test
+                        continue
+                    else:
+                        raise ValueError("NULL values in one or more primary keys")
                 # _is_diff, a_row, b_row = _slice_tuple(x, len(is_diff_cols), len(a_cols), len(b_cols))
                 _is_diff, ab_row = _slice_tuple(x, len(is_diff_cols), len(a_cols) + len(b_cols))
                 a_row, b_row = ab_row[::2], ab_row[1::2]
@@ -252,7 +258,12 @@ class JoinDiffer(TableDiffer):
             q = t.select(*this[key_columns]).where(or_(this[k] == None for k in key_columns))
             nulls = ts.database.query(q, list)
             if nulls:
-                raise ValueError(f"NULL values in one or more primary keys of {ts.table_path}")
+                if self.skip_null_keys:
+                    logger.warning(
+                        f"NULL values in one or more primary keys of {ts.table_path}. Skipping rows with NULL keys."
+                    )
+                else:
+                    raise ValueError(f"NULL values in one or more primary keys of {ts.table_path}")
 
     def _collect_stats(self, i, table_seg: TableSegment, info_tree: InfoTree):
         logger.debug(f"Collecting stats for table #{i}")

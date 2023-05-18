@@ -79,6 +79,8 @@ def diff_tables(
     materialize_all_rows: bool = False,
     # Maximum number of rows to write when materializing, per thread. (joindiff only)
     table_write_limit: int = TABLE_WRITE_LIMIT,
+    # Skips diffing any rows with null keys. (joindiff only)
+    skip_null_keys: bool = False,
 ) -> Iterator:
     """Finds the diff between table1 and table2.
 
@@ -107,6 +109,7 @@ def diff_tables(
         materialize_to_table (Union[str, DbPath], optional): Path of new table to write diff results to. Disabled if not provided. Used for `JOINDIFF`.
         materialize_all_rows (bool): Materialize every row, not just those that are different. (used for `JOINDIFF`. default: False)
         table_write_limit (int): Maximum number of rows to write when materializing, per thread.
+        skip_null_keys (bool): Skips diffing any rows with null PKs (displays a warning if any are null) (used for `JOINDIFF`. default: False)
 
     Note:
         The following parameters are used to override the corresponding attributes of the given :class:`TableSegment` instances:
@@ -168,6 +171,7 @@ def diff_tables(
             materialize_to_table=materialize_to_table,
             materialize_all_rows=materialize_all_rows,
             table_write_limit=table_write_limit,
+            skip_null_keys=skip_null_keys,
         )
     else:
         raise ValueError(f"Unknown algorithm: {algorithm}")
