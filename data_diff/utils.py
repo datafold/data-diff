@@ -171,14 +171,19 @@ def diffs_are_equiv_jsons(diff: list, json_cols: dict):
     return match, overriden_diff_cols
 
 
-def columns_removed_template(table2_set_diff) -> str:
-    columns_removed = "Column(s) removed: " + str(table2_set_diff) + "\n"
-    return columns_removed
+def columns_removed_template(columns_removed) -> str:
+    columns_removed_str = f"Column(s) removed: {columns_removed}\n"
+    return columns_removed_str
 
 
-def columns_added_template(table1_set_diff) -> str:
-    columns_added = "Column(s) added: " + str(table1_set_diff) + "\n"
-    return columns_added
+def columns_added_template(columns_added) -> str:
+    columns_added_str = f"Column(s) added: {columns_added}\n"
+    return columns_added_str
+
+
+def columns_type_changed_template(columns_type_changed) -> str:
+    columns_type_changed_str = f"Type change: {columns_type_changed}\n"
+    return columns_type_changed_str
 
 
 def no_differences_template() -> str:

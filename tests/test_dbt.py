@@ -442,21 +442,6 @@ class TestDbtParser(unittest.TestCase):
             _, _ = DbtParser.get_connection_creds(mock_self)
 
 
-EXAMPLE_DIFF_RESULTS = {
-    "pks": {"exclusives": [5, 3]},
-    "values": {
-        "rows_with_differences": 2,
-        "total_rows": 10,
-        "columns_diff_stats": [
-            {"column_name": "name", "match": 80.0},
-            {"column_name": "age", "match": 100.0},
-            {"column_name": "city", "match": 0.0},
-            {"column_name": "country", "match": 100.0},
-        ],
-    },
-}
-
-
 class TestDbtDiffer(unittest.TestCase):
     # Set DATA_DIFF_DBT_PROJ to use your own dbt project, otherwise uses the duckdb project in tests/dbt_artifacts
     def test_integration_basic_dbt(self):
@@ -488,10 +473,10 @@ class TestDbtDiffer(unittest.TestCase):
     def test_local_diff(self, mock_diff_tables):
         connection = {}
         mock_table1 = Mock()
-        column_set = {"col1", "col2"}
-        mock_table1.get_schema.return_value = column_set
+        column_dictionary = {"col1": ("col1", "type"), "col2": ("col2", "type")}
+        mock_table1.get_schema.return_value = column_dictionary
         mock_table2 = Mock()
-        mock_table2.get_schema.return_value = column_set
+        mock_table2.get_schema.return_value = column_dictionary
         mock_diff = MagicMock()
         mock_diff_tables.return_value = mock_diff
         mock_diff.__iter__.return_value = [1, 2, 3]
@@ -529,13 +514,55 @@ class TestDbtDiffer(unittest.TestCase):
         mock_diff.get_stats_string.assert_called_once()
 
     @patch("data_diff.dbt.diff_tables")
+    def test_local_diff_types_differ(self, mock_diff_tables):
+        connection = {}
+        mock_table1 = Mock()
+        mock_table2 = Mock()
+        table1_column_dictionary = {"col1": ("col1", "type"), "col2": ("col2", "type")}
+        table2_column_dictionary = {"col1": ("col1", "type"), "col2": ("col2", "differing_type")}
+        mock_table1.get_schema.return_value = table1_column_dictionary
+        mock_table2.get_schema.return_value = table2_column_dictionary
+        mock_diff = MagicMock()
+        mock_diff_tables.return_value = mock_diff
+        mock_diff.__iter__.return_value = [1, 2, 3]
+        threads = None
+        where = "a_string"
+        dev_qualified_list = ["dev_db", "dev_schema", "dev_table"]
+        prod_qualified_list = ["prod_db", "prod_schema", "prod_table"]
+        expected_primary_keys = ["key"]
+        diff_vars = TDiffVars(
+            dev_path=dev_qualified_list,
+            prod_path=prod_qualified_list,
+            primary_keys=expected_primary_keys,
+            connection=connection,
+            threads=threads,
+            where_filter=where,
+            include_columns=[],
+            exclude_columns=[],
+        )
+        with patch("data_diff.dbt.connect_to_table", side_effect=[mock_table1, mock_table2]) as mock_connect:
+            _local_diff(diff_vars)
+
+        mock_diff_tables.assert_called_once_with(
+            mock_table1,
+            mock_table2,
+            threaded=True,
+            algorithm=Algorithm.JOINDIFF,
+            extra_columns=ANY,
+            where=where,
+        )
+        self.assertEqual(len(mock_diff_tables.call_args[1]["extra_columns"]), 1)
+        self.assertEqual(mock_connect.call_count, 2)
+        mock_diff.get_stats_string.assert_called_once()
+
+    @patch("data_diff.dbt.diff_tables")
     def test_local_diff_no_diffs(self, mock_diff_tables):
         connection = {}
-        column_set = {"col1", "col2"}
+        column_dictionary = {"col1": ("col1", "type"), "col2": ("col2", "type")}
         mock_table1 = Mock()
-        mock_table1.get_schema.return_value = column_set
+        mock_table1.get_schema.return_value = column_dictionary
         mock_table2 = Mock()
-        mock_table2.get_schema.return_value = column_set
+        mock_table2.get_schema.return_value = column_dictionary
         mock_diff = MagicMock()
         mock_diff_tables.return_value = mock_diff
         mock_diff.__iter__.return_value = []

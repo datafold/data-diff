@@ -12,8 +12,8 @@ from .utils import (
     columns_added_template,
     columns_removed_template,
     no_differences_template,
+    columns_type_changed_template,
 )
-from pathlib import Path
 
 import keyring
 
@@ -191,9 +191,9 @@ def _local_diff(diff_vars: TDiffVars) -> None:
         diff_vars.connection, prod_qualified_str, tuple(diff_vars.primary_keys), diff_vars.threads
     )
 
-    table1_columns = list(table1.get_schema())
+    table1_columns = table1.get_schema()
     try:
-        table2_columns = list(table2.get_schema())
+        table2_columns = table2.get_schema()
     # Not ideal, but we don't have more specific exceptions yet
     except Exception as ex:
         logger.debug(ex)
@@ -201,15 +201,25 @@ def _local_diff(diff_vars: TDiffVars) -> None:
         rich.print(diff_output_str)
         return
 
-    column_set = set(table1_columns).intersection(table2_columns)
-    columns_added = set(table1_columns).difference(table2_columns)
-    columns_removed = set(table2_columns).difference(table1_columns)
+    table1_column_names = set(table1_columns.keys())
+    table2_column_names = set(table2_columns.keys())
+    column_set = table1_column_names.intersection(table2_column_names)
+    columns_added = table1_column_names.difference(table2_column_names)
+    columns_removed = table2_column_names.difference(table1_column_names)
+    # col type is i = 1 in tuple
+    columns_type_changed = {
+        k for k, v in table1_columns.items() if k in table2_columns and v[1] != table2_columns[k][1]
+    }
 
     if columns_added:
         diff_output_str += columns_added_template(columns_added)
 
     if columns_removed:
         diff_output_str += columns_removed_template(columns_removed)
+
+    if columns_type_changed:
+        diff_output_str += columns_type_changed_template(columns_type_changed)
+        column_set = column_set.difference(columns_type_changed)
 
     column_set = column_set - set(diff_vars.primary_keys)
 
@@ -322,7 +332,7 @@ def _cloud_diff(diff_vars: TDiffVars, datasource_id: int, api: DatafoldAPI, org_
             diff_output_str += columns_removed_template(columns_removed)
 
         if column_type_changes:
-            diff_output_str += "Type change: " + str(column_type_changes) + "\n"
+            diff_output_str += columns_type_changed_template(column_type_changes)
 
         if any([rows_added_count, rows_removed_count, rows_updated]):
             diff_output = dbt_diff_string_template(
