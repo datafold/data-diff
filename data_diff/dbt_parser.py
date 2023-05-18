@@ -1,7 +1,6 @@
 from argparse import Namespace
 from collections import defaultdict
 import json
-import os
 from pathlib import Path
 from typing import List, Dict, Tuple, Set, Optional
 import yaml
@@ -12,7 +11,6 @@ from dbt_artifacts_parser.parser import parse_run_results, parse_manifest
 from dbt.config.renderer import ProfileRenderer
 
 from .utils import getLogger, get_from_dict_with_raise
-from .version import __version__
 
 
 logger = getLogger(__name__)
@@ -187,7 +185,6 @@ class DbtParser:
         if not models:
             raise ValueError("Expected > 0 successful models runs from the last dbt command.")
 
-        print(f"Running with data-diff={__version__}\n")
         return models
 
     def get_manifest_obj(self):

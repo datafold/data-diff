@@ -6,7 +6,10 @@ from urllib.parse import urlparse
 import operator
 import threading
 from datetime import datetime
+from packaging.version import parse as parse_version
+import requests
 from tabulate import tabulate
+from .version import __version__
 
 
 def safezip(*args):
@@ -188,3 +191,21 @@ def columns_type_changed_template(columns_type_changed) -> str:
 
 def no_differences_template() -> str:
     return "[bold][green]No row differences[/][/]\n"
+
+
+def print_version_info() -> None:
+    base_version_string = f"Running with data-diff={__version__}"
+    logger = getLogger(__name__)
+    latest_version = None
+    try:
+        response = requests.get(url="https://pypi.org/pypi/data-diff/json", timeout=3)
+        response.raise_for_status()
+        response_json = response.json()
+        latest_version = response_json["info"]["version"]
+    except Exception as ex:
+        logger.debug(f"Failed checking version: {ex}")
+
+    if latest_version and parse_version(__version__) < parse_version(latest_version):
+        print(f"{base_version_string} (Update {latest_version} is available!)")
+    else:
+        print(base_version_string)

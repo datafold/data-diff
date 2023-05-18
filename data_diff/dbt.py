@@ -1,29 +1,16 @@
 import os
 import time
 import webbrowser
+from typing import List, Optional, Dict
+import keyring
+
 import pydantic
 import rich
 from rich.prompt import Confirm
 
-from typing import List, Optional, Dict
-from .utils import (
-    dbt_diff_string_template,
-    getLogger,
-    columns_added_template,
-    columns_removed_template,
-    no_differences_template,
-    columns_type_changed_template,
-)
-
-import keyring
-
+from . import connect_to_table, diff_tables, Algorithm
 from .cloud import DatafoldAPI, TCloudApiDataDiff, TCloudApiOrgMeta, get_or_create_data_source
 from .dbt_parser import DbtParser, PROJECT_FILE
-
-
-logger = getLogger(__name__)
-
-
 from .tracking import (
     set_entrypoint_name,
     set_dbt_user_id,
@@ -34,8 +21,19 @@ from .tracking import (
     send_event_json,
     is_tracking_enabled,
 )
-from .utils import run_as_daemon, truncate_error
-from . import connect_to_table, diff_tables, Algorithm
+from .utils import (
+    dbt_diff_string_template,
+    getLogger,
+    columns_added_template,
+    columns_removed_template,
+    no_differences_template,
+    columns_type_changed_template,
+    run_as_daemon,
+    truncate_error,
+    print_version_info,
+)
+
+logger = getLogger(__name__)
 
 
 class TDiffVars(pydantic.BaseModel):
@@ -55,6 +53,7 @@ def dbt_diff(
     is_cloud: bool = False,
     dbt_selection: Optional[str] = None,
 ) -> None:
+    print_version_info()
     diff_threads = []
     set_entrypoint_name("CLI-dbt")
     dbt_parser = DbtParser(profiles_dir_override, project_dir_override)
