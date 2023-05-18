@@ -139,7 +139,13 @@ def _get_diff_vars(
 
     primary_keys = dbt_parser.get_pk_from_model(model, dbt_parser.unique_columns, "primary-key")
 
-    prod_database = config_prod_database if config_prod_database else dev_database
+    # "custom" dbt config database
+    if model.config.database:
+        prod_database = model.config.database
+    elif config_prod_database:
+        prod_database = config_prod_database
+    else:
+        prod_database = dev_database
 
     # prod schema name differs from dev schema name
     if config_prod_schema:
