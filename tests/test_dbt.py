@@ -520,6 +520,7 @@ class TestDbtDiffer(unittest.TestCase):
             algorithm=Algorithm.JOINDIFF,
             extra_columns=ANY,
             where=where,
+            skip_null_keys=True,
         )
         self.assertEqual(len(mock_diff_tables.call_args[1]["extra_columns"]), 2)
         self.assertEqual(mock_connect.call_count, 2)
@@ -557,7 +558,13 @@ class TestDbtDiffer(unittest.TestCase):
             _local_diff(diff_vars)
 
         mock_diff_tables.assert_called_once_with(
-            mock_table1, mock_table2, threaded=True, algorithm=Algorithm.JOINDIFF, extra_columns=ANY, where=where
+            mock_table1,
+            mock_table2,
+            threaded=True,
+            algorithm=Algorithm.JOINDIFF,
+            extra_columns=ANY,
+            where=where,
+            skip_null_keys=True,
         )
         self.assertEqual(len(mock_diff_tables.call_args[1]["extra_columns"]), 2)
         self.assertEqual(mock_connect.call_count, 2)
