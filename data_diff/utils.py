@@ -81,10 +81,12 @@ def truncate_error(error: str):
     return re.sub("'(.*?)'", "'***'", first_line)
 
 
-def get_from_dict_with_raise(dictionary: Dict, key: str, error_message: str):
+def get_from_dict_with_raise(dictionary: Dict, key: str, exception: Exception):
+    if dictionary is None:
+        raise exception
     result = dictionary.get(key)
     if result is None:
-        raise ValueError(error_message)
+        raise exception
     return result
 
 

@@ -11,6 +11,8 @@ import pydantic
 from dbt_artifacts_parser.parser import parse_run_results, parse_manifest
 from dbt.config.renderer import ProfileRenderer
 
+from data_diff.errors import DbtBigQueryOauthOnlyError, DbtConnectionNotImplementedError, DbtCoreNoRunnerError, DbtNoSuccessfulModelsInRunError, DbtProfileNotFoundError, DbtProjectVarsNotFoundError, DbtRedshiftPasswordOnlyError, DbtRunResultsVersionError, DbtSelectNoMatchingModelsError, DbtSelectUnexpectedError, DbtSelectVersionTooLowError, DbtSnowflakeSetConnectionError
+
 from .utils import getLogger, get_from_dict_with_raise
 from .version import __version__
 
@@ -93,9 +95,9 @@ class DbtParser:
 
     def get_datadiff_variables(self) -> dict:
         doc_url = "https://docs.datafold.com/development_testing/open_source#configure-your-dbt-project"
-        error_message = f"vars: data_diff: section not found in dbt_project.yml.\n\nTo solve this, please configure your dbt project: \n{doc_url}\n"
-        vars = get_from_dict_with_raise(self.project_dict, "vars", error_message)
-        return get_from_dict_with_raise(vars, "data_diff", error_message)
+        exception = DbtProjectVarsNotFoundError(f"vars: data_diff: section not found in dbt_project.yml.\n\nTo solve this, please configure your dbt project: \n{doc_url}\n")
+        vars_dict = get_from_dict_with_raise(self.project_dict, "vars", exception)
+        return get_from_dict_with_raise(vars_dict, "data_diff", exception)
 
     def get_datadiff_model_config(self, model_meta: dict) -> TDatadiffModelConfig:
         where_filter = None
@@ -120,11 +122,11 @@ class DbtParser:
                     return self.get_dbt_selection_models(dbt_selection)
                 # edge case if running data-diff from a separate env than dbt (likely local development)
                 else:
-                    raise Exception(
+                    raise DbtCoreNoRunnerError(
                         "data-diff is using a dbt-core version < 1.5, update the environment's dbt-core version via pip install 'dbt-core>=1.5' in order to use `--select`"
                     )
             else:
-                raise Exception(
+                raise DbtSelectVersionTooLowError(
                     f"The `--select` feature requires dbt >= 1.5, but your project's manifest.json is from dbt v{dbt_version}. Please follow these steps to use the `--select` feature: \n 1. Update your dbt-core version via pip install 'dbt-core>=1.5'. Details: https://docs.getdbt.com/docs/core/pip-install#change-dbt-core-versions \n 2. Execute any `dbt` command (`run`, `compile`, `build`) to create a new manifest.json."
                 )
         else:
@@ -154,15 +156,17 @@ class DbtParser:
         )
         if results.exception:
             raise results.exception
-        elif results.success and results.result:
+
+        if results.success and results.result:
             model_list = [json.loads(model)["unique_id"] for model in results.result]
             models = [self.manifest_obj.nodes.get(x) for x in model_list]
             return models
-        elif not results.result:
-            raise Exception(f"No dbt models found for `--select {dbt_selection}`")
-        else:
-            logger.debug(str(results))
-            raise Exception("Encountered an unexpected error while finding `--select` models")
+
+        if not results.result:
+            raise DbtSelectNoMatchingModelsError(f"No dbt models found for `--select {dbt_selection}`")
+
+        logger.debug(str(results))
+        raise DbtSelectUnexpectedError("Encountered an unexpected error while finding `--select` models")
 
     def get_run_results_models(self):
         with open(self.project_dir / RUN_RESULTS_PATH) as run_results:
@@ -176,8 +180,8 @@ class DbtParser:
             self.profiles_dir = legacy_profiles_dir()
 
         if dbt_version < parse_version(LOWER_DBT_V):
-            raise Exception(f"Found dbt: v{dbt_version} Expected the dbt project's version to be >= {LOWER_DBT_V}")
-        elif dbt_version >= parse_version(UPPER_DBT_V):
+            raise DbtRunResultsVersionError(f"Found dbt: v{dbt_version} Expected the dbt project's version to be >= {LOWER_DBT_V}")
+        if dbt_version >= parse_version(UPPER_DBT_V):
             logger.warning(
                 f"{dbt_version} is a recent version of dbt and may not be fully tested with data-diff! \nPlease report any issues to https://github.com/datafold/data-diff/issues"
             )
@@ -185,7 +189,7 @@ class DbtParser:
         success_models = [x.unique_id for x in run_results_obj.results if x.status.name == "success"]
         models = [self.manifest_obj.nodes.get(x) for x in success_models]
         if not models:
-            raise ValueError("Expected > 0 successful models runs from the last dbt command.")
+            raise DbtNoSuccessfulModelsInRunError("Expected > 0 successful models runs from the last dbt command.")
 
         print(f"Running with data-diff={__version__}\n")
         return models
@@ -212,25 +216,25 @@ class DbtParser:
         dbt_profile_var = self.project_dict.get("profile")
 
         profile = get_from_dict_with_raise(
-            profiles, dbt_profile_var, f"No profile '{dbt_profile_var}' found in '{profiles_path}'."
+            profiles, dbt_profile_var, DbtProfileNotFoundError(f"No profile '{dbt_profile_var}' found in '{profiles_path}'.")
         )
         # values can contain env_vars
         rendered_profile = ProfileRenderer().render_data(profile)
         profile_target = get_from_dict_with_raise(
-            rendered_profile, "target", f"No target found in profile '{dbt_profile_var}' in '{profiles_path}'."
+            rendered_profile, "target", DbtProfileNotFoundError(f"No target found in profile '{dbt_profile_var}' in '{profiles_path}'.")
         )
         outputs = get_from_dict_with_raise(
-            rendered_profile, "outputs", f"No outputs found in profile '{dbt_profile_var}' in '{profiles_path}'."
+            rendered_profile, "outputs", DbtProfileNotFoundError(f"No outputs found in profile '{dbt_profile_var}' in '{profiles_path}'.")
         )
         credentials = get_from_dict_with_raise(
             outputs,
             profile_target,
-            f"No credentials found for target '{profile_target}' in profile '{dbt_profile_var}' in '{profiles_path}'.",
+            DbtProfileNotFoundError(f"No credentials found for target '{profile_target}' in profile '{dbt_profile_var}' in '{profiles_path}'."),
         )
         conn_type = get_from_dict_with_raise(
             credentials,
             "type",
-            f"No type found for target '{profile_target}' in profile '{dbt_profile_var}' in '{profiles_path}'.",
+            DbtProfileNotFoundError(f"No type found for target '{profile_target}' in profile '{dbt_profile_var}' in '{profiles_path}'."),
         )
         conn_type = conn_type.lower()
 
@@ -256,7 +260,7 @@ class DbtParser:
 
             if credentials.get("private_key_path") is not None:
                 if credentials.get("password") is not None:
-                    raise Exception("Cannot use password and key at the same time")
+                    raise DbtSnowflakeSetConnectionError("Cannot use password and key at the same time")
                 conn_info["key"] = credentials.get("private_key_path")
                 conn_info["private_key_passphrase"] = credentials.get("private_key_passphrase")
             elif credentials.get("authenticator") is not None:
@@ -265,13 +269,13 @@ class DbtParser:
             elif credentials.get("password") is not None:
                 conn_info["password"] = credentials.get("password")
             else:
-                raise Exception("Snowflake: unsupported auth method")
+                raise DbtSnowflakeSetConnectionError("Snowflake: unsupported auth method")
         elif conn_type == "bigquery":
             method = credentials.get("method")
             # there are many connection types https://docs.getdbt.com/reference/warehouse-setups/bigquery-setup#oauth-via-gcloud
             # this assumes that the user is auth'd via `gcloud auth application-default login`
             if method is None or method != "oauth":
-                raise Exception("Oauth is the current method supported for Big Query.")
+                raise DbtBigQueryOauthOnlyError("Oauth is the current method supported for Big Query.")
             conn_info = {
                 "driver": conn_type,
                 "project": credentials.get("project"),
@@ -287,7 +291,7 @@ class DbtParser:
             if (credentials.get("pass") is None and credentials.get("password") is None) or credentials.get(
                 "method"
             ) == "iam":
-                raise Exception("Only password authentication is currently supported for Redshift.")
+                raise DbtRedshiftPasswordOnlyError("Only password authentication is currently supported for Redshift.")
             conn_info = {
                 "driver": conn_type,
                 "host": credentials.get("host"),
@@ -318,7 +322,7 @@ class DbtParser:
             }
             self.threads = credentials.get("threads")
         else:
-            raise NotImplementedError(f"Provider {conn_type} is not yet supported for dbt diffs")
+            raise DbtConnectionNotImplementedError(f"Provider {conn_type} is not yet supported for dbt diffs")
 
         self.connection = conn_info
 
