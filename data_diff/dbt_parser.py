@@ -11,7 +11,20 @@ import pydantic
 from dbt_artifacts_parser.parser import parse_run_results, parse_manifest
 from dbt.config.renderer import ProfileRenderer
 
-from data_diff.errors import DbtBigQueryOauthOnlyError, DbtConnectionNotImplementedError, DbtCoreNoRunnerError, DbtNoSuccessfulModelsInRunError, DbtProfileNotFoundError, DbtProjectVarsNotFoundError, DbtRedshiftPasswordOnlyError, DbtRunResultsVersionError, DbtSelectNoMatchingModelsError, DbtSelectUnexpectedError, DbtSelectVersionTooLowError, DbtSnowflakeSetConnectionError
+from data_diff.errors import (
+    DbtBigQueryOauthOnlyError,
+    DbtConnectionNotImplementedError,
+    DbtCoreNoRunnerError,
+    DbtNoSuccessfulModelsInRunError,
+    DbtProfileNotFoundError,
+    DbtProjectVarsNotFoundError,
+    DbtRedshiftPasswordOnlyError,
+    DbtRunResultsVersionError,
+    DbtSelectNoMatchingModelsError,
+    DbtSelectUnexpectedError,
+    DbtSelectVersionTooLowError,
+    DbtSnowflakeSetConnectionError,
+)
 
 from .utils import getLogger, get_from_dict_with_raise
 from .version import __version__
@@ -95,7 +108,9 @@ class DbtParser:
 
     def get_datadiff_variables(self) -> dict:
         doc_url = "https://docs.datafold.com/development_testing/open_source#configure-your-dbt-project"
-        exception = DbtProjectVarsNotFoundError(f"vars: data_diff: section not found in dbt_project.yml.\n\nTo solve this, please configure your dbt project: \n{doc_url}\n")
+        exception = DbtProjectVarsNotFoundError(
+            f"vars: data_diff: section not found in dbt_project.yml.\n\nTo solve this, please configure your dbt project: \n{doc_url}\n"
+        )
         vars_dict = get_from_dict_with_raise(self.project_dict, "vars", exception)
         return get_from_dict_with_raise(vars_dict, "data_diff", exception)
 
@@ -180,7 +195,9 @@ class DbtParser:
             self.profiles_dir = legacy_profiles_dir()
 
         if dbt_version < parse_version(LOWER_DBT_V):
-            raise DbtRunResultsVersionError(f"Found dbt: v{dbt_version} Expected the dbt project's version to be >= {LOWER_DBT_V}")
+            raise DbtRunResultsVersionError(
+                f"Found dbt: v{dbt_version} Expected the dbt project's version to be >= {LOWER_DBT_V}"
+            )
         if dbt_version >= parse_version(UPPER_DBT_V):
             logger.warning(
                 f"{dbt_version} is a recent version of dbt and may not be fully tested with data-diff! \nPlease report any issues to https://github.com/datafold/data-diff/issues"
@@ -216,25 +233,35 @@ class DbtParser:
         dbt_profile_var = self.project_dict.get("profile")
 
         profile = get_from_dict_with_raise(
-            profiles, dbt_profile_var, DbtProfileNotFoundError(f"No profile '{dbt_profile_var}' found in '{profiles_path}'.")
+            profiles,
+            dbt_profile_var,
+            DbtProfileNotFoundError(f"No profile '{dbt_profile_var}' found in '{profiles_path}'."),
         )
         # values can contain env_vars
         rendered_profile = ProfileRenderer().render_data(profile)
         profile_target = get_from_dict_with_raise(
-            rendered_profile, "target", DbtProfileNotFoundError(f"No target found in profile '{dbt_profile_var}' in '{profiles_path}'.")
+            rendered_profile,
+            "target",
+            DbtProfileNotFoundError(f"No target found in profile '{dbt_profile_var}' in '{profiles_path}'."),
         )
         outputs = get_from_dict_with_raise(
-            rendered_profile, "outputs", DbtProfileNotFoundError(f"No outputs found in profile '{dbt_profile_var}' in '{profiles_path}'.")
+            rendered_profile,
+            "outputs",
+            DbtProfileNotFoundError(f"No outputs found in profile '{dbt_profile_var}' in '{profiles_path}'."),
         )
         credentials = get_from_dict_with_raise(
             outputs,
             profile_target,
-            DbtProfileNotFoundError(f"No credentials found for target '{profile_target}' in profile '{dbt_profile_var}' in '{profiles_path}'."),
+            DbtProfileNotFoundError(
+                f"No credentials found for target '{profile_target}' in profile '{dbt_profile_var}' in '{profiles_path}'."
+            ),
         )
         conn_type = get_from_dict_with_raise(
             credentials,
             "type",
-            DbtProfileNotFoundError(f"No type found for target '{profile_target}' in profile '{dbt_profile_var}' in '{profiles_path}'."),
+            DbtProfileNotFoundError(
+                f"No type found for target '{profile_target}' in profile '{dbt_profile_var}' in '{profiles_path}'."
+            ),
         )
         conn_type = conn_type.lower()
 
