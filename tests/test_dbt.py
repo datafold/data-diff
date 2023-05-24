@@ -967,6 +967,7 @@ class TestDbtDiffer(unittest.TestCase):
         mock_model.database = "a_dev_db"
         mock_model.schema_ = "a_custom_schema"
         mock_model.config.schema_ = mock_model.schema_
+        mock_model.config.database = None
         mock_model.alias = "a_model_name"
         mock_tdatadiffmodelconfig = Mock()
         mock_tdatadiffmodelconfig.where_filter = "where"
@@ -999,6 +1000,7 @@ class TestDbtDiffer(unittest.TestCase):
         primary_keys = ["a_primary_key"]
         mock_model.database = "a_dev_db"
         mock_model.schema_ = "a_custom_schema"
+        mock_model.config.database = None
         mock_model.config.schema_ = mock_model.schema_
         mock_model.alias = "a_model_name"
         mock_tdatadiffmodelconfig = Mock()
@@ -1031,6 +1033,7 @@ class TestDbtDiffer(unittest.TestCase):
         mock_model.database = "a_dev_db"
         mock_model.schema_ = "a_custom_schema"
         mock_model.config.schema_ = None
+        mock_model.config.database = None
         mock_model.alias = "a_model_name"
         mock_tdatadiffmodelconfig = Mock()
         mock_tdatadiffmodelconfig.where_filter = "where"
@@ -1060,6 +1063,7 @@ class TestDbtDiffer(unittest.TestCase):
         mock_model.database = "a_dev_db"
         mock_model.schema_ = "a_schema"
         mock_model.config.schema_ = None
+        mock_model.config.database = None
         mock_model.alias = "a_model_name"
         mock_tdatadiffmodelconfig = Mock()
         mock_tdatadiffmodelconfig.where_filter = "where"
@@ -1107,6 +1111,7 @@ class TestDbtDiffer(unittest.TestCase):
         mock_model.database = "a_dev_db"
         mock_model.schema_ = "a_schema"
         mock_model.config.schema_ = None
+        mock_model.config.database = None
         mock_model.alias = "a_model_name"
         mock_tdatadiffmodelconfig = Mock()
         mock_tdatadiffmodelconfig.where_filter = "where"
@@ -1136,6 +1141,7 @@ class TestDbtDiffer(unittest.TestCase):
         mock_model.database = "a_dev_db"
         mock_model.schema_ = "a_schema"
         mock_model.config.schema_ = None
+        mock_model.config.database = None
         mock_model.alias = "a_model_name"
         mock_tdatadiffmodelconfig = Mock()
         mock_tdatadiffmodelconfig.where_filter = "where"
@@ -1165,6 +1171,7 @@ class TestDbtDiffer(unittest.TestCase):
         mock_model.database = "a_dev_db"
         mock_model.schema_ = "a_schema"
         mock_model.config.schema_ = None
+        mock_model.config.database = None
         mock_model.alias = "a_model_name"
         mock_tdatadiffmodelconfig = Mock()
         mock_tdatadiffmodelconfig.where_filter = "where"
@@ -1176,13 +1183,43 @@ class TestDbtDiffer(unittest.TestCase):
         mock_dbt_parser.threads = 0
         mock_dbt_parser.get_pk_from_model.return_value = primary_keys
         mock_dbt_parser.requires_upper = False
-        where = None
         mock_model.meta = None
 
         diff_vars = _get_diff_vars(mock_dbt_parser, prod_database, None, None, mock_model)
 
         assert diff_vars.dev_path == [mock_model.database, mock_model.schema_, mock_model.alias]
         assert diff_vars.prod_path == [prod_database, mock_model.schema_, mock_model.alias]
+        assert diff_vars.primary_keys == primary_keys
+        assert diff_vars.connection == mock_dbt_parser.connection
+        assert diff_vars.threads == mock_dbt_parser.threads
+        self.assertEqual(diff_vars.where_filter, mock_tdatadiffmodelconfig.where_filter)
+        mock_dbt_parser.get_pk_from_model.assert_called_once()
+
+    def test_get_diff_vars_custom_db(self):
+        mock_model = Mock()
+        prod_database = "a_prod_db"
+        primary_keys = ["a_primary_key"]
+        mock_model.database = "a_dev_db"
+        mock_model.schema_ = "a_schema"
+        mock_model.config.schema_ = None
+        mock_model.config.database = "custom_database"
+        mock_model.alias = "a_model_name"
+        mock_tdatadiffmodelconfig = Mock()
+        mock_tdatadiffmodelconfig.where_filter = "where"
+        mock_tdatadiffmodelconfig.include_columns = ["include"]
+        mock_tdatadiffmodelconfig.exclude_columns = ["exclude"]
+        mock_dbt_parser = Mock()
+        mock_dbt_parser.get_datadiff_model_config.return_value = mock_tdatadiffmodelconfig
+        mock_dbt_parser.connection = {}
+        mock_dbt_parser.threads = 0
+        mock_dbt_parser.get_pk_from_model.return_value = primary_keys
+        mock_dbt_parser.requires_upper = False
+        mock_model.meta = None
+
+        diff_vars = _get_diff_vars(mock_dbt_parser, prod_database, None, None, mock_model)
+
+        assert diff_vars.dev_path == [mock_model.database, mock_model.schema_, mock_model.alias]
+        assert diff_vars.prod_path == [mock_model.config.database, mock_model.schema_, mock_model.alias]
         assert diff_vars.primary_keys == primary_keys
         assert diff_vars.connection == mock_dbt_parser.connection
         assert diff_vars.threads == mock_dbt_parser.threads
