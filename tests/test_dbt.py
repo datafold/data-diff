@@ -4,6 +4,18 @@ from pathlib import Path
 from data_diff.cloud.datafold_api import TCloudApiDataSource
 from data_diff.cloud.datafold_api import TCloudApiOrgMeta
 from data_diff.diff_tables import Algorithm
+from data_diff.errors import (
+    DataDiffDbtBigQueryOauthOnlyError,
+    DataDiffDbtConnectionNotImplementedError,
+    DataDiffDbtCoreNoRunnerError,
+    DataDiffDbtNoSuccessfulModelsInRunError,
+    DataDiffDbtProfileNotFoundError,
+    DataDiffDbtProjectVarsNotFoundError,
+    DataDiffDbtRedshiftPasswordOnlyError,
+    DataDiffDbtRunResultsVersionError,
+    DataDiffDbtSelectVersionTooLowError,
+    DataDiffDbtSnowflakeSetConnectionError,
+)
 from .test_cli import run_datadiff_cli
 
 from data_diff.dbt import (
@@ -40,7 +52,7 @@ class TestDbtParser(unittest.TestCase):
         mock_self = Mock()
         mock_self.project_dict = none_dict
 
-        with self.assertRaises(Exception):
+        with self.assertRaises(DataDiffDbtProjectVarsNotFoundError):
             DbtParser.get_datadiff_variables(mock_self)
 
     def test_get_datadiff_variables_empty(self):
@@ -49,7 +61,7 @@ class TestDbtParser(unittest.TestCase):
         mock_self = Mock()
         mock_self.project_dict = empty_dict
 
-        with self.assertRaises(Exception):
+        with self.assertRaises(DataDiffDbtProjectVarsNotFoundError):
             DbtParser.get_datadiff_variables(mock_self)
 
     def test_get_models(self):
@@ -72,7 +84,7 @@ class TestDbtParser(unittest.TestCase):
         mock_return_value = Mock()
         mock_self.get_dbt_selection_models.return_value = mock_return_value
 
-        with self.assertRaises(Exception):
+        with self.assertRaises(DataDiffDbtSelectVersionTooLowError):
             _ = DbtParser.get_models(mock_self, selection)
         mock_self.get_dbt_selection_models.assert_not_called()
 
@@ -85,7 +97,7 @@ class TestDbtParser(unittest.TestCase):
         mock_return_value = Mock()
         mock_self.get_dbt_selection_models.return_value = mock_return_value
 
-        with self.assertRaises(Exception):
+        with self.assertRaises(DataDiffDbtCoreNoRunnerError):
             _ = DbtParser.get_models(mock_self, selection)
         mock_self.get_dbt_selection_models.assert_not_called()
 
@@ -135,7 +147,7 @@ class TestDbtParser(unittest.TestCase):
         mock_artifact_parser.return_value = mock_run_results
         mock_run_results.metadata.dbt_version = "0.19.0"
 
-        with self.assertRaises(Exception) as ex:
+        with self.assertRaises(DataDiffDbtRunResultsVersionError) as ex:
             DbtParser.get_run_results_models(mock_self)
 
         mock_open.assert_called_once_with(Path(RUN_RESULTS_PATH))
@@ -158,7 +170,7 @@ class TestDbtParser(unittest.TestCase):
         mock_failed_result.status.name = "failed"
         mock_run_results.results = [mock_failed_result]
 
-        with self.assertRaises(Exception):
+        with self.assertRaises(DataDiffDbtNoSuccessfulModelsInRunError):
             DbtParser.get_run_results_models(mock_self)
 
         mock_open.assert_any_call(Path(RUN_RESULTS_PATH))
@@ -235,7 +247,7 @@ class TestDbtParser(unittest.TestCase):
         mock_self = Mock()
         mock_self.get_connection_creds.return_value = (expected_credentials, expected_driver)
 
-        with self.assertRaises(Exception):
+        with self.assertRaises(DataDiffDbtSnowflakeSetConnectionError):
             DbtParser.set_connection(mock_self)
 
         self.assertNotIsInstance(mock_self.connection, dict)
@@ -259,7 +271,7 @@ class TestDbtParser(unittest.TestCase):
         mock_self = Mock()
         mock_self.get_connection_creds.return_value = (expected_credentials, expected_driver)
 
-        with self.assertRaises(Exception):
+        with self.assertRaises(DataDiffDbtSnowflakeSetConnectionError):
             DbtParser.set_connection(mock_self)
 
         self.assertNotIsInstance(mock_self.connection, dict)
@@ -291,7 +303,20 @@ class TestDbtParser(unittest.TestCase):
 
         mock_self = Mock()
         mock_self.get_connection_creds.return_value = (expected_credentials, expected_driver)
-        with self.assertRaises(Exception):
+        with self.assertRaises(DataDiffDbtBigQueryOauthOnlyError):
+            DbtParser.set_connection(mock_self)
+
+        self.assertNotIsInstance(mock_self.connection, dict)
+
+    def test_set_connection_redshift_not_password(self):
+        driver = "redshift"
+        credentials = {
+            "method": "not_password",
+        }
+
+        mock_self = Mock()
+        mock_self.get_connection_creds.return_value = (credentials, driver)
+        with self.assertRaises(DataDiffDbtRedshiftPasswordOnlyError):
             DbtParser.set_connection(mock_self)
 
         self.assertNotIsInstance(mock_self.connection, dict)
@@ -301,7 +326,7 @@ class TestDbtParser(unittest.TestCase):
 
         mock_self = Mock()
         mock_self.get_connection_creds.return_value = (None, expected_driver)
-        with self.assertRaises(NotImplementedError):
+        with self.assertRaises(DataDiffDbtConnectionNotImplementedError):
             DbtParser.set_connection(mock_self)
 
         self.assertNotIsInstance(mock_self.connection, dict)
@@ -340,7 +365,7 @@ class TestDbtParser(unittest.TestCase):
         mock_yaml.safe_load.return_value = profiles_dict
         profile = profiles_dict["a_profile"]
         mock_profile_renderer().render_data.return_value = profile
-        with self.assertRaises(ValueError):
+        with self.assertRaises(DataDiffDbtProfileNotFoundError):
             _, _ = DbtParser.get_connection_creds(mock_self)
 
     @patch("data_diff.dbt_parser.yaml")
@@ -360,7 +385,7 @@ class TestDbtParser(unittest.TestCase):
         mock_profile_renderer().render_data.return_value = profile
         mock_self.project_dict = {"profile": "a_profile"}
         mock_yaml.safe_load.return_value = profiles_dict
-        with self.assertRaises(ValueError):
+        with self.assertRaises(DataDiffDbtProfileNotFoundError):
             _, _ = DbtParser.get_connection_creds(mock_self)
 
     profile_yaml_no_outputs = """
@@ -379,7 +404,7 @@ class TestDbtParser(unittest.TestCase):
         profile = profiles_dict["a_profile"]
         mock_profile_renderer().render_data.return_value = profile
         mock_yaml.safe_load.return_value = profiles_dict
-        with self.assertRaises(ValueError):
+        with self.assertRaises(DataDiffDbtProfileNotFoundError):
             _, _ = DbtParser.get_connection_creds(mock_self)
 
     @patch("data_diff.dbt_parser.yaml")
@@ -398,7 +423,7 @@ class TestDbtParser(unittest.TestCase):
         mock_yaml.safe_load.return_value = profiles_dict
         profile = profiles_dict["a_profile"]
         mock_profile_renderer().render_data.return_value = profile
-        with self.assertRaises(ValueError):
+        with self.assertRaises(DataDiffDbtProfileNotFoundError):
             _, _ = DbtParser.get_connection_creds(mock_self)
 
     @patch("data_diff.dbt_parser.yaml")
@@ -419,7 +444,7 @@ class TestDbtParser(unittest.TestCase):
         profile = profiles_dict["a_profile"]
         mock_profile_renderer().render_data.return_value = profile
         mock_yaml.safe_load.return_value = profiles_dict
-        with self.assertRaises(ValueError):
+        with self.assertRaises(DataDiffDbtProfileNotFoundError):
             _, _ = DbtParser.get_connection_creds(mock_self)
 
     @patch("data_diff.dbt_parser.yaml")
@@ -438,7 +463,7 @@ class TestDbtParser(unittest.TestCase):
         mock_yaml.safe_load.return_value = profiles_dict
         profile = profiles_dict["a_profile"]
         mock_profile_renderer().render_data.return_value = profile
-        with self.assertRaises(ValueError):
+        with self.assertRaises(DataDiffDbtProfileNotFoundError):
             _, _ = DbtParser.get_connection_creds(mock_self)
 
 
