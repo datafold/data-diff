@@ -266,15 +266,23 @@ def main(conf, run, **kw):
         logging.basicConfig(level=logging.WARNING, format=LOG_FORMAT, datefmt=DATE_FORMAT)
 
     try:
+        profiles_dir_override = kw.pop("dbt_profiles_dir", None)
+        if profiles_dir_override:
+            profiles_dir_override = os.path.expanduser(profiles_dir_override)
+        project_dir_override = kw.pop("dbt_project_dir", None)
+        if project_dir_override:
+            project_dir_override = os.path.expanduser(project_dir_override)
         if kw["dbt"]:
             dbt_diff(
-                profiles_dir_override=kw["dbt_profiles_dir"],
-                project_dir_override=kw["dbt_project_dir"],
+                profiles_dir_override=profiles_dir_override,
+                project_dir_override=project_dir_override,
                 is_cloud=kw["cloud"],
                 dbt_selection=kw["select"],
             )
         else:
-            return _data_diff(**kw)
+            return _data_diff(dbt_project_dir=project_dir_override,
+                              dbt_profiles_dir=profiles_dir_override,
+                              **kw)
     except Exception as e:
         logging.error(e)
         if kw["debug"]:
