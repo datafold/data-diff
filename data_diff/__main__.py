@@ -1,5 +1,6 @@
 from copy import deepcopy
 from datetime import datetime
+import os
 import sys
 import time
 import json
@@ -233,7 +234,14 @@ click.Context.formatter_class = MyHelpFormatter
     "-s",
     default=None,
     metavar="PATH",
-    help="select dbt resources to compare using dbt selection syntax",
+    help="select dbt resources to compare using dbt selection syntax.",
+)
+@click.option(
+    "--state",
+    "-s",
+    default=None,
+    metavar="PATH",
+    help="Specify manifest to utilize for 'prod' comparison paths instead of using configuration.",
 )
 def main(conf, run, **kw):
     if kw["table2"] is None and kw["database2"]:
@@ -266,12 +274,16 @@ def main(conf, run, **kw):
         logging.basicConfig(level=logging.WARNING, format=LOG_FORMAT, datefmt=DATE_FORMAT)
 
     try:
+        state = kw.pop("state", None)
+        if state:
+            state = os.path.expanduser(state)
         if kw["dbt"]:
             dbt_diff(
                 profiles_dir_override=kw["dbt_profiles_dir"],
                 project_dir_override=kw["dbt_project_dir"],
                 is_cloud=kw["cloud"],
                 dbt_selection=kw["select"],
+                state=state,
             )
         else:
             return _data_diff(**kw)

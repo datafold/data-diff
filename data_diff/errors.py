@@ -44,3 +44,7 @@ class DataDiffDbtCoreNoRunnerError(Exception):
 
 class DataDiffDbtSelectVersionTooLowError(Exception):
     "Raised when attempting to use `--select` with a dbt-core version < 1.5."
+
+
+class DataDiffCustomSchemaNoConfigError(Exception):
+    "Raised when a model has a custom schema, but there is no prod_custom_schema config. (And not using --state)."
