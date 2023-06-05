@@ -327,6 +327,7 @@ def _data_diff(
     dbt_profiles_dir,
     dbt_project_dir,
     select,
+    state,
     threads1=None,
     threads2=None,
     __conf__=None,
