@@ -286,7 +286,7 @@ def main(conf, run, **kw):
                 state=state,
             )
         else:
-            return _data_diff(**kw)
+            return _data_diff(**kw, state=state)
     except Exception as e:
         logging.error(e)
         if kw["debug"]:
