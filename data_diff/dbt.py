@@ -1,4 +1,5 @@
 import os
+import re
 import time
 import webbrowser
 from typing import List, Optional, Dict
@@ -399,13 +400,24 @@ def _initialize_events(dbt_user_id: Optional[str], dbt_version: Optional[str], d
 
 
 def _email_signup() -> None:
+    email_regex = r'^[\w\.\+-]+@[\w\.-]+\.\w+$'
+    prompt = "\nWould you like to be notified when a new data-diff version is available?\n\nEnter email or leave blank to opt out (we'll only ask once).\n"
+
     if bool_ask_for_email():
-        email_input = Prompt.ask(
-            "\nWould you like to be notified when a new data-diff version is available?\n\nEnter email or leave blank to opt out (we'll only ask once).\n",
-            default="",
-            show_default=False,
-        )
-        email = email_input.strip()
+        while True:
+            email_input = Prompt.ask(
+                prompt=prompt,
+                default="",
+                show_default=False,
+            )
+            email = email_input.strip()
+
+            if email == "" or re.match(email_regex, email):
+                break
+
+            prompt = ""
+            rich.print("[red]Invalid email. Please enter a valid email or leave it blank to opt out.[/]")
+
         if email:
             event_json = create_email_signup_event_json(email)
             run_as_daemon(send_event_json, event_json)
