@@ -32,7 +32,8 @@ class MatchUriPath:
         params = self.database_cls.CONNECT_URI_PARAMS
         kwparams = self.database_cls.CONNECT_URI_KWPARAMS
 
-        dsn_dict = dict(dsn.query)
+        print(dsn.query)
+        dsn_dict = dict([param.split('=') for param in dsn.query.split('&')])
         matches = {}
         for param, arg in zip_longest(params, dsn.paths):
             if param is None:

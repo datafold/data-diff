@@ -1,3 +1,4 @@
+import json
 import os
 import time
 import webbrowser
@@ -52,6 +53,8 @@ def dbt_diff(
     project_dir_override: Optional[str] = None,
     is_cloud: bool = False,
     dbt_selection: Optional[str] = None,
+    print_rows: bool = False,
+    json_output: bool = False,
 ) -> None:
     print_version_info()
     diff_threads = []
@@ -113,7 +116,7 @@ def dbt_diff(
                 diff_thread = run_as_daemon(_cloud_diff, diff_vars, datasource_id, api, org_meta)
                 diff_threads.append(diff_thread)
             else:
-                _local_diff(diff_vars)
+                _local_diff(diff_vars, print_rows, json_output)
         else:
             rich.print(
                 _diff_output_base(".".join(diff_vars.dev_path), ".".join(diff_vars.prod_path))
@@ -186,7 +189,7 @@ def _get_diff_vars(
     )
 
 
-def _local_diff(diff_vars: TDiffVars) -> None:
+def _local_diff(diff_vars: TDiffVars, print_rows: bool, json_output: bool) -> None:
     dev_qualified_str = ".".join(diff_vars.dev_path)
     prod_qualified_str = ".".join(diff_vars.prod_path)
     diff_output_str = _diff_output_base(dev_qualified_str, prod_qualified_str)
@@ -246,12 +249,38 @@ def _local_diff(diff_vars: TDiffVars) -> None:
         skip_null_keys=True,
     )
 
-    if list(diff):
-        diff_output_str += f"{diff.get_stats_string(is_dbt=True)} \n"
-        rich.print(diff_output_str)
-    else:
+    if not list(diff) and not json_output:
         diff_output_str += no_differences_template()
         rich.print(diff_output_str)
+        return
+
+    if print_rows and json_output:
+        json_diff = {
+            "table1": table1.table_path,
+            "table2": table2.table_path,
+            "columns_added": list(columns_added),
+            "columns_removed": list(columns_removed),
+            "diff": [[op, list(values)] for op, values in diff]
+        }
+        print(json.dumps(json_diff))
+    elif print_rows and not json_output:
+        for op, values in diff:
+            color = _COLOR_SCHEME[op]
+            text = f"{op} {', '.join(map(str, values))}"
+            rich.print(f"[{color}]{text}[/{color}]")
+    elif not print_rows and json_output:
+        json_stats = {
+            "table1": table1.table_path,
+            "table2": table2.table_path,
+            "columns_added": list(columns_added),
+            "columns_removed": list(columns_removed),
+            "diff": diff.get_stats_dict(),
+        }
+        print(json.dumps(json_stats))
+    elif not print_rows and not json_output:
+        diff_output_str += f"{diff.get_stats_string(is_dbt=True)} \n"
+        rich.print(diff_output_str)
+
 
 
 def _initialize_api() -> Optional[DatafoldAPI]:
@@ -389,3 +418,8 @@ def _cloud_diff(diff_vars: TDiffVars, datasource_id: int, api: DatafoldAPI, org_
 
 def _diff_output_base(dev_path: str, prod_path: str) -> str:
     return f"\n[green]{prod_path} <> {dev_path}[/] \n"
+
+_COLOR_SCHEME = {
+    "+": "green",
+    "-": "red",
+}

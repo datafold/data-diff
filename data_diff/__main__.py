@@ -1,3 +1,4 @@
+import os.path
 from copy import deepcopy
 from datetime import datetime
 import sys
@@ -143,7 +144,8 @@ click.Context.formatter_class = MyHelpFormatter
 @click.option(
     "--max-age", default=None, help="Considers only rows younger than specified. See --min-age.", metavar="AGE"
 )
-@click.option("-s", "--stats", is_flag=True, help="Print stats instead of a detailed diff")
+@click.option("-s", "--stats", is_flag=True, help="Print stats instead of a detailed diff (default for dbt)")
+@click.option("-r", "--rows", is_flag=True, help="Print detailed diff instead of stats (default for non-dbt diff)")
 @click.option("-d", "--debug", is_flag=True, help="Print debug info")
 @click.option("--json", "json_output", is_flag=True, help="Print JSONL output for machine readability")
 @click.option("-v", "--verbose", is_flag=True, help="Print extra info")
@@ -266,15 +268,25 @@ def main(conf, run, **kw):
         logging.basicConfig(level=logging.WARNING, format=LOG_FORMAT, datefmt=DATE_FORMAT)
 
     try:
+        profiles_dir_override = kw.pop("dbt_profiles_dir", None)
+        if profiles_dir_override:
+            profiles_dir_override = os.path.expanduser(profiles_dir_override)
+        project_dir_override = kw.pop("dbt_project_dir", None)
+        if project_dir_override:
+            project_dir_override = os.path.expanduser(project_dir_override)
         if kw["dbt"]:
             dbt_diff(
-                profiles_dir_override=kw["dbt_profiles_dir"],
-                project_dir_override=kw["dbt_project_dir"],
+                profiles_dir_override=profiles_dir_override,
+                project_dir_override=project_dir_override,
                 is_cloud=kw["cloud"],
                 dbt_selection=kw["select"],
+                print_rows=kw["rows"],
+                json_output=kw["json_output"],
             )
         else:
-            return _data_diff(**kw)
+            return _data_diff(dbt_project_dir=project_dir_override,
+                              dbt_profiles_dir=profiles_dir_override,
+                              **kw)
     except Exception as e:
         logging.error(e)
         if kw["debug"]:
