@@ -1,3 +1,4 @@
+import json
 import os
 import time
 import webbrowser
@@ -11,6 +12,8 @@ from rich.prompt import Confirm
 from . import connect_to_table, diff_tables, Algorithm
 from .cloud import DatafoldAPI, TCloudApiDataDiff, TCloudApiOrgMeta, get_or_create_data_source
 from .dbt_parser import DbtParser, PROJECT_FILE
+from .diff_tables import DiffResultWrapper
+from .format import jsonify
 from .tracking import (
     set_entrypoint_name,
     set_dbt_user_id,
@@ -52,6 +55,7 @@ def dbt_diff(
     project_dir_override: Optional[str] = None,
     is_cloud: bool = False,
     dbt_selection: Optional[str] = None,
+    json_output: bool = False,
 ) -> None:
     print_version_info()
     diff_threads = []
@@ -113,7 +117,7 @@ def dbt_diff(
                 diff_thread = run_as_daemon(_cloud_diff, diff_vars, datasource_id, api, org_meta)
                 diff_threads.append(diff_thread)
             else:
-                _local_diff(diff_vars)
+                _local_diff(diff_vars, json_output)
         else:
             rich.print(
                 _diff_output_base(".".join(diff_vars.dev_path), ".".join(diff_vars.prod_path))
@@ -186,7 +190,7 @@ def _get_diff_vars(
     )
 
 
-def _local_diff(diff_vars: TDiffVars) -> None:
+def _local_diff(diff_vars: TDiffVars, json_output: bool = False) -> None:
     dev_qualified_str = ".".join(diff_vars.dev_path)
     prod_qualified_str = ".".join(diff_vars.prod_path)
     diff_output_str = _diff_output_base(dev_qualified_str, prod_qualified_str)
@@ -236,7 +240,7 @@ def _local_diff(diff_vars: TDiffVars) -> None:
 
     extra_columns = tuple(column_set)
 
-    diff = diff_tables(
+    diff: DiffResultWrapper = diff_tables(
         table1,
         table2,
         threaded=True,
@@ -245,6 +249,16 @@ def _local_diff(diff_vars: TDiffVars) -> None:
         where=diff_vars.where_filter,
         skip_null_keys=True,
     )
+    if json_output:
+        # drain the iterator to get accumulated stats in diff.info_tree
+        list(diff)
+
+        print(json.dumps(jsonify(diff, with_summary=True, with_columns={
+            "added": columns_added,
+            "removed": columns_removed,
+            "changed": columns_type_changed,
+        })))
+        return
 
     if list(diff):
         diff_output_str += f"{diff.get_stats_string(is_dbt=True)} \n"

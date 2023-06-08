@@ -279,6 +279,7 @@ def main(conf, run, **kw):
                 project_dir_override=project_dir_override,
                 is_cloud=kw["cloud"],
                 dbt_selection=kw["select"],
+                json_output=kw["json_output"]
             )
         else:
             return _data_diff(dbt_project_dir=project_dir_override,

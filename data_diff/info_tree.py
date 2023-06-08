@@ -1,3 +1,4 @@
+from typing import Any
 from typing import List, Dict
 
 from runtype import dataclass
@@ -9,14 +10,16 @@ from .table_segment import TableSegment
 class SegmentInfo:
     tables: List[TableSegment]
 
-    diff: list = None
+    diff: list[tuple[Any, ...]] = None
+    diff_schema: tuple[tuple[str, type], ...] = None
     is_diff: bool = None
     diff_count: int = None
 
     rowcounts: Dict[int, int] = {}
     max_rows: int = None
 
-    def set_diff(self, diff):
+    def set_diff(self, schema: tuple[tuple[str, type]], diff: list[tuple[Any, ...]]):
+        self.diff_schema = schema
         self.diff = diff
         self.diff_count = len(diff)
         self.is_diff = self.diff_count > 0
