@@ -297,33 +297,24 @@ class DbtParser:
             else:
                 raise DataDiffDbtSnowflakeSetConnectionError("Snowflake: unsupported auth method")
         elif conn_type == "bigquery":
-            supported_methods = {
-                "oauth": {
-                    "conn_info": {
-                        "driver": conn_type,
-                        "project": credentials.get("project"),
-                        "dataset": credentials.get("dataset"),
-                    }
-                },
-                "service-account": {
-                    "conn_info": {
-                        "driver": conn_type,
-                        "project": credentials.get("project"),
-                        "dataset": credentials.get("dataset"),
-                        "keyfile": credentials.get("keyfile"),
-                    }
-                },
-            }
+            supported_methods = ["oauth", "service-account"]
             method = credentials.get("method")
             # there are many connection types https://docs.getdbt.com/reference/warehouse-setups/bigquery-setup#oauth-via-gcloud
             # this assumes that the user is auth'd via `gcloud auth application-default login`
             if method not in supported_methods:
                 raise DataDiffDbtBigQueryUnsupportedMethodError(
-                    f"Method: {method} is not in the current methods supported for Big Query ({supported_methods.keys()})."
+                    f"Method: {method} is not in the current methods supported for Big Query ({supported_methods})."
                 )
 
-            conn_info = supported_methods[method]["conn_info"]
+            conn_info = {
+                "driver": conn_type,
+                "project": credentials.get("project"),
+                "dataset": credentials.get("dataset"),
+            }
+
             self.threads = credentials.get("threads")
+            if method == supported_methods[1]:
+                conn_info["keyfile"] = credentials.get("keyfile")
 
         elif conn_type == "duckdb":
             conn_info = {
