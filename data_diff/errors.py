@@ -26,8 +26,8 @@ class DataDiffDbtSnowflakeSetConnectionError(Exception):
     "Raised when a dbt snowflake profile has unexpected values."
 
 
-class DataDiffDbtBigQueryOauthOnlyError(Exception):
-    "Raised when trying to use a method other than oauth with BigQuery."
+class DataDiffDbtBigQueryUnsupportedMethodError(Exception):
+    "Raised when trying to use an unsupported connection with BigQuery."
 
 
 class DataDiffDbtRedshiftPasswordOnlyError(Exception):

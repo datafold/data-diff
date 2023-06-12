@@ -11,7 +11,7 @@ from dbt_artifacts_parser.parser import parse_run_results, parse_manifest
 from dbt.config.renderer import ProfileRenderer
 
 from data_diff.errors import (
-    DataDiffDbtBigQueryOauthOnlyError,
+    DataDiffDbtBigQueryUnsupportedMethodError,
     DataDiffDbtConnectionNotImplementedError,
     DataDiffDbtCoreNoRunnerError,
     DataDiffDbtNoSuccessfulModelsInRunError,
@@ -204,7 +204,9 @@ class DbtParser:
         success_models = [x.unique_id for x in run_results_obj.results if x.status.name == "success"]
         models = [self.manifest_obj.nodes.get(x) for x in success_models]
         if not models:
-            raise DataDiffDbtNoSuccessfulModelsInRunError("Expected > 0 successful models runs from the last dbt command.")
+            raise DataDiffDbtNoSuccessfulModelsInRunError(
+                "Expected > 0 successful models runs from the last dbt command."
+            )
 
         return models
 
@@ -295,17 +297,34 @@ class DbtParser:
             else:
                 raise DataDiffDbtSnowflakeSetConnectionError("Snowflake: unsupported auth method")
         elif conn_type == "bigquery":
+            supported_methods = {
+                "oauth": {
+                    "conn_info": {
+                        "driver": conn_type,
+                        "project": credentials.get("project"),
+                        "dataset": credentials.get("dataset"),
+                    }
+                },
+                "service-account": {
+                    "conn_info": {
+                        "driver": conn_type,
+                        "project": credentials.get("project"),
+                        "dataset": credentials.get("dataset"),
+                        "keyfile": credentials.get("keyfile"),
+                    }
+                },
+            }
             method = credentials.get("method")
             # there are many connection types https://docs.getdbt.com/reference/warehouse-setups/bigquery-setup#oauth-via-gcloud
             # this assumes that the user is auth'd via `gcloud auth application-default login`
-            if method is None or method != "oauth":
-                raise DataDiffDbtBigQueryOauthOnlyError("Oauth is the current method supported for Big Query.")
-            conn_info = {
-                "driver": conn_type,
-                "project": credentials.get("project"),
-                "dataset": credentials.get("dataset"),
-            }
+            if method not in supported_methods:
+                raise DataDiffDbtBigQueryUnsupportedMethodError(
+                    f"Method: {method} is not in the current methods supported for Big Query ({supported_methods.keys()})."
+                )
+
+            conn_info = supported_methods[method]["conn_info"]
             self.threads = credentials.get("threads")
+
         elif conn_type == "duckdb":
             conn_info = {
                 "driver": conn_type,
@@ -315,7 +334,9 @@ class DbtParser:
             if (credentials.get("pass") is None and credentials.get("password") is None) or credentials.get(
                 "method"
             ) == "iam":
-                raise DataDiffDbtRedshiftPasswordOnlyError("Only password authentication is currently supported for Redshift.")
+                raise DataDiffDbtRedshiftPasswordOnlyError(
+                    "Only password authentication is currently supported for Redshift."
+                )
             conn_info = {
                 "driver": conn_type,
                 "host": credentials.get("host"),
