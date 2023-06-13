@@ -10,6 +10,13 @@ We capture two events: one when the data-diff run starts, and one when it is fin
 - Error message, if any, truncated to the first 20 characters.
 - A persistent UUID to indentify the session, stored in `~/.datadiff.toml`
 
+When using the `--dbt` feature, we also collect:
+    - dbt generated UUIDs (user_id and project_id)
+    - dbt-core version (e.g. 1.2.0)
+    - Users can also choose to provide an email address
+        - When tracking is not disabled, we will prompt the user once to opt-in to release notifications
+            - Users can decide not to opt-in by leaving the prompt blank
+
 To disable, use one of the following methods:
 
 * **CLI**: use the `--no-tracking` flag.
