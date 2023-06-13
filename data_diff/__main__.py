@@ -277,16 +277,25 @@ def main(conf, run, **kw):
         state = kw.pop("state", None)
         if state:
             state = os.path.expanduser(state)
+        profiles_dir_override = kw.pop("dbt_profiles_dir", None)
+        if profiles_dir_override:
+            profiles_dir_override = os.path.expanduser(profiles_dir_override)
+        project_dir_override = kw.pop("dbt_project_dir", None)
+        if project_dir_override:
+            project_dir_override = os.path.expanduser(project_dir_override)
         if kw["dbt"]:
             dbt_diff(
-                profiles_dir_override=kw["dbt_profiles_dir"],
-                project_dir_override=kw["dbt_project_dir"],
+                profiles_dir_override=profiles_dir_override,
+                project_dir_override=project_dir_override,
                 is_cloud=kw["cloud"],
                 dbt_selection=kw["select"],
                 state=state,
             )
         else:
-            return _data_diff(**kw, state=state)
+            return _data_diff(dbt_project_dir=project_dir_override,
+                              dbt_profiles_dir=profiles_dir_override,
+                              state=state,
+                              **kw)
     except Exception as e:
         logging.error(e)
         if kw["debug"]:
