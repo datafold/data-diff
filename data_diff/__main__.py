@@ -292,10 +292,9 @@ def main(conf, run, **kw):
                 state=state,
             )
         else:
-            return _data_diff(dbt_project_dir=project_dir_override,
-                              dbt_profiles_dir=profiles_dir_override,
-                              state=state,
-                              **kw)
+            return _data_diff(
+                dbt_project_dir=project_dir_override, dbt_profiles_dir=profiles_dir_override, state=state, **kw
+            )
     except Exception as e:
         logging.error(e)
         if kw["debug"]:
