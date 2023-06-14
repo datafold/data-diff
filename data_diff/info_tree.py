@@ -18,7 +18,7 @@ class SegmentInfo:
     rowcounts: Dict[int, int] = {}
     max_rows: int = None
 
-    def set_diff(self, schema: tuple[tuple[str, type]], diff: list[tuple[Any, ...]]):
+    def set_diff(self, diff: list[tuple[Any, ...]], schema: tuple[tuple[str, type]] | None = None):
         self.diff_schema = schema
         self.diff = diff
         self.diff_count = len(diff)

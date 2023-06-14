@@ -206,7 +206,7 @@ class JoinDiffer(TableDiffer):
             assert len(a_cols) == len(b_cols)
             logger.debug("Querying for different rows")
             diff = db.query(diff_rows, list)
-            info_tree.info.set_diff(tuple(diff_rows.schema.items()), diff)
+            info_tree.info.set_diff(diff, schema=tuple(diff_rows.schema.items()))
             for is_xa, is_xb, *x in diff:
                 if is_xa and is_xb:
                     # Can't both be exclusive, meaning a pk is NULL
