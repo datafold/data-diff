@@ -11,7 +11,7 @@ from dbt_artifacts_parser.parser import parse_run_results, parse_manifest
 from dbt.config.renderer import ProfileRenderer
 
 from data_diff.errors import (
-    DataDiffDbtBigQueryOauthOnlyError,
+    DataDiffDbtBigQueryUnsupportedMethodError,
     DataDiffDbtConnectionNotImplementedError,
     DataDiffDbtCoreNoRunnerError,
     DataDiffDbtNoSuccessfulModelsInRunError,
@@ -319,17 +319,25 @@ class DbtParser:
             else:
                 raise DataDiffDbtSnowflakeSetConnectionError("Snowflake: unsupported auth method")
         elif conn_type == "bigquery":
+            supported_methods = ["oauth", "service-account"]
             method = credentials.get("method")
             # there are many connection types https://docs.getdbt.com/reference/warehouse-setups/bigquery-setup#oauth-via-gcloud
             # this assumes that the user is auth'd via `gcloud auth application-default login`
-            if method is None or method != "oauth":
-                raise DataDiffDbtBigQueryOauthOnlyError("Oauth is the current method supported for Big Query.")
+            if method not in supported_methods:
+                raise DataDiffDbtBigQueryUnsupportedMethodError(
+                    f"Method: {method} is not in the current methods supported for Big Query ({supported_methods})."
+                )
+
             conn_info = {
                 "driver": conn_type,
                 "project": credentials.get("project"),
                 "dataset": credentials.get("dataset"),
             }
+
             self.threads = credentials.get("threads")
+            if method == supported_methods[1]:
+                conn_info["keyfile"] = credentials.get("keyfile")
+
         elif conn_type == "duckdb":
             conn_info = {
                 "driver": conn_type,

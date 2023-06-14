@@ -5,8 +5,8 @@ from data_diff.cloud.datafold_api import TCloudApiDataSource
 from data_diff.cloud.datafold_api import TCloudApiOrgMeta
 from data_diff.diff_tables import Algorithm
 from data_diff.errors import (
+    DataDiffDbtBigQueryUnsupportedMethodError,
     DataDiffCustomSchemaNoConfigError,
-    DataDiffDbtBigQueryOauthOnlyError,
     DataDiffDbtConnectionNotImplementedError,
     DataDiffDbtCoreNoRunnerError,
     DataDiffDbtNoSuccessfulModelsInRunError,
@@ -271,7 +271,7 @@ class TestDbtParser(unittest.TestCase):
 
         self.assertNotIsInstance(mock_self.connection, dict)
 
-    def test_set_connection_bigquery_success(self):
+    def test_set_connection_bigquery_oauth(self):
         expected_driver = "bigquery"
         expected_credentials = {
             "method": "oauth",
@@ -288,17 +288,36 @@ class TestDbtParser(unittest.TestCase):
         self.assertEqual(mock_self.connection.get("project"), expected_credentials["project"])
         self.assertEqual(mock_self.connection.get("dataset"), expected_credentials["dataset"])
 
-    def test_set_connection_bigquery_not_oauth(self):
+    def test_set_connection_bigquery_svc_account(self):
         expected_driver = "bigquery"
         expected_credentials = {
-            "method": "not_oauth",
+            "method": "service-account",
+            "project": "a_project",
+            "dataset": "a_dataset",
+            "keyfile": "/some/path",
+        }
+        mock_self = Mock()
+        mock_self.get_connection_creds.return_value = (expected_credentials, expected_driver)
+
+        DbtParser.set_connection(mock_self)
+
+        self.assertIsInstance(mock_self.connection, dict)
+        self.assertEqual(mock_self.connection.get("driver"), expected_driver)
+        self.assertEqual(mock_self.connection.get("project"), expected_credentials["project"])
+        self.assertEqual(mock_self.connection.get("dataset"), expected_credentials["dataset"])
+        self.assertEqual(mock_self.connection.get("keyfile"), expected_credentials["keyfile"])
+
+    def test_set_connection_bigquery_not_supported(self):
+        expected_driver = "bigquery"
+        expected_credentials = {
+            "method": "not_supported",
             "project": "a_project",
             "dataset": "a_dataset",
         }
 
         mock_self = Mock()
         mock_self.get_connection_creds.return_value = (expected_credentials, expected_driver)
-        with self.assertRaises(DataDiffDbtBigQueryOauthOnlyError):
+        with self.assertRaises(DataDiffDbtBigQueryUnsupportedMethodError):
             DbtParser.set_connection(mock_self)
 
         self.assertNotIsInstance(mock_self.connection, dict)
