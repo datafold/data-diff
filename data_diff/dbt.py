@@ -1,11 +1,12 @@
 import os
+import re
 import time
 import webbrowser
 from typing import List, Optional, Dict, Tuple, Union
 import keyring
 import pydantic
 import rich
-from rich.prompt import Confirm
+from rich.prompt import Confirm, Prompt
 
 from data_diff.errors import DataDiffCustomSchemaNoConfigError, DataDiffDbtProjectVarsNotFoundError
 
@@ -13,6 +14,8 @@ from . import connect_to_table, diff_tables, Algorithm
 from .cloud import DatafoldAPI, TCloudApiDataDiff, TCloudApiOrgMeta, get_or_create_data_source
 from .dbt_parser import DbtParser, PROJECT_FILE, TDatadiffConfig
 from .tracking import (
+    bool_ask_for_email,
+    create_email_signup_event_json,
     set_entrypoint_name,
     set_dbt_user_id,
     set_dbt_version,
@@ -61,10 +64,8 @@ def dbt_diff(
     dbt_parser = DbtParser(profiles_dir_override, project_dir_override, state)
     models = dbt_parser.get_models(dbt_selection)
     config = dbt_parser.get_datadiff_config()
+    _initialize_events(dbt_parser.dbt_user_id, dbt_parser.dbt_version, dbt_parser.dbt_project_id)
 
-    set_dbt_user_id(dbt_parser.dbt_user_id)
-    set_dbt_version(dbt_parser.dbt_version)
-    set_dbt_project_id(dbt_parser.dbt_project_id)
 
     if not state and not (config.prod_database or config.prod_schema):
         doc_url = "https://docs.datafold.com/development_testing/open_source#configure-your-dbt-project"
@@ -414,3 +415,34 @@ def _cloud_diff(diff_vars: TDiffVars, datasource_id: int, api: DatafoldAPI, org_
 
 def _diff_output_base(dev_path: str, prod_path: str) -> str:
     return f"\n[green]{prod_path} <> {dev_path}[/] \n"
+
+
+def _initialize_events(dbt_user_id: Optional[str], dbt_version: Optional[str], dbt_project_id: Optional[str]) -> None:
+    set_dbt_user_id(dbt_user_id)
+    set_dbt_version(dbt_version)
+    set_dbt_project_id(dbt_project_id)
+    _email_signup()
+
+
+def _email_signup() -> None:
+    email_regex = r'^[\w\.\+-]+@[\w\.-]+\.\w+$'
+    prompt = "\nWould you like to be notified when a new data-diff version is available?\n\nEnter email or leave blank to opt out (we'll only ask once).\n"
+
+    if bool_ask_for_email():
+        while True:
+            email_input = Prompt.ask(
+                prompt=prompt,
+                default="",
+                show_default=False,
+            )
+            email = email_input.strip()
+
+            if email == "" or re.match(email_regex, email):
+                break
+
+            prompt = ""
+            rich.print("[red]Invalid email. Please enter a valid email or leave it blank to opt out.[/]")
+
+        if email:
+            event_json = create_email_signup_event_json(email)
+            run_as_daemon(send_event_json, event_json)
