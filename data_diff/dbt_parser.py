@@ -16,7 +16,6 @@ from data_diff.errors import (
     DataDiffDbtCoreNoRunnerError,
     DataDiffDbtNoSuccessfulModelsInRunError,
     DataDiffDbtProfileNotFoundError,
-    DataDiffDbtProjectVarsNotFoundError,
     DataDiffDbtRedshiftPasswordOnlyError,
     DataDiffDbtRunResultsVersionError,
     DataDiffDbtSelectNoMatchingModelsError,
@@ -88,29 +87,52 @@ class TDatadiffModelConfig(pydantic.BaseModel):
     exclude_columns: List[str] = []
 
 
+class TDatadiffConfig(pydantic.BaseModel):
+    prod_database: Optional[str] = None
+    prod_schema: Optional[str] = None
+    prod_custom_schema: Optional[str] = None
+    datasource_id: Optional[int] = None
+
+
 class DbtParser:
-    def __init__(self, profiles_dir_override: str, project_dir_override: str) -> None:
+    def __init__(
+        self,
+        profiles_dir_override: Optional[str] = None,
+        project_dir_override: Optional[str] = None,
+        state: Optional[str] = None,
+    ) -> None:
         try_set_dbt_flags()
         self.dbt_runner = try_get_dbt_runner()
         self.profiles_dir = Path(profiles_dir_override or default_profiles_dir())
         self.project_dir = Path(project_dir_override or default_project_dir())
         self.connection = {}
         self.project_dict = self.get_project_dict()
-        self.manifest_obj = self.get_manifest_obj()
-        self.dbt_user_id = self.manifest_obj.metadata.user_id
-        self.dbt_version = self.manifest_obj.metadata.dbt_version
-        self.dbt_project_id = self.manifest_obj.metadata.project_id
+        self.dev_manifest_obj = self.get_manifest_obj(self.project_dir / MANIFEST_PATH)
+        self.prod_manifest_obj = None
+        if state:
+            self.prod_manifest_obj = self.get_manifest_obj(Path(state))
+
+        self.dbt_user_id = self.dev_manifest_obj.metadata.user_id
+        self.dbt_version = self.dev_manifest_obj.metadata.dbt_version
+        self.dbt_project_id = self.dev_manifest_obj.metadata.project_id
         self.requires_upper = False
         self.threads = None
         self.unique_columns = self.get_unique_columns()
 
-    def get_datadiff_variables(self) -> dict:
-        doc_url = "https://docs.datafold.com/development_testing/open_source#configure-your-dbt-project"
-        exception = DataDiffDbtProjectVarsNotFoundError(
-            f"vars: data_diff: section not found in dbt_project.yml.\n\nTo solve this, please configure your dbt project: \n{doc_url}\n"
+    def get_datadiff_config(self) -> TDatadiffConfig:
+        data_diff_vars = self.project_dict.get("vars", {}).get("data_diff", {})
+        prod_database = data_diff_vars.get("prod_database")
+        prod_schema = data_diff_vars.get("prod_schema")
+        prod_custom_schema = data_diff_vars.get("prod_custom_schema")
+        datasource_id = data_diff_vars.get("datasource_id")
+        config = TDatadiffConfig(
+            prod_database=prod_database,
+            prod_schema=prod_schema,
+            prod_custom_schema=prod_custom_schema,
+            datasource_id=datasource_id,
         )
-        vars_dict = get_from_dict_with_raise(self.project_dict, "vars", exception)
-        return get_from_dict_with_raise(vars_dict, "data_diff", exception)
+        logger.info(f"config: {config}")
+        return config
 
     def get_datadiff_model_config(self, model_meta: dict) -> TDatadiffModelConfig:
         where_filter = None
@@ -172,7 +194,7 @@ class DbtParser:
 
         if results.success and results.result:
             model_list = [json.loads(model)["unique_id"] for model in results.result]
-            models = [self.manifest_obj.nodes.get(x) for x in model_list]
+            models = [self.dev_manifest_obj.nodes.get(x) for x in model_list]
             return models
 
         if not results.result:
@@ -202,7 +224,7 @@ class DbtParser:
             )
 
         success_models = [x.unique_id for x in run_results_obj.results if x.status.name == "success"]
-        models = [self.manifest_obj.nodes.get(x) for x in success_models]
+        models = [self.dev_manifest_obj.nodes.get(x) for x in success_models]
         if not models:
             raise DataDiffDbtNoSuccessfulModelsInRunError(
                 "Expected > 0 successful models runs from the last dbt command."
@@ -210,9 +232,9 @@ class DbtParser:
 
         return models
 
-    def get_manifest_obj(self):
-        with open(self.project_dir / MANIFEST_PATH) as manifest:
-            logger.info(f"Parsing file {MANIFEST_PATH}")
+    def get_manifest_obj(self, path: Path):
+        with open(path) as manifest:
+            logger.info(f"Parsing file {path}")
             manifest_dict = json.load(manifest)
             manifest_obj = parse_manifest(manifest=manifest_dict)
         return manifest_obj
@@ -398,7 +420,7 @@ class DbtParser:
         return []
 
     def get_unique_columns(self) -> Dict[str, Set[str]]:
-        manifest = self.manifest_obj
+        manifest = self.dev_manifest_obj
         cols_by_uid = defaultdict(set)
         for node in manifest.nodes.values():
             try:

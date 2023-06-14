@@ -234,7 +234,14 @@ click.Context.formatter_class = MyHelpFormatter
     "-s",
     default=None,
     metavar="PATH",
-    help="select dbt resources to compare using dbt selection syntax",
+    help="select dbt resources to compare using dbt selection syntax.",
+)
+@click.option(
+    "--state",
+    "-s",
+    default=None,
+    metavar="PATH",
+    help="Specify manifest to utilize for 'prod' comparison paths instead of using configuration.",
 )
 def main(conf, run, **kw):
     if kw["table2"] is None and kw["database2"]:
@@ -267,6 +274,9 @@ def main(conf, run, **kw):
         logging.basicConfig(level=logging.WARNING, format=LOG_FORMAT, datefmt=DATE_FORMAT)
 
     try:
+        state = kw.pop("state", None)
+        if state:
+            state = os.path.expanduser(state)
         profiles_dir_override = kw.pop("dbt_profiles_dir", None)
         if profiles_dir_override:
             profiles_dir_override = os.path.expanduser(profiles_dir_override)
@@ -279,11 +289,12 @@ def main(conf, run, **kw):
                 project_dir_override=project_dir_override,
                 is_cloud=kw["cloud"],
                 dbt_selection=kw["select"],
+                state=state,
             )
         else:
-            return _data_diff(dbt_project_dir=project_dir_override,
-                              dbt_profiles_dir=profiles_dir_override,
-                              **kw)
+            return _data_diff(
+                dbt_project_dir=project_dir_override, dbt_profiles_dir=profiles_dir_override, state=state, **kw
+            )
     except Exception as e:
         logging.error(e)
         if kw["debug"]:
@@ -324,6 +335,7 @@ def _data_diff(
     dbt_profiles_dir,
     dbt_project_dir,
     select,
+    state,
     threads1=None,
     threads2=None,
     __conf__=None,
