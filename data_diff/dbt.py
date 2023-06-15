@@ -1,20 +1,24 @@
 import json
 import os
+import re
 import time
 import webbrowser
-from typing import List, Optional, Dict
+from typing import List, Optional, Dict, Tuple, Union
 import keyring
-
 import pydantic
 import rich
-from rich.prompt import Confirm
+from rich.prompt import Confirm, Prompt
+
+from data_diff.errors import DataDiffCustomSchemaNoConfigError, DataDiffDbtProjectVarsNotFoundError
 
 from . import connect_to_table, diff_tables, Algorithm
 from .cloud import DatafoldAPI, TCloudApiDataDiff, TCloudApiOrgMeta, get_or_create_data_source
-from .dbt_parser import DbtParser, PROJECT_FILE
+from .dbt_parser import DbtParser, PROJECT_FILE, TDatadiffConfig
 from .diff_tables import DiffResultWrapper
 from .format import jsonify
 from .tracking import (
+    bool_ask_for_email,
+    create_email_signup_event_json,
     set_entrypoint_name,
     set_dbt_user_id,
     set_dbt_version,
@@ -56,24 +60,21 @@ def dbt_diff(
     is_cloud: bool = False,
     dbt_selection: Optional[str] = None,
     json_output: bool = False,
+    state: Optional[str] = None,
 ) -> None:
     print_version_info()
     diff_threads = []
     set_entrypoint_name("CLI-dbt")
-    dbt_parser = DbtParser(profiles_dir_override, project_dir_override)
+    dbt_parser = DbtParser(profiles_dir_override, project_dir_override, state)
     models = dbt_parser.get_models(dbt_selection)
-    datadiff_variables = dbt_parser.get_datadiff_variables()
-    config_prod_database = datadiff_variables.get("prod_database")
-    config_prod_schema = datadiff_variables.get("prod_schema")
-    config_prod_custom_schema = datadiff_variables.get("prod_custom_schema")
-    datasource_id = datadiff_variables.get("datasource_id")
-    set_dbt_user_id(dbt_parser.dbt_user_id)
-    set_dbt_version(dbt_parser.dbt_version)
-    set_dbt_project_id(dbt_parser.dbt_project_id)
+    config = dbt_parser.get_datadiff_config()
+    _initialize_events(dbt_parser.dbt_user_id, dbt_parser.dbt_version, dbt_parser.dbt_project_id)
 
-    if datadiff_variables.get("custom_schemas") is not None:
-        logger.warning(
-            "vars: data_diff: custom_schemas: is no longer used and can be removed.\nTo utilize custom schemas, see the documentation here: https://docs.datafold.com/development_testing/open_source"
+
+    if not state and not (config.prod_database or config.prod_schema):
+        doc_url = "https://docs.datafold.com/development_testing/open_source#configure-your-dbt-project"
+        raise DataDiffDbtProjectVarsNotFoundError(
+            f"""vars: data_diff: section not found in dbt_project.yml.\n\nTo solve this, please configure your dbt project: \n{doc_url}\n\nOr specify a production manifest using the `--state` flag."""
         )
 
     if is_cloud:
@@ -83,13 +84,13 @@ def dbt_diff(
             return
         org_meta = api.get_org_meta()
 
-        if datasource_id is None:
+        if config.datasource_id is None:
             rich.print("[red]Data source ID not found in dbt_project.yml")
             is_create_data_source = Confirm.ask("Would you like to create a new data source?")
             if is_create_data_source:
-                datasource_id = get_or_create_data_source(api=api, dbt_parser=dbt_parser)
+                config.datasource_id = get_or_create_data_source(api=api, dbt_parser=dbt_parser)
                 rich.print(f'To use the data source in next runs, please, update your "{PROJECT_FILE}" with a block:')
-                rich.print(f"[green]vars:\n  data_diff:\n    datasource_id: {datasource_id}\n")
+                rich.print(f"[green]vars:\n  data_diff:\n    datasource_id: {config.datasource_id}\n")
                 rich.print(
                     "Read more about Datafold vars in docs: "
                     "https://docs.datafold.com/os_diff/dbt_integration/#configure-a-data-source\n"
@@ -100,7 +101,7 @@ def dbt_diff(
                     "\nvars:\n data_diff:\n   datasource_id: 1234"
                 )
 
-        data_source = api.get_data_source(datasource_id)
+        data_source = api.get_data_source(config.datasource_id)
         dbt_parser.set_casing_policy_for(connection_type=data_source.type)
         rich.print("[green][bold]\nDiffs in progress...[/][/]\n")
 
@@ -108,13 +109,21 @@ def dbt_diff(
         dbt_parser.set_connection()
 
     for model in models:
-        diff_vars = _get_diff_vars(
-            dbt_parser, config_prod_database, config_prod_schema, config_prod_custom_schema, model
-        )
+        diff_vars = _get_diff_vars(dbt_parser, config, model)
+
+        # we won't always have a prod path when using state
+        # when the model DNE in prod manifest, skip the model diff
+        if (
+            state and len(diff_vars.prod_path) < 2
+        ):  # < 2 because some providers like databricks can legitimately have *only* 2
+            diff_output_str = _diff_output_base(".".join(diff_vars.dev_path), ".".join(diff_vars.prod_path))
+            diff_output_str += "[green]New model: nothing to diff![/] \n"
+            rich.print(diff_output_str)
+            continue
 
         if diff_vars.primary_keys:
             if is_cloud:
-                diff_thread = run_as_daemon(_cloud_diff, diff_vars, datasource_id, api, org_meta)
+                diff_thread = run_as_daemon(_cloud_diff, diff_vars, config.datasource_id, api, org_meta)
                 diff_threads.append(diff_thread)
             else:
                 _local_diff(diff_vars, json_output)
@@ -132,9 +141,7 @@ def dbt_diff(
 
 def _get_diff_vars(
     dbt_parser: "DbtParser",
-    config_prod_database: Optional[str],
-    config_prod_schema: Optional[str],
-    config_prod_custom_schema: Optional[str],
+    config: TDatadiffConfig,
     model,
 ) -> TDiffVars:
     dev_database = model.database
@@ -142,31 +149,11 @@ def _get_diff_vars(
 
     primary_keys = dbt_parser.get_pk_from_model(model, dbt_parser.unique_columns, "primary-key")
 
-    # "custom" dbt config database
-    if model.config.database:
-        prod_database = model.config.database
-    elif config_prod_database:
-        prod_database = config_prod_database
+    # prod path is constructed via configuration or the prod manifest via --state
+    if dbt_parser.prod_manifest_obj:
+        prod_database, prod_schema = _get_prod_path_from_manifest(model, dbt_parser.prod_manifest_obj)
     else:
-        prod_database = dev_database
-
-    # prod schema name differs from dev schema name
-    if config_prod_schema:
-        custom_schema = model.config.schema_
-
-        # the model has a custom schema config(schema='some_schema')
-        if custom_schema:
-            if not config_prod_custom_schema:
-                raise ValueError(
-                    f"Found a custom schema on model {model.name}, but no value for\nvars:\n  data_diff:\n    prod_custom_schema:\nPlease set a value!\n"
-                    + "For more details see: https://docs.datafold.com/development_testing/open_source"
-                )
-            prod_schema = config_prod_custom_schema.replace("<custom_schema>", custom_schema)
-        # no custom schema, use the default
-        else:
-            prod_schema = config_prod_schema
-    else:
-        prod_schema = dev_schema
+        prod_database, prod_schema = _get_prod_path_from_config(config, model, dev_database, dev_schema)
 
     if dbt_parser.requires_upper:
         dev_qualified_list = [x.upper() for x in [dev_database, dev_schema, model.alias] if x]
@@ -188,6 +175,46 @@ def _get_diff_vars(
         include_columns=datadiff_model_config.include_columns,
         exclude_columns=datadiff_model_config.exclude_columns,
     )
+
+
+
+def _get_prod_path_from_config(config, model, dev_database, dev_schema) -> Tuple[str, str]:
+    # "custom" dbt config database
+    if model.config.database:
+        prod_database = model.config.database
+    elif config.prod_database:
+        prod_database = config.prod_database
+    else:
+        prod_database = dev_database
+
+    # prod schema name differs from dev schema name
+    if config.prod_schema:
+        custom_schema = model.config.schema_
+
+        # the model has a custom schema config(schema='some_schema')
+        if custom_schema:
+            if not config.prod_custom_schema:
+                raise DataDiffCustomSchemaNoConfigError(
+                    f"Found a custom schema on model {model.name}, but no value for\nvars:\n  data_diff:\n    prod_custom_schema:\nPlease set a value or utilize the `--state` flag!\n\n"
+                    + "For more details see: https://docs.datafold.com/development_testing/open_source"
+                )
+            prod_schema = config.prod_custom_schema.replace("<custom_schema>", custom_schema)
+            # no custom schema, use the default
+        else:
+            prod_schema = config.prod_schema
+    else:
+        prod_schema = dev_schema
+    return prod_database, prod_schema
+
+
+def _get_prod_path_from_manifest(model, prod_manifest) -> Union[Tuple[str, str], Tuple[None, None]]:
+    prod_database = None
+    prod_schema = None
+    prod_model = prod_manifest.nodes.get(model.unique_id, None)
+    if prod_model:
+        prod_database = prod_model.database
+        prod_schema = prod_model.schema_
+    return prod_database, prod_schema
 
 
 def _local_diff(diff_vars: TDiffVars, json_output: bool = False) -> None:
@@ -403,3 +430,34 @@ def _cloud_diff(diff_vars: TDiffVars, datasource_id: int, api: DatafoldAPI, org_
 
 def _diff_output_base(dev_path: str, prod_path: str) -> str:
     return f"\n[green]{prod_path} <> {dev_path}[/] \n"
+
+
+def _initialize_events(dbt_user_id: Optional[str], dbt_version: Optional[str], dbt_project_id: Optional[str]) -> None:
+    set_dbt_user_id(dbt_user_id)
+    set_dbt_version(dbt_version)
+    set_dbt_project_id(dbt_project_id)
+    _email_signup()
+
+
+def _email_signup() -> None:
+    email_regex = r'^[\w\.\+-]+@[\w\.-]+\.\w+$'
+    prompt = "\nWould you like to be notified when a new data-diff version is available?\n\nEnter email or leave blank to opt out (we'll only ask once).\n"
+
+    if bool_ask_for_email():
+        while True:
+            email_input = Prompt.ask(
+                prompt=prompt,
+                default="",
+                show_default=False,
+            )
+            email = email_input.strip()
+
+            if email == "" or re.match(email_regex, email):
+                break
+
+            prompt = ""
+            rich.print("[red]Invalid email. Please enter a valid email or leave it blank to opt out.[/]")
+
+        if email:
+            event_json = create_email_signup_event_json(email)
+            run_as_daemon(send_event_json, event_json)

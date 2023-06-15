@@ -52,9 +52,9 @@ def _validate_temp_schema(temp_schema: str):
 
 
 def _get_temp_schema(dbt_parser: DbtParser, db_type: str) -> Optional[str]:
-    diff_vars = dbt_parser.get_datadiff_variables()
-    config_prod_database = diff_vars.get("prod_database")
-    config_prod_schema = diff_vars.get("prod_schema")
+    config = dbt_parser.get_datadiff_config()
+    config_prod_database = config.prod_database
+    config_prod_schema = config.prod_schema
     if config_prod_database is not None and config_prod_schema is not None:
         temp_schema = f"{config_prod_database}.{config_prod_schema}"
         if db_type == "snowflake":

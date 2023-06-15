@@ -21,6 +21,7 @@ from data_diff.cloud.data_source import (
     _get_temp_schema,
     _test_data_source,
 )
+from data_diff.dbt_parser import TDatadiffConfig
 
 
 DATA_SOURCE_CONFIGS = {
@@ -145,12 +146,9 @@ class TestDataSource(unittest.TestCase):
     @parameterized.expand([(c,) for c in DATA_SOURCE_CONFIGS.values()], name_func=format_data_source_config_test)
     @patch("data_diff.dbt_parser.DbtParser.__new__")
     def test_get_temp_schema(self, config: TDsConfig, mock_dbt_parser):
-        diff_vars = {
-            "prod_database": "db",
-            "prod_schema": "schema",
-        }
-        mock_dbt_parser.get_datadiff_variables.return_value = diff_vars
-        temp_schema = f'{diff_vars["prod_database"]}.{diff_vars["prod_schema"]}'
+        datadiff_config = TDatadiffConfig(prod_database="db", prod_schema="schema")
+        mock_dbt_parser.get_datadiff_config.return_value = datadiff_config
+        temp_schema = f"{datadiff_config.prod_database}.{datadiff_config.prod_schema}"
         if config.type == "snowflake":
             temp_schema = temp_schema.upper()
         elif config.type in {"pg", "postgres_aurora", "postgres_aws_rds", "redshift"}:

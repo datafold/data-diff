@@ -36,13 +36,18 @@ def import_bigquery():
     return bigquery
 
 
+def import_bigquery_service_account():
+    from google.oauth2 import service_account
+
+    return service_account
+
+
 class Mixin_MD5(AbstractMixin_MD5):
     def md5_as_int(self, s: str) -> str:
         return f"cast(cast( ('0x' || substr(TO_HEX(md5({s})), 18)) as int64) as numeric)"
 
 
 class Mixin_NormalizeValue(AbstractMixin_NormalizeValue):
-
     def normalize_timestamp(self, value: str, coltype: TemporalType) -> str:
         if coltype.rounds:
             timestamp = f"timestamp_micros(cast(round(unix_micros(cast({value} as timestamp))/1000000, {coltype.precision})*1000000 as int))"
@@ -144,8 +149,8 @@ class Dialect(BaseDialect, Mixin_Schema):
         "BOOL": Boolean,
         "JSON": JSON,
     }
-    TYPE_ARRAY_RE = re.compile(r'ARRAY<(.+)>')
-    TYPE_STRUCT_RE = re.compile(r'STRUCT<(.+)>')
+    TYPE_ARRAY_RE = re.compile(r"ARRAY<(.+)>")
+    TYPE_STRUCT_RE = re.compile(r"STRUCT<(.+)>")
     MIXINS = {Mixin_Schema, Mixin_MD5, Mixin_NormalizeValue, Mixin_TimeTravel, Mixin_RandomSample}
 
     def random(self) -> str:
@@ -173,7 +178,6 @@ class Dialect(BaseDialect, Mixin_Schema):
     ) -> ColType:
         col_type = super().parse_type(table_path, col_name, type_repr, *args, **kwargs)
         if isinstance(col_type, UnknownColType):
-
             m = self.TYPE_ARRAY_RE.fullmatch(type_repr)
             if m:
                 item_type = self.parse_type(table_path, col_name, m.group(1), *args, **kwargs)
@@ -207,9 +211,18 @@ class BigQuery(Database):
     dialect = Dialect()
 
     def __init__(self, project, *, dataset, **kw):
+        credentials = None
         bigquery = import_bigquery()
 
-        self._client = bigquery.Client(project, **kw)
+        keyfile = kw.pop("keyfile", None)
+        if keyfile:
+            bigquery_service_account = import_bigquery_service_account()
+            credentials = bigquery_service_account.Credentials.from_service_account_file(
+                keyfile,
+                scopes=["https://www.googleapis.com/auth/cloud-platform"],
+            )
+
+        self._client = bigquery.Client(project=project, credentials=credentials, **kw)
         self.project = project
         self.dataset = dataset
 
