@@ -30,6 +30,7 @@ class TestFormat(unittest.TestCase):
         )
         json_diff = jsonify(diff)
         self.assertEqual(json_diff, {
+            'version': '1.0.0',
             'isDifferent': True,
             'table1': ['db', 'schema', 'table1'],
             'table2': ['db', 'schema', 'table2'],
@@ -79,6 +80,7 @@ class TestFormat(unittest.TestCase):
         )
         json_diff = jsonify(diff)
         self.assertEqual(json_diff, {
+            'version': '1.0.0',
             'isDifferent': False,
             'table1': ['db', 'schema', 'table1'],
             'table2': ['db', 'schema', 'table2'],
