@@ -1,5 +1,4 @@
-from typing import Any
-from typing import List, Dict
+from typing import List, Dict, Optional, Any, Tuple
 
 from runtype import dataclass
 
@@ -18,7 +17,7 @@ class SegmentInfo:
     rowcounts: Dict[int, int] = {}
     max_rows: int = None
 
-    def set_diff(self, diff: list[tuple[Any, ...]], schema: tuple[tuple[str, type]] | None = None):
+    def set_diff(self, diff: List[Tuple[Any, ...]], schema: Optional[Tuple[Tuple[str, type]]] = None):
         self.diff_schema = schema
         self.diff = diff
         self.diff_count = len(diff)

@@ -1,19 +1,19 @@
 import collections
 
 from data_diff.diff_tables import DiffResultWrapper
-from typing import TypedDict, Any, Optional
+from typing import TypedDict, Any, Optional, List, Dict, Tuple
 
 
 
 class ColumnsDiff(TypedDict):
-    removed: list[str]
-    added: list[str]
-    changed: list[str]
+    removed: List[str]
+    added: List[str]
+    changed: List[str]
 
 
 def jsonify(diff: DiffResultWrapper,
             with_summary: bool = False,
-            with_columns: ColumnsDiff | None = None) -> 'JsonDiff':
+            with_columns: Optional[ColumnsDiff] = None) -> 'JsonDiff':
     """
     Converts the diff result into a JSON-serializable format.
     Optionally add stats summary and schema diff.
@@ -78,14 +78,14 @@ def jsonify(diff: DiffResultWrapper,
     }
 
 class JsonDiff(TypedDict):
-    table1: list[str]
-    table2: list[str]
+    table1: List[str]
+    table2: List[str]
     rows: TypedDict('Rows', {
         'exclusive': TypedDict('Exclusive', {
-            'table1': list['JsonExclusiveRow'],
-            'table2': list['JsonExclusiveRow'],
+            'table1': List['JsonExclusiveRow'],
+            'table2': List['JsonExclusiveRow'],
         }),
-        'diff': list['JsonDiffRow'],
+        'diff': List['JsonDiffRow'],
     })
     summary: Optional['JsonDiffSummary' ]
     columns: Optional['JsonColumnsSummary']
@@ -109,8 +109,8 @@ class JsonDiffRowValue(TypedDict):
     isPK: bool
 
 
-JsonDiffRow = dict[str, JsonDiffRowValue]
-JsonExclusiveRow = dict[str, JsonExclusiveRowValue]
+JsonDiffRow = Dict[str, JsonDiffRowValue]
+JsonExclusiveRow = Dict[str, JsonExclusiveRowValue]
 
 
 class JsonDiffSummary(TypedDict):
@@ -127,20 +127,20 @@ class JsonDiffSummary(TypedDict):
         'unchanged': int,
     })
     stats: TypedDict('Stats', {
-        'diffCounts': dict[str, int],
+        'diffCounts': Dict[str, int],
     })
 
 class JsonColumnsSummary(TypedDict):
     exclusive: TypedDict('Exclusive', {
-        'table1': list[str],
-        'table2': list[str],
+        'table1': List[str],
+        'table2': List[str],
     })
-    typeChanged: list[str]
+    typeChanged: List[str]
 
 
 
 def _group_rows(diff_info: DiffResultWrapper, 
-                schema: list[str]) -> tuple[list[dict[str, Any]], list[dict[str, Any]], list[dict[str, Any]]]:
+                schema: List[str]) -> Tuple[List[Dict[str, Any]], List[Dict[str, Any]], List[Dict[str, Any]]]:
     t1_exclusive_rows = []
     t2_exclusive_rows = []
     diff_rows = []
@@ -162,7 +162,7 @@ def _group_rows(diff_info: DiffResultWrapper,
     return t1_exclusive_rows, t2_exclusive_rows, diff_rows
 
 
-def _jsonify_diff(row: dict[str, Any], key_columns: list[str]) -> JsonDiffRowValue:
+def _jsonify_diff(row: Dict[str, Any], key_columns: List[str]) -> JsonDiffRowValue:
     columns = collections.defaultdict(dict)
     for field, value in row.items():
         if field in ('is_exclusive_a', 'is_exclusive_b'):
@@ -185,7 +185,7 @@ def _jsonify_diff(row: dict[str, Any], key_columns: list[str]) -> JsonDiffRowVal
     return columns
 
 
-def _jsonify_exclusive(row: dict[str, Any], key_columns: list[str]) -> JsonExclusiveRow:
+def _jsonify_exclusive(row: Dict[str, Any], key_columns: List[str]) -> JsonExclusiveRow:
     columns = collections.defaultdict(dict)
     for field, value in row.items():
         if field in ('is_exclusive_a', 'is_exclusive_b'):
@@ -223,9 +223,9 @@ def _jsonify_diff_summary(stats_dict: dict) -> JsonDiffSummary:
     }
 
 
-def _jsonify_columns_diff(added_columns: list[str], 
-                          removed_columns: list[str],
-                          changed_columns: list[str]) -> JsonColumnsSummary:
+def _jsonify_columns_diff(added_columns: List[str], 
+                          removed_columns: List[str],
+                          changed_columns: List[str]) -> JsonColumnsSummary:
     columns = {
         'exclusive': {
             'table2': list(added_columns),
