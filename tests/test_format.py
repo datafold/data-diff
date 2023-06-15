@@ -28,10 +28,11 @@ class TestFormat(unittest.TestCase):
             ),
             diff=[], stats={}
         )
-        json_diff = jsonify(diff)
+        json_diff = jsonify(diff, dbt_model='my_model')
         self.assertEqual(json_diff, {
             'version': '1.0.0',
-            'isDifferent': True,
+            'status': 'different',
+            'model': 'my_model',
             'table1': ['db', 'schema', 'table1'],
             'table2': ['db', 'schema', 'table2'],
             'rows': {
@@ -78,10 +79,11 @@ class TestFormat(unittest.TestCase):
             ),
             diff=[], stats={}
         )
-        json_diff = jsonify(diff)
+        json_diff = jsonify(diff, dbt_model='model')
         self.assertEqual(json_diff, {
             'version': '1.0.0',
-            'isDifferent': False,
+            'status': 'identical',
+            'model': 'model',
             'table1': ['db', 'schema', 'table1'],
             'table2': ['db', 'schema', 'table2'],
             'rows': {

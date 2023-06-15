@@ -2,11 +2,11 @@ import collections
 from typing import Any, Optional, List, Dict, Tuple
 
 from runtype import dataclass
-
 from data_diff.diff_tables import DiffResultWrapper
 
 
 def jsonify(diff: DiffResultWrapper,
+            dbt_model: str,
             with_summary: bool = False,
             with_columns: Optional[Dict[str, List[str]]] = None) -> 'JsonDiff':
     """
@@ -57,7 +57,8 @@ def jsonify(diff: DiffResultWrapper,
         )
     )
     return JsonDiff(
-        isDifferent=is_different,
+        status="different" if is_different else "identical",
+        model=dbt_model,
         table1=list(table1.table_path),
         table2=list(table2.table_path),
         rows=RowsDiff(
@@ -150,7 +151,8 @@ class RowsDiff:
 
 @dataclass
 class JsonDiff:
-    isDifferent: bool
+    status: str # Literal ["identical", "different"]
+    model: str
     table1: List[str]
     table2: List[str]
     rows: RowsDiff
@@ -231,23 +233,23 @@ def _jsonify_exclusive(row: Dict[str, Any], key_columns: List[str]) -> Dict[str,
 
 
 def _jsonify_diff_summary(stats_dict: dict) -> JsonDiffSummary:
-    return {
-        'rows': {
-            'total': {
-               'table1': stats_dict["rows_A"],
-               'table2': stats_dict["rows_B"]
-            },
-            'exclusive': {
-                'table1': stats_dict["exclusive_A"],
-                'table2': stats_dict["exclusive_B"],
-            },
-            'updated': stats_dict["updated"],
-            'unchanged': stats_dict["unchanged"]
-        },
-        'stats': {
-            'diffCounts': stats_dict["stats"]['diff_counts']
-        }
-    }
+    return JsonDiffSummary(
+        rows=Rows(
+            total=Total(
+                table1=stats_dict["rows_A"],
+                table2=stats_dict["rows_B"]
+            ),
+            exclusive=ExclusiveRows(
+                table1=stats_dict["exclusive_A"],
+                table2=stats_dict["exclusive_B"],
+            ),
+            updated=stats_dict["updated"],
+            unchanged=stats_dict["unchanged"]
+        ),
+        stats=Stats(
+            diffCounts=stats_dict["stats"]['diff_counts']
+        )
+    )
 
 
 def _jsonify_columns_diff(columns_diff: Dict[str, List[str]]) -> JsonColumnsSummary:

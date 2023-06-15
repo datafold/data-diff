@@ -52,6 +52,7 @@ class TDiffVars(pydantic.BaseModel):
     where_filter: Optional[str] = None
     include_columns: List[str]
     exclude_columns: List[str]
+    dbt_model: Optional[str] = None
 
 
 def dbt_diff(
@@ -166,6 +167,7 @@ def _get_diff_vars(
     datadiff_model_config = dbt_parser.get_datadiff_model_config(model.meta)
 
     return TDiffVars(
+        dbt_model=model.unique_id,
         dev_path=dev_qualified_list,
         prod_path=prod_qualified_list,
         primary_keys=primary_keys,
@@ -280,10 +282,14 @@ def _local_diff(diff_vars: TDiffVars, json_output: bool = False) -> None:
         # drain the iterator to get accumulated stats in diff.info_tree
         list(diff)
 
-        print(json.dumps(jsonify(diff, with_summary=True, with_columns={
-            "added": columns_added,
-            "removed": columns_removed,
-            "changed": columns_type_changed,
+        print(json.dumps(
+            jsonify(
+                diff, 
+                dbt_model=diff_vars.dbt_model,
+                with_summary=True, with_columns={
+                    "added": columns_added,
+                    "removed": columns_removed,
+                    "changed": columns_type_changed,
         })))
         return
 
