@@ -9,15 +9,15 @@ from .table_segment import TableSegment
 class SegmentInfo:
     tables: List[TableSegment]
 
-    diff: list[tuple[Any, ...]] = None
-    diff_schema: tuple[tuple[str, type], ...] = None
+    diff: List[Tuple[Any, ...]] = None
+    diff_schema: Tuple[Tuple[str, type], ...] = None
     is_diff: bool = None
     diff_count: int = None
 
     rowcounts: Dict[int, int] = {}
     max_rows: int = None
 
-    def set_diff(self, diff: List[Tuple[Any, ...]], schema: Optional[Tuple[Tuple[str, type]]] = None):
+    def set_diff(self, diff: List[List[Any]], schema: Optional[Tuple[Tuple[str, type]]] = None):
         self.diff_schema = schema
         self.diff = diff
         self.diff_count = len(diff)
