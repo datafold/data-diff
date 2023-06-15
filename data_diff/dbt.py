@@ -81,21 +81,12 @@ def dbt_diff(
         org_meta = api.get_org_meta()
 
         if config.datasource_id is None:
+            cloud_doc_url = "https://docs.datafold.com/development_testing/cloud"
             rich.print("[red]Data source ID not found in dbt_project.yml")
-            is_create_data_source = Confirm.ask("Would you like to create a new data source?")
-            if is_create_data_source:
-                config.datasource_id = get_or_create_data_source(api=api, dbt_parser=dbt_parser)
-                rich.print(f'To use the data source in next runs, please, update your "{PROJECT_FILE}" with a block:')
-                rich.print(f"[green]vars:\n  data_diff:\n    datasource_id: {config.datasource_id}\n")
-                rich.print(
-                    "Read more about Datafold vars in docs: "
-                    "https://docs.datafold.com/os_diff/dbt_integration/#configure-a-data-source\n"
-                )
-            else:
-                raise ValueError(
-                    "Datasource ID not found, include it as a dbt variable in the dbt_project.yml. "
-                    "\nvars:\n data_diff:\n   datasource_id: 1234"
-                )
+            raise ValueError(
+                "Datasource ID not found. Please include it as a dbt variable in the dbt_project.yml. Instructions: {cloud_doc_url}"
+                "\nvars:\n data_diff:\n   datasource_id: 1234"
+            )
 
         data_source = api.get_data_source(config.datasource_id)
         dbt_parser.set_casing_policy_for(connection_type=data_source.type)
