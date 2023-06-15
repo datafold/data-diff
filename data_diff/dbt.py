@@ -292,7 +292,8 @@ def _initialize_api() -> Optional[DatafoldAPI]:
         rich.print("[red]API key not found. Getting from the keyring service")
         api_key = keyring.get_password("data-diff", "DATAFOLD_API_KEY")
         if not api_key:
-            rich.print("[red]API key not found. Please follow the steps at https://docs.datafold.com/development_testing/cloud to use the --cloud flag.")
+            cloud_doc_url = "https://docs.datafold.com/development_testing/cloud"
+            rich.print("[red]API key not found. Please follow the steps at {cloud_doc_url} to use the --cloud flag.")
     rich.print("Saving the API key to the system keyring service")
     try:
         keyring.set_password("data-diff", "DATAFOLD_API_KEY", api_key)
