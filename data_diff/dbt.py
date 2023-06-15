@@ -292,16 +292,7 @@ def _initialize_api() -> Optional[DatafoldAPI]:
         rich.print("[red]API key not found. Getting from the keyring service")
         api_key = keyring.get_password("data-diff", "DATAFOLD_API_KEY")
         if not api_key:
-            rich.print("[red]API key not found, add it as an environment variable called DATAFOLD_API_KEY.")
-
-            yes_or_no = Confirm.ask("Would you like to generate a new API key?")
-            if yes_or_no:
-                webbrowser.open(f"{datafold_host}/login?next={datafold_host}/users/me")
-                rich.print('After generating, please, perform in the terminal "export DATAFOLD_API_KEY=<key>"')
-                return None
-            else:
-                raise ValueError("Cannot initialize API because the API key is not provided")
-
+            rich.print("[red]API key not found. Please follow the steps at https://docs.datafold.com/development_testing/cloud to use the --cloud flag.")
     rich.print("Saving the API key to the system keyring service")
     try:
         keyring.set_password("data-diff", "DATAFOLD_API_KEY", api_key)
