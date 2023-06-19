@@ -31,19 +31,20 @@ class TestFormat(unittest.TestCase):
         json_diff = jsonify(diff, dbt_model='my_model')
         self.assertEqual(json_diff, {
             'version': '1.0.0',
-            'status': 'different',
+            'status': 'success',
+            'result': 'different',
             'model': 'my_model',
-            'table1': ['db', 'schema', 'table1'],
-            'table2': ['db', 'schema', 'table2'],
+            'dataset1': ['db', 'schema', 'table1'],
+            'dataset2': ['db', 'schema', 'table2'],
             'rows': {
                 'exclusive': {
-                    'table1': [
+                    'dataset1': [
                         {
                             'id': {'isPK': True, 'value': '2'},
                             'value': {'isPK': False, 'value': '4'}
                         }
                     ],
-                    'table2': [
+                    'dataset2': [
                         {
                             'id': {'isPK': True, 'value': '3'},
                             'value': {'isPK': False, 'value': '202'}
@@ -51,8 +52,8 @@ class TestFormat(unittest.TestCase):
                     ]},
                 'diff': [
                     {
-                        'id': {'isPK': True, 'table1': '1', 'table2': '1', 'isDiff': False},
-                        'value': {'isPK': False, 'table1': '3', 'table2': '201', 'isDiff': True},
+                        'id': {'isPK': True, 'dataset1': '1', 'dataset2': '1', 'isDiff': False},
+                        'value': {'isPK': False, 'dataset1': '3', 'dataset2': '201', 'isDiff': True},
                     },
                 ],
             },
@@ -82,14 +83,15 @@ class TestFormat(unittest.TestCase):
         json_diff = jsonify(diff, dbt_model='model')
         self.assertEqual(json_diff, {
             'version': '1.0.0',
-            'status': 'identical',
+            'status': 'success',
+            'result': 'identical',
             'model': 'model',
-            'table1': ['db', 'schema', 'table1'],
-            'table2': ['db', 'schema', 'table2'],
+            'dataset1': ['db', 'schema', 'table1'],
+            'dataset2': ['db', 'schema', 'table2'],
             'rows': {
                 'exclusive': {
-                    'table1': [],
-                    'table2': []},
+                    'dataset1': [],
+                    'dataset2': []},
                 'diff': [],
             },
             'summary': None,

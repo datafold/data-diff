@@ -15,7 +15,7 @@ from . import connect_to_table, diff_tables, Algorithm
 from .cloud import DatafoldAPI, TCloudApiDataDiff, TCloudApiOrgMeta, get_or_create_data_source
 from .dbt_parser import DbtParser, PROJECT_FILE, TDatadiffConfig
 from .diff_tables import DiffResultWrapper
-from .format import jsonify
+from .format import jsonify, jsonify_exception
 from .tracking import (
     bool_ask_for_email,
     create_email_signup_event_json,
@@ -280,7 +280,16 @@ def _local_diff(diff_vars: TDiffVars, json_output: bool = False) -> None:
     )
     if json_output:
         # drain the iterator to get accumulated stats in diff.info_tree
-        list(diff)
+        try:
+            list(diff)
+        except Exception as e:
+            print(json.dumps(jsonify_exception(
+                list(table1.table_path),
+                list(table2.table_path),
+                diff_vars.dbt_model,
+                e
+            )), flush=True)
+            return
 
         print(json.dumps(
             jsonify(
@@ -290,7 +299,7 @@ def _local_diff(diff_vars: TDiffVars, json_output: bool = False) -> None:
                     "added": columns_added,
                     "removed": columns_removed,
                     "changed": columns_type_changed,
-        })))
+        })), flush=True)
         return
 
     if list(diff):
