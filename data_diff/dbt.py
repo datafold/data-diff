@@ -1,18 +1,17 @@
 import os
 import re
 import time
-import webbrowser
 from typing import List, Optional, Dict, Tuple, Union
 import keyring
 import pydantic
 import rich
-from rich.prompt import Confirm, Prompt
+from rich.prompt import Prompt
 
-from data_diff.errors import DataDiffCustomSchemaNoConfigError, DataDiffDbtProjectVarsNotFoundError
+from data_diff.errors import DataDiffCustomSchemaNoConfigError, DataDiffDbtProjectVarsNotFoundError, DataDiffNoAPIKeyError, DataDiffNoDatasourceIdError
 
 from . import connect_to_table, diff_tables, Algorithm
 from .cloud import DatafoldAPI, TCloudApiDataDiff, TCloudApiOrgMeta, get_or_create_data_source
-from .dbt_parser import DbtParser, PROJECT_FILE, TDatadiffConfig
+from .dbt_parser import DbtParser, TDatadiffConfig
 from .tracking import (
     bool_ask_for_email,
     create_email_signup_event_json,
@@ -38,6 +37,7 @@ from .utils import (
 )
 
 logger = getLogger(__name__)
+CLOUD_DOC_URL = "https://docs.datafold.com/development_testing/cloud"
 
 
 class TDiffVars(pydantic.BaseModel):
@@ -81,11 +81,9 @@ def dbt_diff(
         org_meta = api.get_org_meta()
 
         if config.datasource_id is None:
-            cloud_doc_url = "https://docs.datafold.com/development_testing/cloud"
             rich.print("[red]Data source ID not found in dbt_project.yml")
-            raise ValueError(
-                "Datasource ID not found. Please include it as a dbt variable in the dbt_project.yml. Instructions: {cloud_doc_url}"
-                "\nvars:\n data_diff:\n   datasource_id: 1234"
+            raise DataDiffNoDatasourceIdError(
+                f"Datasource ID not found. Please include it as a dbt variable in the dbt_project.yml. \nInstructions: {CLOUD_DOC_URL}\n\nvars:\n data_diff:\n   datasource_id: 1234"
             )
 
         data_source = api.get_data_source(config.datasource_id)
@@ -283,8 +281,9 @@ def _initialize_api() -> Optional[DatafoldAPI]:
         rich.print("[red]API key not found. Getting from the keyring service")
         api_key = keyring.get_password("data-diff", "DATAFOLD_API_KEY")
         if not api_key:
-            cloud_doc_url = "https://docs.datafold.com/development_testing/cloud"
-            rich.print("[red]API key not found. Please follow the steps at {cloud_doc_url} to use the --cloud flag.")
+            raise DataDiffNoAPIKeyError(
+                f"API key not found. Please follow the steps at {CLOUD_DOC_URL} to use the --cloud flag."
+            )
     rich.print("Saving the API key to the system keyring service")
     try:
         keyring.set_password("data-diff", "DATAFOLD_API_KEY", api_key)

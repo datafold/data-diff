@@ -16,6 +16,8 @@ from data_diff.errors import (
     DataDiffDbtRunResultsVersionError,
     DataDiffDbtSelectVersionTooLowError,
     DataDiffDbtSnowflakeSetConnectionError,
+    DataDiffNoAPIKeyError,
+    DataDiffNoDatasourceIdError,
 )
 from .test_cli import run_datadiff_cli
 
@@ -771,7 +773,7 @@ class TestDbtDiffer(unittest.TestCase):
         )
         mock_get_diff_vars.return_value = diff_vars
 
-        with self.assertRaises(ValueError):
+        with self.assertRaises(DataDiffNoDatasourceIdError):
             dbt_diff(is_cloud=True)
         mock_dbt_parser_inst.get_models.assert_called_once()
         mock_dbt_parser_inst.set_connection.assert_not_called()
@@ -780,6 +782,31 @@ class TestDbtDiffer(unittest.TestCase):
         mock_cloud_diff.assert_not_called()
         mock_local_diff.assert_not_called()
         mock_print.assert_called_once()
+
+    @patch("data_diff.dbt._get_diff_vars")
+    @patch("data_diff.dbt._local_diff")
+    @patch("data_diff.dbt._cloud_diff")
+    @patch("data_diff.dbt_parser.DbtParser.__new__")
+    @patch("builtins.input", return_value="n")
+    def test_diff_is_cloud_no_api_key(
+        self, _, mock_dbt_parser, mock_cloud_diff, mock_local_diff, mock_get_diff_vars
+    ):
+        mock_dbt_parser_inst = Mock()
+        mock_model = Mock()
+        config = TDatadiffConfig(prod_database="prod_db", prod_schema="prod_schema")
+
+        mock_dbt_parser.return_value = mock_dbt_parser_inst
+        mock_dbt_parser_inst.get_models.return_value = [mock_model]
+        mock_dbt_parser_inst.get_datadiff_config.return_value = config
+
+        with self.assertRaises(DataDiffNoAPIKeyError):
+            dbt_diff(is_cloud=True)
+        mock_dbt_parser_inst.get_models.assert_called_once()
+        mock_dbt_parser_inst.set_connection.assert_not_called()
+
+        mock_get_diff_vars.assert_not_called()
+        mock_cloud_diff.assert_not_called()
+        mock_local_diff.assert_not_called()
 
     @patch("data_diff.dbt._get_diff_vars")
     @patch("data_diff.dbt._local_diff")
