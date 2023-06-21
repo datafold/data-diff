@@ -71,7 +71,6 @@ def dbt_diff(
     config = dbt_parser.get_datadiff_config()
     _initialize_events(dbt_parser.dbt_user_id, dbt_parser.dbt_version, dbt_parser.dbt_project_id)
 
-
     if not state and not (config.prod_database or config.prod_schema):
         doc_url = "https://docs.datafold.com/development_testing/open_source#configure-your-dbt-project"
         raise DataDiffDbtProjectVarsNotFoundError(
@@ -130,14 +129,17 @@ def dbt_diff(
                 _local_diff(diff_vars, json_output)
         else:
             if json_output:
-                print(json.dumps(
-                    jsonify_error(
-                        table1=diff_vars.prod_path,
-                        table2=diff_vars.dev_path,
-                        dbt_model=diff_vars.dbt_model,
-                        error="No primary key found. Add uniqueness tests, meta, or tags.",
-                    )
-                ), flush=True)
+                print(
+                    json.dumps(
+                        jsonify_error(
+                            table1=diff_vars.prod_path,
+                            table2=diff_vars.dev_path,
+                            dbt_model=diff_vars.dbt_model,
+                            error="No primary key found. Add uniqueness tests, meta, or tags.",
+                        )
+                    ),
+                    flush=True,
+                )
             else:
                 rich.print(
                     _diff_output_base(".".join(diff_vars.dev_path), ".".join(diff_vars.prod_path))
@@ -189,7 +191,6 @@ def _get_diff_vars(
     )
 
 
-
 def _get_prod_path_from_config(config, model, dev_database, dev_schema) -> Tuple[str, str]:
     # "custom" dbt config database
     if model.config.database:
@@ -233,12 +234,11 @@ def _local_diff(diff_vars: TDiffVars, json_output: bool = False) -> None:
     dev_qualified_str = ".".join(diff_vars.dev_path)
     prod_qualified_str = ".".join(diff_vars.prod_path)
     diff_output_str = _diff_output_base(dev_qualified_str, prod_qualified_str)
-    
+
     table1 = connect_to_table(
         diff_vars.connection, prod_qualified_str, tuple(diff_vars.primary_keys), diff_vars.threads
     )
     table2 = connect_to_table(diff_vars.connection, dev_qualified_str, tuple(diff_vars.primary_keys), diff_vars.threads)
-    
 
     table1_columns = table1.get_schema()
     try:
@@ -294,23 +294,29 @@ def _local_diff(diff_vars: TDiffVars, json_output: bool = False) -> None:
         try:
             list(diff)
         except Exception as e:
-            print(json.dumps(jsonify_error(
-                list(table1.table_path),
-                list(table2.table_path),
-                diff_vars.dbt_model,
-                str(e)
-            )), flush=True)
+            print(
+                json.dumps(
+                    jsonify_error(list(table1.table_path), list(table2.table_path), diff_vars.dbt_model, str(e))
+                ),
+                flush=True,
+            )
             return
 
-        print(json.dumps(
-            jsonify(
-                diff, 
-                dbt_model=diff_vars.dbt_model,
-                with_summary=True, with_columns={
-                    "added": columns_added,
-                    "removed": columns_removed,
-                    "changed": columns_type_changed,
-        })), flush=True)
+        print(
+            json.dumps(
+                jsonify(
+                    diff,
+                    dbt_model=diff_vars.dbt_model,
+                    with_summary=True,
+                    with_columns={
+                        "added": columns_added,
+                        "removed": columns_removed,
+                        "changed": columns_type_changed,
+                    },
+                )
+            ),
+            flush=True,
+        )
         return
 
     if list(diff):
@@ -466,7 +472,7 @@ def _initialize_events(dbt_user_id: Optional[str], dbt_version: Optional[str], d
 
 
 def _email_signup() -> None:
-    email_regex = r'^[\w\.\+-]+@[\w\.-]+\.\w+$'
+    email_regex = r"^[\w\.\+-]+@[\w\.-]+\.\w+$"
     prompt = "\nWould you like to be notified when a new data-diff version is available?\n\nEnter email or leave blank to opt out (we'll only ask once).\n"
 
     if bool_ask_for_email():
