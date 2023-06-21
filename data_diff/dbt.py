@@ -15,7 +15,7 @@ from . import connect_to_table, diff_tables, Algorithm
 from .cloud import DatafoldAPI, TCloudApiDataDiff, TCloudApiOrgMeta, get_or_create_data_source
 from .dbt_parser import DbtParser, PROJECT_FILE, TDatadiffConfig
 from .diff_tables import DiffResultWrapper
-from .format import jsonify, jsonify_exception
+from .format import jsonify, jsonify_error
 from .tracking import (
     bool_ask_for_email,
     create_email_signup_event_json,
@@ -129,10 +129,20 @@ def dbt_diff(
             else:
                 _local_diff(diff_vars, json_output)
         else:
-            rich.print(
-                _diff_output_base(".".join(diff_vars.dev_path), ".".join(diff_vars.prod_path))
-                + "Skipped due to unknown primary key. Add uniqueness tests, meta, or tags.\n"
-            )
+            if json_output:
+                print(json.dumps(
+                    jsonify_error(
+                        table1=diff_vars.prod_path,
+                        table2=diff_vars.dev_path,
+                        dbt_model=diff_vars.dbt_model,
+                        error="No primary key found. Add uniqueness tests, meta, or tags.",
+                    )
+                ))
+            else:
+                rich.print(
+                    _diff_output_base(".".join(diff_vars.dev_path), ".".join(diff_vars.prod_path))
+                    + "Skipped due to unknown primary key. Add uniqueness tests, meta, or tags.\n"
+                )
 
     # wait for all threads
     if diff_threads:
@@ -223,11 +233,12 @@ def _local_diff(diff_vars: TDiffVars, json_output: bool = False) -> None:
     dev_qualified_str = ".".join(diff_vars.dev_path)
     prod_qualified_str = ".".join(diff_vars.prod_path)
     diff_output_str = _diff_output_base(dev_qualified_str, prod_qualified_str)
-
-    table1 = connect_to_table(diff_vars.connection, dev_qualified_str, tuple(diff_vars.primary_keys), diff_vars.threads)
-    table2 = connect_to_table(
+    
+    table1 = connect_to_table(
         diff_vars.connection, prod_qualified_str, tuple(diff_vars.primary_keys), diff_vars.threads
     )
+    table2 = connect_to_table(diff_vars.connection, dev_qualified_str, tuple(diff_vars.primary_keys), diff_vars.threads)
+    
 
     table1_columns = table1.get_schema()
     try:
@@ -242,11 +253,11 @@ def _local_diff(diff_vars: TDiffVars, json_output: bool = False) -> None:
     table1_column_names = set(table1_columns.keys())
     table2_column_names = set(table2_columns.keys())
     column_set = table1_column_names.intersection(table2_column_names)
-    columns_added = table1_column_names.difference(table2_column_names)
-    columns_removed = table2_column_names.difference(table1_column_names)
+    columns_added = table2_column_names.difference(table1_column_names)
+    columns_removed = table1_column_names.difference(table2_column_names)
     # col type is i = 1 in tuple
     columns_type_changed = {
-        k for k, v in table1_columns.items() if k in table2_columns and v[1] != table2_columns[k][1]
+        k for k, v in table2_columns.items() if k in table1_columns and v[1] != table1_columns[k][1]
     }
 
     if columns_added:
@@ -283,11 +294,11 @@ def _local_diff(diff_vars: TDiffVars, json_output: bool = False) -> None:
         try:
             list(diff)
         except Exception as e:
-            print(json.dumps(jsonify_exception(
+            print(json.dumps(jsonify_error(
                 list(table1.table_path),
                 list(table2.table_path),
                 diff_vars.dbt_model,
-                e
+                str(e)
             )), flush=True)
             return
 

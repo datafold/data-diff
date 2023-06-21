@@ -5,13 +5,13 @@ from runtype import dataclass
 from data_diff.diff_tables import DiffResultWrapper
 
 
-def jsonify_exception(table1: List[str], table2: List[str], dbt_model: str, exception: Exception) -> 'FailedDiff':
+def jsonify_error(table1: List[str], table2: List[str], dbt_model: str, error: str) -> 'FailedDiff':
     return FailedDiff(
         status="failed",
         model=dbt_model,
         dataset1=table1,
         dataset2=table2,
-        error=str(exception),
+        error=error,
     ).json()
 
 
