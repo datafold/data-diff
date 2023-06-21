@@ -783,12 +783,16 @@ class TestDbtDiffer(unittest.TestCase):
         mock_local_diff.assert_not_called()
         mock_print.assert_called_once()
 
+    @patch("data_diff.dbt.keyring.get_password")
     @patch("data_diff.dbt._get_diff_vars")
     @patch("data_diff.dbt._local_diff")
     @patch("data_diff.dbt._cloud_diff")
     @patch("data_diff.dbt_parser.DbtParser.__new__")
     @patch("builtins.input", return_value="n")
-    def test_diff_is_cloud_no_api_key(self, _, mock_dbt_parser, mock_cloud_diff, mock_local_diff, mock_get_diff_vars):
+    def test_diff_is_cloud_no_api_key(
+        self, _, mock_dbt_parser, mock_cloud_diff, mock_local_diff, mock_get_diff_vars, mock_get_password
+    ):
+        mock_get_password.return_value = None
         mock_dbt_parser_inst = Mock()
         mock_model = Mock()
         config = TDatadiffConfig(prod_database="prod_db", prod_schema="prod_schema")
