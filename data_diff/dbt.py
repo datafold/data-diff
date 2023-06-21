@@ -137,7 +137,7 @@ def dbt_diff(
                         dbt_model=diff_vars.dbt_model,
                         error="No primary key found. Add uniqueness tests, meta, or tags.",
                     )
-                ))
+                ), flush=True)
             else:
                 rich.print(
                     _diff_output_base(".".join(diff_vars.dev_path), ".".join(diff_vars.prod_path))
