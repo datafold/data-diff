@@ -864,7 +864,7 @@ class TestDbtDiffer(unittest.TestCase):
         mock_dbt_parser_inst.get_models.assert_called_once()
         mock_dbt_parser_inst.set_connection.assert_called_once()
         mock_cloud_diff.assert_not_called()
-        mock_local_diff.assert_called_once_with(diff_vars)
+        mock_local_diff.assert_called_once_with(diff_vars, False)
         mock_print.assert_not_called()
 
     @patch("data_diff.dbt._get_diff_vars")
@@ -938,7 +938,7 @@ class TestDbtDiffer(unittest.TestCase):
         mock_dbt_parser_inst.get_models.assert_called_once()
         mock_dbt_parser_inst.set_connection.assert_called_once()
         mock_cloud_diff.assert_not_called()
-        mock_local_diff.assert_called_once_with(diff_vars)
+        mock_local_diff.assert_called_once_with(diff_vars, False)
         mock_print.assert_not_called()
 
     @patch("data_diff.dbt._get_diff_vars")
@@ -975,7 +975,7 @@ class TestDbtDiffer(unittest.TestCase):
         mock_dbt_parser_inst.get_models.assert_called_once()
         mock_dbt_parser_inst.set_connection.assert_called_once()
         mock_cloud_diff.assert_not_called()
-        mock_local_diff.assert_called_once_with(diff_vars)
+        mock_local_diff.assert_called_once_with(diff_vars, False)
         mock_print.assert_not_called()
 
     @patch("data_diff.dbt._initialize_api")
@@ -1180,6 +1180,7 @@ class TestDbtDiffer(unittest.TestCase):
         mock_model.config.schema_ = None
         mock_model.config.database = None
         mock_model.alias = "a_model_name"
+        mock_model.unique_id = "unique_id"
         mock_tdatadiffmodelconfig = Mock()
         mock_tdatadiffmodelconfig.where_filter = "where"
         mock_tdatadiffmodelconfig.include_columns = ["include"]
@@ -1216,6 +1217,7 @@ class TestDbtDiffer(unittest.TestCase):
         mock_model.config.schema_ = None
         mock_model.config.database = None
         mock_model.alias = "a_model_name"
+        mock_model.unique_id = "unique_id"
         mock_tdatadiffmodelconfig = Mock()
         mock_tdatadiffmodelconfig.where_filter = "where"
         mock_tdatadiffmodelconfig.include_columns = ["include"]
@@ -1263,6 +1265,7 @@ class TestDbtDiffer(unittest.TestCase):
         mock_dbt_parser.get_pk_from_model.return_value = primary_keys
         mock_dbt_parser.requires_upper = False
         mock_model.meta = None
+        mock_model.unique_id = "unique_id"
         mock_dbt_parser.prod_manifest_obj = None
         mock_prod_path_from_config.return_value = ("prod_db", "prod_schema")
 
@@ -1300,6 +1303,7 @@ class TestDbtDiffer(unittest.TestCase):
         mock_dbt_parser.get_pk_from_model.return_value = primary_keys
         mock_dbt_parser.requires_upper = False
         mock_model.meta = None
+        mock_model.unique_id = "unique_id"
         mock_dbt_parser.prod_manifest_obj = None
         mock_prod_path_from_config.return_value = ("prod_db", "prod_schema")
 
@@ -1338,6 +1342,7 @@ class TestDbtDiffer(unittest.TestCase):
         mock_dbt_parser.get_pk_from_model.return_value = primary_keys
         mock_dbt_parser.requires_upper = True
         mock_model.meta = None
+        mock_model.unique_id = "unique_id"
         mock_dbt_parser.prod_manifest_obj = None
         mock_prod_path_from_config.return_value = ("prod_db", "prod_schema")
 
@@ -1362,6 +1367,7 @@ class TestDbtDiffer(unittest.TestCase):
         mock_model = Mock()
         primary_keys = ["a_primary_key"]
         mock_model.database = "a_dev_db"
+        mock_model.unique_id = "unique_id"
         mock_model.schema_ = "a_schema"
         mock_model.config.schema_ = None
         mock_model.config.database = "custom_database"
