@@ -7,10 +7,15 @@ import pydantic
 import rich
 from rich.prompt import Prompt
 
-from data_diff.errors import DataDiffCustomSchemaNoConfigError, DataDiffDbtProjectVarsNotFoundError, DataDiffNoAPIKeyError, DataDiffNoDatasourceIdError
+from data_diff.errors import (
+    DataDiffCustomSchemaNoConfigError,
+    DataDiffDbtProjectVarsNotFoundError,
+    DataDiffNoAPIKeyError,
+    DataDiffNoDatasourceIdError,
+)
 
 from . import connect_to_table, diff_tables, Algorithm
-from .cloud import DatafoldAPI, TCloudApiDataDiff, TCloudApiOrgMeta, get_or_create_data_source
+from .cloud import DatafoldAPI, TCloudApiDataDiff, TCloudApiOrgMeta
 from .dbt_parser import DbtParser, TDatadiffConfig
 from .tracking import (
     bool_ask_for_email,
@@ -65,7 +70,6 @@ def dbt_diff(
     models = dbt_parser.get_models(dbt_selection)
     config = dbt_parser.get_datadiff_config()
     _initialize_events(dbt_parser.dbt_user_id, dbt_parser.dbt_version, dbt_parser.dbt_project_id)
-
 
     if not state and not (config.prod_database or config.prod_schema):
         doc_url = "https://docs.datafold.com/development_testing/open_source#configure-your-dbt-project"
@@ -407,7 +411,7 @@ def _initialize_events(dbt_user_id: Optional[str], dbt_version: Optional[str], d
 
 
 def _email_signup() -> None:
-    email_regex = r'^[\w\.\+-]+@[\w\.-]+\.\w+$'
+    email_regex = r"^[\w\.\+-]+@[\w\.-]+\.\w+$"
     prompt = "\nWould you like to be notified when a new data-diff version is available?\n\nEnter email or leave blank to opt out (we'll only ask once).\n"
 
     if bool_ask_for_email():

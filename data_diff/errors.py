@@ -49,8 +49,10 @@ class DataDiffDbtSelectVersionTooLowError(Exception):
 class DataDiffCustomSchemaNoConfigError(Exception):
     "Raised when a model has a custom schema, but there is no prod_custom_schema config. (And not using --state)."
 
+
 class DataDiffNoAPIKeyError(Exception):
     "Raised when using --cloud but no API key is present in the DATAFOLD_API_KEY env var or keyring"
+
 
 class DataDiffNoDatasourceIdError(Exception):
     "Raised when using --cloud but no datasource_id was found in dbt_project.yml"
