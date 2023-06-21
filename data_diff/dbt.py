@@ -1,3 +1,4 @@
+import json
 import os
 import re
 import time
@@ -13,6 +14,8 @@ from data_diff.errors import DataDiffCustomSchemaNoConfigError, DataDiffDbtProje
 from . import connect_to_table, diff_tables, Algorithm
 from .cloud import DatafoldAPI, TCloudApiDataDiff, TCloudApiOrgMeta, get_or_create_data_source
 from .dbt_parser import DbtParser, PROJECT_FILE, TDatadiffConfig
+from .diff_tables import DiffResultWrapper
+from .format import jsonify, jsonify_error
 from .tracking import (
     bool_ask_for_email,
     create_email_signup_event_json,
@@ -49,6 +52,7 @@ class TDiffVars(pydantic.BaseModel):
     where_filter: Optional[str] = None
     include_columns: List[str]
     exclude_columns: List[str]
+    dbt_model: Optional[str] = None
 
 
 def dbt_diff(
@@ -56,6 +60,7 @@ def dbt_diff(
     project_dir_override: Optional[str] = None,
     is_cloud: bool = False,
     dbt_selection: Optional[str] = None,
+    json_output: bool = False,
     state: Optional[str] = None,
 ) -> None:
     print_version_info()
@@ -65,7 +70,6 @@ def dbt_diff(
     models = dbt_parser.get_models(dbt_selection)
     config = dbt_parser.get_datadiff_config()
     _initialize_events(dbt_parser.dbt_user_id, dbt_parser.dbt_version, dbt_parser.dbt_project_id)
-
 
     if not state and not (config.prod_database or config.prod_schema):
         doc_url = "https://docs.datafold.com/development_testing/open_source#configure-your-dbt-project"
@@ -122,12 +126,25 @@ def dbt_diff(
                 diff_thread = run_as_daemon(_cloud_diff, diff_vars, config.datasource_id, api, org_meta)
                 diff_threads.append(diff_thread)
             else:
-                _local_diff(diff_vars)
+                _local_diff(diff_vars, json_output)
         else:
-            rich.print(
-                _diff_output_base(".".join(diff_vars.dev_path), ".".join(diff_vars.prod_path))
-                + "Skipped due to unknown primary key. Add uniqueness tests, meta, or tags.\n"
-            )
+            if json_output:
+                print(
+                    json.dumps(
+                        jsonify_error(
+                            table1=diff_vars.prod_path,
+                            table2=diff_vars.dev_path,
+                            dbt_model=diff_vars.dbt_model,
+                            error="No primary key found. Add uniqueness tests, meta, or tags.",
+                        )
+                    ),
+                    flush=True,
+                )
+            else:
+                rich.print(
+                    _diff_output_base(".".join(diff_vars.dev_path), ".".join(diff_vars.prod_path))
+                    + "Skipped due to unknown primary key. Add uniqueness tests, meta, or tags.\n"
+                )
 
     # wait for all threads
     if diff_threads:
@@ -162,6 +179,7 @@ def _get_diff_vars(
     datadiff_model_config = dbt_parser.get_datadiff_model_config(model.meta)
 
     return TDiffVars(
+        dbt_model=model.unique_id,
         dev_path=dev_qualified_list,
         prod_path=prod_qualified_list,
         primary_keys=primary_keys,
@@ -212,15 +230,15 @@ def _get_prod_path_from_manifest(model, prod_manifest) -> Union[Tuple[str, str],
     return prod_database, prod_schema
 
 
-def _local_diff(diff_vars: TDiffVars) -> None:
+def _local_diff(diff_vars: TDiffVars, json_output: bool = False) -> None:
     dev_qualified_str = ".".join(diff_vars.dev_path)
     prod_qualified_str = ".".join(diff_vars.prod_path)
     diff_output_str = _diff_output_base(dev_qualified_str, prod_qualified_str)
 
-    table1 = connect_to_table(diff_vars.connection, dev_qualified_str, tuple(diff_vars.primary_keys), diff_vars.threads)
-    table2 = connect_to_table(
+    table1 = connect_to_table(
         diff_vars.connection, prod_qualified_str, tuple(diff_vars.primary_keys), diff_vars.threads
     )
+    table2 = connect_to_table(diff_vars.connection, dev_qualified_str, tuple(diff_vars.primary_keys), diff_vars.threads)
 
     table1_columns = table1.get_schema()
     try:
@@ -235,11 +253,11 @@ def _local_diff(diff_vars: TDiffVars) -> None:
     table1_column_names = set(table1_columns.keys())
     table2_column_names = set(table2_columns.keys())
     column_set = table1_column_names.intersection(table2_column_names)
-    columns_added = table1_column_names.difference(table2_column_names)
-    columns_removed = table2_column_names.difference(table1_column_names)
+    columns_added = table2_column_names.difference(table1_column_names)
+    columns_removed = table1_column_names.difference(table2_column_names)
     # col type is i = 1 in tuple
     columns_type_changed = {
-        k for k, v in table1_columns.items() if k in table2_columns and v[1] != table2_columns[k][1]
+        k for k, v in table2_columns.items() if k in table1_columns and v[1] != table1_columns[k][1]
     }
 
     if columns_added:
@@ -262,7 +280,7 @@ def _local_diff(diff_vars: TDiffVars) -> None:
 
     extra_columns = tuple(column_set)
 
-    diff = diff_tables(
+    diff: DiffResultWrapper = diff_tables(
         table1,
         table2,
         threaded=True,
@@ -271,6 +289,35 @@ def _local_diff(diff_vars: TDiffVars) -> None:
         where=diff_vars.where_filter,
         skip_null_keys=True,
     )
+    if json_output:
+        # drain the iterator to get accumulated stats in diff.info_tree
+        try:
+            list(diff)
+        except Exception as e:
+            print(
+                json.dumps(
+                    jsonify_error(list(table1.table_path), list(table2.table_path), diff_vars.dbt_model, str(e))
+                ),
+                flush=True,
+            )
+            return
+
+        print(
+            json.dumps(
+                jsonify(
+                    diff,
+                    dbt_model=diff_vars.dbt_model,
+                    with_summary=True,
+                    with_columns={
+                        "added": columns_added,
+                        "removed": columns_removed,
+                        "changed": columns_type_changed,
+                    },
+                )
+            ),
+            flush=True,
+        )
+        return
 
     if list(diff):
         diff_output_str += f"{diff.get_stats_string(is_dbt=True)} \n"
@@ -425,7 +472,7 @@ def _initialize_events(dbt_user_id: Optional[str], dbt_version: Optional[str], d
 
 
 def _email_signup() -> None:
-    email_regex = r'^[\w\.\+-]+@[\w\.-]+\.\w+$'
+    email_regex = r"^[\w\.\+-]+@[\w\.-]+\.\w+$"
     prompt = "\nWould you like to be notified when a new data-diff version is available?\n\nEnter email or leave blank to opt out (we'll only ask once).\n"
 
     if bool_ask_for_email():
