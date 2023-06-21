@@ -30,6 +30,9 @@ class SegmentInfo:
         # self.diff = list(chain(*[c.diff for c in child_infos]))
         self.diff_count = sum(c.diff_count for c in child_infos if c.diff_count is not None)
         self.is_diff = any(c.is_diff for c in child_infos)
+        self.diff_schema = next((child.diff_schema for child in child_infos if child.diff_schema is not None),
+                                None)
+        self.diff = sum((c.diff for c in child_infos if c.diff is not None), [])
 
         self.rowcounts = {
             1: sum(c.rowcounts[1] for c in child_infos if c.rowcounts),
