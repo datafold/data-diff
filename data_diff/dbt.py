@@ -67,6 +67,7 @@ def dbt_diff(
     dbt_selection: Optional[str] = None,
     json_output: bool = False,
     state: Optional[str] = None,
+    where_flag: Optional[str] = None,
 ) -> None:
     print_version_info()
     diff_threads = []
@@ -103,7 +104,7 @@ def dbt_diff(
         dbt_parser.set_connection()
 
     for model in models:
-        diff_vars = _get_diff_vars(dbt_parser, config, model)
+        diff_vars = _get_diff_vars(dbt_parser, config, model, where_flag)
 
         # we won't always have a prod path when using state
         # when the model DNE in prod manifest, skip the model diff
@@ -150,6 +151,7 @@ def _get_diff_vars(
     dbt_parser: "DbtParser",
     config: TDatadiffConfig,
     model,
+    where_flag: Optional[str] = None,
 ) -> TDiffVars:
     dev_database = model.database
     dev_schema = model.schema_
@@ -179,7 +181,8 @@ def _get_diff_vars(
         primary_keys=primary_keys,
         connection=dbt_parser.connection,
         threads=dbt_parser.threads,
-        where_filter=datadiff_model_config.where_filter,
+        # --where takes precedence over any model level config
+        where_filter=where_flag or datadiff_model_config.where_filter,
         include_columns=datadiff_model_config.include_columns,
         exclude_columns=datadiff_model_config.exclude_columns,
     )
