@@ -2,18 +2,22 @@ import json
 import os
 import re
 import time
-import webbrowser
 from typing import List, Optional, Dict, Tuple, Union
 import keyring
 import pydantic
 import rich
-from rich.prompt import Confirm, Prompt
+from rich.prompt import Prompt
 
-from data_diff.errors import DataDiffCustomSchemaNoConfigError, DataDiffDbtProjectVarsNotFoundError
+from data_diff.errors import (
+    DataDiffCustomSchemaNoConfigError,
+    DataDiffDbtProjectVarsNotFoundError,
+    DataDiffNoAPIKeyError,
+    DataDiffNoDatasourceIdError,
+)
 
 from . import connect_to_table, diff_tables, Algorithm
-from .cloud import DatafoldAPI, TCloudApiDataDiff, TCloudApiOrgMeta, get_or_create_data_source
-from .dbt_parser import DbtParser, PROJECT_FILE, TDatadiffConfig
+from .cloud import DatafoldAPI, TCloudApiDataDiff, TCloudApiOrgMeta
+from .dbt_parser import DbtParser, TDatadiffConfig
 from .diff_tables import DiffResultWrapper
 from .format import jsonify, jsonify_error
 from .tracking import (
@@ -41,6 +45,7 @@ from .utils import (
 )
 
 logger = getLogger(__name__)
+CLOUD_DOC_URL = "https://docs.datafold.com/development_testing/cloud"
 
 
 class TDiffVars(pydantic.BaseModel):
@@ -86,20 +91,9 @@ def dbt_diff(
 
         if config.datasource_id is None:
             rich.print("[red]Data source ID not found in dbt_project.yml")
-            is_create_data_source = Confirm.ask("Would you like to create a new data source?")
-            if is_create_data_source:
-                config.datasource_id = get_or_create_data_source(api=api, dbt_parser=dbt_parser)
-                rich.print(f'To use the data source in next runs, please, update your "{PROJECT_FILE}" with a block:')
-                rich.print(f"[green]vars:\n  data_diff:\n    datasource_id: {config.datasource_id}\n")
-                rich.print(
-                    "Read more about Datafold vars in docs: "
-                    "https://docs.datafold.com/os_diff/dbt_integration/#configure-a-data-source\n"
-                )
-            else:
-                raise ValueError(
-                    "Datasource ID not found, include it as a dbt variable in the dbt_project.yml. "
-                    "\nvars:\n data_diff:\n   datasource_id: 1234"
-                )
+            raise DataDiffNoDatasourceIdError(
+                f"Datasource ID not found. Please include it as a dbt variable in the dbt_project.yml. \nInstructions: {CLOUD_DOC_URL}\n\nvars:\n data_diff:\n   datasource_id: 1234"
+            )
 
         data_source = api.get_data_source(config.datasource_id)
         dbt_parser.set_casing_policy_for(connection_type=data_source.type)
@@ -339,16 +333,9 @@ def _initialize_api() -> Optional[DatafoldAPI]:
         rich.print("[red]API key not found. Getting from the keyring service")
         api_key = keyring.get_password("data-diff", "DATAFOLD_API_KEY")
         if not api_key:
-            rich.print("[red]API key not found, add it as an environment variable called DATAFOLD_API_KEY.")
-
-            yes_or_no = Confirm.ask("Would you like to generate a new API key?")
-            if yes_or_no:
-                webbrowser.open(f"{datafold_host}/login?next={datafold_host}/users/me")
-                rich.print('After generating, please, perform in the terminal "export DATAFOLD_API_KEY=<key>"')
-                return None
-            else:
-                raise ValueError("Cannot initialize API because the API key is not provided")
-
+            raise DataDiffNoAPIKeyError(
+                f"API key not found. Please follow the steps at {CLOUD_DOC_URL} to use the --cloud flag."
+            )
     rich.print("Saving the API key to the system keyring service")
     try:
         keyring.set_password("data-diff", "DATAFOLD_API_KEY", api_key)
