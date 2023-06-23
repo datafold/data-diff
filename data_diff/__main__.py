@@ -27,24 +27,24 @@ from .tracking import disable_tracking, set_entrypoint_name
 from .version import __version__
 
 
-LOG_FORMAT = '[%(asctime)s] %(levelname)s - %(message)s'
-DATE_FORMAT = '%H:%M:%S'
+LOG_FORMAT = "[%(asctime)s] %(levelname)s - %(message)s"
+DATE_FORMAT = "%H:%M:%S"
 
 COLOR_SCHEME = {
-    '+': 'green',
-    '-': 'red',
+    "+": "green",
+    "-": "red",
 }
 
-set_entrypoint_name('CLI')
+set_entrypoint_name("CLI")
 
 
 def _remove_passwords_in_dict(d: dict):
     for k, v in d.items():
-        if k == 'password':
-            d[k] = '*' * len(v)
+        if k == "password":
+            d[k] = "*" * len(v)
         elif isinstance(v, dict):
             _remove_passwords_in_dict(v)
-        elif k.startswith('database'):
+        elif k.startswith("database"):
             d[k] = remove_password_from_url(v)
 
 
@@ -54,8 +54,8 @@ def _get_schema(pair):
 
 
 def diff_schemas(table1, table2, schema1, schema2, columns):
-    logging.info('Diffing schemas...')
-    attrs = 'name', 'type', 'datetime_precision', "numeric_precision", "numeric_scale"
+    logging.info("Diffing schemas...")
+    attrs = "name", "type", "datetime_precision", "numeric_precision", "numeric_scale"
     for c in columns:
         if c is None:  # Skip for convenience
             continue
