@@ -1,0 +1,23 @@
+name: formatter
+on:
+    pull_request:
+        branches: [ master ]
+    
+    workflow_dispatch:
+
+jobs:
+  linter_name:
+    name: runner / black
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v2
+      - name: Check files using the black formatter
+        uses: rickstaa/action-black@v1
+        id: black_formatter
+        with:
+          black_args: ". -l 120"
+      - name: Annotate diff changes using reviewdog
+        if: steps.black_formatter.outputs.is_formatted == 'true'
+        uses: reviewdog/action-suggester@v1
+        with:
+          tool_name: blackfmt
