@@ -45,8 +45,10 @@ def diff_sets(a: list, b: list, json_cols: dict = None) -> Iterator:
             if parsed_match:
                 to_warn = overriden_diff_cols - warned_diff_cols
                 for w in to_warn:
-                    logger.warning(f"Equivalent JSON objects with different string representations detected "
-                                   f"in column '{w}'. These cases are NOT reported as differences.")
+                    logger.warning(
+                        f"Equivalent JSON objects with different string representations detected "
+                        f"in column '{w}'. These cases are NOT reported as differences."
+                    )
                     warned_diff_cols.add(w)
                 continue
         yield from v
@@ -204,8 +206,11 @@ class HashDiffer(TableDiffer):
         # This saves time, as bisection speed is limited by ping and query performance.
         if max_rows < self.bisection_threshold or max_space_size < self.bisection_factor * 2:
             rows1, rows2 = self._threaded_call("get_values", [table1, table2])
-            json_cols = {i: colname for i, colname in enumerate(table1.extra_columns)
-                         if isinstance(table1._schema[colname], JSON)}
+            json_cols = {
+                i: colname
+                for i, colname in enumerate(table1.extra_columns)
+                if isinstance(table1._schema[colname], JSON)
+            }
             diff = list(diff_sets(rows1, rows2, json_cols))
 
             info_tree.info.set_diff(diff)

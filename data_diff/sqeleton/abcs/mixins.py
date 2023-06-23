@@ -1,5 +1,15 @@
 from abc import ABC, abstractmethod
-from .database_types import Array, TemporalType, FractionalType, ColType_UUID, Boolean, ColType, String_UUID, JSON, Struct
+from .database_types import (
+    Array,
+    TemporalType,
+    FractionalType,
+    ColType_UUID,
+    Boolean,
+    ColType,
+    String_UUID,
+    JSON,
+    Struct,
+)
 from .compiler import Compilable
 
 
@@ -8,7 +18,6 @@ class AbstractMixin(ABC):
 
 
 class AbstractMixin_NormalizeValue(AbstractMixin):
-
     @abstractmethod
     def to_comparable(self, value: str, coltype: ColType) -> str:
         """Ensure that the expression is comparable in ``IS DISTINCT FROM``."""
