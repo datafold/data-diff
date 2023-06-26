@@ -274,7 +274,7 @@ class TestDbtDiffer(unittest.TestCase):
 
         mock_initialize_api.assert_called_once()
         mock_api.get_data_source.assert_called_once_with(1)
-        mock_cloud_diff.assert_called_once_with(diff_vars, 1, mock_api, org_meta)
+        mock_cloud_diff.assert_called_once_with(diff_vars, 1, mock_api, org_meta, None)
         mock_local_diff.assert_not_called()
         mock_print.assert_called_once()
 

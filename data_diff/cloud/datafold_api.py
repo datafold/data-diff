@@ -246,7 +246,7 @@ class DatafoldAPI:
 
         diff_url = f"{self.host}/datadiffs/{diff_id}/overview"
         while not summary_results:
-            logger.debug(f"Polling: {diff_url}")
+            logger.debug("Polling Datafold for results...")
             response = self.make_get_request(url=f"api/v1/datadiffs/{diff_id}/summary_results")
             response_json = response.json()
             if response_json["status"] == "success":
