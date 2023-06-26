@@ -6,16 +6,17 @@ import time
 import json
 import logging
 from itertools import islice
-from typing import Optional
+from typing import Dict, Optional
 
 import rich
+from rich.logging import RichHandler
 import click
 
 from data_diff.sqeleton.schema import create_schema
 from data_diff.sqeleton.queries.api import current_timestamp
 
 from .dbt import dbt_diff
-from .utils import eval_name_template, remove_password_from_url, safezip, match_like
+from .utils import eval_name_template, remove_password_from_url, safezip, match_like, LogStatusHandler
 from .diff_tables import Algorithm
 from .hashdiff_tables import HashDiffer, DEFAULT_BISECTION_THRESHOLD, DEFAULT_BISECTION_FACTOR
 from .joindiff_tables import TABLE_WRITE_LIMIT, JoinDiffer
@@ -27,15 +28,34 @@ from .tracking import disable_tracking, set_entrypoint_name
 from .version import __version__
 
 
-LOG_FORMAT = "[%(asctime)s] %(levelname)s - %(message)s"
-DATE_FORMAT = "%H:%M:%S"
-
 COLOR_SCHEME = {
     "+": "green",
     "-": "red",
 }
 
 set_entrypoint_name("CLI")
+
+
+def _get_log_handlers(is_dbt: Optional[bool] = False) -> Dict[str, logging.Handler]:
+    handlers = {}
+    date_format = "%H:%M:%S"
+    log_format_rich = "%(message)s"
+
+    # limits to 100 characters arbitrarily
+    log_format_status = "%(message).100s"
+    rich_handler = RichHandler(rich_tracebacks=True)
+    rich_handler.setFormatter(logging.Formatter(log_format_rich, datefmt=date_format))
+    rich_handler.setLevel(logging.WARN)
+    handlers["rich_handler"] = rich_handler
+
+    # only use log_status_handler in a terminal
+    if rich_handler.console.is_terminal and is_dbt:
+        log_status_handler = LogStatusHandler()
+        log_status_handler.setFormatter(logging.Formatter(log_format_status, datefmt=date_format))
+        log_status_handler.setLevel(logging.DEBUG)
+        handlers["log_status_handler"] = log_status_handler
+
+    return handlers
 
 
 def _remove_passwords_in_dict(d: dict):
@@ -244,6 +264,7 @@ click.Context.formatter_class = MyHelpFormatter
     help="Specify manifest to utilize for 'prod' comparison paths instead of using configuration.",
 )
 def main(conf, run, **kw):
+    log_handlers = _get_log_handlers(kw["dbt"])
     if kw["table2"] is None and kw["database2"]:
         # Use the "database table table" form
         kw["table2"] = kw["database2"]
@@ -263,15 +284,18 @@ def main(conf, run, **kw):
         kw["debug"] = True
 
     if kw["debug"]:
-        logging.basicConfig(level=logging.DEBUG, format=LOG_FORMAT, datefmt=DATE_FORMAT)
+        log_handlers["rich_handler"].setLevel(logging.DEBUG)
+        logging.basicConfig(level=logging.DEBUG, handlers=list(log_handlers.values()))
         if kw.get("__conf__"):
             kw["__conf__"] = deepcopy(kw["__conf__"])
             _remove_passwords_in_dict(kw["__conf__"])
             logging.debug(f"Applied run configuration: {kw['__conf__']}")
     elif kw.get("verbose"):
-        logging.basicConfig(level=logging.INFO, format=LOG_FORMAT, datefmt=DATE_FORMAT)
+        log_handlers["rich_handler"].setLevel(logging.INFO)
+        logging.basicConfig(level=logging.DEBUG, handlers=list(log_handlers.values()))
     else:
-        logging.basicConfig(level=logging.WARNING, format=LOG_FORMAT, datefmt=DATE_FORMAT)
+        log_handlers["rich_handler"].setLevel(logging.WARNING)
+        logging.basicConfig(level=logging.DEBUG, handlers=list(log_handlers.values()))
 
     try:
         state = kw.pop("state", None)
@@ -285,6 +309,7 @@ def main(conf, run, **kw):
             project_dir_override = os.path.expanduser(project_dir_override)
         if kw["dbt"]:
             dbt_diff(
+                log_status_handler=log_handlers.get("log_status_handler"),
                 profiles_dir_override=profiles_dir_override,
                 project_dir_override=project_dir_override,
                 is_cloud=kw["cloud"],

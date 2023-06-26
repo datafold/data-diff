@@ -1,3 +1,4 @@
+from contextlib import nullcontext
 import json
 import os
 import re
@@ -42,6 +43,7 @@ from .utils import (
     run_as_daemon,
     truncate_error,
     print_version_info,
+    LogStatusHandler,
 )
 
 logger = getLogger(__name__)
@@ -67,6 +69,7 @@ def dbt_diff(
     dbt_selection: Optional[str] = None,
     json_output: bool = False,
     state: Optional[str] = None,
+    log_status_handler: Optional[LogStatusHandler] = None,
 ) -> None:
     print_version_info()
     diff_threads = []
@@ -88,7 +91,6 @@ def dbt_diff(
         if not api:
             return
         org_meta = api.get_org_meta()
-
         if config.datasource_id is None:
             rich.print("[red]Data source ID not found in dbt_project.yml")
             raise DataDiffNoDatasourceIdError(
@@ -102,48 +104,54 @@ def dbt_diff(
     else:
         dbt_parser.set_connection()
 
-    for model in models:
-        diff_vars = _get_diff_vars(dbt_parser, config, model)
+    with log_status_handler.status if log_status_handler else nullcontext():
+        for model in models:
+            if log_status_handler:
+                log_status_handler.set_prefix(f"Diffing {model.alias} \n")
 
-        # we won't always have a prod path when using state
-        # when the model DNE in prod manifest, skip the model diff
-        if (
-            state and len(diff_vars.prod_path) < 2
-        ):  # < 2 because some providers like databricks can legitimately have *only* 2
-            diff_output_str = _diff_output_base(".".join(diff_vars.dev_path), ".".join(diff_vars.prod_path))
-            diff_output_str += "[green]New model: nothing to diff![/] \n"
-            rich.print(diff_output_str)
-            continue
+            diff_vars = _get_diff_vars(dbt_parser, config, model)
 
-        if diff_vars.primary_keys:
-            if is_cloud:
-                diff_thread = run_as_daemon(_cloud_diff, diff_vars, config.datasource_id, api, org_meta)
-                diff_threads.append(diff_thread)
+            # we won't always have a prod path when using state
+            # when the model DNE in prod manifest, skip the model diff
+            if (
+                state and len(diff_vars.prod_path) < 2
+            ):  # < 2 because some providers like databricks can legitimately have *only* 2
+                diff_output_str = _diff_output_base(".".join(diff_vars.dev_path), ".".join(diff_vars.prod_path))
+                diff_output_str += "[green]New model: nothing to diff![/] \n"
+                rich.print(diff_output_str)
+                continue
+
+            if diff_vars.primary_keys:
+                if is_cloud:
+                    diff_thread = run_as_daemon(
+                        _cloud_diff, diff_vars, config.datasource_id, api, org_meta, log_status_handler
+                    )
+                    diff_threads.append(diff_thread)
+                else:
+                    _local_diff(diff_vars, json_output)
             else:
-                _local_diff(diff_vars, json_output)
-        else:
-            if json_output:
-                print(
-                    json.dumps(
-                        jsonify_error(
-                            table1=diff_vars.prod_path,
-                            table2=diff_vars.dev_path,
-                            dbt_model=diff_vars.dbt_model,
-                            error="No primary key found. Add uniqueness tests, meta, or tags.",
-                        )
-                    ),
-                    flush=True,
-                )
-            else:
-                rich.print(
-                    _diff_output_base(".".join(diff_vars.dev_path), ".".join(diff_vars.prod_path))
-                    + "Skipped due to unknown primary key. Add uniqueness tests, meta, or tags.\n"
-                )
+                if json_output:
+                    print(
+                        json.dumps(
+                            jsonify_error(
+                                table1=diff_vars.prod_path,
+                                table2=diff_vars.dev_path,
+                                dbt_model=diff_vars.dbt_model,
+                                error="No primary key found. Add uniqueness tests, meta, or tags.",
+                            )
+                        ),
+                        flush=True,
+                    )
+                else:
+                    rich.print(
+                        _diff_output_base(".".join(diff_vars.dev_path), ".".join(diff_vars.prod_path))
+                        + "Skipped due to unknown primary key. Add uniqueness tests, meta, or tags.\n"
+                    )
 
-    # wait for all threads
-    if diff_threads:
-        for thread in diff_threads:
-            thread.join()
+        # wait for all threads
+        if diff_threads:
+            for thread in diff_threads:
+                thread.join()
 
 
 def _get_diff_vars(
@@ -345,7 +353,15 @@ def _initialize_api() -> Optional[DatafoldAPI]:
     return DatafoldAPI(api_key=api_key, host=datafold_host)
 
 
-def _cloud_diff(diff_vars: TDiffVars, datasource_id: int, api: DatafoldAPI, org_meta: TCloudApiOrgMeta) -> None:
+def _cloud_diff(
+    diff_vars: TDiffVars,
+    datasource_id: int,
+    api: DatafoldAPI,
+    org_meta: TCloudApiOrgMeta,
+    log_status_handler: Optional[LogStatusHandler] = None,
+) -> None:
+    if log_status_handler:
+        log_status_handler.cloud_diff_started(diff_vars.dev_path[-1])
     diff_output_str = _diff_output_base(".".join(diff_vars.dev_path), ".".join(diff_vars.prod_path))
     payload = TCloudApiDataDiff(
         data_source1_id=datasource_id,
@@ -414,6 +430,8 @@ def _cloud_diff(diff_vars: TDiffVars, datasource_id: int, api: DatafoldAPI, org_
             diff_output_str += f"\n{diff_url}\n{no_differences_template()}\n"
             rich.print(diff_output_str)
 
+        if log_status_handler:
+            log_status_handler.cloud_diff_finished(diff_vars.dev_path[-1])
     except BaseException as ex:  # Catch KeyboardInterrupt too
         error = ex
     finally:
