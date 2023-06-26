@@ -291,6 +291,7 @@ def main(conf, run, **kw):
                 dbt_selection=kw["select"],
                 json_output=kw["json_output"],
                 state=state,
+                where_flag=kw["where"],
             )
         else:
             return _data_diff(
