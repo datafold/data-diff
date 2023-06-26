@@ -5,3 +5,7 @@ jaffle_shop:
       type: duckdb
       path: "./tests/dbt_artifacts/jaffle_shop.duckdb"
       schema: dev
+    different_dev:
+      type: duckdb
+      path: "./tests/dbt_artifacts/jaffle_shop.duckdb"
+      schema: "{{ env_var('some_env_var') }}"
