@@ -243,6 +243,11 @@ click.Context.formatter_class = MyHelpFormatter
     metavar="PATH",
     help="Specify manifest to utilize for 'prod' comparison paths instead of using configuration.",
 )
+@click.option( # TODO: add a new flag to enable hot reloading
+    "--hot-reload",
+    is_flag=True,
+    help="Add this flag along with --dbt to run a diff using your local dbt project automatically after every dbt invocation",
+)
 def main(conf, run, **kw):
     if kw["table2"] is None and kw["database2"]:
         # Use the "database table table" form
@@ -261,6 +266,12 @@ def main(conf, run, **kw):
 
     if kw.get("interactive"):
         kw["debug"] = True
+
+    if kw.get("hot_reload"):
+        # TODO: do a bunch of stuff to enable hot reloading
+        # start watchdog in a thread to watch for changes to run_results.json and manifest.json
+        # figure out a way to turn off hot reloading without a keyboard interrupt, ex: datadiff --hot-reload false
+        pass
 
     if kw["debug"]:
         logging.basicConfig(level=logging.DEBUG, format=LOG_FORMAT, datefmt=DATE_FORMAT)
@@ -337,6 +348,7 @@ def _data_diff(
     dbt_project_dir,
     select,
     state,
+    hot_reload,
     threads1=None,
     threads2=None,
     __conf__=None,
