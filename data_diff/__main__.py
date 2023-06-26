@@ -271,6 +271,7 @@ def main(conf, run, **kw):
         # TODO: do a bunch of stuff to enable hot reloading
         # start watchdog in a thread to watch for changes to run_results.json and manifest.json
         # figure out a way to turn off hot reloading without a keyboard interrupt, ex: datadiff --hot-reload false
+        # have it prompt the user that it assumes /target is the target directory and have them change it by adding the --state flag
         pass
 
     if kw["debug"]:
