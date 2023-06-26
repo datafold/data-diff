@@ -342,13 +342,13 @@ class TestDbtParser(unittest.TestCase):
                 "target": "a_target",
             }
         }
-        profile = profiles_dict["a_profile"]
+        target = profiles_dict["a_profile"]["target"]
         expected_credentials = profiles_dict["a_profile"]["outputs"]["a_target"]
         mock_self = Mock()
         mock_self.profiles_dir = Path()
         mock_self.project_dict = {"profile": "a_profile"}
         mock_yaml.safe_load.return_value = profiles_dict
-        mock_profile_renderer().render_data.return_value = profile
+        mock_profile_renderer().render_data.side_effect = [target, expected_credentials]
         credentials, conn_type = DbtParser.get_connection_creds(mock_self)
         self.assertEqual(credentials, expected_credentials)
         self.assertEqual(conn_type, "type1")
@@ -420,8 +420,8 @@ class TestDbtParser(unittest.TestCase):
         mock_self.profiles_dir = Path()
         mock_self.project_dict = {"profile": "a_profile"}
         mock_yaml.safe_load.return_value = profiles_dict
-        profile = profiles_dict["a_profile"]
-        mock_profile_renderer().render_data.return_value = profile
+        profile_target = profiles_dict["a_profile"]["target"]
+        mock_profile_renderer().render_data.return_value = profile_target
         with self.assertRaises(DataDiffDbtProfileNotFoundError):
             _, _ = DbtParser.get_connection_creds(mock_self)
 
@@ -440,8 +440,8 @@ class TestDbtParser(unittest.TestCase):
         mock_self = Mock()
         mock_self.profiles_dir = Path()
         mock_self.project_dict = {"profile": "a_profile"}
-        profile = profiles_dict["a_profile"]
-        mock_profile_renderer().render_data.return_value = profile
+        profile_target = profiles_dict["a_profile"]["target"]
+        mock_profile_renderer().render_data.return_value = profile_target
         mock_yaml.safe_load.return_value = profiles_dict
         with self.assertRaises(DataDiffDbtProfileNotFoundError):
             _, _ = DbtParser.get_connection_creds(mock_self)
@@ -460,7 +460,7 @@ class TestDbtParser(unittest.TestCase):
         mock_self.profiles_dir = Path()
         mock_self.project_dict = {"profile": "a_profile"}
         mock_yaml.safe_load.return_value = profiles_dict
-        profile = profiles_dict["a_profile"]
-        mock_profile_renderer().render_data.return_value = profile
+        profile_target = profiles_dict["a_profile"]["target"]
+        mock_profile_renderer().render_data.return_value = profile_target
         with self.assertRaises(DataDiffDbtProfileNotFoundError):
             _, _ = DbtParser.get_connection_creds(mock_self)

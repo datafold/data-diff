@@ -258,35 +258,38 @@ class DbtParser:
             dbt_profile_var,
             DataDiffDbtProfileNotFoundError(f"No profile '{dbt_profile_var}' found in '{profiles_path}'."),
         )
-        # values can contain env_vars
-        rendered_profile = ProfileRenderer().render_data(profile)
         profile_target = get_from_dict_with_raise(
-            rendered_profile,
+            profile,
             "target",
             DataDiffDbtProfileNotFoundError(f"No target found in profile '{dbt_profile_var}' in '{profiles_path}'."),
         )
+
+        # some use an env var in target:
+        rendered_profile_target = ProfileRenderer().render_data(profile_target)
+
         outputs = get_from_dict_with_raise(
-            rendered_profile,
+            profile,
             "outputs",
             DataDiffDbtProfileNotFoundError(f"No outputs found in profile '{dbt_profile_var}' in '{profiles_path}'."),
         )
         credentials = get_from_dict_with_raise(
             outputs,
-            profile_target,
+            rendered_profile_target,
             DataDiffDbtProfileNotFoundError(
-                f"No credentials found for target '{profile_target}' in profile '{dbt_profile_var}' in '{profiles_path}'."
+                f"No credentials found for target '{rendered_profile_target}' in profile '{dbt_profile_var}' in '{profiles_path}'."
             ),
         )
         conn_type = get_from_dict_with_raise(
             credentials,
             "type",
             DataDiffDbtProfileNotFoundError(
-                f"No type found for target '{profile_target}' in profile '{dbt_profile_var}' in '{profiles_path}'."
+                f"No type found for target '{rendered_profile_target}' in profile '{dbt_profile_var}' in '{profiles_path}'."
             ),
         )
         conn_type = conn_type.lower()
 
-        return credentials, conn_type
+        # resolve any jinja
+        return ProfileRenderer().render_data(credentials), conn_type
 
     def set_connection(self):
         credentials, conn_type = self.get_connection_creds()
