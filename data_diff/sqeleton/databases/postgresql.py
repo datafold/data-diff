@@ -80,7 +80,6 @@ class PostgresqlDialect(BaseDialect, Mixin_Schema):
         "character varying": Text,
         "varchar": Text,
         "text": Text,
-
         "json": JSON,
         "jsonb": JSON,
         "uuid": Native_UUID,

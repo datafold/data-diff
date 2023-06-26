@@ -324,7 +324,6 @@ def match_like(pattern: str, strs: Sequence[str]) -> Iterable[str]:
             yield s
 
 
-
 class UnknownMeta(type):
     def __instancecheck__(self, instance):
         return instance is Unknown

@@ -76,13 +76,16 @@ class TestSchema(unittest.TestCase):
     def test_type_mapping(self):
         name = "tbl_" + random_table_suffix()
         db = get_conn(self.db_cls)
-        tbl = table(db.parse_table_name(name), schema={
-            "int": int,
-            "float": float,
-            "datetime": datetime,
-            "str": str,
-            "bool": bool,
-        })
+        tbl = table(
+            db.parse_table_name(name),
+            schema={
+                "int": int,
+                "float": float,
+                "datetime": datetime,
+                "str": str,
+                "bool": bool,
+            },
+        )
         q = db.dialect.list_tables(db.default_schema, name)
         assert not db.query(q)
 
@@ -91,6 +94,7 @@ class TestSchema(unittest.TestCase):
 
         db.query(tbl.drop())
         assert not db.query(q)
+
 
 @test_each_database
 class TestQueries(unittest.TestCase):
@@ -102,18 +106,16 @@ class TestQueries(unittest.TestCase):
     def test_correct_timezone(self):
         name = "tbl_" + random_table_suffix()
         db = get_conn(self.db_cls)
-        tbl = table(name, schema={
-            "id": int, "created_at": TimestampTZ(9), "updated_at": TimestampTZ(9)
-        })
+        tbl = table(name, schema={"id": int, "created_at": TimestampTZ(9), "updated_at": TimestampTZ(9)})
 
         db.query(tbl.create())
 
-        tz = pytz.timezone('Europe/Berlin')
+        tz = pytz.timezone("Europe/Berlin")
 
         now = datetime.now(tz)
         if isinstance(db, dbs.Presto):
             ms = now.microsecond // 1000 * 1000  # Presto max precision is 3
-            now = now.replace(microsecond = ms)
+            now = now.replace(microsecond=ms)
 
         db.query(table(name).insert_row(1, now, now))
         db.query(db.dialect.set_timezone_to_utc())
@@ -131,11 +133,11 @@ class TestQueries(unittest.TestCase):
         utc = now.astimezone(pytz.UTC)
         expected = utc.__format__("%Y-%m-%d %H:%M:%S.%f")
 
-
         self.assertEqual(created_at, expected)
         self.assertEqual(updated_at, expected)
 
         db.query(tbl.drop())
+
 
 @test_each_database
 class TestThreePartIds(unittest.TestCase):
@@ -159,4 +161,3 @@ class TestThreePartIds(unittest.TestCase):
             d = db.query_table_schema(part.path)
             assert len(d) == 1
             db.query(part.drop())
-

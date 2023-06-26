@@ -74,10 +74,7 @@ DATABASE_TYPES = {
         "boolean": [
             "boolean",
         ],
-        "json": [
-            "json",
-            "jsonb"
-        ]
+        "json": ["json", "jsonb"],
     },
     db.MySQL: {
         # https://dev.mysql.com/doc/refman/8.0/en/integer-types.html
@@ -205,7 +202,7 @@ DATABASE_TYPES = {
         ],
         "json": [
             "super",
-        ]
+        ],
     },
     db.Oracle: {
         "int": [
@@ -497,7 +494,7 @@ TYPE_SAMPLES = {
     "float": FloatFaker(N_SAMPLES),
     "uuid": UUID_Faker(N_SAMPLES),
     "boolean": BooleanFaker(N_SAMPLES),
-    "json": JsonFaker(N_SAMPLES)
+    "json": JsonFaker(N_SAMPLES),
 }
 
 
@@ -607,12 +604,17 @@ def _insert_to_table(conn, table_path, values, coltype):
     elif isinstance(conn, db.Redshift) and coltype in ("json", "jsonb"):
         values = [(i, Code(f"JSON_PARSE({sample})")) for i, sample in values]
     elif isinstance(conn, db.PostgreSQL) and coltype in ("json", "jsonb"):
-        values = [(i, Code(
-            "'{}'".format(
-                (json.dumps(sample) if isinstance(sample, (dict, list)) else sample)
-                .replace('\'', '\'\'')
+        values = [
+            (
+                i,
+                Code(
+                    "'{}'".format(
+                        (json.dumps(sample) if isinstance(sample, (dict, list)) else sample).replace("'", "''")
+                    )
+                ),
             )
-        )) for i, sample in values]
+            for i, sample in values
+        ]
 
     insert_rows_in_batches(conn, tbl, values, columns=["id", "col"])
     conn.query(commit)
@@ -636,7 +638,7 @@ def _create_table_with_indexes(conn, table_path, type_):
         conn.query(tbl.create())
 
     (index_id,) = table_path
-    if conn.dialect.SUPPORTS_INDEXES and type_ not in ('json', 'jsonb', 'array', 'struct'):
+    if conn.dialect.SUPPORTS_INDEXES and type_ not in ("json", "jsonb", "array", "struct"):
         conn.query(f"CREATE INDEX xa_{index_id} ON {table_name} ({quote('id')}, {quote('col')})")
     if conn.dialect.SUPPORTS_INDEXES:
         conn.query(f"CREATE INDEX xb_{index_id} ON {table_name} ({quote('id')})")
@@ -736,7 +738,7 @@ class TestDiffCrossDatabaseTables(unittest.TestCase):
 
         # For fuzzily diffed types, some rows can be downloaded for local comparison. This happens
         # when hashes are diferent but the essential payload is not; e.g. due to json serialization.
-        if not {source_type, target_type} & {'json', 'jsonb', 'array', 'struct'}:
+        if not {source_type, target_type} & {"json", "jsonb", "array", "struct"}:
             self.assertEqual(0, differ.stats.get("rows_downloaded", 0))
 
         # This section downloads all rows to ensure that Python agrees with the
