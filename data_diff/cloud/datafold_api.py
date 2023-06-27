@@ -7,6 +7,8 @@ from typing import Any, Dict, List, Optional, Type, TypeVar, Tuple
 import pydantic
 import requests
 
+from data_diff.errors import DataDiffDatasourceIdNotFoundError
+
 from ..utils import getLogger
 
 logger = getLogger(__name__)
@@ -207,9 +209,15 @@ class DatafoldAPI:
         return [TCloudApiDataSource(**item) for item in rv.json()]
 
     def get_data_source(self, data_source_id: int) -> TCloudApiDataSource:
-        rv = self.make_get_request(url=f"api/v1/data_sources/{data_source_id}")
+        rv = self.make_get_request(url=f"api/v1/data_sources")
         rv.raise_for_status()
-        return TCloudApiDataSource(**rv.json())
+        response_json = rv.json()
+        datasource = next((datasource for datasource in response_json if datasource["id"] == data_source_id), None)
+        if not datasource:
+            raise DataDiffDatasourceIdNotFoundError(
+                f"Datasource ID: {data_source_id} was not found in your Datafold account!"
+            )
+        return TCloudApiDataSource(**datasource)
 
     def create_data_source(self, config: TDsConfig) -> TCloudApiDataSource:
         payload = config.dict()
