@@ -51,7 +51,7 @@ def jsonify(
 
     summary = None
     if with_summary:
-        summary = _jsonify_diff_summary(diff.get_stats_dict())
+        summary = _jsonify_diff_summary(diff.get_stats_dict(is_dbt=True))
 
     columns = None
     if with_columns:
@@ -258,7 +258,7 @@ def _jsonify_diff_summary(stats_dict: dict) -> JsonDiffSummary:
             updated=stats_dict["updated"],
             unchanged=stats_dict["unchanged"],
         ),
-        stats=Stats(diffCounts=stats_dict["stats"]["diff_counts"]),
+        stats=Stats(diffCounts=stats_dict["values"]),
     )
 
 
