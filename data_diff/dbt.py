@@ -245,15 +245,16 @@ def _local_diff(diff_vars: TDiffVars, json_output: bool = False) -> None:
     )
     table2 = connect_to_table(diff_vars.connection, dev_qualified_str, tuple(diff_vars.primary_keys), diff_vars.threads)
 
-    table1_columns = table1.get_schema()
     try:
-        table2_columns = table2.get_schema()
+        table1_columns = table1.get_schema()
     # Not ideal, but we don't have more specific exceptions yet
     except Exception as ex:
         logger.debug(ex)
         diff_output_str += "[red]New model or no access to prod table.[/] \n"
         rich.print(diff_output_str)
         return
+
+    table2_columns = table2.get_schema()
 
     table1_column_names = set(table1_columns.keys())
     table2_column_names = set(table2_columns.keys())
