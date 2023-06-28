@@ -165,8 +165,8 @@ class DiffResultWrapper:
 
         return string_output
 
-    def get_stats_dict(self):
-        diff_stats = self._get_stats()
+    def get_stats_dict(self, is_dbt: bool = False):
+        diff_stats = self._get_stats(is_dbt)
         json_output = {
             "rows_A": diff_stats.table1_count,
             "rows_B": diff_stats.table2_count,
@@ -177,6 +177,8 @@ class DiffResultWrapper:
             "total": sum(diff_stats.diff_by_sign.values()),
             "stats": self.stats,
         }
+        if diff_stats.extra_column_diffs:
+            json_output["values"] = diff_stats.extra_column_diffs
 
         return json_output
 
