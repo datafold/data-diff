@@ -56,3 +56,7 @@ class DataDiffNoAPIKeyError(Exception):
 
 class DataDiffNoDatasourceIdError(Exception):
     "Raised when using --cloud but no datasource_id was found in dbt_project.yml"
+
+
+class DataDiffDatasourceIdNotFoundError(Exception):
+    "Raised when using --cloud but the datasource_id is not found for a particular org."
