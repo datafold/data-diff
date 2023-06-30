@@ -177,9 +177,7 @@ class DiffResultWrapper:
             "total": sum(diff_stats.diff_by_sign.values()),
             "stats": self.stats,
         }
-        if diff_stats.extra_column_diffs:
-            json_output["values"] = diff_stats.extra_column_diffs
-
+        json_output["values"] = diff_stats.extra_column_diffs  or {}
         return json_output
 
 

@@ -66,7 +66,7 @@ class TestApi(DiffTestCase):
             "updated": 0,
             "unchanged": 4,
             "total": 1,
-            # "stats": {"rows_downloaded": 5},
+            "values": {},
         }
         t1 = connect_to_table(TEST_MYSQL_CONN_STRING, self.table_src_name)
         t2 = connect_to_table(TEST_MYSQL_CONN_STRING, self.table_dst_name)
