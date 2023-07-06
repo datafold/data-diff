@@ -18,8 +18,10 @@ def jsonify_error(table1: List[str], table2: List[str], dbt_model: str, error: s
 def jsonify(
     diff: DiffResultWrapper,
     dbt_model: str,
+    dataset1_columns: Dict[str, Tuple[str, str, Any, Any, Any]],
+    dataset2_columns: Dict[str, Tuple[str, str, Any, Any, Any]],
+    columns_diff: Dict[str, List[str]],
     with_summary: bool = False,
-    with_columns: Optional[Dict[str, List[str]]] = None,
 ) -> "JsonDiff":
     """
     Converts the diff result into a JSON-serializable format.
@@ -53,16 +55,13 @@ def jsonify(
     if with_summary:
         summary = _jsonify_diff_summary(diff.get_stats_dict(is_dbt=True))
 
-    columns = None
-    if with_columns:
-        columns = _jsonify_columns_diff(with_columns, list(key_columns))
+    columns = _jsonify_columns_diff(dataset1_columns, dataset2_columns, columns_diff, list(key_columns))
 
     is_different = bool(
         t1_exclusive_rows
         or t2_exclusive_rows
         or diff_rows
-        or with_columns
-        and (with_columns["added"] or with_columns["removed"] or with_columns["changed"])
+        or (columns_diff["added"] or columns_diff["removed"] or columns_diff["changed"])
     )
     return JsonDiff(
         status="success",
@@ -137,9 +136,15 @@ class ExclusiveColumns:
     dataset1: List[str]
     dataset2: List[str]
 
+@dataclass
+class Column:
+    name: str
+    type: str
 
 @dataclass
 class JsonColumnsSummary:
+    dataset1: List[Column]
+    dataset2: List[Column]
     primaryKey: List[str]
     exclusive: ExclusiveColumns
     typeChanged: List[str]
@@ -179,7 +184,7 @@ class JsonDiff:
     summary: Optional[JsonDiffSummary]
     columns: Optional[JsonColumnsSummary]
 
-    version: str = "1.0.0"
+    version: str = "1.1.0"
 
 
 def _group_rows(
@@ -262,8 +267,20 @@ def _jsonify_diff_summary(stats_dict: dict) -> JsonDiffSummary:
     )
 
 
-def _jsonify_columns_diff(columns_diff: Dict[str, List[str]], key_columns: List[str]) -> JsonColumnsSummary:
+def _jsonify_columns_diff(dataset1_columns: Dict[str, Tuple[str, str, Any, Any, Any]],
+                          dataset2_columns: Dict[str, Tuple[str, str, Any, Any, Any]],
+                          columns_diff: Dict[str, List[str]], key_columns: List[str]) -> JsonColumnsSummary:
     return JsonColumnsSummary(
+        dataset1=[
+            Column(name=name, type=type_)
+            for (name, type_, *_)
+            in dataset1_columns.values()
+        ],
+        dataset2=[
+            Column(name=name, type=type_)
+            for (name, type_, *_)
+            in dataset2_columns.values()
+        ],
         primaryKey=key_columns,
         exclusive=ExclusiveColumns(
             dataset2=list(columns_diff.get("added", [])),

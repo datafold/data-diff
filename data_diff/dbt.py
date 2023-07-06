@@ -313,8 +313,10 @@ def _local_diff(diff_vars: TDiffVars, json_output: bool = False) -> None:
                 jsonify(
                     diff,
                     dbt_model=diff_vars.dbt_model,
+                    dataset1_columns=table1_columns,
+                    dataset2_columns=table2_columns,
                     with_summary=True,
-                    with_columns={
+                    columns_diff={
                         "added": columns_added,
                         "removed": columns_removed,
                         "changed": columns_type_changed,
