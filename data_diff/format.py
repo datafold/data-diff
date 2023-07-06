@@ -213,16 +213,16 @@ def _jsonify_diff(row: Dict[str, Any], key_columns: List[str]) -> Dict[str, Json
             continue
 
         if field.startswith("is_diff_"):
-            column_name = field.replace("is_diff_", "")
+            column_name = field[len("is_diff_"):]
             columns[column_name]["isDiff"] = bool(value)
 
         elif field.endswith("_a"):
-            column_name = field.replace("_a", "")
+            column_name = field[:-len("_a")]
             columns[column_name]["dataset1"] = value
             columns[column_name]["isPK"] = column_name in key_columns
 
         elif field.endswith("_b"):
-            column_name = field.replace("_b", "")
+            column_name = field[:-len("_b")]
             columns[column_name]["dataset2"] = value
             columns[column_name]["isPK"] = column_name in key_columns
 
@@ -237,11 +237,11 @@ def _jsonify_exclusive(row: Dict[str, Any], key_columns: List[str]) -> Dict[str,
         if field.startswith("is_diff_"):
             continue
         if field.endswith("_b") and row["is_exclusive_b"]:
-            column_name = field.replace("_b", "")
+            column_name = field[:-len("_b")]
             columns[column_name]["isPK"] = column_name in key_columns
             columns[column_name]["value"] = value
         elif field.endswith("_a") and row["is_exclusive_a"]:
-            column_name = field.replace("_a", "")
+            column_name = field[:-len("_a")]
             columns[column_name]["isPK"] = column_name in key_columns
             columns[column_name]["value"] = value
     return {column: JsonExclusiveRowValue(**data) for column, data in columns.items()}
