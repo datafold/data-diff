@@ -1,8 +1,23 @@
 import collections
-from typing import Any, Optional, List, Dict, Tuple
+from enum import Enum
+from typing import Any, Optional, List, Dict, Tuple, Type
 
 from runtype import dataclass
 from data_diff.diff_tables import DiffResultWrapper
+from data_diff.sqeleton.abcs.database_types import (
+    JSON,
+    Boolean,
+    ColType,
+    Array,
+    ColType_UUID,
+    Date,
+    FractionalType,
+    NumericType,
+    Struct,
+    TemporalType,
+    ColType_Alphanum,
+    String_Alphanum
+)
 
 
 def jsonify_error(table1: List[str], table2: List[str], dbt_model: str, error: str) -> "FailedDiff":
@@ -14,12 +29,13 @@ def jsonify_error(table1: List[str], table2: List[str], dbt_model: str, error: s
         error=error,
     ).json()
 
+Columns = List[Tuple[str, str, Type[ColType]]] 
 
 def jsonify(
     diff: DiffResultWrapper,
     dbt_model: str,
-    dataset1_columns: Dict[str, Tuple[str, str, Any, Any, Any]],
-    dataset2_columns: Dict[str, Tuple[str, str, Any, Any, Any]],
+    dataset1_columns: Columns,
+    dataset2_columns: Columns,
     columns_diff: Dict[str, List[str]],
     with_summary: bool = False,
 ) -> "JsonDiff":
@@ -136,10 +152,36 @@ class ExclusiveColumns:
     dataset1: List[str]
     dataset2: List[str]
 
+class ColumnKind(Enum):
+    INTEGER = 'integer'
+    FLOAT = 'float'
+    STRING = 'string'
+    DATE = 'date'
+    TIME = 'time'
+    DATETIME = 'datetime'
+    BOOL = 'boolean'
+    UNSUPPORTED = 'unsupported'
+
+KIND_MAPPING: List[Tuple[Type[ColType], ColumnKind]] = [
+    (Boolean, ColumnKind.BOOL),
+    (Date, ColumnKind.DATE),
+    (TemporalType, ColumnKind.DATETIME),
+    (FractionalType, ColumnKind.FLOAT),
+    (NumericType, ColumnKind.INTEGER),
+    (ColType_UUID, ColumnKind.STRING),
+    (ColType_Alphanum, ColumnKind.STRING),
+    (String_Alphanum, ColumnKind.STRING),
+    (JSON, ColumnKind.STRING),
+    (Array, ColumnKind.STRING),
+    (Struct, ColumnKind.STRING),
+    (ColType, ColumnKind.UNSUPPORTED)
+]
+
 @dataclass
 class Column:
     name: str
     type: str
+    kind: str
 
 @dataclass
 class JsonColumnsSummary:
@@ -267,19 +309,23 @@ def _jsonify_diff_summary(stats_dict: dict) -> JsonDiffSummary:
     )
 
 
-def _jsonify_columns_diff(dataset1_columns: Dict[str, Tuple[str, str, Any, Any, Any]],
-                          dataset2_columns: Dict[str, Tuple[str, str, Any, Any, Any]],
+def _jsonify_columns_diff(dataset1_columns: Columns,
+                          dataset2_columns: Columns,
                           columns_diff: Dict[str, List[str]], key_columns: List[str]) -> JsonColumnsSummary:
     return JsonColumnsSummary(
         dataset1=[
-            Column(name=name, type=type_)
-            for (name, type_, *_)
-            in dataset1_columns.values()
+            Column(name=name, 
+                   type=type_, 
+                   kind=_map_kind(kind).value)
+            for (name, type_, kind)
+            in dataset1_columns
         ],
         dataset2=[
-            Column(name=name, type=type_)
-            for (name, type_, *_)
-            in dataset2_columns.values()
+            Column(name=name, 
+                   type=type_, 
+                   kind=_map_kind(kind).value)
+            for (name, type_, kind)
+            in dataset2_columns
         ],
         primaryKey=key_columns,
         exclusive=ExclusiveColumns(
@@ -288,3 +334,9 @@ def _jsonify_columns_diff(dataset1_columns: Dict[str, Tuple[str, str, Any, Any, 
         ),
         typeChanged=list(columns_diff.get("changed", [])),
     )
+
+def _map_kind(kind: Type[ColType]) -> ColumnKind:
+    for raw_kind, json_kind in KIND_MAPPING:
+        if isinstance(kind, raw_kind):
+            return json_kind
+    return ColumnKind.UNSUPPORTED
