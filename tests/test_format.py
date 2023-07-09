@@ -37,23 +37,23 @@ class TestFormat(unittest.TestCase):
             stats={},
         )
         json_diff = jsonify(
-            diff, 
-            dbt_model="my_model", 
+            diff,
+            dbt_model="my_model",
             dataset1_columns=[
-                ('id', 'NUMBER', Integer()),
-                ('value', 'NUMBER', Integer()),
-            ], 
+                ("id", "NUMBER", Integer()),
+                ("value", "NUMBER", Integer()),
+            ],
             dataset2_columns=[
-                ('id', 'NUMBER', Integer()),
-                ('value', 'NUMBER', Integer()),
+                ("id", "NUMBER", Integer()),
+                ("value", "NUMBER", Integer()),
             ],
             columns_diff={
                 "added": [],
                 "removed": [],
                 "typeChanged": [],
-            }
+            },
         )
- 
+
         self.assertEqual(
             json_diff,
             {
@@ -78,11 +78,11 @@ class TestFormat(unittest.TestCase):
                 "columns": {
                     "dataset1": [
                         {"name": "id", "type": "NUMBER", "kind": "integer"},
-                        {"name": "value", "type": "NUMBER", "kind": "integer"}
+                        {"name": "value", "type": "NUMBER", "kind": "integer"},
                     ],
                     "dataset2": [
                         {"name": "id", "type": "NUMBER", "kind": "integer"},
-                        {"name": "value", "type": "NUMBER", "kind": "integer"}
+                        {"name": "value", "type": "NUMBER", "kind": "integer"},
                     ],
                     "primaryKey": ["id"],
                     "exclusive": {
@@ -120,21 +120,21 @@ class TestFormat(unittest.TestCase):
             stats={},
         )
         json_diff = jsonify(
-            diff, 
-            dbt_model="model", 
+            diff,
+            dbt_model="model",
             dataset1_columns=[
-                ('id', 'NUMBER', Integer()),
-                ('value', 'NUMBER', Integer()),
-            ], 
+                ("id", "NUMBER", Integer()),
+                ("value", "NUMBER", Integer()),
+            ],
             dataset2_columns=[
-                ('id', 'NUMBER', Integer()),
-                ('value', 'NUMBER', Integer()),
+                ("id", "NUMBER", Integer()),
+                ("value", "NUMBER", Integer()),
             ],
             columns_diff={
                 "added": [],
                 "removed": [],
                 "changed": [],
-            }
+            },
         )
         self.assertEqual(
             json_diff,
@@ -153,11 +153,11 @@ class TestFormat(unittest.TestCase):
                     "primaryKey": ["id"],
                     "dataset1": [
                         {"name": "id", "type": "NUMBER", "kind": "integer"},
-                        {"name": "value", "type": "NUMBER", "kind": "integer"}
+                        {"name": "value", "type": "NUMBER", "kind": "integer"},
                     ],
                     "dataset2": [
                         {"name": "id", "type": "NUMBER", "kind": "integer"},
-                        {"name": "value", "type": "NUMBER", "kind": "integer"}
+                        {"name": "value", "type": "NUMBER", "kind": "integer"},
                     ],
                     "exclusive": {
                         "dataset1": [],
@@ -198,15 +198,15 @@ class TestFormat(unittest.TestCase):
             stats={},
         )
         json_diff = jsonify(
-            diff, 
+            diff,
             dbt_model="my_model",
             dataset1_columns=[
-                ('id_a', 'NUMBER', Integer()),
-                ('value_b', 'NUMBER', Integer()),
-            ], 
+                ("id_a", "NUMBER", Integer()),
+                ("value_b", "NUMBER", Integer()),
+            ],
             dataset2_columns=[
-                ('id_a', 'NUMBER', Integer()),
-                ('value_b', 'NUMBER', Integer()),
+                ("id_a", "NUMBER", Integer()),
+                ("value_b", "NUMBER", Integer()),
             ],
             columns_diff={
                 "added": [],
@@ -241,11 +241,11 @@ class TestFormat(unittest.TestCase):
                 "columns": {
                     "dataset1": [
                         {"name": "id_a", "type": "NUMBER", "kind": "integer"},
-                        {"name": "value_b", "type": "NUMBER", "kind": "integer"}
+                        {"name": "value_b", "type": "NUMBER", "kind": "integer"},
                     ],
                     "dataset2": [
                         {"name": "id_a", "type": "NUMBER", "kind": "integer"},
-                        {"name": "value_b", "type": "NUMBER", "kind": "integer"}
+                        {"name": "value_b", "type": "NUMBER", "kind": "integer"},
                     ],
                     "primaryKey": ["id_a"],
                     "exclusive": {

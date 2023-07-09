@@ -16,7 +16,7 @@ from data_diff.sqeleton.abcs.database_types import (
     Struct,
     TemporalType,
     ColType_Alphanum,
-    String_Alphanum
+    String_Alphanum,
 )
 
 
@@ -29,7 +29,9 @@ def jsonify_error(table1: List[str], table2: List[str], dbt_model: str, error: s
         error=error,
     ).json()
 
-Columns = List[Tuple[str, str, ColType]] 
+
+Columns = List[Tuple[str, str, ColType]]
+
 
 def jsonify(
     diff: DiffResultWrapper,
@@ -152,15 +154,17 @@ class ExclusiveColumns:
     dataset1: List[str]
     dataset2: List[str]
 
+
 class ColumnKind(Enum):
-    INTEGER = 'integer'
-    FLOAT = 'float'
-    STRING = 'string'
-    DATE = 'date'
-    TIME = 'time'
-    DATETIME = 'datetime'
-    BOOL = 'boolean'
-    UNSUPPORTED = 'unsupported'
+    INTEGER = "integer"
+    FLOAT = "float"
+    STRING = "string"
+    DATE = "date"
+    TIME = "time"
+    DATETIME = "datetime"
+    BOOL = "boolean"
+    UNSUPPORTED = "unsupported"
+
 
 KIND_MAPPING: List[Tuple[Type[ColType], ColumnKind]] = [
     (Boolean, ColumnKind.BOOL),
@@ -174,14 +178,16 @@ KIND_MAPPING: List[Tuple[Type[ColType], ColumnKind]] = [
     (JSON, ColumnKind.STRING),
     (Array, ColumnKind.STRING),
     (Struct, ColumnKind.STRING),
-    (ColType, ColumnKind.UNSUPPORTED)
+    (ColType, ColumnKind.UNSUPPORTED),
 ]
+
 
 @dataclass
 class Column:
     name: str
     type: str
     kind: str
+
 
 @dataclass
 class JsonColumnsSummary:
@@ -309,23 +315,15 @@ def _jsonify_diff_summary(stats_dict: dict) -> JsonDiffSummary:
     )
 
 
-def _jsonify_columns_diff(dataset1_columns: Columns,
-                          dataset2_columns: Columns,
-                          columns_diff: Dict[str, List[str]], key_columns: List[str]) -> JsonColumnsSummary:
+def _jsonify_columns_diff(
+    dataset1_columns: Columns, dataset2_columns: Columns, columns_diff: Dict[str, List[str]], key_columns: List[str]
+) -> JsonColumnsSummary:
     return JsonColumnsSummary(
         dataset1=[
-            Column(name=name, 
-                   type=type_, 
-                   kind=_map_kind(kind).value)
-            for (name, type_, kind)
-            in dataset1_columns
+            Column(name=name, type=type_, kind=_map_kind(kind).value) for (name, type_, kind) in dataset1_columns
         ],
         dataset2=[
-            Column(name=name, 
-                   type=type_, 
-                   kind=_map_kind(kind).value)
-            for (name, type_, kind)
-            in dataset2_columns
+            Column(name=name, type=type_, kind=_map_kind(kind).value) for (name, type_, kind) in dataset2_columns
         ],
         primaryKey=key_columns,
         exclusive=ExclusiveColumns(
@@ -334,6 +332,7 @@ def _jsonify_columns_diff(dataset1_columns: Columns,
         ),
         typeChanged=list(columns_diff.get("changed", [])),
     )
+
 
 def _map_kind(kind: ColType) -> ColumnKind:
     for raw_kind, json_kind in KIND_MAPPING:
