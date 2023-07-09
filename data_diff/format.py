@@ -29,7 +29,7 @@ def jsonify_error(table1: List[str], table2: List[str], dbt_model: str, error: s
         error=error,
     ).json()
 
-Columns = List[Tuple[str, str, Type[ColType]]] 
+Columns = List[Tuple[str, str, ColType]] 
 
 def jsonify(
     diff: DiffResultWrapper,
@@ -335,7 +335,7 @@ def _jsonify_columns_diff(dataset1_columns: Columns,
         typeChanged=list(columns_diff.get("changed", [])),
     )
 
-def _map_kind(kind: Type[ColType]) -> ColumnKind:
+def _map_kind(kind: ColType) -> ColumnKind:
     for raw_kind, json_kind in KIND_MAPPING:
         if isinstance(kind, raw_kind):
             return json_kind
