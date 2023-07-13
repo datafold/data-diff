@@ -317,6 +317,7 @@ def main(conf, run, **kw):
                 json_output=kw["json_output"],
                 state=state,
                 where_flag=kw["where"],
+                stats_flag=kw["stats"],
             )
         else:
             return _data_diff(
