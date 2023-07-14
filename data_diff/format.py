@@ -20,6 +20,7 @@ def jsonify(
     dbt_model: str,
     with_summary: bool = False,
     with_columns: Optional[Dict[str, List[str]]] = None,
+    stats_only: bool = False,
 ) -> "JsonDiff":
     """
     Converts the diff result into a JSON-serializable format.
@@ -33,21 +34,31 @@ def jsonify(
     t1_exclusive_rows = []
     t2_exclusive_rows = []
     diff_rows = []
+    rows = None
     schema = [field for field, _ in diff_info.diff_schema]
 
     t1_exclusive_rows, t2_exclusive_rows, diff_rows = _group_rows(diff_info, schema)
 
-    diff_rows_jsonified = []
-    for row in diff_rows:
-        diff_rows_jsonified.append(_jsonify_diff(row, key_columns))
+    if not stats_only:
+        diff_rows_jsonified = []
+        for row in diff_rows:
+            diff_rows_jsonified.append(_jsonify_diff(row, key_columns))
 
-    t1_exclusive_rows_jsonified = []
-    for row in t1_exclusive_rows:
-        t1_exclusive_rows_jsonified.append(_jsonify_exclusive(row, key_columns))
+        t1_exclusive_rows_jsonified = []
+        for row in t1_exclusive_rows:
+            t1_exclusive_rows_jsonified.append(_jsonify_exclusive(row, key_columns))
 
-    t2_exclusive_rows_jsonified = []
-    for row in t2_exclusive_rows:
-        t2_exclusive_rows_jsonified.append(_jsonify_exclusive(row, key_columns))
+        t2_exclusive_rows_jsonified = []
+        for row in t2_exclusive_rows:
+            t2_exclusive_rows_jsonified.append(_jsonify_exclusive(row, key_columns))
+
+        rows = RowsDiff(
+            exclusive=ExclusiveDiff(
+                dataset1=t1_exclusive_rows_jsonified,
+                dataset2=t2_exclusive_rows_jsonified
+            ),
+            diff=diff_rows_jsonified,
+        )
 
     summary = None
     if with_summary:
@@ -70,10 +81,7 @@ def jsonify(
         model=dbt_model,
         dataset1=list(table1.table_path),
         dataset2=list(table2.table_path),
-        rows=RowsDiff(
-            exclusive=ExclusiveDiff(dataset1=t1_exclusive_rows_jsonified, dataset2=t2_exclusive_rows_jsonified),
-            diff=diff_rows_jsonified,
-        ),
+        rows=rows,
         summary=summary,
         columns=columns,
     ).json()
@@ -175,7 +183,7 @@ class JsonDiff:
     model: str
     dataset1: List[str]
     dataset2: List[str]
-    rows: RowsDiff
+    rows: Optional[RowsDiff]
     summary: Optional[JsonDiffSummary]
     columns: Optional[JsonColumnsSummary]
 

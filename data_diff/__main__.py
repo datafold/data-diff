@@ -1,4 +1,5 @@
 from copy import deepcopy
+from pudb import set_trace; set_trace(paused=False)
 from datetime import datetime
 import os
 import sys

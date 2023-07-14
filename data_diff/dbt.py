@@ -323,6 +323,7 @@ def _local_diff(diff_vars: TDiffVars, json_output: bool = False) -> None:
                         "removed": columns_removed,
                         "changed": columns_type_changed,
                     },
+                    stats_only=diff_vars.stats_flag,
                 )
             ),
             flush=True,
