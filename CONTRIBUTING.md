@@ -162,3 +162,43 @@ You can adjust how many rows we benchmark with by passing `N_SAMPLES` to `dev/be
 ```shell-session
 $ N_SAMPLES=100000000 dev/benchmark.sh #  100m which is our canonical target
 ```
+
+## VSCode Setup
+To debug using the unit tests in VSCode, add the following files to a `.vscode` directory in the root of the repo
+
+`launch.json`
+```
+{
+    "version": "0.1.0",
+    "configurations": [
+        {
+            "name": "Debug Unit Test",
+            "type": "python",
+            "request": "test",
+            "justMyCode": true,
+        }
+    ]
+}
+```
+
+`settings.json`
+```
+{
+    "python.testing.unittestArgs": [
+        "-v",
+        "-s",
+        "",
+        "-p",
+        "test_*.py"
+    ],
+    "python.testing.pytestEnabled": false,
+    "python.testing.unittestEnabled": true,
+}
+```
+You should see that the tests are now appearing in the test explorer view:
+
+![asdf](/docs/debug_example.png)
+
+This will allow you to run tests in the IDE, debug them, and hit breakpoints.
+
+Note that some tests require that you have the docker containers mentioned above running in order to pass.

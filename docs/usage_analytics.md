@@ -9,6 +9,7 @@ We capture two events: one when the data-diff run starts, and one when it is fin
 - Sizes of tables diffed, run time, and diff row count (numbers only)
 - Error message, if any, truncated to the first 20 characters.
 - A persistent UUID to indentify the session, stored in `~/.datadiff.toml`
+- IP address of the machine running diff
 
 When using the `--dbt` feature, we also collect:
 
