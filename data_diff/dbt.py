@@ -308,13 +308,23 @@ def _local_diff(diff_vars: TDiffVars, json_output: bool = False) -> None:
             )
             return
 
+        dataset1_columns = [
+            (name, type_, table1.database.dialect.parse_type(table1.table_path, name, type_, *other))
+            for (name, type_, *other) in table1_columns.values()
+        ]
+        dataset2_columns = [
+            (name, type_, table2.database.dialect.parse_type(table2.table_path, name, type_, *other))
+            for (name, type_, *other) in table2_columns.values()
+        ]
         print(
             json.dumps(
                 jsonify(
                     diff,
                     dbt_model=diff_vars.dbt_model,
+                    dataset1_columns=dataset1_columns,
+                    dataset2_columns=dataset2_columns,
                     with_summary=True,
-                    with_columns={
+                    columns_diff={
                         "added": columns_added,
                         "removed": columns_removed,
                         "changed": columns_type_changed,

@@ -1,8 +1,23 @@
 import collections
-from typing import Any, Optional, List, Dict, Tuple
+from enum import Enum
+from typing import Any, Optional, List, Dict, Tuple, Type
 
 from runtype import dataclass
 from data_diff.diff_tables import DiffResultWrapper
+from data_diff.sqeleton.abcs.database_types import (
+    JSON,
+    Boolean,
+    ColType,
+    Array,
+    ColType_UUID,
+    Date,
+    FractionalType,
+    NumericType,
+    Struct,
+    TemporalType,
+    ColType_Alphanum,
+    String_Alphanum,
+)
 
 
 def jsonify_error(table1: List[str], table2: List[str], dbt_model: str, error: str) -> "FailedDiff":
@@ -15,11 +30,16 @@ def jsonify_error(table1: List[str], table2: List[str], dbt_model: str, error: s
     ).json()
 
 
+Columns = List[Tuple[str, str, ColType]]
+
+
 def jsonify(
     diff: DiffResultWrapper,
     dbt_model: str,
+    dataset1_columns: Columns,
+    dataset2_columns: Columns,
+    columns_diff: Dict[str, List[str]],
     with_summary: bool = False,
-    with_columns: Optional[Dict[str, List[str]]] = None,
 ) -> "JsonDiff":
     """
     Converts the diff result into a JSON-serializable format.
@@ -53,16 +73,13 @@ def jsonify(
     if with_summary:
         summary = _jsonify_diff_summary(diff.get_stats_dict(is_dbt=True))
 
-    columns = None
-    if with_columns:
-        columns = _jsonify_columns_diff(with_columns, list(key_columns))
+    columns = _jsonify_columns_diff(dataset1_columns, dataset2_columns, columns_diff, list(key_columns))
 
     is_different = bool(
         t1_exclusive_rows
         or t2_exclusive_rows
         or diff_rows
-        or with_columns
-        and (with_columns["added"] or with_columns["removed"] or with_columns["changed"])
+        or (columns_diff["added"] or columns_diff["removed"] or columns_diff["changed"])
     )
     return JsonDiff(
         status="success",
@@ -138,8 +155,44 @@ class ExclusiveColumns:
     dataset2: List[str]
 
 
+class ColumnKind(Enum):
+    INTEGER = "integer"
+    FLOAT = "float"
+    STRING = "string"
+    DATE = "date"
+    TIME = "time"
+    DATETIME = "datetime"
+    BOOL = "boolean"
+    UNSUPPORTED = "unsupported"
+
+
+KIND_MAPPING: List[Tuple[Type[ColType], ColumnKind]] = [
+    (Boolean, ColumnKind.BOOL),
+    (Date, ColumnKind.DATE),
+    (TemporalType, ColumnKind.DATETIME),
+    (FractionalType, ColumnKind.FLOAT),
+    (NumericType, ColumnKind.INTEGER),
+    (ColType_UUID, ColumnKind.STRING),
+    (ColType_Alphanum, ColumnKind.STRING),
+    (String_Alphanum, ColumnKind.STRING),
+    (JSON, ColumnKind.STRING),
+    (Array, ColumnKind.STRING),
+    (Struct, ColumnKind.STRING),
+    (ColType, ColumnKind.UNSUPPORTED),
+]
+
+
+@dataclass
+class Column:
+    name: str
+    type: str
+    kind: str
+
+
 @dataclass
 class JsonColumnsSummary:
+    dataset1: List[Column]
+    dataset2: List[Column]
     primaryKey: List[str]
     exclusive: ExclusiveColumns
     typeChanged: List[str]
@@ -179,7 +232,7 @@ class JsonDiff:
     summary: Optional[JsonDiffSummary]
     columns: Optional[JsonColumnsSummary]
 
-    version: str = "1.0.0"
+    version: str = "1.1.0"
 
 
 def _group_rows(
@@ -262,8 +315,16 @@ def _jsonify_diff_summary(stats_dict: dict) -> JsonDiffSummary:
     )
 
 
-def _jsonify_columns_diff(columns_diff: Dict[str, List[str]], key_columns: List[str]) -> JsonColumnsSummary:
+def _jsonify_columns_diff(
+    dataset1_columns: Columns, dataset2_columns: Columns, columns_diff: Dict[str, List[str]], key_columns: List[str]
+) -> JsonColumnsSummary:
     return JsonColumnsSummary(
+        dataset1=[
+            Column(name=name, type=type_, kind=_map_kind(kind).value) for (name, type_, kind) in dataset1_columns
+        ],
+        dataset2=[
+            Column(name=name, type=type_, kind=_map_kind(kind).value) for (name, type_, kind) in dataset2_columns
+        ],
         primaryKey=key_columns,
         exclusive=ExclusiveColumns(
             dataset2=list(columns_diff.get("added", [])),
@@ -271,3 +332,10 @@ def _jsonify_columns_diff(columns_diff: Dict[str, List[str]], key_columns: List[
         ),
         typeChanged=list(columns_diff.get("changed", [])),
     )
+
+
+def _map_kind(kind: ColType) -> ColumnKind:
+    for raw_kind, json_kind in KIND_MAPPING:
+        if isinstance(kind, raw_kind):
+            return json_kind
+    return ColumnKind.UNSUPPORTED
