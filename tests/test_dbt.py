@@ -30,8 +30,9 @@ class TestDbtDiffer(unittest.TestCase):
     def test_integration_basic_dbt(self):
         artifacts_path = os.getcwd() + "/tests/dbt_artifacts"
         test_project_path = os.environ.get("DATA_DIFF_DBT_PROJ") or artifacts_path
+        test_profiles_path = os.environ.get("DATA_DIFF_DBT_PROFILES") or artifacts_path
         diff = run_datadiff_cli(
-            "--dbt", "--dbt-project-dir", test_project_path, "--dbt-profiles-dir", test_project_path
+            "--dbt", "--dbt-project-dir", test_project_path, "--dbt-profiles-dir", test_profiles_path
         )
 
         # assertions for the diff that exists in tests/dbt_artifacts/jaffle_shop.duckdb
@@ -933,3 +934,37 @@ class TestDbtDiffer(unittest.TestCase):
         mock_prod_path_from_manifest.assert_called_once_with(mock_model, mock_dbt_parser.prod_manifest_obj)
         self.assertEqual(diff_vars.prod_path[0], mock_prod_path_from_manifest.return_value[0])
         self.assertEqual(diff_vars.prod_path[1], mock_prod_path_from_manifest.return_value[1])
+
+    @patch("data_diff.dbt._get_prod_path_from_config")
+    @patch("data_diff.dbt._get_prod_path_from_manifest")
+    def test_get_diff_vars_cli_columns(self, mock_prod_path_from_manifest, mock_prod_path_from_config):
+        config = TDatadiffConfig(prod_database="prod_db")
+        mock_model = Mock()
+        primary_keys = ["a_primary_key"]
+        mock_model.database = "a_dev_db"
+        mock_model.schema_ = "a_schema"
+        mock_model.config.schema_ = None
+        mock_model.config.database = None
+        mock_model.alias = "a_model_name"
+        mock_model.unique_id = "unique_id"
+        mock_tdatadiffmodelconfig = Mock()
+        mock_tdatadiffmodelconfig.where_filter = "where"
+        mock_tdatadiffmodelconfig.include_columns = ["include"]
+        mock_tdatadiffmodelconfig.exclude_columns = ["exclude"]
+        mock_dbt_parser = Mock()
+        mock_dbt_parser.get_datadiff_model_config.return_value = mock_tdatadiffmodelconfig
+        mock_dbt_parser.connection = {}
+        mock_dbt_parser.threads = 0
+        mock_dbt_parser.get_pk_from_model.return_value = primary_keys
+        mock_dbt_parser.requires_upper = False
+        mock_dbt_parser.prod_manifest_obj = None
+        mock_prod_path_from_config.return_value = ("prod_db", "prod_schema")
+        cli_columns = ("col1", "col2")
+
+        diff_vars = _get_diff_vars(mock_dbt_parser, config, mock_model, where_flag=None, columns_flag=cli_columns)
+
+        mock_dbt_parser.get_pk_from_model.assert_called_once()
+        mock_prod_path_from_config.assert_called_once_with(config, mock_model, mock_model.database, mock_model.schema_)
+        mock_prod_path_from_manifest.assert_not_called()
+        self.assertEqual(diff_vars.include_columns, list(cli_columns))
+        self.assertEqual(diff_vars.exclude_columns, [])
