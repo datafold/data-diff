@@ -71,7 +71,7 @@ def dbt_diff(
     state: Optional[str] = None,
     log_status_handler: Optional[LogStatusHandler] = None,
     where_flag: Optional[str] = None,
-    columns_flag: Optional[tuple[str]] = None,
+    columns_flag: Optional[Tuple[str]] = None,
 ) -> None:
     print_version_info()
     diff_threads = []
@@ -161,7 +161,7 @@ def _get_diff_vars(
     config: TDatadiffConfig,
     model,
     where_flag: Optional[str] = None,
-    columns_flag: Optional[tuple[str]] = None,
+    columns_flag: Optional[Tuple[str]] = None,
 ) -> TDiffVars:
     cli_columns = list(columns_flag) if columns_flag else []
     dev_database = model.database
