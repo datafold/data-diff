@@ -103,7 +103,6 @@ class DbtParser:
     ) -> None:
         try_set_dbt_flags()
         self.dbt_runner = try_get_dbt_runner()
-        self.profiles_dir = Path(profiles_dir_override or default_profiles_dir())
         self.project_dir = Path(project_dir_override or default_project_dir())
         self.connection = {}
         self.project_dict = self.get_project_dict()
@@ -118,6 +117,13 @@ class DbtParser:
         self.requires_upper = False
         self.threads = None
         self.unique_columns = self.get_unique_columns()
+
+        if profiles_dir_override:
+            self.profiles_dir = Path(profiles_dir_override)
+        elif parse_version(self.dbt_version) < parse_version("1.3.0"):
+            self.profiles_dir = legacy_profiles_dir()
+        else:
+            self.profiles_dir = default_profiles_dir()
 
     def get_datadiff_config(self) -> TDatadiffConfig:
         data_diff_vars = self.project_dict.get("vars", {}).get("data_diff", {})
@@ -210,9 +216,6 @@ class DbtParser:
             run_results_obj = parse_run_results(run_results=run_results_dict)
 
         dbt_version = parse_version(run_results_obj.metadata.dbt_version)
-
-        if dbt_version < parse_version("1.3.0"):
-            self.profiles_dir = legacy_profiles_dir()
 
         if dbt_version < parse_version(LOWER_DBT_V):
             raise DataDiffDbtRunResultsVersionError(
