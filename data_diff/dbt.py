@@ -163,22 +163,22 @@ def _get_diff_vars(
 ) -> TDiffVars:
     dev_database = model.database
     dev_schema = model.schema_
-
+    dev_alias = prod_alias = model.alias
     primary_keys = dbt_parser.get_pk_from_model(model, dbt_parser.unique_columns, "primary-key")
 
     # prod path is constructed via configuration or the prod manifest via --state
     if dbt_parser.prod_manifest_obj:
-        prod_database, prod_schema = _get_prod_path_from_manifest(model, dbt_parser.prod_manifest_obj)
+        prod_database, prod_schema, prod_alias = _get_prod_path_from_manifest(model, dbt_parser.prod_manifest_obj)
     else:
         prod_database, prod_schema = _get_prod_path_from_config(config, model, dev_database, dev_schema)
 
     if dbt_parser.requires_upper:
-        dev_qualified_list = [x.upper() for x in [dev_database, dev_schema, model.alias] if x]
-        prod_qualified_list = [x.upper() for x in [prod_database, prod_schema, model.alias] if x]
+        dev_qualified_list = [x.upper() for x in [dev_database, dev_schema, dev_alias] if x]
+        prod_qualified_list = [x.upper() for x in [prod_database, prod_schema, prod_alias] if x]
         primary_keys = [x.upper() for x in primary_keys]
     else:
-        dev_qualified_list = [x for x in [dev_database, dev_schema, model.alias] if x]
-        prod_qualified_list = [x for x in [prod_database, prod_schema, model.alias] if x]
+        dev_qualified_list = [x for x in [dev_database, dev_schema, dev_alias] if x]
+        prod_qualified_list = [x for x in [prod_database, prod_schema, prod_alias] if x]
 
     datadiff_model_config = dbt_parser.get_datadiff_model_config(model.meta)
 
@@ -225,14 +225,16 @@ def _get_prod_path_from_config(config, model, dev_database, dev_schema) -> Tuple
     return prod_database, prod_schema
 
 
-def _get_prod_path_from_manifest(model, prod_manifest) -> Union[Tuple[str, str], Tuple[None, None]]:
+def _get_prod_path_from_manifest(model, prod_manifest) -> Union[Tuple[str, str, str], Tuple[None, None, None]]:
     prod_database = None
     prod_schema = None
+    prod_alias = None
     prod_model = prod_manifest.nodes.get(model.unique_id, None)
     if prod_model:
         prod_database = prod_model.database
         prod_schema = prod_model.schema_
-    return prod_database, prod_schema
+        prod_alias = prod_model.alias
+    return prod_database, prod_schema, prod_alias
 
 
 def _local_diff(diff_vars: TDiffVars, json_output: bool = False) -> None:
