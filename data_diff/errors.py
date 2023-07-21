@@ -60,3 +60,11 @@ class DataDiffNoDatasourceIdError(Exception):
 
 class DataDiffDatasourceIdNotFoundError(Exception):
     "Raised when using --cloud but the datasource_id is not found for a particular org."
+
+
+class DataDiffCloudDiffFailed(Exception):
+    "Raised when using --cloud and the remote diff fails."
+
+
+class DataDiffCloudDiffTimedOut(Exception):
+    "Raised when using --cloud and the diff did not return finish before the timeout value."

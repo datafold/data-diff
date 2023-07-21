@@ -7,7 +7,7 @@ from typing import Any, Dict, List, Optional, Type, TypeVar, Tuple
 import pydantic
 import requests
 
-from data_diff.errors import DataDiffDatasourceIdNotFoundError
+from data_diff.errors import DataDiffCloudDiffFailed, DataDiffCloudDiffTimedOut, DataDiffDatasourceIdNotFoundError
 
 from ..utils import getLogger
 
@@ -248,8 +248,8 @@ class DatafoldAPI:
     def poll_data_diff_results(self, diff_id: int) -> TCloudApiDataDiffSummaryResult:
         summary_results = None
         start_time = time.monotonic()
-        sleep_interval = 5  # starts at 5 sec
-        max_sleep_interval = 30
+        sleep_interval = 3
+        max_sleep_interval = 20
         max_wait_time = 300
 
         diff_url = f"{self.host}/datadiffs/{diff_id}/overview"
@@ -260,13 +260,15 @@ class DatafoldAPI:
             if response_json["status"] == "success":
                 summary_results = response_json
             elif response_json["status"] == "failed":
-                raise Exception(f"Diff failed: {str(response_json)}")
+                raise DataDiffCloudDiffFailed(f"Diff failed: {str(response_json)}")
 
             if time.monotonic() - start_time > max_wait_time:
-                raise Exception(f"Timed out waiting for diff results. Please, go to the UI for details: {diff_url}")
+                raise DataDiffCloudDiffTimedOut(
+                    f"Timed out waiting for diff results. Please, go to the UI for details: {diff_url}"
+                )
 
             time.sleep(sleep_interval)
-            sleep_interval = min(sleep_interval * 2, max_sleep_interval)
+            sleep_interval = min(sleep_interval + 1, max_sleep_interval)
 
         return TCloudApiDataDiffSummaryResult.from_orm(summary_results)
 
