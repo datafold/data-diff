@@ -38,6 +38,11 @@ def _apply_config(config: Dict[str, Any], run_name: str, kw: Dict[str, Any]):
         for index in "12":
             run_args[index] = {attr: kw.pop(f"{attr}{index}") for attr in ("database", "table")}
 
+    # Make sure array fields are decoded as list, since array fields in toml are decoded as list, but TableSegment object requires tuple type.
+    for field in ["key_columns", "columns"]:
+        if isinstance(run_args.get(field), list):
+            run_args[field] = tuple(run_args[field])
+
     # Process databases + tables
     for index in "12":
         try:
