@@ -42,7 +42,7 @@ class TestConfig(unittest.TestCase):
         assert res["threads1"] == 11
         assert res["threads2"] == 22
         assert res["key_columns"] == ("id",)
-        assert res["columns"] == ("name","age")
+        assert res["columns"] == ("name", "age")
 
         res = apply_config_from_string(config, "pg_pg", {"update_column": "foo", "table2": "bar"})
         assert res["update_column"] == "foo"
