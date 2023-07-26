@@ -33,7 +33,7 @@ COLOR_SCHEME = {
     "-": "red",
 }
 
-set_entrypoint_name(os.getenv("TRIGGERED_BY", "CLI"))
+set_entrypoint_name(os.getenv("DATAFOLD_TRIGGERED_BY", "CLI"))
 
 
 def _get_log_handlers(is_dbt: Optional[bool] = False) -> Dict[str, logging.Handler]:
