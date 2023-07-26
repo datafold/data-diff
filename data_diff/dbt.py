@@ -74,7 +74,7 @@ def dbt_diff(
 ) -> None:
     print_version_info()
     diff_threads = []
-    set_entrypoint_name(os.getenv("TRIGGERED_BY", "CLI-dbt"))
+    set_entrypoint_name(os.getenv("DATAFOLD_TRIGGERED_BY", "CLI-dbt"))
     dbt_parser = DbtParser(profiles_dir_override, project_dir_override, state)
     models = dbt_parser.get_models(dbt_selection)
     config = dbt_parser.get_datadiff_config()
