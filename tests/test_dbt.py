@@ -685,9 +685,11 @@ class TestDbtDiffer(unittest.TestCase):
         mock_prod_manifest.nodes.get.return_value = mock_prod_model
         mock_prod_model.database = "prod_db"
         mock_prod_model.schema_ = "prod_schema"
-        prod_database, prod_schema = _get_prod_path_from_manifest(mock_model, mock_prod_manifest)
+        mock_prod_model.alias = "prod_alias"
+        prod_database, prod_schema, prod_alias = _get_prod_path_from_manifest(mock_model, mock_prod_manifest)
         self.assertEqual(prod_database, mock_prod_model.database)
         self.assertEqual(prod_schema, mock_prod_model.schema_)
+        self.assertEqual(prod_alias, mock_prod_model.alias)
 
     def test_get_prod_path_from_manifest_model_not_exists(self):
         mock_model = Mock()
@@ -697,9 +699,11 @@ class TestDbtDiffer(unittest.TestCase):
         mock_prod_manifest.nodes.get.return_value = None
         mock_prod_model.database = "prod_db"
         mock_prod_model.schema_ = "prod_schema"
-        prod_database, prod_schema = _get_prod_path_from_manifest(mock_model, mock_prod_manifest)
+        mock_prod_model.alias = "prod_alias"
+        prod_database, prod_schema, prod_alias = _get_prod_path_from_manifest(mock_model, mock_prod_manifest)
         self.assertEqual(prod_database, None)
         self.assertEqual(prod_schema, None)
+        self.assertEqual(prod_alias, None)
 
     def test_get_diff_custom_schema_no_config_exception(self):
         config = TDatadiffConfig(prod_database="prod_db", prod_schema="prod_schema")
@@ -927,7 +931,7 @@ class TestDbtDiffer(unittest.TestCase):
         mock_dbt_parser.requires_upper = False
         mock_model.meta = None
         mock_dbt_parser.prod_manifest_obj = {"manifest_key": "manifest_value"}
-        mock_prod_path_from_manifest.return_value = ("prod_db", "prod_schema")
+        mock_prod_path_from_manifest.return_value = ("prod_db", "prod_schema", "prod_alias")
 
         diff_vars = _get_diff_vars(mock_dbt_parser, config, mock_model)
 
