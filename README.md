@@ -21,7 +21,7 @@ Compare source to target and check for discrepancies when moving data between sy
 Install `data-diff` with specific database adapters, e.g.:
 
 ```
-pip install data-diff 'data-diff[postgresql,snowflake	]' -U
+pip install data-diff 'data-diff[postgresql,snowflake]' -U
 ```
 Run `data-diff` with connection URIs to compare tables:
 ```
