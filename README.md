@@ -1,93 +1,75 @@
-<p align="center">
-    <img alt="Datafold" src="https://user-images.githubusercontent.com/1799931/196497110-d3de1113-a97f-4322-b531-026d859b867a.png" width="50%" />
+<p align="left">
+    <img alt="Datafold" src="https://user-images.githubusercontent.com/1799931/196497110-d3de1113-a97f-4322-b531-026d859b867a.png" width="30%" />
 </p>
 
-<h1 align="center">
-data-diff
+<h1 align="left">
+data-diff: compare datasets fast, within or across SQL databases
 </h1>
 
-<h2 align="center">
-Develop dbt models faster by testing as you code.
-</h2>
-<h4 align="center">
-See how every change to dbt code affects the data produced in the modified model and downstream.
-</h4>
 <br>
 
-## What is `data-diff`?
 
-data-diff is an open source package that you can use to see the impact of your dbt code changes on your dbt models as you code.
+# Use cases
 
-<div align="center">
+## Data Migration & Replication Testing
+Compare source to target and check for discrepancies when moving data between systems:
+- Migrating to a new data warehouse (e.g., Oracle > Snowflake)
+- Converting SQL to a new transformation framework (e.g., stored procedures > dbt)
+- Continuously replicating data from an OLTP DB to OLAP DWH (e.g., MySQL > Redshift)
 
-![development_testing_gif](https://user-images.githubusercontent.com/1799931/236354286-d1d044cf-2168-4128-8a21-8c8ca7fd494c.gif)
 
-</div>
-
-<br>
-
-:eyes: **Watch 4-min demo video [here](https://www.loom.com/share/ad3df969ba6b4298939efb2fbcc14cde)**
-
-## Getting Started
-
-**Install `data-diff`**
-
-Install `data-diff` with the command that is specific to the database you use with dbt.
-
-### Snowflake
-```
-pip install data-diff 'data-diff[snowflake,dbt]' -U
-```
-
-### BigQuery
-```
-pip install data-diff 'data-diff[dbt]' google-cloud-bigquery -U
-```
-
-### Redshift
-```
-pip install data-diff 'data-diff[redshift,dbt]' -U
-```
-
-### Postgres
-```
-pip install data-diff 'data-diff[postgres,dbt]' -U
-```
-
-### Databricks
-```
-pip install data-diff 'data-diff[databricks,dbt]' -U
-```
-
-### DuckDB
-```
-pip install data-diff 'data-diff[duckdb,dbt]' -U
-```
-
-**Update a few lines in your `dbt_project.yml`**.
-```
-#dbt_project.yml
-vars:
-  data_diff:
-    prod_database: my_database
-    prod_schema: my_default_schema
-```
-
-**Run your first data diff!**
+Install `data-diff` with specific database adapters, e.g.:
 
 ```
-dbt run && data-diff --dbt
+pip install data-diff 'data-diff[postgresql,snowflake	]' -U
 ```
+Run `data-diff` with connection URIs to compare tables:
+```
+data-diff \
+  postgresql://<username>:'<password>'@localhost:5432/<database> \
+  <table> \
+  "snowflake://<username>:<password>@<password>/<DATABASE>/<SCHEMA>?warehouse=<WAREHOUSE>&role=<ROLE>" \
+  <TABLE> \
+  -k activity_id \
+  -c activity \
+  -w "event_timestamp < '2022-10-10'"
+```
+Check out [documentation](https://docs.datafold.com/reference/open_source/cli) for full command reference.
 
-We recommend you get started by walking through [our simple setup instructions](https://docs.datafold.com/development_testing/open_source) which contain examples and details.
+## Data Development Testing
+Test SQL code and preview changes by comparing development/staging environment data to production:
+1. Make a change to some SQL code
+2. Run the SQL code to create a new dataset
+3. Compare the dataset with its production version or another iteration
 
-Please reach out on the dbt Slack in [#tools-datafold](https://getdbt.slack.com/archives/C03D25A92UU) if you have any trouble whatsoever getting started!
+  <p align="left">
+  <img alt="dbt" src="https://seeklogo.com/images/D/dbt-logo-E4B0ED72A2-seeklogo.com.png" width="10%" />
+  </p>
+  
+`data-diff` integrates with dbt Core and dbt Cloud to seamlessly compare local development to production datasets. 
 
-<br><br>
+:eyes: **Watch [4-min demo video](https://www.loom.com/share/ad3df969ba6b4298939efb2fbcc14cde)**
 
-### Diffing between databases
+**[Get started with data-diff & dbt](https://docs.datafold.com/development_testing/open_source)**
 
-Check out our [documentation](https://docs.datafold.com/reference/open_source/cli) if you're looking to compare data across databases (for example, between Postgres and Snowflake).
+Reach out on the dbt Slack in [#tools-datafold](https://getdbt.slack.com/archives/C03D25A92UU) for advice and support
+
+## Supported databases
+
+- PostgreSQL >=10
+- MySQL
+- Snowflake
+- BigQuery
+- Redshift
+- Oracle
+- Presto
+- Databricks
+- Trino
+- Clickhouse
+- Vertica
+- DuckDB >=0.6
+- SQLite (coming soon)
+
 
 <br>
 
