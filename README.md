@@ -8,6 +8,49 @@ data-diff: compare datasets fast, within or across SQL databases
 
 <br>
 
+# How it works
+
+When comparing the data, `data-diff` utilizes the resources of the underlying databases as much as possible. It has two primary modes of comparison:
+
+## joindiff
+- Recommended for comparing data within the same database
+- Uses the outer join operation to diff the rows as efficiently as possible within the same database
+- Fully relies on the underlying database engine for computation
+- Requires both datasets to be queryable with a single SQL query
+- Time complexity approximates JOIN operation and is largely independent of the number of differences in the dataset
+  
+## hashdiff
+- Recommended for comparing datasets across different databases
+- Can also be helpful in diffing very large tables with few expected differences within the same database
+- Employs a divide-and-conquer algorithm based on hashing and binary search
+- Can diff data across distinct database engines, e.g., PostgreSQL <> Snowflake
+- Time complexity approximates COUNT(*) operation when there are few differences
+- Performance degrades when datasets have a large number of differences
+
+More information about the algorithm and performance considerations can be found [here](https://github.com/datafold/data-diff/blob/master/docs/technical-explanation.md)
+
+# Get started
+
+Install `data-diff` with specific database adapters, e.g.:
+
+```
+pip install data-diff 'data-diff[postgresql,snowflake]' -U
+```
+
+Run `data-diff` with connection URIs. In the following example, we compare tables between PostgreSQL and Snowflake using hashdiff algorithm:
+```
+data-diff \
+  postgresql://<username>:'<password>'@localhost:5432/<database> \
+  <table> \
+  "snowflake://<username>:<password>@<password>/<DATABASE>/<SCHEMA>?warehouse=<WAREHOUSE>&role=<ROLE>" \
+  <TABLE> \
+  -k <primary key column> \
+  -c <columns to compare> \
+  -w <filter condition>
+```
+
+Check out [documentation](https://docs.datafold.com/reference/open_source/cli) for the full command reference.
+
 
 # Use cases
 
@@ -17,24 +60,6 @@ Compare source to target and check for discrepancies when moving data between sy
 - Converting SQL to a new transformation framework (e.g., stored procedures > dbt)
 - Continuously replicating data from an OLTP DB to OLAP DWH (e.g., MySQL > Redshift)
 
-
-Install `data-diff` with specific database adapters, e.g.:
-
-```
-pip install data-diff 'data-diff[postgresql,snowflake]' -U
-```
-Run `data-diff` with connection URIs to compare tables:
-```
-data-diff \
-  postgresql://<username>:'<password>'@localhost:5432/<database> \
-  <table> \
-  "snowflake://<username>:<password>@<password>/<DATABASE>/<SCHEMA>?warehouse=<WAREHOUSE>&role=<ROLE>" \
-  <TABLE> \
-  -k activity_id \
-  -c activity \
-  -w "event_timestamp < '2022-10-10'"
-```
-Check out [documentation](https://docs.datafold.com/reference/open_source/cli) for full command reference.
 
 ## Data Development Testing
 Test SQL code and preview changes by comparing development/staging environment data to production:
@@ -54,21 +79,39 @@ Test SQL code and preview changes by comparing development/staging environment d
 
 Reach out on the dbt Slack in [#tools-datafold](https://getdbt.slack.com/archives/C03D25A92UU) for advice and support
 
-## Supported databases
+# Supported databases
 
-- PostgreSQL >=10
-- MySQL
-- Snowflake
-- BigQuery
-- Redshift
-- Oracle
-- Presto
-- Databricks
-- Trino
-- Clickhouse
-- Vertica
-- DuckDB >=0.6
-- SQLite (coming soon)
+
+| Database      | Status | Connection string |
+|---------------|-------------------------------------------------------------------------------------------------------------------------------------|--------|
+| PostgreSQL >=10 |  💚    | `postgresql://<user>:<password>@<host>:5432/<database>`                                                                        |
+| MySQL         |  💚    | `mysql://<user>:<password>@<hostname>:5432/<database>`                                                                              |
+| Snowflake     |  💚    | `"snowflake://<user>[:<password>]@<account>/<database>/<SCHEMA>?warehouse=<WAREHOUSE>&role=<role>[&authenticator=externalbrowser]"` |
+| BigQuery      |  💚    | `bigquery://<project>/<dataset>`                                                                                                    |
+| Redshift      |  💚    | `redshift://<username>:<password>@<hostname>:5439/<database>`                                                                       |
+| Oracle        |  💛    | `oracle://<username>:<password>@<hostname>/database`                                                                                |
+| Presto        |  💛    | `presto://<username>:<password>@<hostname>:8080/<database>`                                                                         |
+| Databricks    |  💛    | `databricks://<http_path>:<access_token>@<server_hostname>/<catalog>/<schema>`                                                      |
+| Trino         |  💛    | `trino://<username>:<password>@<hostname>:8080/<database>`                                                                          |
+| Clickhouse    |  💛    | `clickhouse://<username>:<password>@<hostname>:9000/<database>`                                                                     |
+| Vertica       |  💛    | `vertica://<username>:<password>@<hostname>:5433/<database>`                                                                        |
+| DuckDB        |  💛    |                                                                                                                                     |
+| ElasticSearch |  📝    |                                                                                                                                     |
+| Planetscale   |  📝    |                                                                                                                                     |
+| Pinot         |  📝    |                                                                                                                                     |
+| Druid         |  📝    |                                                                                                                                     |
+| Kafka         |  📝    |                                                                                                                                     |
+| SQLite        |  📝    |                                                                                                                                     |
+
+* 💚: Implemented and thoroughly tested.
+* 💛: Implemented, but not thoroughly tested yet.
+* ⏳: Implementation in progress.
+* 📝: Implementation planned. Contributions welcome.
+
+Your database not listed here?
+
+- Contribute a [new database adapter](https://github.com/datafold/data-diff/blob/master/docs/new-database-driver-guide.rst) – we accept pull requests!
+- [Get in touch](https://www.datafold.com/demo) about enterprise support and adding new adapters and features
 
 
 <br>
