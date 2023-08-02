@@ -72,6 +72,7 @@ def bool_notify_about_extension() -> bool:
         return True
     return False
 
+
 g_tracking_enabled = True
 g_anonymous_id = None
 

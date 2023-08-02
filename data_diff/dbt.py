@@ -49,7 +49,7 @@ from .utils import (
 
 logger = getLogger(__name__)
 CLOUD_DOC_URL = "https://docs.datafold.com/development_testing/cloud"
-EXTENSION_INSTALL_URL = "https://marketplace.visualstudio.com/items?itemName=Datafold.datafold-vscode"
+EXTENSION_INSTALL_URL = "https://get.datafold.com/datafold-vs-code-install"
 
 
 class TDiffVars(pydantic.BaseModel):
@@ -158,6 +158,7 @@ def dbt_diff(
                 thread.join()
 
     _extension_notification()
+
 
 def _get_diff_vars(
     dbt_parser: "DbtParser",
@@ -521,6 +522,9 @@ def _email_signup() -> None:
             event_json = create_email_signup_event_json(email)
             run_as_daemon(send_event_json, event_json)
 
+
 def _extension_notification() -> None:
     if bool_notify_about_extension():
-        rich.print(f"\n\n:heart_eyes-emoji: Love diffs?\n:eyes-emoji: Check out the :party_popper-emoji: [bold] new VSCode extension [/bold] :party_popper-emoji::\n{EXTENSION_INSTALL_URL}")
+        rich.print(
+            f"\n\nHaving a good time diffing? :heart_eyes-emoji:\nMake sure to check out the free [bold]Datafold VS Code extension[/bold] for more a more seamless diff experience:\n{EXTENSION_INSTALL_URL}"
+        )
