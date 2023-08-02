@@ -11,6 +11,7 @@ from typing import Any, Dict, Optional
 import urllib.request
 from uuid import uuid4
 import toml
+from rich import get_console
 
 from .version import __version__
 
@@ -58,6 +59,17 @@ def bool_ask_for_email() -> bool:
             with open(DEFAULT_PROFILE, "w") as conf:
                 toml.dump(profile, conf)
             return True
+    return False
+
+
+def bool_notify_about_extension() -> bool:
+    profile = _load_profile()
+    console = get_console()
+    if "notified_about_extension" not in profile and console.is_interactive:
+        profile["notified_about_extension"] = ""
+        with open(DEFAULT_PROFILE, "w") as conf:
+            toml.dump(profile, conf)
+        return True
     return False
 
 
