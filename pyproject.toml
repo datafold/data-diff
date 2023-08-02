@@ -36,7 +36,7 @@ cryptography = {version="*", optional=true}
 trino = {version="^0.314.0", optional=true}
 presto-python-client = {version="*", optional=true}
 clickhouse-driver = {version="*", optional=true}
-duckdb = {version="^0.7.0", optional=true}
+duckdb = {version="*", optional=true}
 dbt-artifacts-parser = {version="^0.4.0"}
 dbt-core = {version="^1.0.0"}
 keyring = "*"
