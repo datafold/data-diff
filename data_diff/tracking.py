@@ -42,7 +42,7 @@ def bool_ask_for_email() -> bool:
     """
     Checks the .datadiff.toml profile file for the asked_for_email key
 
-    Returns False immediately if --no-tracking
+    Returns False immediately if --no-tracking or not in an interactive terminal
 
     If found, return False (already asked for email)
 
@@ -51,7 +51,8 @@ def bool_ask_for_email() -> bool:
     Returns:
         bool: decision on whether to prompt the user for their email
     """
-    if g_tracking_enabled:
+    console = get_console()
+    if g_tracking_enabled and console.is_interactive:
         profile = _load_profile()
 
         if "asked_for_email" not in profile:
