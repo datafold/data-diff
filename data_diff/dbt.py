@@ -528,3 +528,4 @@ def _extension_notification() -> None:
         rich.print(
             f"\n\nHaving a good time diffing? :heart_eyes-emoji:\nMake sure to check out the free [bold]Datafold VS Code extension[/bold] for more a more seamless diff experience:\n{EXTENSION_INSTALL_URL}"
         )
+
