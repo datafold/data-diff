@@ -611,19 +611,19 @@ http = ["httpx"]
 
 [[package]]
 name = "dbt-artifacts-parser"
-version = "0.3.0"
+version = "0.4.0"
 description = "A dbt artifacts parser in python"
 category = "main"
 optional = false
 python-versions = ">=3.7.0"
 files = [
-    {file = "dbt-artifacts-parser-0.3.0.tar.gz", hash = "sha256:8da48fd0f294270609f2270744c179de84a214d83cab257cdeb75f63e5f88722"},
-    {file = "dbt_artifacts_parser-0.3.0-py3-none-any.whl", hash = "sha256:da42cda2c2b9cb3ef83e5e3fbeb4ad5ee350038d91dd7376f88d5207b13d2034"},
+    {file = "dbt_artifacts_parser-0.4.0-py3-none-any.whl", hash = "sha256:ad4e66727b698357211d77d5fd189949ba4d6c03882f1ba3fbf45b486dda2e8a"},
+    {file = "dbt_artifacts_parser-0.4.0.tar.gz", hash = "sha256:2a38cde825439060072c8c9d0cdf99b9b271979ef26dc0ac0ea79e1a62da6297"},
 ]
 
 [package.dependencies]
 datamodel-code-generator = ">=0.12.0"
-pydantic = ">=1.6"
+pydantic = ">=1.6,<2.0"
 
 [package.extras]
 dev = ["build (==0.7.0)", "flit (==3.7.1)", "pdoc3 (>=0.9.2)", "pre-commit (>=2.15.0)", "pyyaml (>=5.3)", "yapf (>=0.29.0)"]
