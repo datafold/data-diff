@@ -23,6 +23,7 @@ from .diff_tables import DiffResultWrapper
 from .format import jsonify, jsonify_error
 from .tracking import (
     bool_ask_for_email,
+    bool_notify_about_extension,
     create_email_signup_event_json,
     set_entrypoint_name,
     set_dbt_user_id,
@@ -48,6 +49,7 @@ from .utils import (
 
 logger = getLogger(__name__)
 CLOUD_DOC_URL = "https://docs.datafold.com/development_testing/cloud"
+EXTENSION_INSTALL_URL = "https://get.datafold.com/datafold-vs-code-install"
 
 
 class TDiffVars(pydantic.BaseModel):
@@ -73,10 +75,11 @@ def dbt_diff(
     log_status_handler: Optional[LogStatusHandler] = None,
     where_flag: Optional[str] = None,
     stats_flag: bool = False,
+    columns_flag: Optional[Tuple[str]] = None,
 ) -> None:
     print_version_info()
     diff_threads = []
-    set_entrypoint_name("CLI-dbt")
+    set_entrypoint_name(os.getenv("DATAFOLD_TRIGGERED_BY", "CLI-dbt"))
     dbt_parser = DbtParser(profiles_dir_override, project_dir_override, state)
     models = dbt_parser.get_models(dbt_selection)
     config = dbt_parser.get_datadiff_config()
@@ -112,7 +115,7 @@ def dbt_diff(
             if log_status_handler:
                 log_status_handler.set_prefix(f"Diffing {model.alias} \n")
 
-            diff_vars = _get_diff_vars(dbt_parser, config, model, where_flag, stats_flag)
+            diff_vars = _get_diff_vars(dbt_parser, config, model, where_flag, stats_flag, columns_flag)
 
             # we won't always have a prod path when using state
             # when the model DNE in prod manifest, skip the model diff
@@ -156,6 +159,8 @@ def dbt_diff(
             for thread in diff_threads:
                 thread.join()
 
+    _extension_notification()
+
 
 def _get_diff_vars(
     dbt_parser: "DbtParser",
@@ -163,25 +168,27 @@ def _get_diff_vars(
     model,
     where_flag: Optional[str] = None,
     stats_flag: bool = False,
+    columns_flag: Optional[Tuple[str]] = None,
 ) -> TDiffVars:
+    cli_columns = list(columns_flag) if columns_flag else []
     dev_database = model.database
     dev_schema = model.schema_
-
+    dev_alias = prod_alias = model.alias
     primary_keys = dbt_parser.get_pk_from_model(model, dbt_parser.unique_columns, "primary-key")
 
     # prod path is constructed via configuration or the prod manifest via --state
     if dbt_parser.prod_manifest_obj:
-        prod_database, prod_schema = _get_prod_path_from_manifest(model, dbt_parser.prod_manifest_obj)
+        prod_database, prod_schema, prod_alias = _get_prod_path_from_manifest(model, dbt_parser.prod_manifest_obj)
     else:
         prod_database, prod_schema = _get_prod_path_from_config(config, model, dev_database, dev_schema)
 
     if dbt_parser.requires_upper:
-        dev_qualified_list = [x.upper() for x in [dev_database, dev_schema, model.alias] if x]
-        prod_qualified_list = [x.upper() for x in [prod_database, prod_schema, model.alias] if x]
+        dev_qualified_list = [x.upper() for x in [dev_database, dev_schema, dev_alias] if x]
+        prod_qualified_list = [x.upper() for x in [prod_database, prod_schema, prod_alias] if x]
         primary_keys = [x.upper() for x in primary_keys]
     else:
-        dev_qualified_list = [x for x in [dev_database, dev_schema, model.alias] if x]
-        prod_qualified_list = [x for x in [prod_database, prod_schema, model.alias] if x]
+        dev_qualified_list = [x for x in [dev_database, dev_schema, dev_alias] if x]
+        prod_qualified_list = [x for x in [prod_database, prod_schema, prod_alias] if x]
 
     datadiff_model_config = dbt_parser.get_datadiff_model_config(model.meta)
 
@@ -192,10 +199,10 @@ def _get_diff_vars(
         primary_keys=primary_keys,
         connection=dbt_parser.connection,
         threads=dbt_parser.threads,
-        # --where takes precedence over any model level config
+        # cli flags take precedence over any model level config
         where_filter=where_flag or datadiff_model_config.where_filter,
-        include_columns=datadiff_model_config.include_columns,
-        exclude_columns=datadiff_model_config.exclude_columns,
+        include_columns=cli_columns or datadiff_model_config.include_columns,
+        exclude_columns=[] if cli_columns else datadiff_model_config.exclude_columns,
         stats_flag=stats_flag,
     )
 
@@ -229,14 +236,16 @@ def _get_prod_path_from_config(config, model, dev_database, dev_schema) -> Tuple
     return prod_database, prod_schema
 
 
-def _get_prod_path_from_manifest(model, prod_manifest) -> Union[Tuple[str, str], Tuple[None, None]]:
+def _get_prod_path_from_manifest(model, prod_manifest) -> Union[Tuple[str, str, str], Tuple[None, None, None]]:
     prod_database = None
     prod_schema = None
+    prod_alias = None
     prod_model = prod_manifest.nodes.get(model.unique_id, None)
     if prod_model:
         prod_database = prod_model.database
         prod_schema = prod_model.schema_
-    return prod_database, prod_schema
+        prod_alias = prod_model.alias
+    return prod_database, prod_schema, prod_alias
 
 
 def _local_diff(diff_vars: TDiffVars, json_output: bool = False) -> None:
@@ -517,3 +526,10 @@ def _email_signup() -> None:
         if email:
             event_json = create_email_signup_event_json(email)
             run_as_daemon(send_event_json, event_json)
+
+
+def _extension_notification() -> None:
+    if bool_notify_about_extension():
+        rich.print(
+            f"\n\nHaving a good time diffing? :heart_eyes-emoji:\nMake sure to check out the free [bold]Datafold VS Code extension[/bold] for more a more seamless diff experience:\n{EXTENSION_INSTALL_URL}"
+        )

@@ -33,7 +33,7 @@ COLOR_SCHEME = {
     "-": "red",
 }
 
-set_entrypoint_name("CLI")
+set_entrypoint_name(os.getenv("DATAFOLD_TRIGGERED_BY", "CLI"))
 
 
 def _get_log_handlers(is_dbt: Optional[bool] = False) -> Dict[str, logging.Handler]:
@@ -48,8 +48,8 @@ def _get_log_handlers(is_dbt: Optional[bool] = False) -> Dict[str, logging.Handl
     rich_handler.setLevel(logging.WARN)
     handlers["rich_handler"] = rich_handler
 
-    # only use log_status_handler in a terminal
-    if rich_handler.console.is_terminal and is_dbt:
+    # only use log_status_handler in an interactive terminal session
+    if rich_handler.console.is_interactive and is_dbt:
         log_status_handler = LogStatusHandler()
         log_status_handler.setFormatter(logging.Formatter(log_format_status, datefmt=date_format))
         log_status_handler.setLevel(logging.DEBUG)
@@ -318,6 +318,7 @@ def main(conf, run, **kw):
                 state=state,
                 where_flag=kw["where"],
                 stats_flag=kw["stats"],
+                columns_flag=kw["columns"],
             )
         else:
             return _data_diff(
