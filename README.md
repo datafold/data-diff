@@ -113,7 +113,7 @@ Check out [documentation](https://docs.datafold.com/reference/open_source/cli) f
 | SQLite        |  📝    |                                                                                                                                     |
 
 * 🟢: Implemented and thoroughly tested.
-* 💛: Implemented, but not thoroughly tested yet.
+* 🟡: Implemented, but not thoroughly tested yet.
 * ⏳: Implementation in progress.
 * 📝: Implementation planned. Contributions welcome.
 
