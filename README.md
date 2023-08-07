@@ -3,13 +3,13 @@
 </p>
 
 <h2 align="center">
-data-diff: compare datasets fast, within or across SQL databases
+data-diff: Compare datasets fast, within or across SQL databases
 
 ![data-diff-logo](docs/data-diff-logo.png)
 </h2>
 <br>
 
-# Use cases
+# Use Cases
 
 ## Data Migration & Replication Testing
 Compare source to target and check for discrepancies when moving data between systems:
