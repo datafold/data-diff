@@ -28,7 +28,12 @@ Test SQL code and preview changes by comparing development/staging environment d
   <img alt="dbt" src="https://seeklogo.com/images/D/dbt-logo-E4B0ED72A2-seeklogo.com.png" width="10%" />
   </p>
   
-`data-diff` integrates with dbt Core and dbt Cloud to seamlessly compare local development to production datasets. 
+<details>
+<summary>`data-diff` integrates with dbt Core and dbt Cloud to seamlessly compare local development to production datasets. </summary>
+
+![data-development-testing](docs/development_testing.png)
+
+</details>
 
 :eyes: **Watch [4-min demo video](https://www.loom.com/share/ad3df969ba6b4298939efb2fbcc14cde)**
 
