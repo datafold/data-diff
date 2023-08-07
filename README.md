@@ -29,11 +29,15 @@ Test SQL code and preview changes by comparing development/staging environment d
   </p>
   
 <details>
-<summary> Integrates with dbt Core and dbt Cloud to seamlessly compare local development to production datasets. </summary>
+<summary> data-diff integrates with dbt Core to seamlessly compare local development to production datasets
+
+ </summary>
 
 ![data-development-testing](docs/development_testing.png)
 
 </details>
+
+> [dbt Cloud users should check out Datafold's out-of-the-box deployment testing integration](https://www.datafold.com/data-deployment-testing)
 
 :eyes: **Watch [4-min demo video](https://www.loom.com/share/ad3df969ba6b4298939efb2fbcc14cde)**
 
