@@ -93,7 +93,7 @@ Check out [documentation](https://docs.datafold.com/reference/open_source/cli) f
 
 | Database      | Status | Connection string |
 |---------------|-------------------------------------------------------------------------------------------------------------------------------------|--------|
-| PostgreSQL >=10 |  🟢                                                              |
+| PostgreSQL >=10 |  🟢   | `postgresql://<user>:<password>@<host>:5432/<database>`                                                           |
 | MySQL         |  🟢     | `mysql://<user>:<password>@<hostname>:5432/<database>`                                                                              |
 | Snowflake     |  🟢     | `"snowflake://<user>[:<password>]@<account>/<database>/<SCHEMA>?warehouse=<WAREHOUSE>&role=<role>[&authenticator=externalbrowser]"` |
 | BigQuery      |  🟢     | `bigquery://<project>/<dataset>`                                                                                                    |
