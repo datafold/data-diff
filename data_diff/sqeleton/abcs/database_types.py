@@ -83,7 +83,7 @@ class Decimal(FractionalType, IKey):  # Snowflake may use Decimal as a key
 
 
 @dataclass
-class StringType(ColType):
+class StringType(ColType, IKey):
     python_type = str
 
 
