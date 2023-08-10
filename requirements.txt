@@ -1,0 +1,2 @@
+alive-progress==3.1.4
+tqdm==4.66.1
