@@ -491,10 +491,11 @@ class Database(AbstractDatabase[T]):
                 if alphanum_samples:
                     if len(alphanum_samples) != len(samples):
                         logger.debug(
-                            f"Mixed Alphanum/Non-Alphanum values detected in column {'.'.join(table_path)}.{col_name}."
+                            f"Mixed Alphanum/Non-Alphanum values detected in column {'.'.join(table_path)}.{col_name}. It cannot be used as a key."
                         )
-                    assert col_name in col_dict
-                    col_dict[col_name] = String_VaryingAlphanum()
+                    else:
+                        assert col_name in col_dict
+                        col_dict[col_name] = String_VaryingAlphanum()
 
     # @lru_cache()
     # def get_table_schema(self, path: DbPath) -> Dict[str, ColType]:
