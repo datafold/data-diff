@@ -67,7 +67,7 @@ When comparing the data, `data-diff` utilizes the resources of the underlying da
 - Time complexity approximates COUNT(*) operation when there are few differences
 - Performance degrades when datasets have a large number of differences
 
-More information about the algorithm and performance considerations can be found [here](https://github.com/datafold/data-diff/blob/master/docs/technical-explanation.md).
+More information about the algorithm and performance considerations can be found [here](https://github.com/datafold/data-diff/blob/master/docs/technical-explanation.md)
 
 # Get started
 
