@@ -15,6 +15,8 @@ class TestConfig(unittest.TestCase):
 
             [run.default]
             update_column = "timestamp"
+            key_columns = ["id"]
+            columns = ["name", "age"]
             verbose = true
             threads = 2
 
@@ -39,6 +41,8 @@ class TestConfig(unittest.TestCase):
         assert res["table2"] == "rating_del1"
         assert res["threads1"] == 11
         assert res["threads2"] == 22
+        assert res["key_columns"] == ("id",)
+        assert res["columns"] == ("name", "age")
 
         res = apply_config_from_string(config, "pg_pg", {"update_column": "foo", "table2": "bar"})
         assert res["update_column"] == "foo"

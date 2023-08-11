@@ -1,25 +1,65 @@
-<p align="left">
+<p align="center">
     <a href="https://datafold.com/"><img alt="Datafold" src="https://user-images.githubusercontent.com/1799931/196497110-d3de1113-a97f-4322-b531-026d859b867a.png" width="30%" /></a>
 </p>
 
-<h1 align="left">
-data-diff: compare datasets fast, within or across SQL databases
-</h1>
+<h2 align="center">
+data-diff: Compare datasets fast, within or across SQL databases
 
+![data-diff-logo](docs/data-diff-logo.png)
+</h2>
 <br>
+
+# Use Cases
+
+## Data Migration & Replication Testing
+Compare source to target and check for discrepancies when moving data between systems:
+- Migrating to a new data warehouse (e.g., Oracle > Snowflake)
+- Converting SQL to a new transformation framework (e.g., stored procedures > dbt)
+- Continuously replicating data from an OLTP DB to OLAP DWH (e.g., MySQL > Redshift)
+
+
+## Data Development Testing
+Test SQL code and preview changes by comparing development/staging environment data to production:
+1. Make a change to some SQL code
+2. Run the SQL code to create a new dataset
+3. Compare the dataset with its production version or another iteration
+
+  <p align="left">
+  <img alt="dbt" src="https://seeklogo.com/images/D/dbt-logo-E4B0ED72A2-seeklogo.com.png" width="10%" />
+  </p>
+  
+<details>
+<summary> data-diff integrates with dbt Core to seamlessly compare local development to production datasets
+
+ </summary>
+
+![data-development-testing](docs/development_testing.png)
+
+</details>
+
+> [dbt Cloud users should check out Datafold's out-of-the-box deployment testing integration](https://www.datafold.com/data-deployment-testing)
+
+:eyes: **Watch [4-min demo video](https://www.loom.com/share/ad3df969ba6b4298939efb2fbcc14cde)**
+
+**[Get started with data-diff & dbt](https://docs.datafold.com/development_testing/open_source)**
+
+Also available in a [VS Code Extension](https://marketplace.visualstudio.com/items?itemName=Datafold.datafold-vscode)
+
+Reach out on the dbt Slack in [#tools-datafold](https://getdbt.slack.com/archives/C03D25A92UU) for advice and support
+
 
 # How it works
 
 When comparing the data, `data-diff` utilizes the resources of the underlying databases as much as possible. It has two primary modes of comparison:
 
-## joindiff
+## `joindiff`
 - Recommended for comparing data within the same database
 - Uses the outer join operation to diff the rows as efficiently as possible within the same database
 - Fully relies on the underlying database engine for computation
 - Requires both datasets to be queryable with a single SQL query
 - Time complexity approximates JOIN operation and is largely independent of the number of differences in the dataset
   
-## hashdiff
+## `hashdiff`
 - Recommended for comparing datasets across different databases
 - Can also be helpful in diffing very large tables with few expected differences within the same database
 - Employs a divide-and-conquer algorithm based on hashing and binary search
@@ -52,50 +92,23 @@ data-diff \
 Check out [documentation](https://docs.datafold.com/reference/open_source/cli) for the full command reference.
 
 
-# Use cases
-
-## Data Migration & Replication Testing
-Compare source to target and check for discrepancies when moving data between systems:
-- Migrating to a new data warehouse (e.g., Oracle > Snowflake)
-- Converting SQL to a new transformation framework (e.g., stored procedures > dbt)
-- Continuously replicating data from an OLTP DB to OLAP DWH (e.g., MySQL > Redshift)
-
-
-## Data Development Testing
-Test SQL code and preview changes by comparing development/staging environment data to production:
-1. Make a change to some SQL code
-2. Run the SQL code to create a new dataset
-3. Compare the dataset with its production version or another iteration
-
-  <p align="left">
-  <img alt="dbt" src="https://seeklogo.com/images/D/dbt-logo-E4B0ED72A2-seeklogo.com.png" width="10%" />
-  </p>
-  
-`data-diff` integrates with dbt Core and dbt Cloud to seamlessly compare local development to production datasets. 
-
-:eyes: **Watch [4-min demo video](https://www.loom.com/share/ad3df969ba6b4298939efb2fbcc14cde)**
-
-**[Get started with data-diff & dbt](https://docs.datafold.com/development_testing/open_source)**
-
-Reach out on the dbt Slack in [#tools-datafold](https://getdbt.slack.com/archives/C03D25A92UU) for advice and support
-
 # Supported databases
 
 
 | Database      | Status | Connection string |
 |---------------|-------------------------------------------------------------------------------------------------------------------------------------|--------|
-| PostgreSQL >=10 |  💚    | `postgresql://<user>:<password>@<host>:5432/<database>`                                                                        |
-| MySQL         |  💚    | `mysql://<user>:<password>@<hostname>:5432/<database>`                                                                              |
-| Snowflake     |  💚    | `"snowflake://<user>[:<password>]@<account>/<database>/<SCHEMA>?warehouse=<WAREHOUSE>&role=<role>[&authenticator=externalbrowser]"` |
-| BigQuery      |  💚    | `bigquery://<project>/<dataset>`                                                                                                    |
-| Redshift      |  💚    | `redshift://<username>:<password>@<hostname>:5439/<database>`                                                                       |
-| Oracle        |  💛    | `oracle://<username>:<password>@<hostname>/database`                                                                                |
-| Presto        |  💛    | `presto://<username>:<password>@<hostname>:8080/<database>`                                                                         |
-| Databricks    |  💛    | `databricks://<http_path>:<access_token>@<server_hostname>/<catalog>/<schema>`                                                      |
-| Trino         |  💛    | `trino://<username>:<password>@<hostname>:8080/<database>`                                                                          |
-| Clickhouse    |  💛    | `clickhouse://<username>:<password>@<hostname>:9000/<database>`                                                                     |
-| Vertica       |  💛    | `vertica://<username>:<password>@<hostname>:5433/<database>`                                                                        |
-| DuckDB        |  💛    |                                                                                                                                     |
+| PostgreSQL >=10 |  🟢   | `postgresql://<user>:<password>@<host>:5432/<database>`                                                           |
+| MySQL         |  🟢     | `mysql://<user>:<password>@<hostname>:5432/<database>`                                                                              |
+| Snowflake     |  🟢     | `"snowflake://<user>[:<password>]@<account>/<database>/<SCHEMA>?warehouse=<WAREHOUSE>&role=<role>[&authenticator=externalbrowser]"` |
+| BigQuery      |  🟢     | `bigquery://<project>/<dataset>`                                                                                                    |
+| Redshift      |  🟢     | `redshift://<username>:<password>@<hostname>:5439/<database>`                                                                       |
+| Oracle        |  🟡   | `oracle://<username>:<password>@<hostname>/database`                                                                                |
+| Presto        |  🟡   | `presto://<username>:<password>@<hostname>:8080/<database>`                                                                         |
+| Databricks    |  🟡   | `databricks://<http_path>:<access_token>@<server_hostname>/<catalog>/<schema>`                                                      |
+| Trino         |  🟡   | `trino://<username>:<password>@<hostname>:8080/<database>`                                                                          |
+| Clickhouse    |  🟡   | `clickhouse://<username>:<password>@<hostname>:9000/<database>`                                                                     |
+| Vertica       |  🟡   | `vertica://<username>:<password>@<hostname>:5433/<database>`                                                                        |
+| DuckDB        |  🟡   |                                                                                                                                     |
 | ElasticSearch |  📝    |                                                                                                                                     |
 | Planetscale   |  📝    |                                                                                                                                     |
 | Pinot         |  📝    |                                                                                                                                     |
@@ -103,8 +116,8 @@ Reach out on the dbt Slack in [#tools-datafold](https://getdbt.slack.com/archive
 | Kafka         |  📝    |                                                                                                                                     |
 | SQLite        |  📝    |                                                                                                                                     |
 
-* 💚: Implemented and thoroughly tested.
-* 💛: Implemented, but not thoroughly tested yet.
+* 🟢: Implemented and thoroughly tested.
+* 🟡: Implemented, but not thoroughly tested yet.
 * ⏳: Implementation in progress.
 * 📝: Implementation planned. Contributions welcome.
 
