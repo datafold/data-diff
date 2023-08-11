@@ -67,10 +67,14 @@ When comparing the data, `data-diff` utilizes the resources of the underlying da
 - Time complexity approximates COUNT(*) operation when there are few differences
 - Performance degrades when datasets have a large number of differences
 
-More information about the algorithm and performance considerations can be found [here](https://github.com/datafold/data-diff/blob/master/docs/technical-explanation.md)
+More information about the algorithm and performance considerations can be found [here](https://github.com/datafold/data-diff/blob/master/docs/technical-explanation.md).
 
 # Get started
 
+## Validating dbt model changes between dev and prod
+💡 Looking to use `data-diff` in dbt development? Head over to [our `data-diff` + `dbt` documentation](https://www.datafold.com/data-deployment-testing) to get started!
+
+## Compare data tables between databases
 Install `data-diff` with specific database adapters, e.g.:
 
 ```
