@@ -106,7 +106,7 @@ class Connect:
         database_by_scheme = {k: db.load_mixins(*abstract_mixins) for k, db in self.database_by_scheme.items()}
         return type(self)(database_by_scheme)
 
-    def connect_to_uri(self, db_uri: str, thread_count: Optional[int] = 1) -> Database:
+    def connect_to_uri(self, db_uri: str, thread_count: Optional[int] = 1, **kwargs) -> Database:
         """Connect to the given database uri
 
         thread_count determines the max number of worker threads per database,
@@ -149,7 +149,7 @@ class Connect:
                 conn_dict = config["database"][database]
             except KeyError:
                 raise ValueError(f"Cannot find database config named '{database}'.")
-            return self.connect_with_dict(conn_dict, thread_count)
+            return self.connect_with_dict(conn_dict, thread_count, **kwargs)
 
         try:
             matcher = self.match_uri_path[scheme]
@@ -174,7 +174,7 @@ class Connect:
 
             if scheme == "bigquery":
                 kw["project"] = dsn.host
-                return cls(**kw)
+                return cls(**kw, **kwargs)
 
             if scheme == "snowflake":
                 kw["account"] = dsn.host
@@ -194,13 +194,13 @@ class Connect:
         kw = {k: v for k, v in kw.items() if v is not None}
 
         if issubclass(cls, ThreadedDatabase):
-            db = cls(thread_count=thread_count, **kw)
+            db = cls(thread_count=thread_count, **kw, **kwargs)
         else:
-            db = cls(**kw)
+            db = cls(**kw, **kwargs)
 
         return self._connection_created(db)
 
-    def connect_with_dict(self, d, thread_count):
+    def connect_with_dict(self, d, thread_count, **kwargs):
         d = dict(d)
         driver = d.pop("driver")
         try:
@@ -210,9 +210,9 @@ class Connect:
 
         cls = matcher.database_cls
         if issubclass(cls, ThreadedDatabase):
-            db = cls(thread_count=thread_count, **d)
+            db = cls(thread_count=thread_count, **d, **kwargs)
         else:
-            db = cls(**d)
+            db = cls(**d, **kwargs)
 
         return self._connection_created(db)
 
@@ -220,7 +220,9 @@ class Connect:
         "Nop function to be overridden by subclasses."
         return db
 
-    def __call__(self, db_conf: Union[str, dict], thread_count: Optional[int] = 1, shared: bool = True) -> Database:
+    def __call__(
+        self, db_conf: Union[str, dict], thread_count: Optional[int] = 1, shared: bool = True, **kwargs
+    ) -> Database:
         """Connect to a database using the given database configuration.
 
         Configuration can be given either as a URI string, or as a dict of {option: value}.
@@ -263,9 +265,9 @@ class Connect:
                     return conn
 
         if isinstance(db_conf, str):
-            conn = self.connect_to_uri(db_conf, thread_count)
+            conn = self.connect_to_uri(db_conf, thread_count, **kwargs)
         elif isinstance(db_conf, dict):
-            conn = self.connect_with_dict(db_conf, thread_count)
+            conn = self.connect_with_dict(db_conf, thread_count, **kwargs)
         else:
             raise TypeError(f"db configuration must be a URI string or a dictionary. Instead got '{db_conf}'.")
 

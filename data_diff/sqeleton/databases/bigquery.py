@@ -210,8 +210,8 @@ class BigQuery(Database):
     CONNECT_URI_PARAMS = ["dataset"]
     dialect = Dialect()
 
-    def __init__(self, project, *, dataset, **kw):
-        credentials = None
+    def __init__(self, project, *, dataset, bigquery_credentials=None, **kw):
+        credentials = bigquery_credentials
         bigquery = import_bigquery()
 
         keyfile = kw.pop("keyfile", None)
