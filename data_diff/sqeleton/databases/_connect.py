@@ -236,6 +236,8 @@ class Connect:
             db_conf (str | dict): The configuration for the database to connect. URI or dict.
             thread_count (int, optional): Size of the threadpool. Ignored by cloud databases. (default: 1)
             shared (bool): Whether to cache and return the same connection for the same db_conf. (default: True)
+            bigquery_credentials (google.oauth2.credentials.Credentials): Custom Google oAuth2 credential for BigQuery.
+            (default: None)
 
         Note: For non-cloud databases, a low thread-pool size may be a performance bottleneck.
 
