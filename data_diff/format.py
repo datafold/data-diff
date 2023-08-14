@@ -60,25 +60,7 @@ def jsonify(
     t1_exclusive_rows, t2_exclusive_rows, diff_rows = _group_rows(diff_info, schema)
 
     if not stats_only:
-        diff_rows_jsonified = []
-        for row in diff_rows:
-            diff_rows_jsonified.append(_jsonify_diff(row, key_columns))
-
-        t1_exclusive_rows_jsonified = []
-        for row in t1_exclusive_rows:
-            t1_exclusive_rows_jsonified.append(_jsonify_exclusive(row, key_columns))
-
-        t2_exclusive_rows_jsonified = []
-        for row in t2_exclusive_rows:
-            t2_exclusive_rows_jsonified.append(_jsonify_exclusive(row, key_columns))
-
-        rows = RowsDiff(
-            exclusive=ExclusiveDiff(
-                dataset1=t1_exclusive_rows_jsonified,
-                dataset2=t2_exclusive_rows_jsonified
-            ),
-            diff=diff_rows_jsonified,
-        )
+        rows = _make_rows_diff(t1_exclusive_rows, t2_exclusive_rows, diff_rows)
 
     summary = None
     if with_summary:
@@ -265,6 +247,32 @@ def _group_rows(
             diff_rows.append(row_w_schema)
 
     return t1_exclusive_rows, t2_exclusive_rows, diff_rows
+
+
+def _make_rows_diff(
+    t1_exclusive_rows: List[Dict[str, Any]],
+    t2_exclusive_rows: List[Dict[str, Any]],
+    diff_rows: List[Dict[str, Any]]
+) -> RowsDiff:
+    diff_rows_jsonified = []
+    for row in diff_rows:
+        diff_rows_jsonified.append(_jsonify_diff(row, key_columns))
+
+    t1_exclusive_rows_jsonified = []
+    for row in t1_exclusive_rows:
+        t1_exclusive_rows_jsonified.append(_jsonify_exclusive(row, key_columns))
+
+    t2_exclusive_rows_jsonified = []
+    for row in t2_exclusive_rows:
+        t2_exclusive_rows_jsonified.append(_jsonify_exclusive(row, key_columns))
+
+    return RowsDiff(
+        exclusive=ExclusiveDiff(
+            dataset1=t1_exclusive_rows_jsonified,
+            dataset2=t2_exclusive_rows_jsonified
+        ),
+        diff=diff_rows_jsonified,
+    )
 
 
 def _jsonify_diff(row: Dict[str, Any], key_columns: List[str]) -> Dict[str, JsonDiffRowValue]:
