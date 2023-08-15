@@ -253,8 +253,8 @@ click.Context.formatter_class = MyHelpFormatter
     "--select",
     "-s",
     default=None,
-    metavar="PATH",
-    help="select dbt resources to compare using dbt selection syntax.",
+    metavar="SELECTION or MODEL_NAME",
+    help="--select dbt resources to compare using dbt selection syntax in dbt versions >= 1.5.\nIn versions < 1.5, it will naively search for a model with MODEL_NAME as the name.",
 )
 @click.option(
     "--state",
