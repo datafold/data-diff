@@ -33,9 +33,9 @@ SESSION_TIME_ZONE = None  # Changed by the tests
 
 @import_helper("oracle")
 def import_oracle():
-    import cx_Oracle
+    import oracledb
 
-    return cx_Oracle
+    return oracledb
 
 
 class Mixin_MD5(AbstractMixin_MD5):
