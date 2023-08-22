@@ -10,7 +10,6 @@ from data_diff.errors import (
     DataDiffDbtProfileNotFoundError,
     DataDiffDbtRedshiftPasswordOnlyError,
     DataDiffDbtRunResultsVersionError,
-    DataDiffDbtSelectVersionTooLowError,
     DataDiffDbtSnowflakeSetConnectionError,
 )
 
@@ -56,17 +55,18 @@ class TestDbtParser(unittest.TestCase):
         mock_self.get_dbt_selection_models.assert_called_once_with(selection)
         self.assertEqual(models, mock_return_value)
 
-    def test_get_models_unsupported_manifest_version(self):
+    def test_get_models_simple_select(self):
         mock_self = Mock()
         mock_self.project_dir = Path()
         mock_self.dbt_version = "1.4.0"
         selection = "model+"
         mock_return_value = Mock()
-        mock_self.get_dbt_selection_models.return_value = mock_return_value
+        mock_self.get_simple_model_selection.return_value = mock_return_value
 
-        with self.assertRaises(DataDiffDbtSelectVersionTooLowError):
-            _ = DbtParser.get_models(mock_self, selection)
+        models = DbtParser.get_models(mock_self, selection)
         mock_self.get_dbt_selection_models.assert_not_called()
+        mock_self.get_simple_model_selection.assert_called_with(selection)
+        self.assertEqual(models, mock_return_value)
 
     def test_get_models_no_runner(self):
         mock_self = Mock()

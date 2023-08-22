@@ -566,13 +566,13 @@ http = ["httpx"]
 
 [[package]]
 name = "dbt-artifacts-parser"
-version = "0.4.0"
+version = "0.4.2"
 description = "A dbt artifacts parser in python"
 optional = false
 python-versions = ">=3.7.0"
 files = [
-    {file = "dbt_artifacts_parser-0.4.0-py3-none-any.whl", hash = "sha256:ad4e66727b698357211d77d5fd189949ba4d6c03882f1ba3fbf45b486dda2e8a"},
-    {file = "dbt_artifacts_parser-0.4.0.tar.gz", hash = "sha256:2a38cde825439060072c8c9d0cdf99b9b271979ef26dc0ac0ea79e1a62da6297"},
+    {file = "dbt_artifacts_parser-0.4.2-py3-none-any.whl", hash = "sha256:691d42c9b9d4abdb7aaaf7b2185442c1d58eb9736783fbb09e70a15476e74cb0"},
+    {file = "dbt_artifacts_parser-0.4.2.tar.gz", hash = "sha256:3c83ef60855369d3ca4415ef7078828358db640c7ad91d0f3743b24a9e187adb"},
 ]
 
 [package.dependencies]
