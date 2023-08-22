@@ -8,7 +8,6 @@ import yaml
 from packaging.version import parse as parse_version
 import pydantic
 from dbt_artifacts_parser.parser import parse_run_results, parse_manifest
-from dbt.config.renderer import ProfileRenderer
 
 from data_diff.errors import (
     DataDiffDbtBigQueryUnsupportedMethodError,
@@ -270,6 +269,10 @@ class DbtParser:
         return project_dict
 
     def get_connection_creds(self) -> Tuple[Dict[str, str], str]:
+        # circular reference with dbt-artifacts-parser
+        # noticed on dbt-core 1.4
+        from dbt.config.renderer import ProfileRenderer
+
         profiles_path = self.profiles_dir / PROFILES_FILE
         with open(profiles_path) as profiles:
             logger.info(f"Parsing file {profiles_path}")
