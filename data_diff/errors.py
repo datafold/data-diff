@@ -42,10 +42,6 @@ class DataDiffDbtCoreNoRunnerError(Exception):
     "Raised when the manifest version >= 1.5, but the dbt-core package is < 1.5. This is an edge case most likely to occur in development."
 
 
-class DataDiffDbtSelectVersionTooLowError(Exception):
-    "Raised when attempting to use `--select` with a dbt-core version < 1.5."
-
-
 class DataDiffCustomSchemaNoConfigError(Exception):
     "Raised when a model has a custom schema, but there is no prod_custom_schema config. (And not using --state)."
 
@@ -68,3 +64,7 @@ class DataDiffCloudDiffFailed(Exception):
 
 class DataDiffCloudDiffTimedOut(Exception):
     "Raised when using --cloud and the diff did not return finish before the timeout value."
+
+
+class DataDiffSimpleSelectNotFound(Exception):
+    "Raised when using --select on dbt < 1.5 and a model node is not found in the manifest."
