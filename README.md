@@ -27,7 +27,7 @@ Test SQL code and preview changes by comparing development/staging environment d
   <p align="left">
   <img alt="dbt" src="https://seeklogo.com/images/D/dbt-logo-E4B0ED72A2-seeklogo.com.png" width="10%" />
   </p>
-  
+
 <details>
 <summary> data-diff integrates with dbt Core to seamlessly compare local development to production datasets
 
@@ -58,7 +58,7 @@ When comparing the data, `data-diff` utilizes the resources of the underlying da
 - Fully relies on the underlying database engine for computation
 - Requires both datasets to be queryable with a single SQL query
 - Time complexity approximates JOIN operation and is largely independent of the number of differences in the dataset
-  
+
 ## `hashdiff`
 - Recommended for comparing datasets across different databases
 - Can also be helpful in diffing very large tables with few expected differences within the same database
@@ -99,14 +99,14 @@ Check out [documentation](https://docs.datafold.com/reference/open_source/cli) f
 # Supported databases
 
 
-| Database      | Status | Connection string |
-|---------------|-------------------------------------------------------------------------------------------------------------------------------------|--------|
-| PostgreSQL >=10 |  🟢   | `postgresql://<user>:<password>@<host>:5432/<database>`                                                           |
+| Database      | Status | Connection string                                                                                                                   |
+|---------------|-------------------------------------------------------------------------------------------------------------------------------------|-------------------------------------------------------------------------------------------------------------------------------------|
+| PostgreSQL >=10 |  🟢   | `postgresql://<user>:<password>@<host>:5432/<database>`                                                                             |
 | MySQL         |  🟢     | `mysql://<user>:<password>@<hostname>:5432/<database>`                                                                              |
 | Snowflake     |  🟢     | `"snowflake://<user>[:<password>]@<account>/<database>/<SCHEMA>?warehouse=<WAREHOUSE>&role=<role>[&authenticator=externalbrowser]"` |
 | BigQuery      |  🟢     | `bigquery://<project>/<dataset>`                                                                                                    |
 | Redshift      |  🟢     | `redshift://<username>:<password>@<hostname>:5439/<database>`                                                                       |
-| Oracle        |  🟡   | `oracle://<username>:<password>@<hostname>/database`                                                                                |
+| Oracle        |  🟡   | `oracle://<username>:<password>@<hostname>/servive_or_sid`                                                                          |
 | Presto        |  🟡   | `presto://<username>:<password>@<hostname>:8080/<database>`                                                                         |
 | Databricks    |  🟡   | `databricks://<http_path>:<access_token>@<server_hostname>/<catalog>/<schema>`                                                      |
 | Trino         |  🟡   | `trino://<username>:<password>@<hostname>:8080/<database>`                                                                          |
