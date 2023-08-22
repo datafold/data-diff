@@ -269,7 +269,7 @@ class DbtParser:
         return project_dict
 
     def get_connection_creds(self) -> Tuple[Dict[str, str], str]:
-        # circular reference with dbt-artifacts-parser
+        # circular reference
         # noticed on dbt-core 1.4
         from dbt.config.renderer import ProfileRenderer
 
