@@ -20,8 +20,8 @@ from data_diff.errors import (
     DataDiffDbtRunResultsVersionError,
     DataDiffDbtSelectNoMatchingModelsError,
     DataDiffDbtSelectUnexpectedError,
-    DataDiffDbtSelectVersionTooLowError,
     DataDiffDbtSnowflakeSetConnectionError,
+    DataDiffSimpleSelectNotFound,
 )
 
 from .utils import getLogger, get_from_dict_with_raise
@@ -167,9 +167,11 @@ class DbtParser:
                         "data-diff is using a dbt-core version < 1.5, update the environment's dbt-core version via pip install 'dbt-core>=1.5' in order to use `--select`"
                     )
             else:
-                raise DataDiffDbtSelectVersionTooLowError(
-                    f"The `--select` feature requires dbt >= 1.5, but your project's manifest.json is from dbt v{dbt_version}. Please follow these steps to use the `--select` feature: \n 1. Update your dbt-core version via pip install 'dbt-core>=1.5'. Details: https://docs.getdbt.com/docs/core/pip-install#change-dbt-core-versions \n 2. Execute any `dbt` command (`run`, `compile`, `build`) to create a new manifest.json."
+                # Naively get node named <dbt_selection>
+                logger.warning(
+                    f"Full `--select` support requires dbt >= 1.5. Naively searching for a single model with name: '{dbt_selection}'."
                 )
+                return self.get_simple_model_selection(dbt_selection)
         else:
             return self.get_run_results_models()
 
@@ -208,6 +210,25 @@ class DbtParser:
 
         logger.debug(str(results))
         raise DataDiffDbtSelectUnexpectedError("Encountered an unexpected error while finding `--select` models")
+
+    def get_simple_model_selection(self, dbt_selection: str):
+        model_nodes = dict(filter(lambda item: item[0].startswith("model."), self.dev_manifest_obj.nodes.items()))
+
+        model_unique_key_list = [k for k, v in model_nodes.items() if v.name == dbt_selection]
+
+        # name *should* always be unique, but just in case:
+        if len(model_unique_key_list) > 1:
+            logger.warning(
+                f"Found more than one model with name '{dbt_selection}' {model_unique_key_list}, using the first one."
+            )
+        elif len(model_unique_key_list) < 1:
+            raise DataDiffSimpleSelectNotFound(
+                f"Did not find a model node with name '{dbt_selection}' in the manifest."
+            )
+
+        model = model_nodes.get(model_unique_key_list[0])
+
+        return [model]
 
     def get_run_results_models(self):
         with open(self.project_dir / RUN_RESULTS_PATH) as run_results:
