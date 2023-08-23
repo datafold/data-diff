@@ -270,7 +270,7 @@ class DbtParser:
 
     def get_connection_creds(self) -> Tuple[Dict[str, str], str]:
         # circular reference
-        # noticed on dbt-core 1.4
+        # noticed on dbt-core 1.4.7
         from dbt.config.renderer import ProfileRenderer
 
         profiles_path = self.profiles_dir / PROFILES_FILE
