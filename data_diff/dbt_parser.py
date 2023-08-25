@@ -7,7 +7,7 @@ import yaml
 
 from packaging.version import parse as parse_version
 import pydantic
-from dbt_artifacts_parser.parser import parse_run_results, parse_manifest
+from dbt_artifacts_parser.parser import parse_run_results, parse_manifest # TODO: remove this import
 from dbt.config.renderer import ProfileRenderer
 
 from data_diff.errors import (
@@ -234,7 +234,7 @@ class DbtParser:
         with open(self.project_dir / RUN_RESULTS_PATH) as run_results:
             logger.info(f"Parsing file {RUN_RESULTS_PATH}")
             run_results_dict = json.load(run_results)
-            run_results_obj = parse_run_results(run_results=run_results_dict)
+            run_results_obj = parse_run_results(run_results=run_results_dict) #TODO: replace this
 
         dbt_version = parse_version(run_results_obj.metadata.dbt_version)
 
@@ -260,7 +260,7 @@ class DbtParser:
         with open(path) as manifest:
             logger.info(f"Parsing file {path}")
             manifest_dict = json.load(manifest)
-            manifest_obj = parse_manifest(manifest=manifest_dict)
+            manifest_obj = parse_manifest(manifest=manifest_dict) # TODO: replace this
         return manifest_obj
 
     def get_project_dict(self):
