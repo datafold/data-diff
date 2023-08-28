@@ -106,10 +106,10 @@ class DbtParser:
         self.project_dir = Path(project_dir_override or default_project_dir())
         self.connection = {}
         self.project_dict = self.get_project_dict()
-        self.dev_manifest_obj = self.get_manifest_obj(self.project_dir / MANIFEST_PATH)
+        self.dev_manifest_obj = self.get_manifest_obj(self.project_dir / MANIFEST_PATH) # TODO: this is where the manfiest object gets called for dev
         self.prod_manifest_obj = None
         if state:
-            self.prod_manifest_obj = self.get_manifest_obj(Path(state))
+            self.prod_manifest_obj = self.get_manifest_obj(Path(state)) # TODO: this is where the manfiest object gets called for prod based on a state parameter
 
         self.dbt_user_id = self.dev_manifest_obj.metadata.user_id
         self.dbt_version = self.dev_manifest_obj.metadata.dbt_version
@@ -230,13 +230,18 @@ class DbtParser:
 
         return [model]
 
-    def get_run_results_models(self):
+    def get_run_results_models(self) -> List[str]:
         with open(self.project_dir / RUN_RESULTS_PATH) as run_results:
             logger.info(f"Parsing file {RUN_RESULTS_PATH}")
             run_results_dict = json.load(run_results)
-            run_results_obj = parse_run_results(run_results=run_results_dict) #TODO: replace this
+            # print(f"run_results_dict: {run_results_dict}")
+            # run_results_obj = parse_run_results(run_results=run_results_dict) #TODO: replace this
+            # print(f"run_results_obj: {run_results_obj}")
 
-        dbt_version = parse_version(run_results_obj.metadata.dbt_version)
+
+        # dbt_version = parse_version(run_results_obj.metadata.dbt_version)
+        dbt_version = parse_version(run_results_dict['metadata']['dbt_version'])
+        print(f"dbt_version: {dbt_version}")
 
         if dbt_version < parse_version(LOWER_DBT_V):
             raise DataDiffDbtRunResultsVersionError(
@@ -247,8 +252,15 @@ class DbtParser:
                 f"{dbt_version} is a recent version of dbt and may not be fully tested with data-diff! \nPlease report any issues to https://github.com/datafold/data-diff/issues"
             )
 
-        success_models = [x.unique_id for x in run_results_obj.results if x.status.name == "success"]
+        # print(f"run_results_dict['results']: {run_results_dict['results'][2]}")
+        # print(f"run_results_dict['results']status: {run_results_dict['results'][2]['status']}")
+        # print(f"run_results_dict['results']unique_id: {run_results_dict['results'][2]['unique_id']}")
+
+        # success_models = [x.unique_id for x in run_results_obj.results if x.status.name == "success"]
+        success_models = [x['unique_id'] for x in run_results_dict['results'] if x['status'] == "success"]
+
         models = [self.dev_manifest_obj.nodes.get(x) for x in success_models]
+        # print(f"models: {models}") # TODO: understand how models are being returned here
         if not models:
             raise DataDiffDbtNoSuccessfulModelsInRunError(
                 "Expected > 0 successful models runs from the last dbt command."
