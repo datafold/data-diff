@@ -234,12 +234,7 @@ class DbtParser:
         with open(self.project_dir / RUN_RESULTS_PATH) as run_results:
             logger.info(f"Parsing file {RUN_RESULTS_PATH}")
             run_results_dict = json.load(run_results)
-            # print(f"run_results_dict: {run_results_dict}")
-            # run_results_obj = parse_run_results(run_results=run_results_dict) #TODO: replace this
-            # print(f"run_results_obj: {run_results_obj}")
 
-
-        # dbt_version = parse_version(run_results_obj.metadata.dbt_version)
         dbt_version = parse_version(run_results_dict['metadata']['dbt_version'])
         print(f"dbt_version: {dbt_version}")
 
@@ -252,15 +247,9 @@ class DbtParser:
                 f"{dbt_version} is a recent version of dbt and may not be fully tested with data-diff! \nPlease report any issues to https://github.com/datafold/data-diff/issues"
             )
 
-        # print(f"run_results_dict['results']: {run_results_dict['results'][2]}")
-        # print(f"run_results_dict['results']status: {run_results_dict['results'][2]['status']}")
-        # print(f"run_results_dict['results']unique_id: {run_results_dict['results'][2]['unique_id']}")
-
-        # success_models = [x.unique_id for x in run_results_obj.results if x.status.name == "success"]
         success_models = [x['unique_id'] for x in run_results_dict['results'] if x['status'] == "success"]
 
         models = [self.dev_manifest_obj.nodes.get(x) for x in success_models]
-        # print(f"models: {models}") # TODO: understand how models are being returned here
         if not models:
             raise DataDiffDbtNoSuccessfulModelsInRunError(
                 "Expected > 0 successful models runs from the last dbt command."
