@@ -236,7 +236,6 @@ class DbtParser:
             run_results_dict = json.load(run_results)
 
         dbt_version = parse_version(run_results_dict['metadata']['dbt_version'])
-        print(f"dbt_version: {dbt_version}")
 
         if dbt_version < parse_version(LOWER_DBT_V):
             raise DataDiffDbtRunResultsVersionError(
