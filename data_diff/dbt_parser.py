@@ -261,7 +261,7 @@ class DbtParser:
         with open(path) as manifest:
             logger.info(f"Parsing file {path}")
             manifest_dict = json.load(manifest)
-            manifest_obj = parse_manifest(manifest=manifest_dict) # TODO: replace this
+            manifest_obj = parse_manifest(manifest=manifest_dict)  # TODO: replace this
         return manifest_obj
 
     def get_project_dict(self):
