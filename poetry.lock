@@ -2172,13 +2172,13 @@ files = [
 
 [[package]]
 name = "tabulate"
-version = "0.9.0"
+version = "0.8.10"
 description = "Pretty-print tabular data"
 optional = false
-python-versions = ">=3.7"
+python-versions = ">=2.7, !=3.0.*, !=3.1.*, !=3.2.*, !=3.3.*, !=3.4.*"
 files = [
-    {file = "tabulate-0.9.0-py3-none-any.whl", hash = "sha256:024ca478df22e9340661486f85298cff5f6dcdba14f3813e8830015b9ed1948f"},
-    {file = "tabulate-0.9.0.tar.gz", hash = "sha256:0095b12bf5966de529c0feb1fa08671671b3368eec77d7ef7ab114be2c068b3c"},
+    {file = "tabulate-0.8.10-py3-none-any.whl", hash = "sha256:0ba055423dbaa164b9e456abe7920c5e8ed33fcc16f6d1b2f2d152c8e1e8b4fc"},
+    {file = "tabulate-0.8.10.tar.gz", hash = "sha256:6c57f3f3dd7ac2782770155f3adb2db0b1a269637e42f27599925e64b114f519"},
 ]
 
 [package.extras]
@@ -2415,4 +2415,4 @@ vertica = ["vertica-python"]
 [metadata]
 lock-version = "2.0"
 python-versions = "^3.7.2"
-content-hash = "8e437f479e7e82cdf74aba56e0d4dbc0a69d03de11cd38bef98e3bc9b6346020"
+content-hash = "ac3d6ccef48bd4db44ce182a7f3c53b57f0a80dbb5134e4e2be6d1c8b04b0044"
