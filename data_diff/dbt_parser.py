@@ -7,7 +7,7 @@ import yaml
 
 from packaging.version import parse as parse_version
 import pydantic
-from dbt_artifacts_parser.parser import parse_run_results, parse_manifest  # TODO: remove this import
+from dbt_artifacts_parser.parser import parse_manifest  # TODO: remove this import
 from dbt.config.renderer import ProfileRenderer
 
 from data_diff.errors import (
