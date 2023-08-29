@@ -6,7 +6,7 @@ from typing import List, Dict, Tuple, Set, Optional
 import yaml
 
 from packaging.version import parse as parse_version
-import pydantic
+from pydantic import BaseModel, Field
 from dbt_artifacts_parser.parser import parse_manifest  # TODO: remove this import
 from dbt.config.renderer import ProfileRenderer
 
@@ -81,17 +81,29 @@ def legacy_profiles_dir() -> Path:
     return Path.home() / ".dbt"
 
 
-class TDatadiffModelConfig(pydantic.BaseModel):
+class TDatadiffModelConfig(BaseModel):
     where_filter: Optional[str] = None
     include_columns: List[str] = []
     exclude_columns: List[str] = []
 
 
-class TDatadiffConfig(pydantic.BaseModel):
+class TDatadiffConfig(BaseModel):
     prod_database: Optional[str] = None
     prod_schema: Optional[str] = None
     prod_custom_schema: Optional[str] = None
     datasource_id: Optional[int] = None
+
+
+class RunResultsJsonConfig(BaseModel):
+    class Metadata(BaseModel):
+        dbt_version: str = Field(..., regex=r'^\d+\.\d+\.\d+([a-zA-Z0-9]+)?$')
+
+    class Results(BaseModel):
+        status: str
+        unique_id: str
+    
+    metadata: Metadata
+    results: List[Results]
 
 
 class DbtParser:
@@ -230,12 +242,16 @@ class DbtParser:
 
         return [model]
 
+    # TODO: add pydantic to valdidate a subset of the run_results.json schema, example; /Users/sung/Desktop/data-diff/data_diff_demo/pydantic_example.py
+    # TODO: raise an exception that `run_results.json` is malformed based on the pydantic validation
     def get_run_results_models(self) -> List[str]:
         with open(self.project_dir / RUN_RESULTS_PATH) as run_results:
             logger.info(f"Parsing file {RUN_RESULTS_PATH}")
             run_results_dict = json.load(run_results)
+        
+        run_results_validated = RunResultsJsonConfig.parse_obj(run_results_dict)
 
-        dbt_version = parse_version(run_results_dict['metadata']['dbt_version'])
+        dbt_version = parse_version(run_results_validated.metadata.dbt_version)
 
         if dbt_version < parse_version(LOWER_DBT_V):
             raise DataDiffDbtRunResultsVersionError(
@@ -246,9 +262,10 @@ class DbtParser:
                 f"{dbt_version} is a recent version of dbt and may not be fully tested with data-diff! \nPlease report any issues to https://github.com/datafold/data-diff/issues"
             )
 
-        success_models = [x['unique_id'] for x in run_results_dict['results'] if x['status'] == "success"]
+        success_models = [x.unique_id for x in run_results_validated.results if x.status == "success"]
 
         models = [self.dev_manifest_obj.nodes.get(x) for x in success_models]
+        print(type(models[0])) # TODO this prints a class object type, I'll need to understand what other attributes are accessed before assuming getting a list of strings is enough
         if not models:
             raise DataDiffDbtNoSuccessfulModelsInRunError(
                 "Expected > 0 successful models runs from the last dbt command."
@@ -447,9 +464,9 @@ class DbtParser:
         return []
 
     def get_unique_columns(self) -> Dict[str, Set[str]]:
-        manifest = self.dev_manifest_obj
+        manifest = self.dev_manifest_obj #TODO: need to refactor this for dictionary calls
         cols_by_uid = defaultdict(set)
-        for node in manifest.nodes.values():
+        for node in manifest.nodes.values():#TODO: example: manifest["nodes"].values()
             try:
                 if not (node.resource_type.value == "test" and hasattr(node, "test_metadata")):
                     continue
