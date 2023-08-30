@@ -3,12 +3,11 @@ from collections import defaultdict
 import json
 from pathlib import Path
 from enum import Enum
-from typing import List, Dict, Tuple, Set, Optional
+from typing import List, Dict, Tuple, Set, Optional, Any
 import yaml
 
 from packaging.version import parse as parse_version
 from pydantic import BaseModel, Field
-from dbt_artifacts_parser.parser import parse_manifest  # TODO: remove this import
 from dbt.config.renderer import ProfileRenderer
 
 from data_diff.errors import (
@@ -95,6 +94,36 @@ class TDatadiffConfig(BaseModel):
     datasource_id: Optional[int] = None
 
 
+class ManifestJsonConfig(BaseModel):
+
+    class Metadata(BaseModel):
+        dbt_version: str = Field(..., regex=r'^\d+\.\d+\.\d+([a-zA-Z0-9]+)?$')
+        project_id: str
+        user_id: str
+
+    class Nodes(BaseModel):
+
+        class Config(BaseModel):
+            database: Optional[str]
+            schema_: Optional[str] = Field(..., alias='schema')
+            tags: Optional[List[str]]
+
+        class Column(BaseModel):
+            meta: Dict[str, Any]
+            tags: Optional[List[str]]
+
+        unique_id: str
+        resource_type: str
+        alias: Optional[str]
+        database: Optional[str]
+        schema_: Optional[str] = Field(..., alias='schema')
+        columns: Optional[Dict[str, Column]]
+        meta: Optional[Dict[str, Any]]
+        config: Config
+        tags: Optional[List[str]]
+    
+    metadata: Metadata
+    nodes: Dict[str, Nodes]
 
 
 class RunResultsJsonConfig(BaseModel):
@@ -130,10 +159,10 @@ class DbtParser:
         self.project_dir = Path(project_dir_override or default_project_dir())
         self.connection = {}
         self.project_dict = self.get_project_dict()
-        self.dev_manifest_obj = self.get_manifest_obj(self.project_dir / MANIFEST_PATH) # TODO: this is where the manfiest object gets called for dev
+        self.dev_manifest_obj = self.get_manifest_obj(self.project_dir / MANIFEST_PATH)
         self.prod_manifest_obj = None
         if state:
-            self.prod_manifest_obj = self.get_manifest_obj(Path(state)) # TODO: this is where the manfiest object gets called for prod based on a state parameter
+            self.prod_manifest_obj = self.get_manifest_obj(Path(state)) 
 
         self.dbt_user_id = self.dev_manifest_obj.metadata.user_id
         self.dbt_version = self.dev_manifest_obj.metadata.dbt_version
@@ -237,7 +266,6 @@ class DbtParser:
 
     def get_simple_model_selection(self, dbt_selection: str):
         model_nodes = dict(filter(lambda item: item[0].startswith("model."), self.dev_manifest_obj.nodes.items()))
-
         model_unique_key_list = [k for k, v in model_nodes.items() if v.name == dbt_selection]
 
         # name *should* always be unique, but just in case:
@@ -254,8 +282,7 @@ class DbtParser:
 
         return [model]
 
-    # TODO: add pydantic to valdidate a subset of the run_results.json schema, example; /Users/sung/Desktop/data-diff/data_diff_demo/pydantic_example.py
-    # TODO: raise an exception that `run_results.json` is malformed based on the pydantic validation
+
     def get_run_results_models(self) -> List[str]:
         with open(self.project_dir / RUN_RESULTS_PATH) as run_results:
             logger.info(f"Parsing file {RUN_RESULTS_PATH}")
@@ -277,7 +304,6 @@ class DbtParser:
         success_models = [x.unique_id for x in run_results_validated.results if x.status == x.Status.success]
 
         models = [self.dev_manifest_obj.nodes.get(x) for x in success_models]
-        print(type(models[0])) # TODO this prints a class object type, I'll need to understand what other attributes are accessed before assuming getting a list of strings is enough
         if not models:
             raise DataDiffDbtNoSuccessfulModelsInRunError(
                 "Expected > 0 successful models runs from the last dbt command."
@@ -289,7 +315,7 @@ class DbtParser:
         with open(path) as manifest:
             logger.info(f"Parsing file {path}")
             manifest_dict = json.load(manifest)
-            manifest_obj = parse_manifest(manifest=manifest_dict)  # TODO: replace this
+            manifest_obj = ManifestJsonConfig.parse_obj(manifest_dict)  
         return manifest_obj
 
     def get_project_dict(self):
@@ -462,7 +488,6 @@ class DbtParser:
             if from_tags:
                 logger.debug("Found PKs via Tags: " + str(from_tags))
                 return from_tags
-
             if node.unique_id in unique_columns:
                 from_uniq = unique_columns.get(node.unique_id)
                 if from_uniq is not None:
@@ -476,11 +501,11 @@ class DbtParser:
         return []
 
     def get_unique_columns(self) -> Dict[str, Set[str]]:
-        manifest = self.dev_manifest_obj #TODO: need to refactor this for dictionary calls
+        manifest = self.dev_manifest_obj
         cols_by_uid = defaultdict(set)
-        for node in manifest.nodes.values():#TODO: example: manifest["nodes"].values()
+        for node in manifest.nodes.values():
             try:
-                if not (node.resource_type.value == "test" and hasattr(node, "test_metadata")):
+                if not (node.resource_type == "test" and hasattr(node, "test_metadata")):
                     continue
 
                 if not node.depends_on or not node.depends_on.nodes:
@@ -494,7 +519,7 @@ class DbtParser:
                     continue
 
                 model_node = manifest.nodes[uid]
-
+                print(f"node.test_metadata: {node.test_metadata}")
                 if node.test_metadata.name == "unique":
                     column_name: str = node.test_metadata.kwargs["column_name"]
                     for col in self._parse_concat_pk_definition(column_name):
