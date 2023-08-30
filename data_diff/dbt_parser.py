@@ -110,6 +110,14 @@ class ManifestJsonConfig(BaseModel):
             meta: Dict[str, Any]
             tags: Optional[List[str]]
 
+        class TestMetadata(BaseModel):
+            name: str
+            kwargs: Dict[str, Any]
+
+        class DependsOn(BaseModel):
+            macros: Optional[List[str]] = []
+            nodes: Optional[List[str]] = []
+
         unique_id: str
         resource_type: str
         alias: Optional[str]
@@ -119,6 +127,8 @@ class ManifestJsonConfig(BaseModel):
         meta: Optional[Dict[str, Any]]
         config: Config
         tags: Optional[List[str]]
+        test_metadata: Optional[TestMetadata]
+        depends_on: Optional[DependsOn]
 
     metadata: Metadata
     nodes: Dict[str, Nodes]
@@ -517,7 +527,6 @@ class DbtParser:
                     continue
 
                 model_node = manifest.nodes[uid]
-                print(f"node.test_metadata: {node.test_metadata}")
                 if node.test_metadata.name == "unique":
                     column_name: str = node.test_metadata.kwargs["column_name"]
                     for col in self._parse_concat_pk_definition(column_name):
