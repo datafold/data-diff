@@ -119,8 +119,11 @@ class ManifestJsonConfig(BaseModel):
         meta: Optional[Dict[str, Any]]
         config: Config
         tags: Optional[List[str]]
+
     metadata: Metadata
     nodes: Dict[str, Nodes]
+
+
 
 
 class RunResultsJsonConfig(BaseModel):
@@ -138,7 +141,8 @@ class RunResultsJsonConfig(BaseModel):
             runtime_error = "runtime error"
 
         status: Status
-        unique_id: str = Field('...')
+        unique_id: str = Field("...")
+
     metadata: Metadata
     results: List[Results]
 
