@@ -94,6 +94,8 @@ class TDatadiffConfig(BaseModel):
     datasource_id: Optional[int] = None
 
 
+# TODO: allow extra fields based on the nested dicts? 
+# example: https://github.com/yu-iskw/dbt-artifacts-parser/blob/f7f71ab4d1b5919f6f1bd0b8d22eda149d8d351d/dbt_artifacts_parser/parsers/manifest/manifest_v1.py#L73C1-L76C28
 class ManifestJsonConfig(BaseModel):
     class Metadata(BaseModel):
         dbt_version: str = Field(..., regex=r"^\d+\.\d+\.\d+([a-zA-Z0-9]+)?$")
