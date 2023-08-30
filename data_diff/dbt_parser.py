@@ -121,6 +121,8 @@ class ManifestJsonConfig(BaseModel):
         tags: Optional[List[str]]
     metadata: Metadata
     nodes: Dict[str, Nodes]
+
+
 class RunResultsJsonConfig(BaseModel):
     class Metadata(BaseModel):
         dbt_version: str = Field(..., regex=r"^\d+\.\d+\.\d+([a-zA-Z0-9]+)?$")
