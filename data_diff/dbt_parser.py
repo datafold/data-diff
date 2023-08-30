@@ -2,6 +2,7 @@ from argparse import Namespace
 from collections import defaultdict
 import json
 from pathlib import Path
+from enum import Enum
 from typing import List, Dict, Tuple, Set, Optional
 import yaml
 
@@ -94,13 +95,24 @@ class TDatadiffConfig(BaseModel):
     datasource_id: Optional[int] = None
 
 
+
+
 class RunResultsJsonConfig(BaseModel):
     class Metadata(BaseModel):
         dbt_version: str = Field(..., regex=r'^\d+\.\d+\.\d+([a-zA-Z0-9]+)?$')
 
     class Results(BaseModel):
-        status: str
-        unique_id: str
+        class Status(Enum):
+            success = 'success'
+            error = 'error'
+            skipped = 'skipped'
+            pass_ = 'pass'
+            fail = 'fail'
+            warn = 'warn'
+            runtime_error = 'runtime error'
+        
+        status: Status
+        unique_id: str = Field('...')
     
     metadata: Metadata
     results: List[Results]
@@ -262,7 +274,7 @@ class DbtParser:
                 f"{dbt_version} is a recent version of dbt and may not be fully tested with data-diff! \nPlease report any issues to https://github.com/datafold/data-diff/issues"
             )
 
-        success_models = [x.unique_id for x in run_results_validated.results if x.status == "success"]
+        success_models = [x.unique_id for x in run_results_validated.results if x.status == x.Status.success]
 
         models = [self.dev_manifest_obj.nodes.get(x) for x in success_models]
         print(type(models[0])) # TODO this prints a class object type, I'll need to understand what other attributes are accessed before assuming getting a list of strings is enough
