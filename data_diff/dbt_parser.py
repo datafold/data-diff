@@ -96,14 +96,14 @@ class TDatadiffConfig(BaseModel):
 
 class ManifestJsonConfig(BaseModel):
     class Metadata(BaseModel):
-        dbt_version: str = Field(..., regex=r'^\d+\.\d+\.\d+([a-zA-Z0-9]+)?$')
+        dbt_version: str = Field(..., regex=r"^\d+\.\d+\.\d+([a-zA-Z0-9]+)?$")
         project_id: str
         user_id: str
 
     class Nodes(BaseModel):
         class Config(BaseModel):
             database: Optional[str]
-            schema_: Optional[str] = Field(..., alias='schema')
+            schema_: Optional[str] = Field(..., alias="schema")
             tags: Optional[List[str]]
 
         class Column(BaseModel):
@@ -114,7 +114,7 @@ class ManifestJsonConfig(BaseModel):
         resource_type: str
         alias: Optional[str]
         database: Optional[str]
-        schema_: Optional[str] = Field(..., alias='schema')
+        schema_: Optional[str] = Field(..., alias="schema")
         columns: Optional[Dict[str, Column]]
         meta: Optional[Dict[str, Any]]
         config: Config
@@ -123,18 +123,18 @@ class ManifestJsonConfig(BaseModel):
     nodes: Dict[str, Nodes]
 class RunResultsJsonConfig(BaseModel):
     class Metadata(BaseModel):
-        dbt_version: str = Field(..., regex=r'^\d+\.\d+\.\d+([a-zA-Z0-9]+)?$')
+        dbt_version: str = Field(..., regex=r"^\d+\.\d+\.\d+([a-zA-Z0-9]+)?$")
 
     class Results(BaseModel):
         class Status(Enum):
-            success = 'success'
-            error = 'error'
-            skipped = 'skipped'
-            pass_ = 'pass'
-            fail = 'fail'
-            warn = 'warn'
-            runtime_error = 'runtime error'
-        
+            success = "success"
+            error = "error"
+            skipped = "skipped"
+            pass_ = "pass"
+            fail = "fail"
+            warn = "warn"
+            runtime_error = "runtime error"
+
         status: Status
         unique_id: str = Field('...')
     metadata: Metadata
