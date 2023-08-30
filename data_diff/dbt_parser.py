@@ -95,14 +95,12 @@ class TDatadiffConfig(BaseModel):
 
 
 class ManifestJsonConfig(BaseModel):
-
     class Metadata(BaseModel):
         dbt_version: str = Field(..., regex=r'^\d+\.\d+\.\d+([a-zA-Z0-9]+)?$')
         project_id: str
         user_id: str
 
     class Nodes(BaseModel):
-
         class Config(BaseModel):
             database: Optional[str]
             schema_: Optional[str] = Field(..., alias='schema')
@@ -121,11 +119,8 @@ class ManifestJsonConfig(BaseModel):
         meta: Optional[Dict[str, Any]]
         config: Config
         tags: Optional[List[str]]
-    
     metadata: Metadata
     nodes: Dict[str, Nodes]
-
-
 class RunResultsJsonConfig(BaseModel):
     class Metadata(BaseModel):
         dbt_version: str = Field(..., regex=r'^\d+\.\d+\.\d+([a-zA-Z0-9]+)?$')
@@ -142,7 +137,6 @@ class RunResultsJsonConfig(BaseModel):
         
         status: Status
         unique_id: str = Field('...')
-    
     metadata: Metadata
     results: List[Results]
 
@@ -162,7 +156,7 @@ class DbtParser:
         self.dev_manifest_obj = self.get_manifest_obj(self.project_dir / MANIFEST_PATH)
         self.prod_manifest_obj = None
         if state:
-            self.prod_manifest_obj = self.get_manifest_obj(Path(state)) 
+            self.prod_manifest_obj = self.get_manifest_obj(Path(state))
 
         self.dbt_user_id = self.dev_manifest_obj.metadata.user_id
         self.dbt_version = self.dev_manifest_obj.metadata.dbt_version
@@ -282,12 +276,10 @@ class DbtParser:
 
         return [model]
 
-
     def get_run_results_models(self) -> List[str]:
         with open(self.project_dir / RUN_RESULTS_PATH) as run_results:
             logger.info(f"Parsing file {RUN_RESULTS_PATH}")
             run_results_dict = json.load(run_results)
-        
         run_results_validated = RunResultsJsonConfig.parse_obj(run_results_dict)
 
         dbt_version = parse_version(run_results_validated.metadata.dbt_version)
@@ -315,7 +307,7 @@ class DbtParser:
         with open(path) as manifest:
             logger.info(f"Parsing file {path}")
             manifest_dict = json.load(manifest)
-            manifest_obj = ManifestJsonConfig.parse_obj(manifest_dict)  
+            manifest_obj = ManifestJsonConfig.parse_obj(manifest_dict)
         return manifest_obj
 
     def get_project_dict(self):
