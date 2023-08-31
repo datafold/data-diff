@@ -294,7 +294,7 @@ class DbtParser:
 
         return [model]
 
-    def get_run_results_models(self) -> List[str]:
+    def get_run_results_models(self) -> List[ManifestJsonConfig.Nodes]:
         with open(self.project_dir / RUN_RESULTS_PATH) as run_results:
             logger.info(f"Parsing file {RUN_RESULTS_PATH}")
             run_results_dict = json.load(run_results)
@@ -321,7 +321,7 @@ class DbtParser:
 
         return models
 
-    def get_manifest_obj(self, path: Path):
+    def get_manifest_obj(self, path: Path) -> ManifestJsonConfig:
         with open(path) as manifest:
             logger.info(f"Parsing file {path}")
             manifest_dict = json.load(manifest)
