@@ -19,9 +19,11 @@ from data_diff.dbt import (
 from data_diff.dbt_parser import (
     RUN_RESULTS_PATH,
     PROJECT_FILE,
-    TDatadiffConfig,
 )
 
+from data_diff.dbt_config_validators import (
+    TDatadiffConfig,
+)
 
 class TestDbtParser(unittest.TestCase):
     def test_get_datadiff_config(self):
@@ -94,7 +96,7 @@ class TestDbtParser(unittest.TestCase):
         mock_self.get_run_results_models.assert_called()
         self.assertEqual(models, mock_return_value)
 
-    @patch("data_diff.dbt_parser.parse_run_results")
+    # @patch("data_diff.dbt_parser.parse_run_results")
     @patch("builtins.open", new_callable=mock_open, read_data="{}")
     def test_get_run_results_models(self, mock_open, mock_artifact_parser):
         mock_model = {"success_unique_id": "expected_value"}
@@ -118,7 +120,7 @@ class TestDbtParser(unittest.TestCase):
         mock_open.assert_any_call(Path(RUN_RESULTS_PATH))
         mock_artifact_parser.assert_called_once_with(run_results={})
 
-    @patch("data_diff.dbt_parser.parse_run_results")
+    # @patch("data_diff.dbt_parser.parse_run_results")
     @patch("builtins.open", new_callable=mock_open, read_data="{}")
     def test_get_run_results_models_bad_lower_dbt_version(self, mock_open, mock_artifact_parser):
         mock_self = Mock()
@@ -135,7 +137,7 @@ class TestDbtParser(unittest.TestCase):
         mock_self.parse_manifest.assert_not_called()
         self.assertIn("version to be", ex.exception.args[0])
 
-    @patch("data_diff.dbt_parser.parse_run_results")
+    # @patch("data_diff.dbt_parser.parse_run_results")
     @patch("builtins.open", new_callable=mock_open, read_data="{}")
     def test_get_run_results_models_no_success(self, mock_open, mock_artifact_parser):
         mock_self = Mock()
