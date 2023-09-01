@@ -51,6 +51,7 @@ class ManifestJsonConfig(BaseModel):
         tags: Optional[List[str]]
         test_metadata: Optional[TestMetadata]
         depends_on: Optional[DependsOn]
+        name: str
 
     metadata: Metadata
     nodes: Dict[str, Nodes]
