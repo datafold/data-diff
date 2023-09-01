@@ -26,32 +26,32 @@ class ManifestJsonConfig(BaseModel):
         class Config(BaseModel):
             database: Optional[str]
             schema_: Optional[str] = Field(..., alias="schema")
-            tags: Optional[List[str]]
+            tags: List[str]
 
         class Column(BaseModel):
             meta: Dict[str, Any]
-            tags: Optional[List[str]]
+            tags: List[str]
 
         class TestMetadata(BaseModel):
             name: str
             kwargs: Dict[str, Any]
 
         class DependsOn(BaseModel):
-            macros: Optional[List[str]] = []
-            nodes: Optional[List[str]] = []
+            macros: List[str] = []
+            nodes: List[str] = []
 
         unique_id: str
         resource_type: str
-        alias: Optional[str]
-        database: Optional[str]
-        schema_: Optional[str] = Field(..., alias="schema")
-        columns: Optional[Dict[str, Column]]
-        meta: Optional[Dict[str, Any]]
-        config: Config
-        tags: Optional[List[str]]
-        test_metadata: Optional[TestMetadata]
-        depends_on: Optional[DependsOn]
         name: str
+        alias: str
+        database: str
+        schema_: str = Field(..., alias="schema")
+        columns: Optional[Dict[str, Column]]
+        meta: Dict[str, Any]
+        config: Config
+        tags: List[str]
+        test_metadata: Optional[TestMetadata]
+        depends_on: DependsOn
 
     metadata: Metadata
     nodes: Dict[str, Nodes]
