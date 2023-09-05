@@ -35,13 +35,15 @@ TEST_CLICKHOUSE_CONN_STRING: str = os.environ.get("DATADIFF_CLICKHOUSE_URI")
 # vertica uri provided for docker - "vertica://vertica:Password1@localhost:5433/vertica"
 TEST_VERTICA_CONN_STRING: str = os.environ.get("DATADIFF_VERTICA_URI")
 TEST_DUCKDB_CONN_STRING: str = "duckdb://main:@:memory:"
+TEST_MSSQL_CONN_STRING: str = os.environ.get("DATADIFF_MSSQL_URI")
 
 
 DEFAULT_N_SAMPLES = 50
 N_SAMPLES = int(os.environ.get("N_SAMPLES", DEFAULT_N_SAMPLES))
 BENCHMARK = os.environ.get("BENCHMARK", False)
 N_THREADS = int(os.environ.get("N_THREADS", 1))
-TEST_ACROSS_ALL_DBS = os.environ.get("TEST_ACROSS_ALL_DBS", True)  # Should we run the full db<->db test suite?
+# TODO temp dev
+TEST_ACROSS_ALL_DBS = os.environ.get("TEST_ACROSS_ALL_DBS", "full")  # Should we run the full db<->db test suite?
 
 
 def get_git_revision_short_hash() -> str:
@@ -80,6 +82,7 @@ CONN_STRINGS = {
     db.Clickhouse: TEST_CLICKHOUSE_CONN_STRING,
     db.Vertica: TEST_VERTICA_CONN_STRING,
     db.DuckDB: TEST_DUCKDB_CONN_STRING,
+    db.MsSql: TEST_MSSQL_CONN_STRING,
 }
 
 _database_instances = {}

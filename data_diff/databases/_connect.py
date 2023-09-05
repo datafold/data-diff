@@ -14,6 +14,7 @@ from .trino import Trino
 from .clickhouse import Clickhouse
 from .vertica import Vertica
 from .duckdb import DuckDB
+from .mssql import MsSql
 
 
 DATABASE_BY_SCHEME = {
@@ -29,6 +30,7 @@ DATABASE_BY_SCHEME = {
     "trino": Trino,
     "clickhouse": Clickhouse,
     "vertica": Vertica,
+    "mssql": MsSql
 }
 
 
