@@ -80,7 +80,6 @@ def legacy_profiles_dir() -> Path:
     return Path.home() / ".dbt"
 
 
-
 class DbtParser:
     def __init__(
         self,
