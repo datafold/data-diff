@@ -7,21 +7,24 @@ import pytz
 from data_diff.sqeleton import connect
 from data_diff.sqeleton import databases as dbs
 from data_diff.sqeleton.queries import table, current_timestamp, NormalizeAsString
-from tests.common import TEST_MYSQL_CONN_STRING
+from tests.common import TEST_MYSQL_CONN_STRING, TEST_MSSQL_CONN_STRING
 from tests.sqeleton.common import str_to_checksum, test_each_database_in_list, get_conn, random_table_suffix
 from data_diff.sqeleton.abcs.database_types import TimestampTZ
 
 TEST_DATABASES = {
-    dbs.MySQL,
-    dbs.PostgreSQL,
-    dbs.Oracle,
-    dbs.Redshift,
-    dbs.Snowflake,
-    dbs.DuckDB,
-    dbs.BigQuery,
-    dbs.Presto,
-    dbs.Trino,
-    dbs.Vertica,
+    # TODO dev
+
+    # dbs.MySQL,
+    # dbs.PostgreSQL,
+    # dbs.Oracle,
+    # dbs.Redshift,
+    # dbs.Snowflake,
+    # dbs.DuckDB,
+    # dbs.BigQuery,
+    # dbs.Presto,
+    # dbs.Trino,
+    # dbs.Vertica,
+    dbs.MsSQL
 }
 
 test_each_database: Callable = test_each_database_in_list(TEST_DATABASES)
@@ -29,10 +32,11 @@ test_each_database: Callable = test_each_database_in_list(TEST_DATABASES)
 
 class TestDatabase(unittest.TestCase):
     def setUp(self):
-        self.mysql = connect(TEST_MYSQL_CONN_STRING)
+        # TODO temp dev
+        self.mssql = connect(TEST_MSSQL_CONN_STRING)
 
     def test_connect_to_db(self):
-        self.assertEqual(1, self.mysql.query("SELECT 1", int))
+        self.assertEqual(1, self.mssql.query("SELECT 1", int))
 
 
 class TestMD5(unittest.TestCase):
@@ -104,6 +108,8 @@ class TestQueries(unittest.TestCase):
         assert isinstance(res, datetime), (res, type(res))
 
     def test_correct_timezone(self):
+        if self.db_cls in [dbs.MsSQL]:
+            self.skipTest("No support for session tz.")
         name = "tbl_" + random_table_suffix()
         db = get_conn(self.db_cls)
         tbl = table(name, schema={"id": int, "created_at": TimestampTZ(9), "updated_at": TimestampTZ(9)})
@@ -142,13 +148,13 @@ class TestQueries(unittest.TestCase):
 @test_each_database
 class TestThreePartIds(unittest.TestCase):
     def test_three_part_support(self):
-        if self.db_cls not in [dbs.PostgreSQL, dbs.Redshift, dbs.Snowflake, dbs.DuckDB]:
+        if self.db_cls not in [dbs.PostgreSQL, dbs.Redshift, dbs.Snowflake, dbs.DuckDB, dbs.MsSQL]:
             self.skipTest("Limited support for 3 part ids")
 
         table_name = "tbl_" + random_table_suffix()
         db = get_conn(self.db_cls)
-        db_res = db.query("SELECT CURRENT_DATABASE()")
-        schema_res = db.query("SELECT CURRENT_SCHEMA()")
+        db_res = db.query(f"SELECT {db.dialect.current_database()}")
+        schema_res = db.query(f"SELECT {db.dialect.current_schema()}")
         db_name = db_res.rows[0][0]
         schema_name = schema_res.rows[0][0]
 

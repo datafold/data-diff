@@ -45,6 +45,7 @@ preql = {version="^0.2.19", optional=true}
 vertica-python = {version="*", optional=true}
 urllib3 = "<2"
 oracledb = {version = "*", extras = ["oracle"]}
+pyodbc = "^4.0.39"
 
 [tool.poetry.dev-dependencies]
 parameterized = "*"

@@ -351,6 +351,16 @@ DATABASE_TYPES = {
             "boolean",
         ],
     },
+    db.MsSql: {
+        "int": ["INT", "BIGINT"],
+        # TODO precision is being truncated to 4 somewhere
+        "datetime": ["datetime2(6)"],
+        "float": ["DECIMAL(6, 2)", "FLOAT", "REAL"],
+        "uuid": ["VARCHAR(100)", "CHAR(100)", "UNIQUEIDENTIFIER"],
+        "boolean": [
+            "BIT",
+        ],
+    },
 }
 
 
@@ -615,6 +625,9 @@ def _insert_to_table(conn, table_path, values, coltype):
             )
             for i, sample in values
         ]
+    # mssql represents with int
+    elif isinstance(conn, db.MsSql) and coltype in ("BIT"):
+        values = [(i, int(sample)) for i, sample in values]
 
     insert_rows_in_batches(conn, tbl, values, columns=["id", "col"])
     conn.query(commit)
