@@ -30,6 +30,7 @@ from tests.common import (
     TEST_DUCKDB_CONN_STRING,
     N_THREADS,
     TEST_ACROSS_ALL_DBS,
+    TEST_MSSQL_CONN_STRING
 )
 
 
@@ -65,6 +66,7 @@ CONN_STRINGS = {
     db.Clickhouse: TEST_CLICKHOUSE_CONN_STRING,
     db.Vertica: TEST_VERTICA_CONN_STRING,
     db.DuckDB: TEST_DUCKDB_CONN_STRING,
+    db.MsSQL: TEST_MSSQL_CONN_STRING,
 }
 
 _database_instances = {}

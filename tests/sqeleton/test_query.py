@@ -40,6 +40,12 @@ class MockDialect(AbstractDialect):
 
     def current_timestamp(self) -> str:
         return "now()"
+    
+    def current_database(self) -> str:
+        return "current_database()"
+    
+    def current_schema(self) -> str:
+        return "current_schema()"
 
     def offset_limit(self, offset: Optional[int] = None, limit: Optional[int] = None):
         x = offset and f"OFFSET {offset}", limit and f"LIMIT {limit}"

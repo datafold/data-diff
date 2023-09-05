@@ -214,6 +214,14 @@ class AbstractDialect(ABC):
     @abstractmethod
     def current_timestamp(self) -> str:
         "Provide SQL for returning the current timestamp, aka now"
+    
+    @abstractmethod
+    def current_database(self) -> str:
+        "Provide SQL for returning the current default database."
+
+    @abstractmethod
+    def current_schema(self) -> str:
+        "Provide SQL for returning the current default schema."
 
     @abstractmethod
     def offset_limit(self, offset: Optional[int] = None, limit: Optional[int] = None):
