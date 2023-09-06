@@ -412,7 +412,12 @@ def _data_diff(
     if init_oracle_client_lib_dir:
         logging.debug(f"Initializing Oracle client library from {init_oracle_client_lib_dir}")
         import oracledb
-        oracledb.init_oracle_client(lib_dir=init_oracle_client_lib_dir)
+        # On Linux and related platforms, enable Thick mode by calling init_oracle_client() without passing a lib_dir parameter.
+        # See https://python-oracledb.readthedocs.io/en/latest/user_guide/initialization.html#enabling-python-oracledb-thick-mode-on-linux-and-related-platforms
+        if sys.platform.startswith("linux"):
+            oracledb.init_oracle_client()
+        else:
+            oracledb.init_oracle_client(lib_dir=init_oracle_client_lib_dir)
 
     db1 = connect(database1, threads1 or threads)
     if database1 == database2:
