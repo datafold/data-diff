@@ -19,7 +19,7 @@ from data_diff.dbt import (
 from data_diff.dbt_parser import (
     RUN_RESULTS_PATH,
     PROJECT_FILE,
-    TDatadiffConfig
+    TDatadiffConfig,
 )
 
 

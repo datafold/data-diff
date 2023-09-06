@@ -3,8 +3,6 @@ import unittest
 import json
 
 from data_diff.dbt_config_validators import (
-    TDatadiffModelConfig,
-    TDatadiffConfig,
     ManifestJsonConfig,
     RunResultsJsonConfig,
 )
