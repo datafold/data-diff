@@ -250,6 +250,12 @@ click.Context.formatter_class = MyHelpFormatter
     help="Which directory to look in for the dbt_project.yml file. Default is the current working directory and its parents.",
 )
 @click.option(
+    "--init-oracle-client-lib-dir",
+    default=None,
+    metavar="PATH",
+    help="Path to the Oracle client library. Only relevant for Oracle databases.",
+)
+@click.option(
     "--select",
     "-s",
     default=None,
@@ -363,6 +369,7 @@ def _data_diff(
     cloud,
     dbt_profiles_dir,
     dbt_project_dir,
+    init_oracle_client_lib_dir,
     select,
     state,
     threads1=None,
@@ -401,6 +408,11 @@ def _data_diff(
             f"Error: Databases not specified. Got {database1} and {database2}. Use --help for more information."
         )
         return
+
+    if init_oracle_client_lib_dir:
+        logging.debug(f"Initializing Oracle client library from {init_oracle_client_lib_dir}")
+        import oracledb
+        oracledb.init_oracle_client(lib_dir=init_oracle_client_lib_dir)
 
     db1 = connect(database1, threads1 or threads)
     if database1 == database2:
