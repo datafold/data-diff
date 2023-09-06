@@ -35,7 +35,7 @@ def import_mssql():
 
 
 class Mixin_NormalizeValue(AbstractMixin_NormalizeValue):
-    # TODO FIXME the output in this method seems correct but timestamp precision isn't 
+    # TODO FIXME the output in this method seems correct but timestamp precision isn't
     # being properly concatenated in tests
     def normalize_timestamp(self, value: str, coltype: TemporalType) -> str:
         if coltype.precision > 0:
@@ -115,35 +115,44 @@ class Dialect(BaseDialect, Mixin_Schema, Mixin_OptimizerHints):
 
     def current_timestamp(self) -> str:
         return "GETDATE()"
-    
+
     def current_database(self) -> str:
         return "DB_NAME()"
-    
+
     def current_schema(self) -> str:
-        return """default_schema_name 
-        FROM sys.database_principals 
+        return """default_schema_name
+        FROM sys.database_principals
         WHERE name = CURRENT_USER"""
 
     def to_string(self, s: str):
         return f"CONVERT(varchar, {s})"
-    
+
     def type_repr(self, t) -> str:
         try:
             return {bool: "bit"}[t]
         except KeyError:
             return super().type_repr(t)
-        
+
     def random(self) -> str:
         return "rand()"
-    
-    def offset_limit(self, offset: Optional[int] = None, limit: Optional[int] = None):
+
+    def is_distinct_from(self, a: str, b: str) -> str:
+        # IS (NOT) DISTINCT FROM is available only since SQLServer 2022.
+        # See: https://stackoverflow.com/a/18684859/857383
+        return (
+            f"(({a}<>{b} OR {a} IS NULL OR {b} IS NULL) AND NOT({a} IS NULL AND {b} IS NULL))"
+        )
+
+    def offset_limit(self, offset: Optional[int] = None, limit: Optional[int] = None, has_order_by: Optional[bool] = None) -> str:
         if offset:
             raise NotImplementedError("No support for OFFSET in query")
 
-        # TODO FIXME ORDER BY required (even a simple ORDER BY 1)
-        # need to add it dynamically here (it can already exist)
-        # like has_order_by: bool
-        return f"OFFSET 0 ROWS FETCH NEXT {limit} ROWS ONLY"
+        result = ""
+        if not has_order_by:
+            result += "ORDER BY 1"
+
+        result += f" OFFSET 0 ROWS FETCH NEXT {limit} ROWS ONLY"
+        return result
 
     def constant_values(self, rows) -> str:
         values = ", ".join("(%s)" % ", ".join(self._constant_value(v) for v in row) for row in rows)
@@ -159,7 +168,7 @@ class MsSQL(ThreadedDatabase):
     def __init__(self, host, port, user, password, *, database, thread_count, **kw):
         args = dict(server=host, port=port, database=database, user=user, password=password, **kw)
         self._args = {k: v for k, v in args.items() if v is not None}
-        
+
         # TODO User supplied value?
         self._args["driver"] = "{ODBC Driver 18 for SQL Server}"
 

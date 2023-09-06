@@ -155,7 +155,7 @@ class BaseDialect(AbstractDialect):
 
     PLACEHOLDER_TABLE = None  # Used for Oracle
 
-    def offset_limit(self, offset: Optional[int] = None, limit: Optional[int] = None):
+    def offset_limit(self, offset: Optional[int] = None, limit: Optional[int] = None, has_order_by: Optional[bool] = None) -> str:
         if offset:
             raise NotImplementedError("No support for OFFSET in query")
 
@@ -184,7 +184,7 @@ class BaseDialect(AbstractDialect):
 
     def current_database(self) -> str:
         return "current_database()"
-    
+
     def current_schema(self) -> str:
         return "current_schema()"
 
@@ -524,7 +524,7 @@ class Database(AbstractDatabase[T]):
             c.execute(sql_code)
             if sql_code.lower().startswith(("select", "explain", "show")):
                 columns = [col[0] for col in c.description]
-                
+
                 # TODO FIXME pyodbc.Row seems to be causing a pydantic error
                 # [ConstantTable] Attribute 'rows' expected value of type Sequence[Sequence[Any]]
                 fetched = c.fetchall()
