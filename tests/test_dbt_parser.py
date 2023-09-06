@@ -116,7 +116,7 @@ class TestDbtParser(unittest.TestCase):
 
         self.assertEqual(mock_model, models[0])
         mock_open.assert_any_call(Path(RUN_RESULTS_PATH))
-        mock_artifact_parser.assert_called_once_with(run_results={})
+        mock_artifact_parser.assert_called_once_with({})
 
     @patch("data_diff.dbt_parser.RunResultsJsonConfig.parse_obj")
     @patch("builtins.open", new_callable=mock_open, read_data="{}")
@@ -131,8 +131,8 @@ class TestDbtParser(unittest.TestCase):
             DbtParser.get_run_results_models(mock_self)
 
         mock_open.assert_called_once_with(Path(RUN_RESULTS_PATH))
-        mock_artifact_parser.assert_called_once_with(run_results={})
-        mock_self.parse_manifest.assert_not_called()
+        mock_artifact_parser.assert_called_once_with({})
+        mock_self.ManifestJsonConfig.parse_obj.assert_not_called()
         self.assertIn("version to be", ex.exception.args[0])
 
     @patch("data_diff.dbt_parser.RunResultsJsonConfig.parse_obj")
@@ -154,7 +154,7 @@ class TestDbtParser(unittest.TestCase):
             DbtParser.get_run_results_models(mock_self)
 
         mock_open.assert_any_call(Path(RUN_RESULTS_PATH))
-        mock_artifact_parser.assert_called_once_with(run_results={})
+        mock_artifact_parser.assert_called_once_with({})
 
     @patch("data_diff.dbt_parser.yaml")
     @patch("builtins.open", new_callable=mock_open, read_data="key:\n  value")
