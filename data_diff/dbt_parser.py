@@ -4,10 +4,11 @@ import json
 from pathlib import Path
 from typing import List, Dict, Tuple, Set, Optional
 import yaml
+from pydantic import BaseModel
 
 from packaging.version import parse as parse_version
 from dbt.config.renderer import ProfileRenderer
-from .dbt_config_validators import TDatadiffModelConfig, TDatadiffConfig, ManifestJsonConfig, RunResultsJsonConfig
+from .dbt_config_validators import ManifestJsonConfig, RunResultsJsonConfig
 
 from data_diff.errors import (
     DataDiffDbtBigQueryUnsupportedMethodError,
@@ -78,6 +79,19 @@ def default_profiles_dir() -> Path:
 
 def legacy_profiles_dir() -> Path:
     return Path.home() / ".dbt"
+
+
+class TDatadiffModelConfig(BaseModel):
+    where_filter: Optional[str] = None
+    include_columns: List[str] = []
+    exclude_columns: List[str] = []
+
+
+class TDatadiffConfig(BaseModel):
+    prod_database: Optional[str] = None
+    prod_schema: Optional[str] = None
+    prod_custom_schema: Optional[str] = None
+    datasource_id: Optional[int] = None
 
 
 class DbtParser:

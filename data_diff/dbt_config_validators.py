@@ -3,19 +3,6 @@ from typing import List, Dict, Optional, Any
 from pydantic import BaseModel, Field
 
 
-class TDatadiffModelConfig(BaseModel):
-    where_filter: Optional[str] = None
-    include_columns: List[str] = []
-    exclude_columns: List[str] = []
-
-
-class TDatadiffConfig(BaseModel):
-    prod_database: Optional[str] = None
-    prod_schema: Optional[str] = None
-    prod_custom_schema: Optional[str] = None
-    datasource_id: Optional[int] = None
-
-
 class ManifestJsonConfig(BaseModel):
     class Metadata(BaseModel):
         dbt_version: str = Field(..., regex=r"^\d+\.\d+\.\d+([a-zA-Z0-9]+)?$")

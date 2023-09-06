@@ -19,11 +19,9 @@ from data_diff.dbt import (
 from data_diff.dbt_parser import (
     RUN_RESULTS_PATH,
     PROJECT_FILE,
+    TDatadiffConfig
 )
 
-from data_diff.dbt_config_validators import (
-    TDatadiffConfig,
-)
 
 class TestDbtParser(unittest.TestCase):
     def test_get_datadiff_config(self):
