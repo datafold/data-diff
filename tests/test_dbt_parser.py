@@ -114,8 +114,8 @@ class TestDbtParser(unittest.TestCase):
 
         models = DbtParser.get_run_results_models(mock_self)
 
-        self.assertEqual(mock_model, models[0])
-        mock_open.assert_any_call(Path(RUN_RESULTS_PATH))
+        self.assertEqual(mock_model, models["success_unique_id"])
+        mock_open.assert_called_with(Path(RUN_RESULTS_PATH))
         mock_artifact_parser.assert_called_once_with({})
 
     @patch("data_diff.dbt_parser.RunResultsJsonConfig.parse_obj")
