@@ -35,8 +35,6 @@ def import_mssql():
 
 
 class Mixin_NormalizeValue(AbstractMixin_NormalizeValue):
-    # TODO FIXME the output in this method seems correct but timestamp precision isn't
-    # being properly concatenated in tests
     def normalize_timestamp(self, value: str, coltype: TemporalType) -> str:
         if coltype.precision > 0:
             formatted_value = (
@@ -57,11 +55,6 @@ class Mixin_NormalizeValue(AbstractMixin_NormalizeValue):
 
 class Mixin_MD5(AbstractMixin_MD5):
     def md5_as_int(self, s: str) -> str:
-        # TODO FYI
-        # I didn't see another way to do this
-        # keep in mind this also required reducing
-        # CHECKSUM_HEXDIGITS = 15 -> 14 due to the convert needing an even number of hex digits
-        # (affects all dbs)
         return f"convert(bigint, convert(varbinary, '0x' + RIGHT(CONVERT(NVARCHAR(32), HashBytes('MD5', {s}), 2), {CHECKSUM_HEXDIGITS}), 1))"
 
 
@@ -168,8 +161,6 @@ class MsSQL(ThreadedDatabase):
     def __init__(self, host, port, user, password, *, database, thread_count, **kw):
         args = dict(server=host, port=port, database=database, user=user, password=password, **kw)
         self._args = {k: v for k, v in args.items() if v is not None}
-
-        # TODO User supplied value?
         self._args["driver"] = "{ODBC Driver 18 for SQL Server}"
 
         # TODO temp dev debug

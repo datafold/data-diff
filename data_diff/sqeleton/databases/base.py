@@ -527,8 +527,6 @@ class Database(AbstractDatabase[T]):
             if sql_code.lower().startswith(("select", "explain", "show")):
                 columns = [col[0] for col in c.description]
 
-                # TODO FIXME pyodbc.Row seems to be causing a pydantic error
-                # [ConstantTable] Attribute 'rows' expected value of type Sequence[Sequence[Any]]
                 fetched = c.fetchall()
                 result = QueryResult(fetched, columns)
                 return result
