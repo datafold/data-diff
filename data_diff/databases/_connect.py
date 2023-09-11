@@ -30,7 +30,7 @@ DATABASE_BY_SCHEME = {
     "trino": Trino,
     "clickhouse": Clickhouse,
     "vertica": Vertica,
-    "mssql": MsSql
+    "mssql": MsSql,
 }
 
 

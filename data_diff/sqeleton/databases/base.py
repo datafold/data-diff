@@ -155,7 +155,9 @@ class BaseDialect(AbstractDialect):
 
     PLACEHOLDER_TABLE = None  # Used for Oracle
 
-    def offset_limit(self, offset: Optional[int] = None, limit: Optional[int] = None, has_order_by: Optional[bool] = None) -> str:
+    def offset_limit(
+        self, offset: Optional[int] = None, limit: Optional[int] = None, has_order_by: Optional[bool] = None
+    ) -> str:
         if offset:
             raise NotImplementedError("No support for OFFSET in query")
 

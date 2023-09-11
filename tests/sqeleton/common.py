@@ -30,7 +30,7 @@ from tests.common import (
     TEST_DUCKDB_CONN_STRING,
     N_THREADS,
     TEST_ACROSS_ALL_DBS,
-    TEST_MSSQL_CONN_STRING
+    TEST_MSSQL_CONN_STRING,
 )
 
 

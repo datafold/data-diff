@@ -47,7 +47,9 @@ class MockDialect(AbstractDialect):
     def current_schema(self) -> str:
         return "current_schema()"
 
-    def offset_limit(self, offset: Optional[int] = None, limit: Optional[int] = None, has_order_by: Optional[bool] = None) -> str:
+    def offset_limit(
+        self, offset: Optional[int] = None, limit: Optional[int] = None, has_order_by: Optional[bool] = None
+    ) -> str:
         x = offset and f"OFFSET {offset}", limit and f"LIMIT {limit}"
         return " ".join(filter(None, x))
 

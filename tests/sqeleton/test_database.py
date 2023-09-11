@@ -13,7 +13,6 @@ from data_diff.sqeleton.abcs.database_types import TimestampTZ
 
 TEST_DATABASES = {
     # TODO dev
-
     # dbs.MySQL,
     # dbs.PostgreSQL,
     # dbs.Oracle,
