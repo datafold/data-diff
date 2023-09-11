@@ -54,6 +54,7 @@ class Mixin_NormalizeValue(AbstractMixin_NormalizeValue):
 
         return f"FORMAT({value}, 'N{coltype.precision}')"
 
+
 class Mixin_MD5(AbstractMixin_MD5):
     def md5_as_int(self, s: str) -> str:
         # TODO FYI
@@ -61,9 +62,8 @@ class Mixin_MD5(AbstractMixin_MD5):
         # keep in mind this also required reducing
         # CHECKSUM_HEXDIGITS = 15 -> 14 due to the convert needing an even number of hex digits
         # (affects all dbs)
-        return (
-            f"convert(bigint, convert(varbinary, '0x' + RIGHT(CONVERT(NVARCHAR(32), HashBytes('MD5', {s}), 2), {CHECKSUM_HEXDIGITS}), 1))"
-        )
+        return f"convert(bigint, convert(varbinary, '0x' + RIGHT(CONVERT(NVARCHAR(32), HashBytes('MD5', {s}), 2), {CHECKSUM_HEXDIGITS}), 1))"
+
 
 class Dialect(BaseDialect, Mixin_Schema, Mixin_OptimizerHints):
     name = "MsSQL"
@@ -139,11 +139,11 @@ class Dialect(BaseDialect, Mixin_Schema, Mixin_OptimizerHints):
     def is_distinct_from(self, a: str, b: str) -> str:
         # IS (NOT) DISTINCT FROM is available only since SQLServer 2022.
         # See: https://stackoverflow.com/a/18684859/857383
-        return (
-            f"(({a}<>{b} OR {a} IS NULL OR {b} IS NULL) AND NOT({a} IS NULL AND {b} IS NULL))"
-        )
+        return f"(({a}<>{b} OR {a} IS NULL OR {b} IS NULL) AND NOT({a} IS NULL AND {b} IS NULL))"
 
-    def offset_limit(self, offset: Optional[int] = None, limit: Optional[int] = None, has_order_by: Optional[bool] = None) -> str:
+    def offset_limit(
+        self, offset: Optional[int] = None, limit: Optional[int] = None, has_order_by: Optional[bool] = None
+    ) -> str:
         if offset:
             raise NotImplementedError("No support for OFFSET in query")
 

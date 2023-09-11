@@ -224,7 +224,9 @@ class AbstractDialect(ABC):
         "Provide SQL for returning the current default schema."
 
     @abstractmethod
-    def offset_limit(self, offset: Optional[int] = None, limit: Optional[int] = None, has_order_by: Optional[bool] = None) -> str:
+    def offset_limit(
+        self, offset: Optional[int] = None, limit: Optional[int] = None, has_order_by: Optional[bool] = None
+    ) -> str:
         "Provide SQL fragment for limit and offset inside a select"
 
     @abstractmethod

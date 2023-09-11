@@ -87,7 +87,7 @@ DATABASE_BY_SCHEME = {
     "trino": Trino,
     "clickhouse": Clickhouse,
     "vertica": Vertica,
-    "mssql": MsSQL
+    "mssql": MsSQL,
 }
 
 

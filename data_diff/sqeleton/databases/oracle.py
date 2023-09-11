@@ -104,7 +104,9 @@ class Dialect(BaseDialect, Mixin_Schema, Mixin_OptimizerHints):
     def to_string(self, s: str):
         return f"cast({s} as varchar(1024))"
 
-    def offset_limit(self, offset: Optional[int] = None, limit: Optional[int] = None, has_order_by: Optional[bool] = None) -> str:
+    def offset_limit(
+        self, offset: Optional[int] = None, limit: Optional[int] = None, has_order_by: Optional[bool] = None
+    ) -> str:
         if offset:
             raise NotImplementedError("No support for OFFSET in query")
 
