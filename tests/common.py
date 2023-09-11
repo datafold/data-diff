@@ -35,6 +35,7 @@ TEST_CLICKHOUSE_CONN_STRING: str = os.environ.get("DATADIFF_CLICKHOUSE_URI")
 # vertica uri provided for docker - "vertica://vertica:Password1@localhost:5433/vertica"
 TEST_VERTICA_CONN_STRING: str = os.environ.get("DATADIFF_VERTICA_URI")
 TEST_DUCKDB_CONN_STRING: str = "duckdb://main:@:memory:"
+TEST_MSSQL_CONN_STRING: str = os.environ.get("DATADIFF_MSSQL_URI")
 
 
 DEFAULT_N_SAMPLES = 50
@@ -80,6 +81,7 @@ CONN_STRINGS = {
     db.Clickhouse: TEST_CLICKHOUSE_CONN_STRING,
     db.Vertica: TEST_VERTICA_CONN_STRING,
     db.DuckDB: TEST_DUCKDB_CONN_STRING,
+    db.MsSql: TEST_MSSQL_CONN_STRING,
 }
 
 _database_instances = {}

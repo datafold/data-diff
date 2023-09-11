@@ -10,7 +10,7 @@ from itertools import chain
 
 from runtype import dataclass
 
-from data_diff.sqeleton.databases import Database, MySQL, BigQuery, Presto, Oracle, Snowflake, DbPath
+from data_diff.sqeleton.databases import Database, MsSQL, MySQL, BigQuery, Presto, Oracle, Snowflake, DbPath
 from data_diff.sqeleton.abcs import NumericType
 from data_diff.sqeleton.queries import (
     table,
@@ -25,9 +25,10 @@ from data_diff.sqeleton.queries import (
     leftjoin,
     rightjoin,
     this,
+    when,
     Compiler,
 )
-from data_diff.sqeleton.queries.ast_classes import Concat, Count, Expr, Random, TablePath, Code, ITable
+from data_diff.sqeleton.queries.ast_classes import Concat, Count, Expr, Func, Random, TablePath, Code, ITable
 from data_diff.sqeleton.queries.extras import NormalizeAsString
 
 from .info_tree import InfoTree
@@ -82,6 +83,12 @@ def _outerjoin(db: Database, a: ITable, b: ITable, keys1: List[str], keys2: List
 
     is_exclusive_a = and_(b[k] == None for k in keys2)
     is_exclusive_b = and_(a[k] == None for k in keys1)
+
+    if isinstance(db, MsSQL):
+        # There is no "IS NULL" or "ISNULL()" as expressions, only as conditions.
+        is_exclusive_a = when(is_exclusive_a).then(1).else_(0)
+        is_exclusive_b = when(is_exclusive_b).then(1).else_(0)
+
     if isinstance(db, Oracle):
         is_exclusive_a = bool_to_int(is_exclusive_a)
         is_exclusive_b = bool_to_int(is_exclusive_b)
@@ -342,7 +349,7 @@ class JoinDiffer(TableDiffer):
         self.stats["diff_counts"] = diff_counts
 
     def _sample_and_count_exclusive(self, db, diff_rows, a_cols, b_cols):
-        if isinstance(db, Oracle):
+        if isinstance(db, (Oracle, MsSQL)):
             exclusive_rows_query = diff_rows.where((this.is_exclusive_a == 1) | (this.is_exclusive_b == 1))
         else:
             exclusive_rows_query = diff_rows.where(this.is_exclusive_a | this.is_exclusive_b)
