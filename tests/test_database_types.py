@@ -353,7 +353,6 @@ DATABASE_TYPES = {
     },
     db.MsSql: {
         "int": ["INT", "BIGINT"],
-        # TODO precision is being truncated to 4 somewhere
         "datetime": ["datetime2(6)"],
         "float": ["DECIMAL(6, 2)", "FLOAT", "REAL"],
         "uuid": ["VARCHAR(100)", "CHAR(100)", "UNIQUEIDENTIFIER"],

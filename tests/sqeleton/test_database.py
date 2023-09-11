@@ -7,23 +7,22 @@ import pytz
 from data_diff.sqeleton import connect
 from data_diff.sqeleton import databases as dbs
 from data_diff.sqeleton.queries import table, current_timestamp, NormalizeAsString
-from tests.common import TEST_MYSQL_CONN_STRING, TEST_MSSQL_CONN_STRING
+from tests.common import TEST_MYSQL_CONN_STRING
 from tests.sqeleton.common import str_to_checksum, test_each_database_in_list, get_conn, random_table_suffix
 from data_diff.sqeleton.abcs.database_types import TimestampTZ
 
 TEST_DATABASES = {
-    # TODO dev
-    # dbs.MySQL,
-    # dbs.PostgreSQL,
-    # dbs.Oracle,
-    # dbs.Redshift,
-    # dbs.Snowflake,
-    # dbs.DuckDB,
-    # dbs.BigQuery,
-    # dbs.Presto,
-    # dbs.Trino,
-    # dbs.Vertica,
-    dbs.MsSQL
+    dbs.MySQL,
+    dbs.PostgreSQL,
+    dbs.Oracle,
+    dbs.Redshift,
+    dbs.Snowflake,
+    dbs.DuckDB,
+    dbs.BigQuery,
+    dbs.Presto,
+    dbs.Trino,
+    dbs.Vertica,
+    dbs.MsSQL,
 }
 
 test_each_database: Callable = test_each_database_in_list(TEST_DATABASES)
@@ -31,11 +30,10 @@ test_each_database: Callable = test_each_database_in_list(TEST_DATABASES)
 
 class TestDatabase(unittest.TestCase):
     def setUp(self):
-        # TODO temp dev
-        self.mssql = connect(TEST_MSSQL_CONN_STRING)
+        self.mysql = connect(TEST_MYSQL_CONN_STRING)
 
     def test_connect_to_db(self):
-        self.assertEqual(1, self.mssql.query("SELECT 1", int))
+        self.assertEqual(1, self.mysql.query("SELECT 1", int))
 
 
 class TestMD5(unittest.TestCase):

@@ -42,8 +42,7 @@ DEFAULT_N_SAMPLES = 50
 N_SAMPLES = int(os.environ.get("N_SAMPLES", DEFAULT_N_SAMPLES))
 BENCHMARK = os.environ.get("BENCHMARK", False)
 N_THREADS = int(os.environ.get("N_THREADS", 1))
-# TODO temp dev
-TEST_ACROSS_ALL_DBS = os.environ.get("TEST_ACROSS_ALL_DBS", "full")  # Should we run the full db<->db test suite?
+TEST_ACROSS_ALL_DBS = os.environ.get("TEST_ACROSS_ALL_DBS", True)  # Should we run the full db<->db test suite?
 
 
 def get_git_revision_short_hash() -> str:
