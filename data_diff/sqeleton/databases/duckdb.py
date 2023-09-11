@@ -33,6 +33,7 @@ from .base import (
 from .base import MD5_HEXDIGITS, CHECKSUM_HEXDIGITS, Mixin_Schema
 from ..queries.ast_classes import Func, Compilable
 from ..queries.api import code
+import os
 
 # TODO: I can leave this alone
 @import_helper("duckdb")
@@ -162,11 +163,17 @@ class DuckDB(Database):
         super().close()
         self._conn.close()
 
-    # TODO: update for motherduck conditional
     def create_connection(self):
         ddb = import_duckdb()
         try:
-            return ddb.connect(self._args["filepath"])
+            filepath = self._args.get("filepath", "")
+            if "md:" in filepath:
+                database = filepath.split(":")[1]
+                print(f"self._args:{self._args}")
+                token = os.getenv('motherduck_token','')
+                return ddb.connect(f'md:{database}?motherduck_token={token}')
+            else:
+                return ddb.connect(filepath)
         except ddb.OperationalError as e:
             raise ConnectError(*e.args) from e
 
