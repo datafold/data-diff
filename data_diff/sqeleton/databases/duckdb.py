@@ -166,14 +166,7 @@ class DuckDB(Database):
     def create_connection(self):
         ddb = import_duckdb()
         try:
-            filepath = self._args.get("filepath", "")
-            if "md:" in filepath:
-                database = filepath.split(":")[1]
-                print(f"self._args:{self._args}")
-                token = os.getenv('motherduck_token','')
-                return ddb.connect(f'md:{database}?motherduck_token={token}')
-            else:
-                return ddb.connect(filepath)
+            return ddb.connect(self._args["filepath"])
         except ddb.OperationalError as e:
             raise ConnectError(*e.args) from e
 
