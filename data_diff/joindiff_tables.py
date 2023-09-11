@@ -1,7 +1,7 @@
 """Provides classes for performing a table diff using JOIN
 
 """
-
+from dataclasses import field
 from decimal import Decimal
 from functools import partial
 import logging
@@ -148,7 +148,7 @@ class JoinDiffer(TableDiffer):
     table_write_limit: int = TABLE_WRITE_LIMIT
     skip_null_keys: bool = False
 
-    stats: dict = {}
+    stats: dict = field(default_factory=dict)
 
     def _diff_tables_root(self, table1: TableSegment, table2: TableSegment, info_tree: InfoTree) -> DiffResult:
         db = table1.database
