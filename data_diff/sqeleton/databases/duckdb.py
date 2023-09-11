@@ -34,7 +34,7 @@ from .base import MD5_HEXDIGITS, CHECKSUM_HEXDIGITS, Mixin_Schema
 from ..queries.ast_classes import Func, Compilable
 from ..queries.api import code
 
-
+# TODO: I can leave this alone
 @import_helper("duckdb")
 def import_duckdb():
     import duckdb
@@ -137,6 +137,8 @@ class Dialect(BaseDialect, Mixin_Schema):
         return "current_timestamp"
 
 
+# TODO: adjust this for motherduck connections
+# https://motherduck.com/docs/authenticating-to-motherduck/#using-the-service-token-to-connect
 class DuckDB(Database):
     dialect = Dialect()
     SUPPORTS_UNIQUE_CONSTAINT = False  # Temporary, until we implement it
@@ -160,6 +162,7 @@ class DuckDB(Database):
         super().close()
         self._conn.close()
 
+    # TODO: update for motherduck conditional
     def create_connection(self):
         ddb = import_duckdb()
         try:
