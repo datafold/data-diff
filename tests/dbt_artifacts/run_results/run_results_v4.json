@@ -1,0 +1,240 @@
+{
+    "metadata": {
+        "dbt_schema_version": "https://schemas.getdbt.com/dbt/run-results/v4.json",
+        "dbt_version": "1.4.7",
+        "generated_at": "2023-08-31T00:05:26.115935Z",
+        "invocation_id": "852665c2-9041-45ed-83cb-04dab99da171",
+        "env": {}
+    },
+    "results": [
+        {
+            "status": "success",
+            "timing": [
+                {
+                    "name": "compile",
+                    "started_at": "2023-08-31T00:05:26.008341Z",
+                    "completed_at": "2023-08-31T00:05:26.010060Z"
+                },
+                {
+                    "name": "execute",
+                    "started_at": "2023-08-31T00:05:26.010243Z",
+                    "completed_at": "2023-08-31T00:05:26.043504Z"
+                }
+            ],
+            "thread_id": "Thread-1 (worker)",
+            "execution_time": 0.03770709037780762,
+            "adapter_response": { "_message": "OK" },
+            "message": "OK",
+            "failures": null,
+            "unique_id": "model.datafold_demo.orders"
+        },
+        {
+            "status": "pass",
+            "timing": [
+                {
+                    "name": "compile",
+                    "started_at": "2023-08-31T00:05:26.060620Z",
+                    "completed_at": "2023-08-31T00:05:26.072500Z"
+                },
+                {
+                    "name": "execute",
+                    "started_at": "2023-08-31T00:05:26.079998Z",
+                    "completed_at": "2023-08-31T00:05:26.096199Z"
+                }
+            ],
+            "thread_id": "Thread-5 (worker)",
+            "execution_time": 0.05396699905395508,
+            "adapter_response": {},
+            "message": null,
+            "failures": 0,
+            "unique_id": "test.datafold_demo.not_null_orders_bank_transfer_amount.7743500c49"
+        },
+        {
+            "status": "pass",
+            "timing": [
+                {
+                    "name": "compile",
+                    "started_at": "2023-08-31T00:05:26.057214Z",
+                    "completed_at": "2023-08-31T00:05:26.072382Z"
+                },
+                {
+                    "name": "execute",
+                    "started_at": "2023-08-31T00:05:26.079014Z",
+                    "completed_at": "2023-08-31T00:05:26.095586Z"
+                }
+            ],
+            "thread_id": "Thread-4 (worker)",
+            "execution_time": 0.05471396446228027,
+            "adapter_response": {},
+            "message": null,
+            "failures": 0,
+            "unique_id": "test.datafold_demo.not_null_orders_amount.106140f9fd"
+        },
+        {
+            "status": "pass",
+            "timing": [
+                {
+                    "name": "compile",
+                    "started_at": "2023-08-31T00:05:26.063776Z",
+                    "completed_at": "2023-08-31T00:05:26.072761Z"
+                },
+                {
+                    "name": "execute",
+                    "started_at": "2023-08-31T00:05:26.081718Z",
+                    "completed_at": "2023-08-31T00:05:26.097459Z"
+                }
+            ],
+            "thread_id": "Thread-7 (worker)",
+            "execution_time": 0.05432295799255371,
+            "adapter_response": {},
+            "message": null,
+            "failures": 0,
+            "unique_id": "test.datafold_demo.not_null_orders_credit_card_amount.d3ca593b59"
+        },
+        {
+            "status": "pass",
+            "timing": [
+                {
+                    "name": "compile",
+                    "started_at": "2023-08-31T00:05:26.062141Z",
+                    "completed_at": "2023-08-31T00:05:26.072677Z"
+                },
+                {
+                    "name": "execute",
+                    "started_at": "2023-08-31T00:05:26.080899Z",
+                    "completed_at": "2023-08-31T00:05:26.096948Z"
+                }
+            ],
+            "thread_id": "Thread-6 (worker)",
+            "execution_time": 0.054865121841430664,
+            "adapter_response": {},
+            "message": null,
+            "failures": 0,
+            "unique_id": "test.datafold_demo.not_null_orders_coupon_amount.ab90c90625"
+        },
+        {
+            "status": "pass",
+            "timing": [
+                {
+                    "name": "compile",
+                    "started_at": "2023-08-31T00:05:26.050905Z",
+                    "completed_at": "2023-08-31T00:05:26.066902Z"
+                },
+                {
+                    "name": "execute",
+                    "started_at": "2023-08-31T00:05:26.073660Z",
+                    "completed_at": "2023-08-31T00:05:26.097899Z"
+                }
+            ],
+            "thread_id": "Thread-3 (worker)",
+            "execution_time": 0.05639481544494629,
+            "adapter_response": {},
+            "message": null,
+            "failures": 0,
+            "unique_id": "test.datafold_demo.accepted_values_orders_status__placed__shipped__completed__return_pending__returned.be6b5b5ec3"
+        },
+        {
+            "status": "pass",
+            "timing": [
+                {
+                    "name": "compile",
+                    "started_at": "2023-08-31T00:05:26.065392Z",
+                    "completed_at": "2023-08-31T00:05:26.072943Z"
+                },
+                {
+                    "name": "execute",
+                    "started_at": "2023-08-31T00:05:26.082532Z",
+                    "completed_at": "2023-08-31T00:05:26.098335Z"
+                }
+            ],
+            "thread_id": "Thread-8 (worker)",
+            "execution_time": 0.05503726005554199,
+            "adapter_response": {},
+            "message": null,
+            "failures": 0,
+            "unique_id": "test.datafold_demo.not_null_orders_customer_id.c5f02694af"
+        },
+        {
+            "status": "pass",
+            "timing": [
+                {
+                    "name": "compile",
+                    "started_at": "2023-08-31T00:05:26.067001Z",
+                    "completed_at": "2023-08-31T00:05:26.073120Z"
+                },
+                {
+                    "name": "execute",
+                    "started_at": "2023-08-31T00:05:26.084301Z",
+                    "completed_at": "2023-08-31T00:05:26.098957Z"
+                }
+            ],
+            "thread_id": "Thread-9 (worker)",
+            "execution_time": 0.055387258529663086,
+            "adapter_response": {},
+            "message": null,
+            "failures": 0,
+            "unique_id": "test.datafold_demo.not_null_orders_gift_card_amount.413a0d2d7a"
+        },
+        {
+            "status": "pass",
+            "timing": [
+                {
+                    "name": "compile",
+                    "started_at": "2023-08-31T00:05:26.069986Z",
+                    "completed_at": "2023-08-31T00:05:26.073438Z"
+                },
+                {
+                    "name": "execute",
+                    "started_at": "2023-08-31T00:05:26.086309Z",
+                    "completed_at": "2023-08-31T00:05:26.099471Z"
+                }
+            ],
+            "thread_id": "Thread-11 (worker)",
+            "execution_time": 0.055477142333984375,
+            "adapter_response": {},
+            "message": null,
+            "failures": 0,
+            "unique_id": "test.datafold_demo.unique_orders_order_id.fed79b3a6e"
+        },
+        {
+            "status": "pass",
+            "timing": [
+                {
+                    "name": "compile",
+                    "started_at": "2023-08-31T00:05:26.068520Z",
+                    "completed_at": "2023-08-31T00:05:26.073288Z"
+                },
+                {
+                    "name": "execute",
+                    "started_at": "2023-08-31T00:05:26.085336Z",
+                    "completed_at": "2023-08-31T00:05:26.099897Z"
+                }
+            ],
+            "thread_id": "Thread-10 (worker)",
+            "execution_time": 0.05677008628845215,
+            "adapter_response": {},
+            "message": null,
+            "failures": 0,
+            "unique_id": "test.datafold_demo.not_null_orders_order_id.cf6c17daed"
+        }
+    ],
+    "elapsed_time": 0.14443588256835938,
+    "args": {
+        "write_json": true,
+        "use_colors": true,
+        "printer_width": 80,
+        "version_check": true,
+        "partial_parse": true,
+        "static_parser": true,
+        "profiles_dir": "/Users/sung/Desktop/data-diff/data_diff_demo",
+        "send_anonymous_usage_stats": true,
+        "quiet": false,
+        "no_print": false,
+        "cache_selected_only": false,
+        "indirect_selection": "eager",
+        "resource_types": [],
+        "select": ["orders"],
+        "which": "build",
+        "rpc_method": "build"
+    }
+}
