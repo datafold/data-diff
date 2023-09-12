@@ -1,4 +1,5 @@
 import random
+from dataclasses import field
 from datetime import datetime
 from typing import Any, Dict, Sequence, List
 
@@ -23,15 +24,15 @@ class Root:
 @dataclass
 class Compiler(AbstractCompiler):
     database: AbstractDatabase
-    params: dict = {}
+    params: dict = field(default_factory=dict)
     in_select: bool = False  # Compilation runtime flag
     in_join: bool = False  # Compilation runtime flag
 
-    _table_context: List = []  # List[ITable]
-    _subqueries: Dict[str, Any] = {}  # XXX not thread-safe
+    _table_context: List = field(default_factory=list)  # List[ITable]
+    _subqueries: Dict[str, Any] = field(default_factory=dict)  # XXX not thread-safe
     root: bool = True
 
-    _counter: List = [0]
+    _counter: List = field(default_factory=lambda: [0])
 
     @property
     def dialect(self) -> AbstractDialect:

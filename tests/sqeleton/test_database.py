@@ -22,6 +22,7 @@ TEST_DATABASES = {
     dbs.Presto,
     dbs.Trino,
     dbs.Vertica,
+    dbs.MsSQL,
 }
 
 test_each_database: Callable = test_each_database_in_list(TEST_DATABASES)
@@ -104,6 +105,8 @@ class TestQueries(unittest.TestCase):
         assert isinstance(res, datetime), (res, type(res))
 
     def test_correct_timezone(self):
+        if self.db_cls in [dbs.MsSQL]:
+            self.skipTest("No support for session tz.")
         name = "tbl_" + random_table_suffix()
         db = get_conn(self.db_cls)
         tbl = table(name, schema={"id": int, "created_at": TimestampTZ(9), "updated_at": TimestampTZ(9)})
@@ -142,13 +145,13 @@ class TestQueries(unittest.TestCase):
 @test_each_database
 class TestThreePartIds(unittest.TestCase):
     def test_three_part_support(self):
-        if self.db_cls not in [dbs.PostgreSQL, dbs.Redshift, dbs.Snowflake, dbs.DuckDB]:
+        if self.db_cls not in [dbs.PostgreSQL, dbs.Redshift, dbs.Snowflake, dbs.DuckDB, dbs.MsSQL]:
             self.skipTest("Limited support for 3 part ids")
 
         table_name = "tbl_" + random_table_suffix()
         db = get_conn(self.db_cls)
-        db_res = db.query("SELECT CURRENT_DATABASE()")
-        schema_res = db.query("SELECT CURRENT_SCHEMA()")
+        db_res = db.query(f"SELECT {db.dialect.current_database()}")
+        schema_res = db.query(f"SELECT {db.dialect.current_schema()}")
         db_name = db_res.rows[0][0]
         schema_name = schema_res.rows[0][0]
 

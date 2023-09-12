@@ -1,4 +1,5 @@
 import os
+from dataclasses import field
 from numbers import Number
 import logging
 from collections import defaultdict
@@ -75,7 +76,7 @@ class HashDiffer(TableDiffer):
     bisection_factor: int = DEFAULT_BISECTION_FACTOR
     bisection_threshold: Number = DEFAULT_BISECTION_THRESHOLD  # Accepts inf for tests
 
-    stats: dict = {}
+    stats: dict = field(default_factory=dict)
 
     def __post_init__(self):
         # Validate options

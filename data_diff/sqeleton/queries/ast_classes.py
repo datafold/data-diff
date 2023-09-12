@@ -730,7 +730,8 @@ class Select(ExprNode, ITable, Root):
             select += " ORDER BY " + ", ".join(map(c.compile, self.order_by_exprs))
 
         if self.limit_expr is not None:
-            select += " " + c.dialect.offset_limit(0, self.limit_expr)
+            has_order_by = bool(self.order_by_exprs)
+            select += " " + c.dialect.offset_limit(0, self.limit_expr, has_order_by=has_order_by)
 
         if parent_c.in_select:
             select = f"({select}) {c.new_unique_name()}"
