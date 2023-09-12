@@ -94,7 +94,7 @@ class TestDbtParser(unittest.TestCase):
         mock_self.get_run_results_models.assert_called()
         self.assertEqual(models, mock_return_value)
 
-    @patch("data_diff.dbt_parser.parse_run_results")
+    @patch("data_diff.dbt_parser.RunResultsJsonConfig.parse_obj")
     @patch("builtins.open", new_callable=mock_open, read_data="{}")
     def test_get_run_results_models(self, mock_open, mock_artifact_parser):
         mock_model = {"success_unique_id": "expected_value"}
@@ -102,23 +102,22 @@ class TestDbtParser(unittest.TestCase):
         mock_self.project_dir = Path()
         mock_run_results = Mock()
         mock_success_result = Mock()
-        mock_failed_result = Mock()
+        mock_success_result.status = mock_success_result.Status.success
+        mock_fail_result = Mock()
+        mock_fail_result.status = mock_fail_result.Status.fail
         mock_artifact_parser.return_value = mock_run_results
         mock_run_results.metadata.dbt_version = "1.0.0"
         mock_success_result.unique_id = "success_unique_id"
-        mock_failed_result.unique_id = "failed_unique_id"
-        mock_success_result.status.name = "success"
-        mock_failed_result.status.name = "failed"
-        mock_run_results.results = [mock_success_result, mock_failed_result]
+        mock_fail_result.unique_id = "fail_unique_id"
+        mock_run_results.results = [mock_success_result, mock_fail_result]
+
         mock_self.dev_manifest_obj.nodes.get.return_value = mock_model
-
         models = DbtParser.get_run_results_models(mock_self)
-
         self.assertEqual(mock_model, models[0])
-        mock_open.assert_any_call(Path(RUN_RESULTS_PATH))
-        mock_artifact_parser.assert_called_once_with(run_results={})
+        mock_open.assert_called_with(Path(RUN_RESULTS_PATH))
+        mock_artifact_parser.assert_called_once_with({})
 
-    @patch("data_diff.dbt_parser.parse_run_results")
+    @patch("data_diff.dbt_parser.RunResultsJsonConfig.parse_obj")
     @patch("builtins.open", new_callable=mock_open, read_data="{}")
     def test_get_run_results_models_bad_lower_dbt_version(self, mock_open, mock_artifact_parser):
         mock_self = Mock()
@@ -129,32 +128,29 @@ class TestDbtParser(unittest.TestCase):
 
         with self.assertRaises(DataDiffDbtRunResultsVersionError) as ex:
             DbtParser.get_run_results_models(mock_self)
-
+        
         mock_open.assert_called_once_with(Path(RUN_RESULTS_PATH))
-        mock_artifact_parser.assert_called_once_with(run_results={})
-        mock_self.parse_manifest.assert_not_called()
+        mock_artifact_parser.assert_called_once_with({})
         self.assertIn("version to be", ex.exception.args[0])
 
-    @patch("data_diff.dbt_parser.parse_run_results")
+    @patch("data_diff.dbt_parser.RunResultsJsonConfig.parse_obj")
     @patch("builtins.open", new_callable=mock_open, read_data="{}")
     def test_get_run_results_models_no_success(self, mock_open, mock_artifact_parser):
         mock_self = Mock()
         mock_self.project_dir = Path()
         mock_run_results = Mock()
-        mock_success_result = Mock()
-        mock_failed_result = Mock()
+        mock_fail_result = Mock()
+        mock_fail_result.status = mock_fail_result.Status.fail
         mock_artifact_parser.return_value = mock_run_results
         mock_run_results.metadata.dbt_version = "1.0.0"
-        mock_failed_result.unique_id = "failed_unique_id"
-        mock_success_result.status.name = "success"
-        mock_failed_result.status.name = "failed"
-        mock_run_results.results = [mock_failed_result]
-
+        mock_fail_result.unique_id = "fail_unique_id"
+        mock_run_results.results = [mock_fail_result]
+        
         with self.assertRaises(DataDiffDbtNoSuccessfulModelsInRunError):
             DbtParser.get_run_results_models(mock_self)
-
+            
         mock_open.assert_any_call(Path(RUN_RESULTS_PATH))
-        mock_artifact_parser.assert_called_once_with(run_results={})
+        mock_artifact_parser.assert_called_once_with({})
 
     @patch("data_diff.dbt_parser.yaml")
     @patch("builtins.open", new_callable=mock_open, read_data="key:\n  value")
