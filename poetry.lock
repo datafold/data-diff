@@ -1088,7 +1088,7 @@ test = ["codecov (>=2.1)", "pytest (>=6.2)", "pytest-cov (>=2.12)"]
 name = "oracledb"
 version = "1.3.2"
 description = "Python interface to Oracle Database"
-optional = false
+optional = true
 python-versions = ">=3.6"
 files = [
     {file = "oracledb-1.3.2-cp310-cp310-macosx_10_9_universal2.whl", hash = "sha256:bee717f90118a95f0c661d27e7a65255eb5e400b95cbe4019b75014b3691ef90"},
@@ -1418,7 +1418,7 @@ tests = ["coverage[toml] (==5.0.4)", "pytest (>=6.0.0,<7.0.0)"]
 name = "pyodbc"
 version = "4.0.39"
 description = "DB API Module for ODBC"
-optional = false
+optional = true
 python-versions = ">=2.7, !=3.0.*, !=3.1.*, !=3.2.*, !=3.3.*, !=3.4.*, !=3.5.*"
 files = [
     {file = "pyodbc-4.0.39-cp310-cp310-macosx_10_9_x86_64.whl", hash = "sha256:74af348dbaee4885998858daf50c8964e767629ecf6c195868b016367b0bb861"},
@@ -2016,6 +2016,7 @@ testing = ["flake8 (<5)", "func-timeout", "jaraco.functools", "jaraco.itertools"
 [extras]
 clickhouse = ["clickhouse-driver"]
 duckdb = ["duckdb"]
+mssql = ["pyodbc"]
 mysql = ["mysql-connector-python"]
 oracle = ["oracledb"]
 postgresql = ["psycopg2"]
@@ -2029,4 +2030,4 @@ vertica = ["vertica-python"]
 [metadata]
 lock-version = "2.0"
 python-versions = "^3.7.2"
-content-hash = "3efe2f376b8988ad7aca2300255c163e2b6f1543124182ebd60e4d65736c63f5"
+content-hash = "b3e3febf3233c5fb0800870c84422ad8e414d369664e195b7b3d4735028ee464"

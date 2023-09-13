@@ -44,8 +44,8 @@ tabulate = "^0.9.0"
 preql = {version="^0.2.19", optional=true}
 vertica-python = {version="*", optional=true}
 urllib3 = "<2"
-oracledb = {version = "*", extras = ["oracle"]}
-pyodbc = "^4.0.39"
+oracledb = {version = "*", optional=true}
+pyodbc = {version="^4.0.39", optional=true}
 
 [tool.poetry.dev-dependencies]
 parameterized = "*"
@@ -73,6 +73,7 @@ redshift = ["psycopg2"]
 snowflake = ["snowflake-connector-python", "cryptography"]
 presto = ["presto-python-client"]
 oracle = ["oracledb"]
+mssql = ["pyodbc"]
 # databricks = ["databricks-sql-connector"]
 trino = ["trino"]
 clickhouse = ["clickhouse-driver"]
