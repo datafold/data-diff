@@ -70,6 +70,7 @@ class Dialect(BaseDialect, Mixin_Schema, Mixin_OptimizerHints):
         "decimal": Decimal,
         "int": Integer,
         "bigint": Integer,
+        "mediumint": Integer,
         "smallint": Integer,
         "tinyint": Integer,
         # Text
