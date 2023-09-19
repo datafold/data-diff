@@ -105,11 +105,6 @@ class Connect:
         database_by_scheme = {k: db for k, db in self.database_by_scheme.items() if k in dbs}
         return type(self)(database_by_scheme)
 
-    def load_mixins(self, *abstract_mixins: AbstractMixin) -> Self:
-        "Extend all the databases with a list of mixins that implement the given abstract mixins."
-        database_by_scheme = {k: db.load_mixins(*abstract_mixins) for k, db in self.database_by_scheme.items()}
-        return type(self)(database_by_scheme)
-
     def connect_to_uri(self, db_uri: str, thread_count: Optional[int] = 1, **kwargs) -> Database:
         """Connect to the given database uri
 
