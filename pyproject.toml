@@ -87,7 +87,6 @@ build-backend = "poetry.core.masonry.api"
 
 [tool.poetry.scripts]
 data-diff = 'data_diff.__main__:main'
-sqeleton = 'data_diff.sqeleton.__main__:main'
 
 [tool.black]
 line-length = 120
