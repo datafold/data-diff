@@ -551,14 +551,6 @@ class Database(AbstractDatabase[T]):
     def table(self, *path, **kw):
         return bound_table(self, path, **kw)
 
-    @classmethod
-    def load_mixins(cls, *abstract_mixins) -> type:
-        class _DatabaseWithMixins(cls):
-            dialect = cls.dialect.load_mixins(*abstract_mixins)
-
-        _DatabaseWithMixins.__name__ = cls.__name__
-        return _DatabaseWithMixins
-
 
 class ThreadedDatabase(Database):
     """Access the database through singleton threads.
