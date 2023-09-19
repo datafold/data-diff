@@ -282,7 +282,7 @@ class BaseDialect(AbstractDialect):
         return math.floor(math.log(2**p, 10))
 
     @classmethod
-    def load_mixins(cls, *abstract_mixins) -> "Self":
+    def load_mixins(cls, *abstract_mixins) -> Self:
         mixins = {m for m in cls.MIXINS if issubclass(m, abstract_mixins)}
 
         class _DialectWithMixins(cls, *mixins, *abstract_mixins):
