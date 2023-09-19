@@ -75,7 +75,7 @@ class Mixin_Regex(AbstractMixin_Regex):
         return Func("regexp_matches", [string, pattern])
 
 
-class Dialect(BaseDialect, Mixin_Schema):
+class Dialect(BaseDialect, Mixin_Schema, Mixin_MD5, Mixin_NormalizeValue, AbstractMixin_MD5, AbstractMixin_NormalizeValue):
     name = "DuckDB"
     ROUNDS_ON_PREC_LOSS = False
     SUPPORTS_PRIMARY_KEY = True

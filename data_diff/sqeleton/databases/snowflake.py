@@ -104,7 +104,7 @@ class Mixin_TimeTravel(AbstractMixin_TimeTravel):
         return code(f"{{table}} {at_or_before}({key} => {{value}})", table=table, value=value)
 
 
-class Dialect(BaseDialect, Mixin_Schema):
+class Dialect(BaseDialect, Mixin_Schema, Mixin_MD5, Mixin_NormalizeValue, AbstractMixin_MD5, AbstractMixin_NormalizeValue):
     name = "Snowflake"
     ROUNDS_ON_PREC_LOSS = False
     TYPE_CLASSES = {

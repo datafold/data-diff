@@ -7,7 +7,7 @@ from data_diff.sqeleton.abcs.database_types import (
     DbPath,
     TimestampTZ,
 )
-from data_diff.sqeleton.abcs.mixins import AbstractMixin_MD5
+from data_diff.sqeleton.abcs.mixins import AbstractMixin_MD5, AbstractMixin_NormalizeValue
 from data_diff.sqeleton.databases.postgresql import (
     PostgreSQL,
     MD5_HEXDIGITS,
@@ -51,7 +51,7 @@ class Mixin_NormalizeValue(Mixin_NormalizeValue):
         return f"nvl2({value}, json_serialize({value}), NULL)"
 
 
-class Dialect(PostgresqlDialect):
+class Dialect(PostgresqlDialect, Mixin_MD5, Mixin_NormalizeValue, AbstractMixin_MD5, AbstractMixin_NormalizeValue):
     name = "Redshift"
     TYPE_CLASSES = {
         **PostgresqlDialect.TYPE_CLASSES,

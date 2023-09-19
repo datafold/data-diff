@@ -61,7 +61,7 @@ class Mixin_NormalizeValue(AbstractMixin_NormalizeValue):
         return f"{value}::text"
 
 
-class PostgresqlDialect(BaseDialect, Mixin_Schema):
+class PostgresqlDialect(BaseDialect, Mixin_Schema, Mixin_MD5, Mixin_NormalizeValue, AbstractMixin_MD5, AbstractMixin_NormalizeValue):
     name = "PostgreSQL"
     ROUNDS_ON_PREC_LOSS = True
     SUPPORTS_PRIMARY_KEY = True

@@ -1,10 +1,2 @@
-from data_diff.sqeleton.databases import snowflake
-from data_diff.databases.base import DatadiffDialect
-
-
-class Dialect(snowflake.Dialect, snowflake.Mixin_MD5, snowflake.Mixin_NormalizeValue, DatadiffDialect):
-    pass
-
-
-class Snowflake(snowflake.Snowflake):
-    dialect = Dialect()
+from data_diff.sqeleton.databases.snowflake import Dialect as Dialect
+from data_diff.sqeleton.databases.snowflake import Snowflake as Snowflake
