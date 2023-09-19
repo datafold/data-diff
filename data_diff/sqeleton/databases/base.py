@@ -11,8 +11,9 @@ from uuid import UUID
 import decimal
 
 from runtype import dataclass
+from typing_extensions import Self
 
-from ..utils import is_uuid, safezip, Self
+from ..utils import is_uuid, safezip
 from ..queries import Expr, Compiler, table, Select, SKIP, Explain, Code, this
 from ..queries.ast_classes import Random
 from ..abcs.database_types import (
