@@ -100,7 +100,7 @@ class Connect:
         self.match_uri_path = {name: MatchUriPath(cls) for name, cls in database_by_scheme.items()}
         self.conn_cache = WeakCache()
 
-    def for_databases(self, *dbs):
+    def for_databases(self, *dbs) -> Self:
         database_by_scheme = {k: db for k, db in self.database_by_scheme.items() if k in dbs}
         return type(self)(database_by_scheme)
 
