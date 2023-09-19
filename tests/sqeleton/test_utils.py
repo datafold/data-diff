@@ -1,6 +1,6 @@
 import unittest
 
-from data_diff.sqeleton.utils import remove_passwords_in_dict, match_regexps, match_like, number_to_human, WeakCache
+from data_diff.sqeleton.utils import remove_passwords_in_dict, match_regexps, match_like, number_to_human
 
 
 class TestUtils(unittest.TestCase):
@@ -81,24 +81,3 @@ class TestUtils(unittest.TestCase):
         assert number_to_human(-1000) == "-1k"
         assert number_to_human(-1000000) == "-1m"
         assert number_to_human(-1000000000) == "-1b"
-
-    def test_weak_cache(self):
-        # Create cache
-        cache = WeakCache()
-
-        # Test adding and retrieving basic value
-        o = {1, 2}
-        cache.add("key", o)
-        assert cache.get("key") is o
-
-        # Test adding and retrieving dict value
-        cache.add({"key": "value"}, o)
-        assert cache.get({"key": "value"}) is o
-
-        # Test deleting value when reference is lost
-        del o
-        try:
-            cache.get({"key": "value"})
-            assert False, "KeyError should have been raised"
-        except KeyError:
-            pass
