@@ -21,11 +21,6 @@ from urllib.parse import urlparse
 
 # -- Common --
 
-try:
-    from typing import Self
-except ImportError:
-    Self = Any
-
 
 class WeakCache:
     def __init__(self):

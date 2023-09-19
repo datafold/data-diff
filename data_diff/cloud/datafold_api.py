@@ -2,18 +2,17 @@ import base64
 import dataclasses
 import enum
 import time
-from typing import Any, Dict, List, Optional, Type, TypeVar, Tuple
+from typing import Any, Dict, List, Optional, Type, Tuple
 
 import pydantic
 import requests
+from typing_extensions import Self
 
 from data_diff.errors import DataDiffCloudDiffFailed, DataDiffCloudDiffTimedOut, DataDiffDatasourceIdNotFoundError
 
 from ..utils import getLogger
 
 logger = getLogger(__name__)
-
-Self = TypeVar("Self", bound=pydantic.BaseModel)
 
 
 class TestDataSourceStatus(str, enum.Enum):

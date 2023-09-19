@@ -5,9 +5,10 @@ import dsnparse
 import toml
 
 from runtype import dataclass
+from typing_extensions import Self
 
 from ..abcs.mixins import AbstractMixin
-from ..utils import WeakCache, Self
+from ..utils import WeakCache
 from .base import Database, ThreadedDatabase
 from .postgresql import PostgreSQL
 from .mysql import MySQL
