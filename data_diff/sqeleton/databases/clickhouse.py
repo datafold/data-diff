@@ -99,7 +99,7 @@ class Mixin_NormalizeValue(AbstractMixin_NormalizeValue):
         return f"rpad({value}, {TIMESTAMP_PRECISION_POS + 6}, '0')"
 
 
-class Dialect(BaseDialect):
+class Dialect(BaseDialect, Mixin_MD5, Mixin_NormalizeValue, AbstractMixin_MD5, AbstractMixin_NormalizeValue):
     name = "Clickhouse"
     ROUNDS_ON_PREC_LOSS = False
     TYPE_CLASSES = {

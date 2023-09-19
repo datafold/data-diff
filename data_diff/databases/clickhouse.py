@@ -1,10 +1,2 @@
-from data_diff.sqeleton.databases import clickhouse
-from data_diff.databases.base import DatadiffDialect
-
-
-class Dialect(clickhouse.Dialect, clickhouse.Mixin_MD5, clickhouse.Mixin_NormalizeValue, DatadiffDialect):
-    pass
-
-
-class Clickhouse(clickhouse.Clickhouse):
-    dialect = Dialect()
+from data_diff.sqeleton.databases.clickhouse import Dialect as Dialect
+from data_diff.sqeleton.databases.clickhouse import Clickhouse as Clickhouse

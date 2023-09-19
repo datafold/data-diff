@@ -139,7 +139,7 @@ class Mixin_TimeTravel(AbstractMixin_TimeTravel):
         )
 
 
-class Dialect(BaseDialect, Mixin_Schema):
+class Dialect(BaseDialect, Mixin_Schema, Mixin_MD5, Mixin_NormalizeValue, AbstractMixin_MD5, AbstractMixin_NormalizeValue):
     name = "BigQuery"
     ROUNDS_ON_PREC_LOSS = False  # Technically BigQuery doesn't allow implicit rounding or truncation
     TYPE_CLASSES = {

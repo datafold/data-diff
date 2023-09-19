@@ -1,10 +1,2 @@
-from data_diff.sqeleton.databases import duckdb
-from data_diff.databases.base import DatadiffDialect
-
-
-class Dialect(duckdb.Dialect, duckdb.Mixin_MD5, duckdb.Mixin_NormalizeValue, DatadiffDialect):
-    pass
-
-
-class DuckDB(duckdb.DuckDB):
-    dialect = Dialect()
+from data_diff.sqeleton.databases.duckdb import Dialect as Dialect
+from data_diff.sqeleton.databases.duckdb import DuckDB as DuckDB

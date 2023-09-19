@@ -67,7 +67,7 @@ class Mixin_Regex(AbstractMixin_Regex):
         return BinBoolOp("REGEXP", [string, pattern])
 
 
-class Dialect(BaseDialect, Mixin_Schema, Mixin_OptimizerHints):
+class Dialect(BaseDialect, Mixin_Schema, Mixin_OptimizerHints, Mixin_MD5, Mixin_NormalizeValue, AbstractMixin_MD5, AbstractMixin_NormalizeValue):
     name = "MySQL"
     ROUNDS_ON_PREC_LOSS = True
     SUPPORTS_PRIMARY_KEY = True

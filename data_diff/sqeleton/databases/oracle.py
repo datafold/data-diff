@@ -80,7 +80,7 @@ class Mixin_Schema(AbstractMixin_Schema):
         )
 
 
-class Dialect(BaseDialect, Mixin_Schema, Mixin_OptimizerHints):
+class Dialect(BaseDialect, Mixin_Schema, Mixin_OptimizerHints, Mixin_MD5, Mixin_NormalizeValue, AbstractMixin_MD5, AbstractMixin_NormalizeValue):
     name = "Oracle"
     SUPPORTS_PRIMARY_KEY = True
     SUPPORTS_INDEXES = True

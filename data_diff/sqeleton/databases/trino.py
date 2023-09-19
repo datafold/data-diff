@@ -1,3 +1,4 @@
+from data_diff.sqeleton.abcs.mixins import AbstractMixin_MD5, AbstractMixin_NormalizeValue
 from data_diff.sqeleton.abcs.database_types import TemporalType, ColType_UUID
 from data_diff.sqeleton.databases import presto
 from data_diff.sqeleton.databases.base import import_helper
@@ -29,7 +30,7 @@ class Mixin_NormalizeValue(presto.Mixin_NormalizeValue):
         return f"TRIM({value})"
 
 
-class Dialect(presto.Dialect):
+class Dialect(presto.Dialect, Mixin_MD5, Mixin_NormalizeValue, AbstractMixin_MD5, AbstractMixin_NormalizeValue):
     name = "Trino"
 
 

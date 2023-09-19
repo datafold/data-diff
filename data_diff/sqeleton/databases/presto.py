@@ -76,7 +76,7 @@ class Mixin_NormalizeValue(AbstractMixin_NormalizeValue):
         return self.to_string(f"cast ({value} as int)")
 
 
-class Dialect(BaseDialect, Mixin_Schema):
+class Dialect(BaseDialect, Mixin_Schema, Mixin_MD5, Mixin_NormalizeValue, AbstractMixin_MD5, AbstractMixin_NormalizeValue):
     name = "Presto"
     ROUNDS_ON_PREC_LOSS = True
     TYPE_CLASSES = {
