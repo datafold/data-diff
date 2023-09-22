@@ -1,3 +1,4 @@
+import logging
 from ..abcs.database_types import (
     Datetime,
     Timestamp,
@@ -20,6 +21,8 @@ from ..abcs.mixins import (
 from .base import Mixin_OptimizerHints, ThreadedDatabase, import_helper, ConnectError, BaseDialect, Compilable
 from .base import MD5_HEXDIGITS, CHECKSUM_HEXDIGITS, TIMESTAMP_PRECISION_POS, Mixin_Schema, Mixin_RandomSample
 from ..queries.ast_classes import BinBoolOp
+
+logger = logging.getLogger("mysql")
 
 
 @import_helper("mysql")
@@ -127,12 +130,20 @@ class MySQL(ThreadedDatabase):
         self._args = kw
 
         super().__init__(thread_count=thread_count)
+        self.check_charset()
 
         # In MySQL schema and database are synonymous
         try:
             self.default_schema = kw["database"]
         except KeyError:
             raise ValueError("MySQL URL must specify a database")
+
+    def check_charset(self):
+        try:
+            result = self.query("SELECT @@character_set_client;")
+            logger.debug(f"MYSQL Charset: {result.rows}")
+        except Exception as ex:
+            logger.warning(f"Failed to check the charset: {ex}")
 
     def create_connection(self):
         mysql = import_mysql()
