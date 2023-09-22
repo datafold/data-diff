@@ -12,8 +12,8 @@ import rich
 from rich.logging import RichHandler
 import click
 
-from data_diff.sqeleton.schema import create_schema
-from data_diff.sqeleton.queries.api import current_timestamp
+from data_diff.schema import create_schema
+from data_diff.queries.api import current_timestamp
 
 from data_diff.dbt import dbt_diff
 from data_diff.utils import eval_name_template, remove_password_from_url, safezip, match_like, LogStatusHandler
@@ -21,7 +21,7 @@ from data_diff.diff_tables import Algorithm
 from data_diff.hashdiff_tables import HashDiffer, DEFAULT_BISECTION_THRESHOLD, DEFAULT_BISECTION_FACTOR
 from data_diff.joindiff_tables import TABLE_WRITE_LIMIT, JoinDiffer
 from data_diff.table_segment import TableSegment
-from data_diff.databases import connect
+from data_diff.databases._connect import connect
 from data_diff.parse_time import parse_time_before, UNITS_STR, ParseError
 from data_diff.config import apply_config_from_file
 from data_diff.tracking import disable_tracking, set_entrypoint_name

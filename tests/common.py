@@ -9,8 +9,8 @@ import subprocess
 
 from parameterized import parameterized_class
 
-from data_diff.sqeleton.queries import table
-from data_diff.sqeleton.databases import Database
+from data_diff.queries.api import table
+from data_diff.databases.base import Database
 
 from data_diff import databases as db
 from data_diff import tracking
@@ -81,7 +81,7 @@ CONN_STRINGS = {
     db.Clickhouse: TEST_CLICKHOUSE_CONN_STRING,
     db.Vertica: TEST_VERTICA_CONN_STRING,
     db.DuckDB: TEST_DUCKDB_CONN_STRING,
-    db.MsSql: TEST_MSSQL_CONN_STRING,
+    db.MsSQL: TEST_MSSQL_CONN_STRING,
 }
 
 _database_instances = {}

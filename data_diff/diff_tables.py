@@ -1,7 +1,6 @@
 """Provides classes for performing a table diff
 """
 
-import re
 import time
 from abc import ABC, abstractmethod
 from dataclasses import field
@@ -14,12 +13,11 @@ from concurrent.futures import ThreadPoolExecutor, as_completed
 from runtype import dataclass
 
 from data_diff.info_tree import InfoTree, SegmentInfo
-
 from data_diff.utils import dbt_diff_string_template, run_as_daemon, safezip, getLogger, truncate_error, Vector
 from data_diff.thread_utils import ThreadedYielder
 from data_diff.table_segment import TableSegment, create_mesh_from_points
 from data_diff.tracking import create_end_event_json, create_start_event_json, send_event_json, is_tracking_enabled
-from data_diff.sqeleton.abcs import IKey
+from data_diff.abcs.database_types import IKey
 
 logger = getLogger(__name__)
 

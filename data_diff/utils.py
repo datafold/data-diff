@@ -1,8 +1,9 @@
 import json
 import logging
 import re
+import string
 from abc import abstractmethod
-from typing import Any, Dict, Iterable, Iterator, MutableMapping, Sequence, TypeVar
+from typing import Any, Dict, Iterable, Iterator, List, MutableMapping, Sequence, TypeVar, Union
 from urllib.parse import urlparse
 import operator
 import threading

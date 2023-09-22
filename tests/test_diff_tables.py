@@ -3,7 +3,7 @@ from typing import Callable
 import uuid
 import unittest
 
-from data_diff.sqeleton.queries import table, this, commit, code
+from data_diff.queries.api import table, this, commit, code
 from data_diff.utils import ArithAlphanumeric, numberToAlphanum
 
 from data_diff.hashdiff_tables import HashDiffer

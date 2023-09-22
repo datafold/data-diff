@@ -8,13 +8,11 @@ from operator import attrgetter
 
 from runtype import dataclass
 
-from data_diff.sqeleton.abcs import ColType_UUID, NumericType, PrecisionType, StringType, Boolean, JSON
-
+from data_diff.abcs.database_types import ColType_UUID, NumericType, PrecisionType, StringType, Boolean, JSON
 from data_diff.info_tree import InfoTree
 from data_diff.utils import safezip, diffs_are_equiv_jsons
 from data_diff.thread_utils import ThreadedYielder
 from data_diff.table_segment import TableSegment
-
 from data_diff.diff_tables import TableDiffer
 
 BENCHMARK = os.environ.get("BENCHMARK", False)

@@ -1,9 +1,7 @@
-from contextlib import suppress
 import unittest
 import time
 import json
 import re
-import rich.progress
 import math
 import uuid
 from datetime import datetime, timedelta, timezone
@@ -14,8 +12,8 @@ from itertools import islice, repeat, chain
 from parameterized import parameterized
 
 from data_diff.utils import number_to_human
-from data_diff.sqeleton.queries import table, commit, this, Code
-from data_diff.sqeleton.queries.api import insert_rows_in_batches
+from data_diff.queries.api import table, commit, this, Code
+from data_diff.queries.api import insert_rows_in_batches
 
 from data_diff import databases as db
 from data_diff.query_utils import drop_table
@@ -351,7 +349,7 @@ DATABASE_TYPES = {
             "boolean",
         ],
     },
-    db.MsSql: {
+    db.MsSQL: {
         "int": ["INT", "BIGINT"],
         "datetime": ["datetime2(6)"],
         "float": ["DECIMAL(6, 2)", "FLOAT", "REAL"],
@@ -625,7 +623,7 @@ def _insert_to_table(conn, table_path, values, coltype):
             for i, sample in values
         ]
     # mssql represents with int
-    elif isinstance(conn, db.MsSql) and coltype in ("BIT"):
+    elif isinstance(conn, db.MsSQL) and coltype in ("BIT"):
         values = [(i, int(sample)) for i, sample in values]
 
     insert_rows_in_batches(conn, tbl, values, columns=["id", "col"])

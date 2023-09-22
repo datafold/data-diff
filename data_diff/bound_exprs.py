@@ -7,10 +7,11 @@ from typing import Union, TYPE_CHECKING
 from runtype import dataclass
 from typing_extensions import Self
 
-from data_diff.sqeleton.abcs import AbstractDatabase, AbstractCompiler
-from data_diff.sqeleton.queries.ast_classes import ExprNode, ITable, TablePath, Compilable
-from data_diff.sqeleton.queries.api import table
-from data_diff.sqeleton.schema import create_schema
+from data_diff.abcs.database_types import AbstractDatabase
+from data_diff.abcs.compiler import AbstractCompiler
+from data_diff.queries.ast_classes import ExprNode, TablePath, Compilable
+from data_diff.queries.api import table
+from data_diff.schema import create_schema
 
 
 @dataclass
@@ -80,8 +81,8 @@ def bound_table(database: AbstractDatabase, table_path: Union[TablePath, str, tu
 # Database.table = bound_table
 
 # def test():
-#     from data_diff.sqeleton. import connect
-#     from data_diff.sqeleton.queries.api import table
+#     from data_diff import connect
+#     from data_diff.queries.api import table
 #     d = connect("mysql://erez:qweqwe123@localhost/erez")
 #     t = table(('Rating',))
 

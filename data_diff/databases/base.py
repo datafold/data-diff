@@ -2,7 +2,7 @@ from datetime import datetime
 import math
 import sys
 import logging
-from typing import Any, Callable, Dict, Generator, Tuple, Optional, Sequence, Type, List, Union, TypeVar, TYPE_CHECKING
+from typing import Any, Callable, Dict, Generator, Tuple, Optional, Sequence, Type, List, Union, TypeVar
 from functools import partial, wraps
 from concurrent.futures import ThreadPoolExecutor
 import threading
@@ -14,9 +14,9 @@ from runtype import dataclass
 from typing_extensions import Self
 
 from data_diff.utils import is_uuid, safezip
-from data_diff.sqeleton.queries import Expr, Compiler, table, Select, SKIP, Explain, Code, this
-from data_diff.sqeleton.queries.ast_classes import Random
-from data_diff.sqeleton.abcs.database_types import (
+from data_diff.queries.api import Expr, Compiler, table, Select, SKIP, Explain, Code, this
+from data_diff.queries.ast_classes import Random
+from data_diff.abcs.database_types import (
     AbstractDatabase,
     Array,
     Struct,
@@ -39,14 +39,14 @@ from data_diff.sqeleton.abcs.database_types import (
     Boolean,
     JSON,
 )
-from data_diff.sqeleton.abcs.mixins import Compilable
-from data_diff.sqeleton.abcs.mixins import (
+from data_diff.abcs.mixins import Compilable
+from data_diff.abcs.mixins import (
     AbstractMixin_Schema,
     AbstractMixin_RandomSample,
     AbstractMixin_NormalizeValue,
     AbstractMixin_OptimizerHints,
 )
-from data_diff.sqeleton.bound_exprs import bound_table
+from data_diff.bound_exprs import bound_table
 
 logger = logging.getLogger("database")
 
@@ -315,7 +315,7 @@ class Database(AbstractDatabase[T]):
 
     Used for providing connection code and implementation specific SQL utilities.
 
-    Instanciated using :meth:`~data_diff.sqeleton.connect`
+    Instanciated using :meth:`~data_diff.connect`
     """
 
     default_schema: str = None
