@@ -1,5 +1,5 @@
 from typing import List
-from ..abcs.database_types import (
+from data_diff.sqeleton.abcs.database_types import (
     DbPath,
     JSON,
     Timestamp,
@@ -14,9 +14,15 @@ from ..abcs.database_types import (
     Boolean,
     Date,
 )
-from ..abcs.mixins import AbstractMixin_MD5, AbstractMixin_NormalizeValue
-from .base import BaseDialect, ThreadedDatabase, import_helper, ConnectError, Mixin_Schema
-from .base import MD5_HEXDIGITS, CHECKSUM_HEXDIGITS, _CHECKSUM_BITSIZE, TIMESTAMP_PRECISION_POS, Mixin_RandomSample
+from data_diff.sqeleton.abcs.mixins import AbstractMixin_MD5, AbstractMixin_NormalizeValue
+from data_diff.sqeleton.databases.base import BaseDialect, ThreadedDatabase, import_helper, ConnectError, Mixin_Schema
+from data_diff.sqeleton.databases.base import (
+    MD5_HEXDIGITS,
+    CHECKSUM_HEXDIGITS,
+    _CHECKSUM_BITSIZE,
+    TIMESTAMP_PRECISION_POS,
+    Mixin_RandomSample,
+)
 
 SESSION_TIME_ZONE = None  # Changed by the tests
 

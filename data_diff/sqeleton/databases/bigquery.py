@@ -1,6 +1,6 @@
 import re
 from typing import Any, List, Union
-from ..abcs.database_types import (
+from data_diff.sqeleton.abcs.database_types import (
     ColType,
     Array,
     JSON,
@@ -17,16 +17,24 @@ from ..abcs.database_types import (
     Boolean,
     UnknownColType,
 )
-from ..abcs.mixins import (
+from data_diff.sqeleton.abcs.mixins import (
     AbstractMixin_MD5,
     AbstractMixin_NormalizeValue,
     AbstractMixin_Schema,
     AbstractMixin_TimeTravel,
 )
-from ..abcs import Compilable
-from ..queries import this, table, SKIP, code
-from .base import BaseDialect, Database, import_helper, parse_table_name, ConnectError, apply_query, QueryResult
-from .base import TIMESTAMP_PRECISION_POS, ThreadLocalInterpreter, Mixin_RandomSample
+from data_diff.sqeleton.abcs import Compilable
+from data_diff.sqeleton.queries import this, table, SKIP, code
+from data_diff.sqeleton.databases.base import (
+    BaseDialect,
+    Database,
+    import_helper,
+    parse_table_name,
+    ConnectError,
+    apply_query,
+    QueryResult,
+)
+from data_diff.sqeleton.databases.base import TIMESTAMP_PRECISION_POS, ThreadLocalInterpreter, Mixin_RandomSample
 
 
 @import_helper(text="Please install BigQuery and configure your google-cloud access.")

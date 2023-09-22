@@ -51,7 +51,7 @@ Instead, they should be imported and initialized within a function. Example:
 
 ::
 
-    from .base import import_helper
+    from data_diff.base import import_helper
 
     @import_helper("postgresql")
     def import_postgresql():

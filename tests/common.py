@@ -63,7 +63,7 @@ logging.getLogger("table_segment").setLevel(level)
 logging.getLogger("database").setLevel(level)
 
 try:
-    from .local_settings import *
+    from tests.local_settings import *
 except ImportError:
     pass  # No local settings
 

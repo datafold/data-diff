@@ -11,7 +11,7 @@ from data_diff.joindiff_tables import JoinDiffer
 from data_diff.table_segment import TableSegment, split_space, Vector
 from data_diff import databases as db
 
-from .common import str_to_checksum, test_each_database_in_list, DiffTestCase, table_segment
+from tests.common import str_to_checksum, test_each_database_in_list, DiffTestCase, table_segment
 
 
 TEST_DATABASES = {

@@ -3,7 +3,7 @@ from typing import List, Dict, Optional, Any, Tuple, Union
 
 from runtype import dataclass
 
-from .table_segment import TableSegment
+from data_diff.table_segment import TableSegment
 
 
 @dataclass(frozen=False)

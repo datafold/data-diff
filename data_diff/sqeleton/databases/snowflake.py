@@ -1,7 +1,7 @@
 from typing import Union, List
 import logging
 
-from ..abcs.database_types import (
+from data_diff.sqeleton.abcs.database_types import (
     Timestamp,
     TimestampTZ,
     Decimal,
@@ -13,15 +13,15 @@ from ..abcs.database_types import (
     Boolean,
     Date,
 )
-from ..abcs.mixins import (
+from data_diff.sqeleton.abcs.mixins import (
     AbstractMixin_MD5,
     AbstractMixin_NormalizeValue,
     AbstractMixin_Schema,
     AbstractMixin_TimeTravel,
 )
-from ..abcs import Compilable
+from data_diff.sqeleton.abcs import Compilable
 from data_diff.sqeleton.queries import table, this, SKIP, code
-from .base import (
+from data_diff.sqeleton.databases.base import (
     BaseDialect,
     ConnectError,
     Database,

@@ -1,6 +1,6 @@
 from typing import Optional
 from data_diff.sqeleton.abcs.mixins import AbstractMixin_MD5, AbstractMixin_NormalizeValue
-from .base import (
+from data_diff.sqeleton.databases.base import (
     CHECKSUM_HEXDIGITS,
     Mixin_OptimizerHints,
     Mixin_RandomSample,
@@ -10,8 +10,8 @@ from .base import (
     ConnectError,
     BaseDialect,
 )
-from .base import Mixin_Schema
-from ..abcs.database_types import (
+from data_diff.sqeleton.databases.base import Mixin_Schema
+from data_diff.sqeleton.abcs.database_types import (
     JSON,
     Timestamp,
     TimestampTZ,

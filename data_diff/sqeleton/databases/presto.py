@@ -1,9 +1,9 @@
 from functools import partial
 import re
 
-from ..utils import match_regexps
+from data_diff.sqeleton.utils import match_regexps
 
-from ..abcs.database_types import (
+from data_diff.sqeleton.abcs.database_types import (
     Timestamp,
     TimestampTZ,
     Integer,
@@ -18,9 +18,16 @@ from ..abcs.database_types import (
     TemporalType,
     Boolean,
 )
-from ..abcs.mixins import AbstractMixin_MD5, AbstractMixin_NormalizeValue
-from .base import BaseDialect, Database, import_helper, ThreadLocalInterpreter, Mixin_Schema, Mixin_RandomSample
-from .base import (
+from data_diff.sqeleton.abcs.mixins import AbstractMixin_MD5, AbstractMixin_NormalizeValue
+from data_diff.sqeleton.databases.base import (
+    BaseDialect,
+    Database,
+    import_helper,
+    ThreadLocalInterpreter,
+    Mixin_Schema,
+    Mixin_RandomSample,
+)
+from data_diff.sqeleton.databases.base import (
     MD5_HEXDIGITS,
     CHECKSUM_HEXDIGITS,
     TIMESTAMP_PRECISION_POS,

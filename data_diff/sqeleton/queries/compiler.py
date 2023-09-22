@@ -6,8 +6,8 @@ from typing import Any, Dict, Sequence, List
 from runtype import dataclass
 from typing_extensions import Self
 
-from ..utils import ArithString
-from ..abcs import AbstractDatabase, AbstractDialect, DbPath, AbstractCompiler, Compilable
+from data_diff.sqeleton.utils import ArithString
+from data_diff.sqeleton.abcs import AbstractDatabase, AbstractDialect, DbPath, AbstractCompiler, Compilable
 
 import contextvars
 
@@ -44,7 +44,7 @@ class Compiler(AbstractCompiler):
             cv_params.set(params)
 
         if self.root and isinstance(elem, Compilable) and not isinstance(elem, Root):
-            from .ast_classes import Select
+            from data_diff.sqeleton.queries.ast_classes import Select
 
             elem = Select(columns=[elem])
 

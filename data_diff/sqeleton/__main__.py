@@ -1,5 +1,5 @@
 import click
-from .repl import repl as repl_main
+from data_diff.sqeleton.repl import repl as repl_main
 
 
 @click.group(no_args_is_help=True)
