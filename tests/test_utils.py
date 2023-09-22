@@ -1,6 +1,6 @@
 import unittest
 
-from data_diff.sqeleton.utils import remove_passwords_in_dict, match_regexps, match_like, number_to_human
+from data_diff.utils import remove_passwords_in_dict, match_regexps, match_like, number_to_human
 
 
 class TestUtils(unittest.TestCase):

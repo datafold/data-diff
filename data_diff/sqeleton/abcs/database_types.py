@@ -6,7 +6,7 @@ from datetime import datetime
 from runtype import dataclass
 from typing_extensions import Self
 
-from data_diff.sqeleton.utils import ArithAlphanumeric, ArithUUID, Unknown
+from data_diff.utils import ArithAlphanumeric, ArithUUID, Unknown
 
 
 DbPath = Tuple[str, ...]
