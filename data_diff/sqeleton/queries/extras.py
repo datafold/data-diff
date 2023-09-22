@@ -3,10 +3,10 @@
 from typing import Callable, Sequence
 from runtype import dataclass
 
-from ..abcs.database_types import ColType, Native_UUID
+from data_diff.sqeleton.abcs.database_types import ColType, Native_UUID
 
-from .compiler import Compiler
-from .ast_classes import Expr, ExprNode, Concat, Code
+from data_diff.sqeleton.queries.compiler import Compiler
+from data_diff.sqeleton.queries.ast_classes import Expr, ExprNode, Concat, Code
 
 
 @dataclass

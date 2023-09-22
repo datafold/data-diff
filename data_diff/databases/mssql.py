@@ -1,5 +1,5 @@
 from data_diff.sqeleton.databases import mssql
-from .base import DatadiffDialect
+from data_diff.databases.base import DatadiffDialect
 
 
 class Dialect(mssql.Dialect, mssql.Mixin_MD5, mssql.Mixin_NormalizeValue, DatadiffDialect):

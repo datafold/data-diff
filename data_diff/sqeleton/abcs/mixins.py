@@ -1,5 +1,5 @@
 from abc import ABC, abstractmethod
-from .database_types import (
+from data_diff.sqeleton.abcs.database_types import (
     Array,
     TemporalType,
     FractionalType,
@@ -10,7 +10,7 @@ from .database_types import (
     JSON,
     Struct,
 )
-from .compiler import Compilable
+from data_diff.sqeleton.abcs.compiler import Compilable
 
 
 class AbstractMixin(ABC):

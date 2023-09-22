@@ -31,13 +31,13 @@ from data_diff.sqeleton.queries import (
 from data_diff.sqeleton.queries.ast_classes import Concat, Count, Expr, Func, Random, TablePath, Code, ITable
 from data_diff.sqeleton.queries.extras import NormalizeAsString
 
-from .info_tree import InfoTree
+from data_diff.info_tree import InfoTree
 
-from .query_utils import append_to_table, drop_table
-from .utils import safezip
-from .table_segment import TableSegment
-from .diff_tables import TableDiffer, DiffResult
-from .thread_utils import ThreadedYielder
+from data_diff.query_utils import append_to_table, drop_table
+from data_diff.utils import safezip
+from data_diff.table_segment import TableSegment
+from data_diff.diff_tables import TableDiffer, DiffResult
+from data_diff.thread_utils import ThreadedYielder
 
 
 logger = logging.getLogger("joindiff_tables")

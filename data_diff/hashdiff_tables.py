@@ -10,12 +10,12 @@ from runtype import dataclass
 
 from data_diff.sqeleton.abcs import ColType_UUID, NumericType, PrecisionType, StringType, Boolean, JSON
 
-from .info_tree import InfoTree
-from .utils import safezip, diffs_are_equiv_jsons
-from .thread_utils import ThreadedYielder
-from .table_segment import TableSegment
+from data_diff.info_tree import InfoTree
+from data_diff.utils import safezip, diffs_are_equiv_jsons
+from data_diff.thread_utils import ThreadedYielder
+from data_diff.table_segment import TableSegment
 
-from .diff_tables import TableDiffer
+from data_diff.diff_tables import TableDiffer
 
 BENCHMARK = os.environ.get("BENCHMARK", False)
 

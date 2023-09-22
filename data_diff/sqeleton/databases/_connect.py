@@ -8,21 +8,21 @@ import toml
 from runtype import dataclass
 from typing_extensions import Self
 
-from ..abcs.mixins import AbstractMixin
-from .base import Database, ThreadedDatabase
-from .postgresql import PostgreSQL
-from .mysql import MySQL
-from .oracle import Oracle
-from .snowflake import Snowflake
-from .bigquery import BigQuery
-from .redshift import Redshift
-from .presto import Presto
-from .databricks import Databricks
-from .trino import Trino
-from .clickhouse import Clickhouse
-from .vertica import Vertica
-from .duckdb import DuckDB
-from .mssql import MsSQL
+from data_diff.sqeleton.abcs.mixins import AbstractMixin
+from data_diff.sqeleton.databases.base import Database, ThreadedDatabase
+from data_diff.sqeleton.databases.postgresql import PostgreSQL
+from data_diff.sqeleton.databases.mysql import MySQL
+from data_diff.sqeleton.databases.oracle import Oracle
+from data_diff.sqeleton.databases.snowflake import Snowflake
+from data_diff.sqeleton.databases.bigquery import BigQuery
+from data_diff.sqeleton.databases.redshift import Redshift
+from data_diff.sqeleton.databases.presto import Presto
+from data_diff.sqeleton.databases.databricks import Databricks
+from data_diff.sqeleton.databases.trino import Trino
+from data_diff.sqeleton.databases.clickhouse import Clickhouse
+from data_diff.sqeleton.databases.vertica import Vertica
+from data_diff.sqeleton.databases.duckdb import DuckDB
+from data_diff.sqeleton.databases.mssql import MsSQL
 
 
 @dataclass

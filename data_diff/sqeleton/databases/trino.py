@@ -1,7 +1,7 @@
-from ..abcs.database_types import TemporalType, ColType_UUID
-from . import presto
-from .base import import_helper
-from .base import TIMESTAMP_PRECISION_POS
+from data_diff.sqeleton.abcs.database_types import TemporalType, ColType_UUID
+from data_diff.sqeleton.databases import presto
+from data_diff.sqeleton.databases.base import import_helper
+from data_diff.sqeleton.databases.base import TIMESTAMP_PRECISION_POS
 
 
 @import_helper("trino")

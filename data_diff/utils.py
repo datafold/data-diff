@@ -9,7 +9,7 @@ from datetime import datetime
 from packaging.version import parse as parse_version
 import requests
 from tabulate import tabulate
-from .version import __version__
+from data_diff.version import __version__
 from rich.status import Status
 
 

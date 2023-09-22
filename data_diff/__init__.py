@@ -2,13 +2,13 @@ from typing import Sequence, Tuple, Iterator, Optional, Union
 
 from data_diff.sqeleton.abcs import DbTime, DbPath
 
-from .tracking import disable_tracking
-from .databases import connect
-from .diff_tables import Algorithm
-from .hashdiff_tables import HashDiffer, DEFAULT_BISECTION_THRESHOLD, DEFAULT_BISECTION_FACTOR
-from .joindiff_tables import JoinDiffer, TABLE_WRITE_LIMIT
-from .table_segment import TableSegment
-from .utils import eval_name_template, Vector
+from data_diff.tracking import disable_tracking
+from data_diff.databases import connect
+from data_diff.diff_tables import Algorithm
+from data_diff.hashdiff_tables import HashDiffer, DEFAULT_BISECTION_THRESHOLD, DEFAULT_BISECTION_FACTOR
+from data_diff.joindiff_tables import JoinDiffer, TABLE_WRITE_LIMIT
+from data_diff.table_segment import TableSegment
+from data_diff.utils import eval_name_template, Vector
 
 
 def connect_to_table(
