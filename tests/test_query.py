@@ -2,7 +2,7 @@ from datetime import datetime
 from typing import List, Optional
 import unittest
 from data_diff.sqeleton.abcs import AbstractDatabase, AbstractDialect
-from data_diff.sqeleton.utils import CaseInsensitiveDict, CaseSensitiveDict
+from data_diff.utils import CaseInsensitiveDict, CaseSensitiveDict
 
 from data_diff.sqeleton.queries import this, table, Compiler, outerjoin, cte, when, coalesce, CompileError
 from data_diff.sqeleton.queries.ast_classes import Random

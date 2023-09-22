@@ -5,7 +5,7 @@ from typing import Any, Generator, List, Optional, Sequence, Type, Union, Dict
 from runtype import dataclass
 from typing_extensions import Self
 
-from data_diff.sqeleton.utils import join_iter, ArithString
+from data_diff.utils import join_iter, ArithString
 from data_diff.sqeleton.abcs import Compilable
 from data_diff.sqeleton.abcs.database_types import AbstractTable
 from data_diff.sqeleton.abcs.mixins import AbstractMixin_Regex, AbstractMixin_TimeTravel

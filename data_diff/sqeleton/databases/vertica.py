@@ -1,6 +1,6 @@
 from typing import List
 
-from data_diff.sqeleton.utils import match_regexps
+from data_diff.utils import match_regexps
 from data_diff.sqeleton.databases.base import (
     CHECKSUM_HEXDIGITS,
     MD5_HEXDIGITS,

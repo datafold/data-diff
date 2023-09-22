@@ -1,7 +1,7 @@
 from functools import partial
 import re
 
-from data_diff.sqeleton.utils import match_regexps
+from data_diff.utils import match_regexps
 
 from data_diff.sqeleton.abcs.database_types import (
     Timestamp,

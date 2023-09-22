@@ -1,6 +1,6 @@
 from typing import Union
 
-from data_diff.sqeleton.utils import match_regexps
+from data_diff.utils import match_regexps
 from data_diff.sqeleton.abcs.database_types import (
     Timestamp,
     TimestampTZ,

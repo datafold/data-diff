@@ -13,7 +13,7 @@ import decimal
 from runtype import dataclass
 from typing_extensions import Self
 
-from data_diff.sqeleton.utils import is_uuid, safezip
+from data_diff.utils import is_uuid, safezip
 from data_diff.sqeleton.queries import Expr, Compiler, table, Select, SKIP, Explain, Code, this
 from data_diff.sqeleton.queries.ast_classes import Random
 from data_diff.sqeleton.abcs.database_types import (
