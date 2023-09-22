@@ -1,8 +1,8 @@
 import unittest
 from data_diff.diff_tables import DiffResultWrapper, InfoTree, SegmentInfo, TableSegment
 from data_diff.format import jsonify
-from data_diff.sqeleton.abcs.database_types import Integer
-from data_diff.sqeleton.databases import Database
+from data_diff.abcs.database_types import Integer
+from data_diff.databases.base import Database
 
 
 class TestFormat(unittest.TestCase):

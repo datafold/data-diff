@@ -1,18 +1,19 @@
 from dataclasses import field
 from datetime import datetime
-from typing import Any, Generator, List, Optional, Sequence, Type, Union, Dict
+from typing import Any, Generator, List, Optional, Sequence, Union, Dict
 
 from runtype import dataclass
 from typing_extensions import Self
 
 from data_diff.utils import join_iter, ArithString
-from data_diff.sqeleton.abcs import Compilable
-from data_diff.sqeleton.abcs.database_types import AbstractTable
-from data_diff.sqeleton.abcs.mixins import AbstractMixin_Regex, AbstractMixin_TimeTravel
-from data_diff.sqeleton.schema import Schema
+from data_diff.abcs.compiler import Compilable
+from data_diff.abcs.database_types import AbstractTable
+from data_diff.abcs.mixins import AbstractMixin_Regex, AbstractMixin_TimeTravel
+from data_diff.schema import Schema
 
-from data_diff.sqeleton.queries.compiler import Compiler, cv_params, Root, CompileError
-from data_diff.sqeleton.queries.base import SKIP, DbPath, args_as_tuple, SqeletonError
+from data_diff.queries.compiler import Compiler, cv_params, Root, CompileError
+from data_diff.queries.base import SKIP, args_as_tuple, SqeletonError
+from data_diff.abcs.database_types import DbPath
 
 
 class QueryBuilderError(SqeletonError):

@@ -1,7 +1,6 @@
 import unittest
 
-from data_diff.sqeleton.queries import table, commit
-
+from data_diff.queries.api import table, commit
 from data_diff import TableSegment, HashDiffer
 from data_diff import databases as db
 from tests.common import get_conn, random_table_suffix
