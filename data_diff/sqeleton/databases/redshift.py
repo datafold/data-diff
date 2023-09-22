@@ -1,5 +1,5 @@
 from typing import List, Dict
-from ..abcs.database_types import (
+from data_diff.sqeleton.abcs.database_types import (
     Float,
     JSON,
     TemporalType,
@@ -7,8 +7,8 @@ from ..abcs.database_types import (
     DbPath,
     TimestampTZ,
 )
-from ..abcs.mixins import AbstractMixin_MD5
-from .postgresql import (
+from data_diff.sqeleton.abcs.mixins import AbstractMixin_MD5
+from data_diff.sqeleton.databases.postgresql import (
     PostgreSQL,
     MD5_HEXDIGITS,
     CHECKSUM_HEXDIGITS,

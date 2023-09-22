@@ -48,7 +48,7 @@ logging.basicConfig(level=level)
 logging.getLogger("database").setLevel(level)
 
 try:
-    from .local_settings import *
+    from tests.sqeleton.local_settings import *
 except ImportError:
     pass  # No local settings
 

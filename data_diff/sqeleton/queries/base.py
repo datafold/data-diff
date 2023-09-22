@@ -1,7 +1,7 @@
 from typing import Generator
 
-from ..abcs import DbPath, DbKey
-from ..schema import Schema
+from data_diff.sqeleton.abcs import DbPath, DbKey
+from data_diff.sqeleton.schema import Schema
 
 
 class _SKIP:

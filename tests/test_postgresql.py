@@ -4,7 +4,7 @@ from data_diff.sqeleton.queries import table, commit
 
 from data_diff import TableSegment, HashDiffer
 from data_diff import databases as db
-from .common import get_conn, random_table_suffix
+from tests.common import get_conn, random_table_suffix
 
 
 class TestUUID(unittest.TestCase):

@@ -22,7 +22,7 @@ from data_diff.query_utils import drop_table
 from data_diff.utils import accumulate
 from data_diff.hashdiff_tables import HashDiffer, DEFAULT_BISECTION_THRESHOLD
 from data_diff.table_segment import TableSegment
-from .common import (
+from tests.common import (
     CONN_STRINGS,
     N_SAMPLES,
     N_THREADS,

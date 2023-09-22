@@ -1,7 +1,7 @@
 from typing import List
 
-from ..utils import match_regexps
-from .base import (
+from data_diff.sqeleton.utils import match_regexps
+from data_diff.sqeleton.databases.base import (
     CHECKSUM_HEXDIGITS,
     MD5_HEXDIGITS,
     TIMESTAMP_PRECISION_POS,
@@ -13,7 +13,7 @@ from .base import (
     import_helper,
     Mixin_RandomSample,
 )
-from ..abcs.database_types import (
+from data_diff.sqeleton.abcs.database_types import (
     Decimal,
     Float,
     FractionalType,
@@ -25,9 +25,9 @@ from ..abcs.database_types import (
     Boolean,
     ColType_UUID,
 )
-from ..abcs.mixins import AbstractMixin_MD5, AbstractMixin_NormalizeValue, AbstractMixin_Schema
-from ..abcs import Compilable
-from ..queries import table, this, SKIP
+from data_diff.sqeleton.abcs.mixins import AbstractMixin_MD5, AbstractMixin_NormalizeValue, AbstractMixin_Schema
+from data_diff.sqeleton.abcs import Compilable
+from data_diff.sqeleton.queries import table, this, SKIP
 
 
 @import_helper("vertica")

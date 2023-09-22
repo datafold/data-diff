@@ -1,7 +1,7 @@
 import logging
 
-from .utils import CaseAwareMapping, CaseInsensitiveDict, CaseSensitiveDict
-from .abcs import AbstractDatabase, DbPath
+from data_diff.sqeleton.utils import CaseAwareMapping, CaseInsensitiveDict, CaseSensitiveDict
+from data_diff.sqeleton.abcs import AbstractDatabase, DbPath
 
 logger = logging.getLogger("schema")
 

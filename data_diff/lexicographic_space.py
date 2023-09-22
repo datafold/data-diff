@@ -20,7 +20,7 @@ keys are not evenly distributed.
 from random import randint, randrange
 
 from typing import Tuple
-from .utils import safezip
+from data_diff.utils import safezip
 
 Vector = Tuple[int]
 Interval = Tuple[int]

@@ -16,12 +16,12 @@ from data_diff.errors import (
     DataDiffNoDatasourceIdError,
 )
 
-from . import connect_to_table, diff_tables, Algorithm
-from .cloud import DatafoldAPI, TCloudApiDataDiff, TCloudApiOrgMeta
-from .dbt_parser import DbtParser, TDatadiffConfig
-from .diff_tables import DiffResultWrapper
-from .format import jsonify, jsonify_error
-from .tracking import (
+from data_diff import connect_to_table, diff_tables, Algorithm
+from data_diff.cloud import DatafoldAPI, TCloudApiDataDiff, TCloudApiOrgMeta
+from data_diff.dbt_parser import DbtParser, TDatadiffConfig
+from data_diff.diff_tables import DiffResultWrapper
+from data_diff.format import jsonify, jsonify_error
+from data_diff.tracking import (
     bool_ask_for_email,
     bool_notify_about_extension,
     create_email_signup_event_json,
@@ -34,7 +34,7 @@ from .tracking import (
     send_event_json,
     is_tracking_enabled,
 )
-from .utils import (
+from data_diff.utils import (
     dbt_diff_string_template,
     getLogger,
     columns_added_template,
