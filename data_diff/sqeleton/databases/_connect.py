@@ -5,9 +5,10 @@ import dsnparse
 import toml
 
 from runtype import dataclass
+from typing_extensions import Self
 
 from ..abcs.mixins import AbstractMixin
-from ..utils import WeakCache, Self
+from ..utils import WeakCache
 from .base import Database, ThreadedDatabase
 from .postgresql import PostgreSQL
 from .mysql import MySQL
@@ -99,7 +100,7 @@ class Connect:
         self.match_uri_path = {name: MatchUriPath(cls) for name, cls in database_by_scheme.items()}
         self.conn_cache = WeakCache()
 
-    def for_databases(self, *dbs):
+    def for_databases(self, *dbs) -> Self:
         database_by_scheme = {k: db for k, db in self.database_by_scheme.items() if k in dbs}
         return type(self)(database_by_scheme)
 

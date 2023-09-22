@@ -1,11 +1,12 @@
 import decimal
 from abc import ABC, abstractmethod
-from typing import Sequence, Optional, Tuple, Union, Dict, List
+from typing import Sequence, Optional, Tuple, Type, Union, Dict, List
 from datetime import datetime
 
 from runtype import dataclass
+from typing_extensions import Self
 
-from ..utils import ArithAlphanumeric, ArithUUID, Self, Unknown
+from ..utils import ArithAlphanumeric, ArithUUID, Unknown
 
 
 DbPath = Tuple[str, ...]

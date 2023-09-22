@@ -46,6 +46,7 @@ vertica-python = {version="*", optional=true}
 urllib3 = "<2"
 oracledb = {version = "*", optional=true}
 pyodbc = {version="^4.0.39", optional=true}
+typing-extensions = ">=4.0.1"
 
 [tool.poetry.dev-dependencies]
 parameterized = "*"
