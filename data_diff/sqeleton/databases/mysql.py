@@ -138,17 +138,23 @@ class MySQL(ThreadedDatabase):
         except KeyError:
             raise ValueError("MySQL URL must specify a database")
 
-    def check_charset(self):
-        try:
-            result = self.query("SELECT @@character_set_client;")
-            logger.debug(f"MYSQL Charset: {result.rows}")
-        except Exception as ex:
-            logger.warning(f"Failed to check the charset: {ex}")
+    def check_charset(self) -> None:
+        if logging.getLogger().level == logging.DEBUG:
+            try:
+                char_set_result = self.query("SELECT @@character_set_client;")
+                logger.debug(f"charset: {char_set_result.rows}")
+                collation_result = self.query("SELECT @@collation_connection;")
+                logger.debug(f"collation: {collation_result.rows}")
+            except Exception as ex:
+                logger.warning(f"Failed to check the charset: {ex}")
 
     def create_connection(self):
         mysql = import_mysql()
         try:
-            return mysql.connect(charset="utf8", use_unicode=True, **self._args)
+            conn = mysql.connect(charset="utf8mb4", use_unicode=True, **self._args)
+            conn.set_charset_collation(charset="utf8mb4", collation='utf8mb4_0900_ai_ci')
+            return conn
+
         except mysql.Error as e:
             if e.errno == mysql.errorcode.ER_ACCESS_DENIED_ERROR:
                 raise ConnectError("Bad user name or password") from e
