@@ -1,13 +1,14 @@
-from typing import Type, Optional, Union, Dict
+from typing import Hashable, MutableMapping, Type, Optional, Union, Dict
 from itertools import zip_longest
 from contextlib import suppress
+import weakref
 import dsnparse
 import toml
 
 from runtype import dataclass
+from typing_extensions import Self
 
 from ..abcs.mixins import AbstractMixin
-from ..utils import WeakCache, Self
 from .base import Database, ThreadedDatabase
 from .postgresql import PostgreSQL
 from .mysql import MySQL
@@ -93,13 +94,14 @@ DATABASE_BY_SCHEME = {
 
 class Connect:
     """Provides methods for connecting to a supported database using a URL or connection dict."""
+    conn_cache: MutableMapping[Hashable, Database]
 
     def __init__(self, database_by_scheme: Dict[str, Database] = DATABASE_BY_SCHEME):
         self.database_by_scheme = database_by_scheme
         self.match_uri_path = {name: MatchUriPath(cls) for name, cls in database_by_scheme.items()}
-        self.conn_cache = WeakCache()
+        self.conn_cache = weakref.WeakValueDictionary()
 
-    def for_databases(self, *dbs):
+    def for_databases(self, *dbs) -> Self:
         database_by_scheme = {k: db for k, db in self.database_by_scheme.items() if k in dbs}
         return type(self)(database_by_scheme)
 
@@ -262,9 +264,10 @@ class Connect:
             >>> connect({"driver": "mysql", "host": "localhost", "database": "db"})
             <data_diff.sqeleton.databases.mysql.MySQL object at ...>
         """
+        cache_key = self.__make_cache_key(db_conf)
         if shared:
             with suppress(KeyError):
-                conn = self.conn_cache.get(db_conf)
+                conn = self.conn_cache[cache_key]
                 if not conn.is_closed:
                     return conn
 
@@ -276,5 +279,10 @@ class Connect:
             raise TypeError(f"db configuration must be a URI string or a dictionary. Instead got '{db_conf}'.")
 
         if shared:
-            self.conn_cache.add(db_conf, conn)
+            self.conn_cache[cache_key] = conn
         return conn
+
+    def __make_cache_key(self, db_conf: Union[str, dict]) -> Hashable:
+        if isinstance(db_conf, dict):
+            return tuple(db_conf.items())
+        return db_conf

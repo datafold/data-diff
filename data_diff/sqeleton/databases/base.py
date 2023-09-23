@@ -11,8 +11,9 @@ from uuid import UUID
 import decimal
 
 from runtype import dataclass
+from typing_extensions import Self
 
-from ..utils import is_uuid, safezip, Self
+from ..utils import is_uuid, safezip
 from ..queries import Expr, Compiler, table, Select, SKIP, Explain, Code, this
 from ..queries.ast_classes import Random
 from ..abcs.database_types import (
@@ -281,7 +282,7 @@ class BaseDialect(AbstractDialect):
         return math.floor(math.log(2**p, 10))
 
     @classmethod
-    def load_mixins(cls, *abstract_mixins) -> "Self":
+    def load_mixins(cls, *abstract_mixins) -> Self:
         mixins = {m for m in cls.MIXINS if issubclass(m, abstract_mixins)}
 
         class _DialectWithMixins(cls, *mixins, *abstract_mixins):

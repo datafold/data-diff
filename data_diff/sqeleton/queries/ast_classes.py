@@ -1,8 +1,9 @@
 from dataclasses import field
 from datetime import datetime
-from typing import Any, Generator, List, Optional, Sequence, Union, Dict
+from typing import Any, Generator, List, Optional, Sequence, Type, Union, Dict
 
 from runtype import dataclass
+from typing_extensions import Self
 
 from ..utils import join_iter, ArithString
 from ..abcs import Compilable
@@ -322,7 +323,7 @@ class CaseWhen(ExprNode):
             return QB_When(self, whens[0])
         return QB_When(self, BinBoolOp("AND", whens))
 
-    def else_(self, then: Expr):
+    def else_(self, then: Expr) -> Self:
         """Add an 'else' clause to the case expression.
 
         Can only be called once!
@@ -422,7 +423,7 @@ class TablePath(ExprNode, ITable):
     schema: Optional[Schema] = field(default=None, repr=False)
 
     @property
-    def source_table(self):
+    def source_table(self) -> Self:
         return self
 
     def compile(self, c: Compiler) -> str:
@@ -524,7 +525,7 @@ class Join(ExprNode, ITable, Root):
     columns: Sequence[Expr] = None
 
     @property
-    def source_table(self):
+    def source_table(self) -> Self:
         return self
 
     @property
@@ -533,7 +534,7 @@ class Join(ExprNode, ITable, Root):
         s = self.source_tables[0].schema  # TODO validate types match between both tables
         return type(s)({c.name: c.type for c in self.columns})
 
-    def on(self, *exprs) -> "Join":
+    def on(self, *exprs) -> Self:
         """Add an ON clause, for filtering the result of the cartesian product (i.e. the JOIN)"""
         if len(exprs) == 1:
             (e,) = exprs
@@ -546,7 +547,7 @@ class Join(ExprNode, ITable, Root):
 
         return self.replace(on_exprs=(self.on_exprs or []) + exprs)
 
-    def select(self, *exprs, **named_exprs) -> ITable:
+    def select(self, *exprs, **named_exprs) -> Union[Self, ITable]:
         """Select fields to return from the JOIN operation
 
         See Also: ``ITable.select()``
@@ -600,7 +601,7 @@ class GroupBy(ExprNode, ITable, Root):
     def __post_init__(self):
         assert self.keys or self.values
 
-    def having(self, *exprs):
+    def having(self, *exprs) -> Self:
         """Add a 'HAVING' clause to the group-by"""
         exprs = args_as_tuple(exprs)
         exprs = _drop_skips(exprs)
@@ -610,7 +611,7 @@ class GroupBy(ExprNode, ITable, Root):
         resolve_names(self.table, exprs)
         return self.replace(having_exprs=(self.having_exprs or []) + exprs)
 
-    def agg(self, *exprs):
+    def agg(self, *exprs) -> Self:
         """Select aggregated fields for the group-by."""
         exprs = args_as_tuple(exprs)
         exprs = _drop_skips(exprs)
@@ -991,7 +992,7 @@ class InsertToTable(Statement):
 
         return f"INSERT INTO {c.compile(self.path)}{columns} {expr}"
 
-    def returning(self, *exprs):
+    def returning(self, *exprs) -> Self:
         """Add a 'RETURNING' clause to the insert expression.
 
         Note: Not all databases support this feature!

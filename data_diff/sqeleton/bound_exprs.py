@@ -5,6 +5,7 @@ from functools import wraps
 from typing import Union, TYPE_CHECKING
 
 from runtype import dataclass
+from typing_extensions import Self
 
 from .abcs import AbstractDatabase, AbstractCompiler
 from .queries.ast_classes import ExprNode, ITable, TablePath, Compilable
@@ -52,11 +53,11 @@ class BoundTable(BoundNode):  # ITable
     database: AbstractDatabase
     node: TablePath
 
-    def with_schema(self, schema):
+    def with_schema(self, schema) -> Self:
         table_path = self.node.replace(schema=schema)
         return self.replace(node=table_path)
 
-    def query_schema(self, *, columns=None, where=None, case_sensitive=True):
+    def query_schema(self, *, columns=None, where=None, case_sensitive=True) -> Self:
         table_path = self.node
 
         if table_path.schema:
