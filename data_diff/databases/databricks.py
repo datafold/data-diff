@@ -94,6 +94,10 @@ class Dialect(BaseDialect, Mixin_MD5, Mixin_NormalizeValue, AbstractMixin_MD5, A
     def set_timezone_to_utc(self) -> str:
         return "SET TIME ZONE 'UTC'"
 
+    def parse_table_name(self, name: str) -> DbPath:
+        path = parse_table_name(name)
+        return tuple(i for i in path if i is not None)
+
 
 class Databricks(ThreadedDatabase):
     dialect = Dialect()
@@ -177,10 +181,6 @@ class Databricks(ThreadedDatabase):
 
         self._refine_coltypes(path, col_dict, where)
         return col_dict
-
-    def parse_table_name(self, name: str) -> DbPath:
-        path = parse_table_name(name)
-        return tuple(i for i in self._normalize_table_path(path) if i is not None)
 
     @property
     def is_autocommit(self) -> bool:

@@ -176,6 +176,10 @@ class UnknownColType(ColType):
 class AbstractDialect(ABC):
     """Dialect-dependent query expressions"""
 
+    @abstractmethod
+    def parse_table_name(self, name: str) -> DbPath:
+        "Parse the given table name into a DbPath"
+
     @property
     @abstractmethod
     def name(self) -> str:
@@ -318,10 +322,6 @@ class AbstractDatabase(Generic[T_Dialect]):
         * query the database to sample values
 
         """
-
-    @abstractmethod
-    def parse_table_name(self, name: str) -> DbPath:
-        "Parse the given table name into a DbPath"
 
     @abstractmethod
     def close(self):
