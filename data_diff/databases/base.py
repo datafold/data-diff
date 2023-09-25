@@ -34,7 +34,6 @@ from data_diff.queries.ast_classes import Alias, BinOp, CaseWhen, Cast, Column, 
 from data_diff.abcs.database_types import (
     Array,
     Struct,
-    AbstractDialect,
     AbstractTable,
     ColType,
     Integer,
@@ -104,7 +103,7 @@ class Compiler(AbstractCompiler):
     _counter: List = field(default_factory=lambda: [0])
 
     @property
-    def dialect(self) -> AbstractDialect:
+    def dialect(self) -> "Dialect":
         return self.database.dialect
 
     # TODO: DEPRECATED: Remove once the dialect is used directly in all places.
@@ -221,7 +220,7 @@ class Mixin_OptimizerHints(AbstractMixin_OptimizerHints):
         return f"/*+ {hints} */ "
 
 
-class BaseDialect(AbstractDialect):
+class BaseDialect(abc.ABC):
     SUPPORTS_PRIMARY_KEY = False
     SUPPORTS_INDEXES = False
     TYPE_CLASSES: Dict[str, type] = {}
@@ -230,6 +229,7 @@ class BaseDialect(AbstractDialect):
     PLACEHOLDER_TABLE = None  # Used for Oracle
 
     def parse_table_name(self, name: str) -> DbPath:
+        "Parse the given table name into a DbPath"
         return parse_table_name(name)
 
     def compile(self, compiler: Compiler, elem, params=None) -> str:
@@ -638,12 +638,14 @@ class BaseDialect(AbstractDialect):
     def offset_limit(
         self, offset: Optional[int] = None, limit: Optional[int] = None, has_order_by: Optional[bool] = None
     ) -> str:
+        "Provide SQL fragment for limit and offset inside a select"
         if offset:
             raise NotImplementedError("No support for OFFSET in query")
 
         return f"LIMIT {limit}"
 
     def concat(self, items: List[str]) -> str:
+        "Provide SQL for concatenating a bunch of columns into a string"
         assert len(items) > 1
         joined_exprs = ", ".join(items)
         return f"concat({joined_exprs})"
@@ -653,24 +655,31 @@ class BaseDialect(AbstractDialect):
         return value
 
     def is_distinct_from(self, a: str, b: str) -> str:
+        "Provide SQL for a comparison where NULL = NULL is true"
         return f"{a} is distinct from {b}"
 
     def timestamp_value(self, t: DbTime) -> str:
+        "Provide SQL for the given timestamp value"
         return f"'{t.isoformat()}'"
 
     def random(self) -> str:
+        "Provide SQL for generating a random number betweein 0..1"
         return "random()"
 
     def current_timestamp(self) -> str:
+        "Provide SQL for returning the current timestamp, aka now"
         return "current_timestamp()"
 
     def current_database(self) -> str:
+        "Provide SQL for returning the current default database."
         return "current_database()"
 
     def current_schema(self) -> str:
+        "Provide SQL for returning the current default schema."
         return "current_schema()"
 
     def explain_as_text(self, query: str) -> str:
+        "Provide SQL for explaining a query, returned as table(varchar)"
         return f"EXPLAIN {query}"
 
     def _constant_value(self, v):
@@ -719,7 +728,7 @@ class BaseDialect(AbstractDialect):
         numeric_precision: int = None,
         numeric_scale: int = None,
     ) -> ColType:
-        """ """
+        "Parse type info as returned by the database"
 
         cls = self._parse_type_repr(type_repr)
         if cls is None:
@@ -762,6 +771,7 @@ class BaseDialect(AbstractDialect):
 
     @classmethod
     def load_mixins(cls, *abstract_mixins) -> Self:
+        "Load a list of mixins that implement the given abstract mixins"
         mixins = {m for m in cls.MIXINS if issubclass(m, abstract_mixins)}
 
         class _DialectWithMixins(cls, *mixins, *abstract_mixins):
@@ -769,6 +779,30 @@ class BaseDialect(AbstractDialect):
 
         _DialectWithMixins.__name__ = cls.__name__
         return _DialectWithMixins()
+
+
+    @property
+    @abstractmethod
+    def name(self) -> str:
+        "Name of the dialect"
+
+    @property
+    @abstractmethod
+    def ROUNDS_ON_PREC_LOSS(self) -> bool:
+        "True if db rounds real values when losing precision, False if it truncates."
+
+    @abstractmethod
+    def quote(self, s: str):
+        "Quote SQL name"
+
+    @abstractmethod
+    def to_string(self, s: str) -> str:
+        # TODO rewrite using cast_to(x, str)
+        "Provide SQL for casting a column to string"
+
+    @abstractmethod
+    def set_timezone_to_utc(self) -> str:
+        "Provide SQL for setting the session timezone to UTC"
 
 
 T = TypeVar("T", bound=BaseDialect)
