@@ -4,6 +4,7 @@ import logging
 from itertools import product
 
 from runtype import dataclass
+from typing_extensions import Self
 
 from .utils import safezip, Vector
 from data_diff.sqeleton.utils import ArithString, split_space
@@ -137,11 +138,11 @@ class TableSegment:
     def _where(self):
         return f"({self.where})" if self.where else None
 
-    def _with_raw_schema(self, raw_schema: dict) -> "TableSegment":
+    def _with_raw_schema(self, raw_schema: dict) -> Self:
         schema = self.database._process_table_schema(self.table_path, raw_schema, self.relevant_columns, self._where())
         return self.new(_schema=create_schema(self.database, self.table_path, schema, self.case_sensitive))
 
-    def with_schema(self) -> "TableSegment":
+    def with_schema(self) -> Self:
         "Queries the table schema from the database, and returns a new instance of TableSegment, with a schema."
         if self._schema:
             return self
@@ -194,11 +195,11 @@ class TableSegment:
 
         return [self.new_key_bounds(min_key=s, max_key=e) for s, e in create_mesh_from_points(*checkpoints)]
 
-    def new(self, **kwargs) -> "TableSegment":
+    def new(self, **kwargs) -> Self:
         """Creates a copy of the instance using 'replace()'"""
         return self.replace(**kwargs)
 
-    def new_key_bounds(self, min_key: Vector, max_key: Vector) -> "TableSegment":
+    def new_key_bounds(self, min_key: Vector, max_key: Vector) -> Self:
         if self.min_key is not None:
             assert self.min_key <= min_key, (self.min_key, min_key)
             assert self.min_key < max_key

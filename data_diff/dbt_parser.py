@@ -4,11 +4,11 @@ import json
 from pathlib import Path
 from typing import List, Dict, Tuple, Set, Optional
 import yaml
+from pydantic import BaseModel
 
 from packaging.version import parse as parse_version
-import pydantic
-from dbt_artifacts_parser.parser import parse_run_results, parse_manifest
 from dbt.config.renderer import ProfileRenderer
+from .dbt_config_validators import ManifestJsonConfig, RunResultsJsonConfig
 
 from data_diff.errors import (
     DataDiffDbtBigQueryUnsupportedMethodError,
@@ -81,13 +81,13 @@ def legacy_profiles_dir() -> Path:
     return Path.home() / ".dbt"
 
 
-class TDatadiffModelConfig(pydantic.BaseModel):
+class TDatadiffModelConfig(BaseModel):
     where_filter: Optional[str] = None
     include_columns: List[str] = []
     exclude_columns: List[str] = []
 
 
-class TDatadiffConfig(pydantic.BaseModel):
+class TDatadiffConfig(BaseModel):
     prod_database: Optional[str] = None
     prod_schema: Optional[str] = None
     prod_custom_schema: Optional[str] = None
@@ -213,7 +213,6 @@ class DbtParser:
 
     def get_simple_model_selection(self, dbt_selection: str):
         model_nodes = dict(filter(lambda item: item[0].startswith("model."), self.dev_manifest_obj.nodes.items()))
-
         model_unique_key_list = [k for k, v in model_nodes.items() if v.name == dbt_selection]
 
         # name *should* always be unique, but just in case:
@@ -230,13 +229,13 @@ class DbtParser:
 
         return [model]
 
-    def get_run_results_models(self):
+    def get_run_results_models(self) -> List[ManifestJsonConfig.Nodes]:
         with open(self.project_dir / RUN_RESULTS_PATH) as run_results:
             logger.info(f"Parsing file {RUN_RESULTS_PATH}")
             run_results_dict = json.load(run_results)
-            run_results_obj = parse_run_results(run_results=run_results_dict)
+        run_results_validated = RunResultsJsonConfig.parse_obj(run_results_dict)
 
-        dbt_version = parse_version(run_results_obj.metadata.dbt_version)
+        dbt_version = parse_version(run_results_validated.metadata.dbt_version)
 
         if dbt_version < parse_version(LOWER_DBT_V):
             raise DataDiffDbtRunResultsVersionError(
@@ -247,7 +246,8 @@ class DbtParser:
                 f"{dbt_version} is a recent version of dbt and may not be fully tested with data-diff! \nPlease report any issues to https://github.com/datafold/data-diff/issues"
             )
 
-        success_models = [x.unique_id for x in run_results_obj.results if x.status.name == "success"]
+        success_models = [x.unique_id for x in run_results_validated.results if x.status == x.Status.success]
+
         models = [self.dev_manifest_obj.nodes.get(x) for x in success_models]
         if not models:
             raise DataDiffDbtNoSuccessfulModelsInRunError(
@@ -256,11 +256,11 @@ class DbtParser:
 
         return models
 
-    def get_manifest_obj(self, path: Path):
+    def get_manifest_obj(self, path: Path) -> ManifestJsonConfig:
         with open(path) as manifest:
             logger.info(f"Parsing file {path}")
             manifest_dict = json.load(manifest)
-            manifest_obj = parse_manifest(manifest=manifest_dict)
+            manifest_obj = ManifestJsonConfig.parse_obj(manifest_dict)
         return manifest_obj
 
     def get_project_dict(self):
@@ -433,7 +433,6 @@ class DbtParser:
             if from_tags:
                 logger.debug("Found PKs via Tags: " + str(from_tags))
                 return from_tags
-
             if node.unique_id in unique_columns:
                 from_uniq = unique_columns.get(node.unique_id)
                 if from_uniq is not None:
@@ -451,7 +450,7 @@ class DbtParser:
         cols_by_uid = defaultdict(set)
         for node in manifest.nodes.values():
             try:
-                if not (node.resource_type.value == "test" and hasattr(node, "test_metadata")):
+                if not (node.resource_type == "test" and hasattr(node, "test_metadata")):
                     continue
 
                 if not node.depends_on or not node.depends_on.nodes:
@@ -465,7 +464,6 @@ class DbtParser:
                     continue
 
                 model_node = manifest.nodes[uid]
-
                 if node.test_metadata.name == "unique":
                     column_name: str = node.test_metadata.kwargs["column_name"]
                     for col in self._parse_concat_pk_definition(column_name):

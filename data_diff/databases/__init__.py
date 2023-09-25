@@ -12,5 +12,6 @@ from .trino import Trino
 from .clickhouse import Clickhouse
 from .vertica import Vertica
 from .duckdb import DuckDB
+from .mssql import MsSql
 
 from ._connect import connect

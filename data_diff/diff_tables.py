@@ -4,6 +4,7 @@
 import re
 import time
 from abc import ABC, abstractmethod
+from dataclasses import field
 from enum import Enum
 from contextlib import contextmanager
 from operator import methodcaller
@@ -88,7 +89,7 @@ class DiffResultWrapper:
     diff: iter  # DiffResult
     info_tree: InfoTree
     stats: dict
-    result_list: list = []
+    result_list: list = field(default_factory=list)
 
     def __iter__(self):
         yield from self.result_list

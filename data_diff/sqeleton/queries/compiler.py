@@ -1,8 +1,10 @@
 import random
+from dataclasses import field
 from datetime import datetime
 from typing import Any, Dict, Sequence, List
 
 from runtype import dataclass
+from typing_extensions import Self
 
 from ..utils import ArithString
 from ..abcs import AbstractDatabase, AbstractDialect, DbPath, AbstractCompiler, Compilable
@@ -23,15 +25,15 @@ class Root:
 @dataclass
 class Compiler(AbstractCompiler):
     database: AbstractDatabase
-    params: dict = {}
+    params: dict = field(default_factory=dict)
     in_select: bool = False  # Compilation runtime flag
     in_join: bool = False  # Compilation runtime flag
 
-    _table_context: List = []  # List[ITable]
-    _subqueries: Dict[str, Any] = {}  # XXX not thread-safe
+    _table_context: List = field(default_factory=list)  # List[ITable]
+    _subqueries: Dict[str, Any] = field(default_factory=dict)  # XXX not thread-safe
     root: bool = True
 
-    _counter: List = [0]
+    _counter: List = field(default_factory=lambda: [0])
 
     @property
     def dialect(self) -> AbstractDialect:
@@ -78,7 +80,7 @@ class Compiler(AbstractCompiler):
         self._counter[0] += 1
         return self.database.parse_table_name(f"{prefix}{self._counter[0]}_{'%x'%random.randrange(2**32)}")
 
-    def add_table_context(self, *tables: Sequence, **kw):
+    def add_table_context(self, *tables: Sequence, **kw) -> Self:
         return self.replace(_table_context=self._table_context + list(tables), **kw)
 
     def quote(self, s: str):

@@ -1,11 +1,12 @@
 import decimal
 from abc import ABC, abstractmethod
-from typing import Sequence, Optional, Tuple, Union, Dict, List
+from typing import Sequence, Optional, Tuple, Type, Union, Dict, List
 from datetime import datetime
 
 from runtype import dataclass
+from typing_extensions import Self
 
-from ..utils import ArithAlphanumeric, ArithUUID, Self, Unknown
+from ..utils import ArithAlphanumeric, ArithUUID, Unknown
 
 
 DbPath = Tuple[str, ...]
@@ -216,7 +217,17 @@ class AbstractDialect(ABC):
         "Provide SQL for returning the current timestamp, aka now"
 
     @abstractmethod
-    def offset_limit(self, offset: Optional[int] = None, limit: Optional[int] = None):
+    def current_database(self) -> str:
+        "Provide SQL for returning the current default database."
+
+    @abstractmethod
+    def current_schema(self) -> str:
+        "Provide SQL for returning the current default schema."
+
+    @abstractmethod
+    def offset_limit(
+        self, offset: Optional[int] = None, limit: Optional[int] = None, has_order_by: Optional[bool] = None
+    ) -> str:
         "Provide SQL fragment for limit and offset inside a select"
 
     @abstractmethod

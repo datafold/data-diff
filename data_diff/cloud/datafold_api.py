@@ -2,18 +2,17 @@ import base64
 import dataclasses
 import enum
 import time
-from typing import Any, Dict, List, Optional, Type, TypeVar, Tuple
+from typing import Any, Dict, List, Optional, Type, Tuple
 
 import pydantic
 import requests
+from typing_extensions import Self
 
 from data_diff.errors import DataDiffCloudDiffFailed, DataDiffCloudDiffTimedOut, DataDiffDatasourceIdNotFoundError
 
 from ..utils import getLogger
 
 logger = getLogger(__name__)
-
-Self = TypeVar("Self", bound=pydantic.BaseModel)
 
 
 class TestDataSourceStatus(str, enum.Enum):
@@ -30,7 +29,7 @@ class TCloudApiDataSourceSchema(pydantic.BaseModel):
     secret: List[str]
 
     @classmethod
-    def from_orm(cls: Type[Self], obj: Any) -> Self:
+    def from_orm(cls, obj: Any) -> Self:
         data_source_types_required_parameters = {
             "bigquery": ["projectId", "jsonKeyFile", "location"],
             "databricks": ["host", "http_password", "database", "http_path"],
@@ -154,7 +153,7 @@ class TCloudApiDataDiffSummaryResult(pydantic.BaseModel):
     dependencies: Optional[Dict[str, Any]]
 
     @classmethod
-    def from_orm(cls: Type[Self], obj: Any) -> Self:
+    def from_orm(cls, obj: Any) -> Self:
         pks = TSummaryResultPrimaryKeyStats(**obj["pks"]) if "pks" in obj else None
         values = TSummaryResultValueStats(**obj["values"]) if "values" in obj else None
         deps = obj["deps"] if "deps" in obj else None

@@ -2,53 +2,24 @@ from typing import (
     Iterable,
     Iterator,
     MutableMapping,
+    Type,
     Union,
     Any,
     Sequence,
     Dict,
-    Hashable,
     TypeVar,
-    TYPE_CHECKING,
     List,
 )
 from abc import abstractmethod
-from weakref import ref
 import math
 import string
 import re
 from uuid import UUID
 from urllib.parse import urlparse
 
+from typing_extensions import Self
+
 # -- Common --
-
-try:
-    from typing import Self
-except ImportError:
-    Self = Any
-
-
-class WeakCache:
-    def __init__(self):
-        self._cache = {}
-
-    def _hashable_key(self, k: Union[dict, Hashable]) -> Hashable:
-        if isinstance(k, dict):
-            return tuple(k.items())
-        return k
-
-    def add(self, key: Union[dict, Hashable], value: Any):
-        key = self._hashable_key(key)
-        self._cache[key] = ref(value)
-
-    def get(self, key: Union[dict, Hashable]) -> Any:
-        key = self._hashable_key(key)
-
-        value = self._cache[key]()
-        if value is None:
-            del self._cache[key]
-            raise KeyError(f"Key {key} not found, or no longer a valid reference")
-
-        return value
 
 
 def join_iter(joiner: Any, iterable: Iterable) -> Iterable:
@@ -95,7 +66,7 @@ class CaseAwareMapping(MutableMapping[str, V]):
     def get_key(self, key: str) -> str:
         ...
 
-    def new(self, initial=()):
+    def new(self, initial=()) -> Self:
         return type(self)(initial)
 
 
@@ -144,10 +115,10 @@ alphanums = " -" + string.digits + string.ascii_uppercase + "_" + string.ascii_l
 
 class ArithString:
     @classmethod
-    def new(cls, *args, **kw):
+    def new(cls, *args, **kw) -> Self:
         return cls(*args, **kw)
 
-    def range(self, other: "ArithString", count: int):
+    def range(self, other: "ArithString", count: int) -> List[Self]:
         assert isinstance(other, ArithString)
         checkpoints = split_space(self.int, other.int, count)
         return [self.new(int=i) for i in checkpoints]
@@ -159,7 +130,7 @@ class ArithUUID(UUID, ArithString):
     def __int__(self):
         return self.int
 
-    def __add__(self, other: int):
+    def __add__(self, other: int) -> Self:
         if isinstance(other, int):
             return self.new(int=self.int + other)
         return NotImplemented
@@ -231,7 +202,7 @@ class ArithAlphanumeric(ArithString):
     def __repr__(self):
         return f'alphanum"{self._str}"'
 
-    def __add__(self, other: "Union[ArithAlphanumeric, int]") -> "ArithAlphanumeric":
+    def __add__(self, other: "Union[ArithAlphanumeric, int]") -> Self:
         if isinstance(other, int):
             if other != 1:
                 raise NotImplementedError("not implemented for arbitrary numbers")
@@ -240,7 +211,7 @@ class ArithAlphanumeric(ArithString):
 
         return NotImplemented
 
-    def range(self, other: "ArithAlphanumeric", count: int):
+    def range(self, other: "ArithAlphanumeric", count: int) -> List[Self]:
         assert isinstance(other, ArithAlphanumeric)
         n1, n2 = alphanums_to_numbers(self._str, other._str)
         split = split_space(n1, n2, count)
@@ -268,7 +239,7 @@ class ArithAlphanumeric(ArithString):
             return NotImplemented
         return self._str == other._str
 
-    def new(self, *args, **kw):
+    def new(self, *args, **kw) -> Self:
         return type(self)(*args, **kw, max_len=self._max_len)
 
 

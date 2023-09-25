@@ -11,8 +11,9 @@ from uuid import UUID
 import decimal
 
 from runtype import dataclass
+from typing_extensions import Self
 
-from ..utils import is_uuid, safezip, Self
+from ..utils import is_uuid, safezip
 from ..queries import Expr, Compiler, table, Select, SKIP, Explain, Code, this
 from ..queries.ast_classes import Random
 from ..abcs.database_types import (
@@ -155,7 +156,9 @@ class BaseDialect(AbstractDialect):
 
     PLACEHOLDER_TABLE = None  # Used for Oracle
 
-    def offset_limit(self, offset: Optional[int] = None, limit: Optional[int] = None):
+    def offset_limit(
+        self, offset: Optional[int] = None, limit: Optional[int] = None, has_order_by: Optional[bool] = None
+    ) -> str:
         if offset:
             raise NotImplementedError("No support for OFFSET in query")
 
@@ -181,6 +184,12 @@ class BaseDialect(AbstractDialect):
 
     def current_timestamp(self) -> str:
         return "current_timestamp()"
+
+    def current_database(self) -> str:
+        return "current_database()"
+
+    def current_schema(self) -> str:
+        return "current_schema()"
 
     def explain_as_text(self, query: str) -> str:
         return f"EXPLAIN {query}"
@@ -273,7 +282,7 @@ class BaseDialect(AbstractDialect):
         return math.floor(math.log(2**p, 10))
 
     @classmethod
-    def load_mixins(cls, *abstract_mixins) -> "Self":
+    def load_mixins(cls, *abstract_mixins) -> Self:
         mixins = {m for m in cls.MIXINS if issubclass(m, abstract_mixins)}
 
         class _DialectWithMixins(cls, *mixins, *abstract_mixins):
@@ -518,7 +527,10 @@ class Database(AbstractDatabase[T]):
             c.execute(sql_code)
             if sql_code.lower().startswith(("select", "explain", "show")):
                 columns = [col[0] for col in c.description]
-                return QueryResult(c.fetchall(), columns)
+
+                fetched = c.fetchall()
+                result = QueryResult(fetched, columns)
+                return result
         except Exception as _e:
             # logger.exception(e)
             # logger.error(f'Caused by SQL: {sql_code}')
@@ -590,7 +602,8 @@ class ThreadedDatabase(Database):
         return False
 
 
-CHECKSUM_HEXDIGITS = 15  # Must be 15 or lower, otherwise SUM() overflows
+# TODO FYI mssql md5_as_int currently requires this to be reduced
+CHECKSUM_HEXDIGITS = 14  # Must be 15 or lower, otherwise SUM() overflows
 MD5_HEXDIGITS = 32
 
 _CHECKSUM_BITSIZE = CHECKSUM_HEXDIGITS << 2
