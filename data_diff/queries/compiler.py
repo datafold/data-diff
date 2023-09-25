@@ -1,30 +1,30 @@
 import random
 from dataclasses import field
-from datetime import datetime
 from typing import Any, Dict, Sequence, List
 
 from runtype import dataclass
 from typing_extensions import Self
 
-from data_diff.utils import ArithString
 from data_diff.abcs.database_types import AbstractDatabase, AbstractDialect, DbPath
-from data_diff.abcs.compiler import AbstractCompiler, Compilable
-
-import contextvars
-
-cv_params = contextvars.ContextVar("params")
+from data_diff.abcs.compiler import AbstractCompiler
 
 
 class CompileError(Exception):
     pass
 
 
-class Root:
-    "Nodes inheriting from Root can be used as root statements in SQL (e.g. SELECT yes, RANDOM() no)"
-
-
 @dataclass
 class Compiler(AbstractCompiler):
+    """
+    Compiler bears the context for a single compilation.
+
+    There can be multiple compilation per app run.
+    There can be multiple compilers in one compilation (with varying contexts).
+    """
+
+    # Database is needed to normalize tables. Dialect is needed for recursive compilations.
+    # In theory, it is many-to-many relations: e.g. a generic ODBC driver with multiple dialects.
+    # In practice, we currently bind the dialects to the specific database classes.
     database: AbstractDatabase
 
     in_select: bool = False  # Compilation runtime flag
@@ -40,38 +40,9 @@ class Compiler(AbstractCompiler):
     def dialect(self) -> AbstractDialect:
         return self.database.dialect
 
+    # TODO: DEPRECATED: Remove once the dialect is used directly in all places.
     def compile(self, elem, params=None) -> str:
-        if params:
-            cv_params.set(params)
-
-        if self.root and isinstance(elem, Compilable) and not isinstance(elem, Root):
-            from data_diff.queries.ast_classes import Select
-
-            elem = Select(columns=[elem])
-
-        res = self._compile(elem)
-        if self.root and self._subqueries:
-            subq = ", ".join(f"\n  {k} AS ({v})" for k, v in self._subqueries.items())
-            self._subqueries.clear()
-            return f"WITH {subq}\n{res}"
-        return res
-
-    def _compile(self, elem) -> str:
-        if elem is None:
-            return "NULL"
-        elif isinstance(elem, Compilable):
-            return elem.compile(self.replace(root=False))
-        elif isinstance(elem, str):
-            return f"'{elem}'"
-        elif isinstance(elem, (int, float)):
-            return str(elem)
-        elif isinstance(elem, datetime):
-            return self.dialect.timestamp_value(elem)
-        elif isinstance(elem, bytes):
-            return f"b'{elem.decode()}'"
-        elif isinstance(elem, ArithString):
-            return f"'{elem}'"
-        assert False, elem
+        return self.dialect.compile(self, elem, params)
 
     def new_unique_name(self, prefix="tmp"):
         self._counter[0] += 1
