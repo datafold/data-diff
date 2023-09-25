@@ -42,6 +42,12 @@ def import_bigquery_service_account():
     return service_account
 
 
+def import_bigquery_service_account_impersonation():
+    from google.auth import impersonated_credentials
+
+    return impersonated_credentials
+
+
 class Mixin_MD5(AbstractMixin_MD5):
     def md5_as_int(self, s: str) -> str:
         return f"cast(cast( ('0x' || substr(TO_HEX(md5({s})), 18)) as int64) as numeric)"
@@ -221,7 +227,14 @@ class BigQuery(Database):
                 keyfile,
                 scopes=["https://www.googleapis.com/auth/cloud-platform"],
             )
-
+        elif kw.get("impersonate_service_account"):
+            bigquery_service_account_impersonation = import_bigquery_service_account_impersonation()
+            credentials = bigquery_service_account_impersonation.Credentials(
+                source_credentials=credentials,
+                target_principal=kw["impersonate_service_account"],
+                target_scopes=["https://www.googleapis.com/auth/cloud-platform"],
+            )
+            
         self._client = bigquery.Client(project=project, credentials=credentials, **kw)
         self.project = project
         self.dataset = dataset
