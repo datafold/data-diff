@@ -8,6 +8,7 @@ from data_diff import connect
 from data_diff import databases as dbs
 from data_diff.queries.api import table, current_timestamp
 from data_diff.queries.extras import NormalizeAsString
+from data_diff.schema import create_schema
 from tests.common import TEST_MYSQL_CONN_STRING, test_each_database_in_list, get_conn, str_to_checksum, random_table_suffix
 from data_diff.abcs.database_types import TimestampTZ
 
@@ -123,7 +124,11 @@ class TestQueries(unittest.TestCase):
         db.query(table(name).insert_row(1, now, now))
         db.query(db.dialect.set_timezone_to_utc())
 
-        t = db.table(name).query_schema()
+        t = table(name)
+        raw_schema = db.query_table_schema(t.path)
+        schema = db._process_table_schema(t.path, raw_schema)
+        schema = create_schema(self.database, t, schema, case_sensitive=True)
+        t = t.replace(schema=schema)
         t.schema["created_at"] = t.schema["created_at"].replace(precision=t.schema["created_at"].precision)
 
         tbl = table(name, schema=t.schema)

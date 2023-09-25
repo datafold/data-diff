@@ -59,7 +59,6 @@ from data_diff.abcs.mixins import (
     AbstractMixin_NormalizeValue,
     AbstractMixin_OptimizerHints,
 )
-from data_diff.bound_exprs import BoundNode, bound_table
 
 logger = logging.getLogger("database")
 cv_params = contextvars.ContextVar("params")
@@ -275,8 +274,6 @@ class BaseDialect(AbstractDialect):
             return self.render_inserttotable(c, elem)
         elif isinstance(elem, Code):
             return self.render_code(c, elem)
-        elif isinstance(elem, BoundNode):
-            return self.render_boundnode(c, elem)
         elif isinstance(elem, _ResolveColumn):
             return self.render__resolvecolumn(c, elem)
 
@@ -423,10 +420,6 @@ class BaseDialect(AbstractDialect):
         elif parent_c.in_join:
             table_expr = f"({table_expr})"
         return table_expr
-
-    def render_boundnode(self, c: Compiler, elem: BoundNode) -> str:
-        assert self is elem.database.dialect
-        return self.compile(c, elem.node)
 
     def render__resolvecolumn(self, c: Compiler, elem: _ResolveColumn) -> str:
         return self.compile(c, elem._get_resolved())
@@ -969,9 +962,6 @@ class Database(AbstractDatabase[T]):
 
     def list_tables(self, tables_like, schema=None):
         return self.query(self.dialect.list_tables(schema or self.default_schema, tables_like))
-
-    def table(self, *path, **kw):
-        return bound_table(self, path, **kw)
 
 
 class ThreadedDatabase(Database):
