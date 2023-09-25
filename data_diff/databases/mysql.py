@@ -14,7 +14,6 @@ from data_diff.abcs.database_types import (
 from data_diff.abcs.mixins import (
     AbstractMixin_MD5,
     AbstractMixin_NormalizeValue,
-    AbstractMixin_Regex,
 )
 from data_diff.databases.base import (
     Mixin_OptimizerHints,
@@ -59,11 +58,6 @@ class Mixin_NormalizeValue(AbstractMixin_NormalizeValue):
 
     def normalize_uuid(self, value: str, coltype: ColType_UUID) -> str:
         return f"TRIM(CAST({value} AS char))"
-
-
-class Mixin_Regex(AbstractMixin_Regex):
-    def test_regex(self, string: Compilable, pattern: Compilable) -> Compilable:
-        return BinBoolOp("REGEXP", [string, pattern])
 
 
 class Dialect(BaseDialect, Mixin_Schema, Mixin_OptimizerHints, Mixin_MD5, Mixin_NormalizeValue, AbstractMixin_MD5, AbstractMixin_NormalizeValue):

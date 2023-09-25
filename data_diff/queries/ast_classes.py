@@ -218,9 +218,6 @@ class LazyOps:
     def like(self, other):
         return BinBoolOp("LIKE", [self, other])
 
-    def test_regex(self, other):
-        return TestRegex(self, other)
-
     def sum(self):
         return Func("SUM", [self])
 
@@ -229,12 +226,6 @@ class LazyOps:
 
     def min(self):
         return Func("MIN", [self])
-
-
-@dataclass
-class TestRegex(ExprNode, LazyOps):
-    string: Expr
-    pattern: Expr
 
 
 @dataclass(eq=False)

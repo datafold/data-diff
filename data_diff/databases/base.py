@@ -27,7 +27,7 @@ from data_diff.queries.ast_classes import Alias, BinOp, CaseWhen, Cast, Column, 
     Join, \
     Param, \
     Random, \
-    Root, TableAlias, TableOp, TablePath, TestRegex, \
+    Root, TableAlias, TableOp, TablePath, \
     TimeTravel, TruncateTable, UnaryOp, WhenThen, _ResolveColumn
 from data_diff.abcs.database_types import (
     AbstractDatabase,
@@ -52,7 +52,7 @@ from data_diff.abcs.database_types import (
     Boolean,
     JSON,
 )
-from data_diff.abcs.mixins import AbstractMixin_Regex, AbstractMixin_TimeTravel, Compilable
+from data_diff.abcs.mixins import AbstractMixin_TimeTravel, Compilable
 from data_diff.abcs.mixins import (
     AbstractMixin_Schema,
     AbstractMixin_RandomSample,
@@ -225,8 +225,6 @@ class BaseDialect(AbstractDialect):
             return self.render_checksum(c, elem)
         elif isinstance(elem, Concat):
             return self.render_concat(c, elem)
-        elif isinstance(elem, TestRegex):
-            return self.render_testregex(c, elem)
         elif isinstance(elem, Func):
             return self.render_func(c, elem)
         elif isinstance(elem, WhenThen):
@@ -371,13 +369,6 @@ class BaseDialect(AbstractDialect):
 
     def render_alias(self, c: Compiler, elem: Alias) -> str:
         return f"{self.compile(c, elem.expr)} AS {self.quote(elem.name)}"
-
-    def render_testregex(self, c: Compiler, elem: TestRegex) -> str:
-        # TODO: move this method to that mixin! raise here instead, unconditionally.
-        if not isinstance(self, AbstractMixin_Regex):
-            raise NotImplementedError(f"No regex implementation for database '{c.dialect}'")
-        regex = self.test_regex(elem.string, elem.pattern)
-        return self.compile(c, regex)
 
     def render_count(self, c: Compiler, elem: Count) -> str:
         expr = self.compile(c, elem.expr) if elem.expr else "*"

@@ -20,7 +20,6 @@ from data_diff.abcs.mixins import (
     AbstractMixin_MD5,
     AbstractMixin_NormalizeValue,
     AbstractMixin_RandomSample,
-    AbstractMixin_Regex,
 )
 from data_diff.databases.base import (
     Database,
@@ -68,11 +67,6 @@ class Mixin_RandomSample(AbstractMixin_RandomSample):
 
     def random_sample_ratio_approx(self, tbl: AbstractTable, ratio: float) -> AbstractTable:
         return code("SELECT * FROM ({tbl}) USING SAMPLE {percent}%;", tbl=tbl, percent=int(100 * ratio))
-
-
-class Mixin_Regex(AbstractMixin_Regex):
-    def test_regex(self, string: Compilable, pattern: Compilable) -> Compilable:
-        return Func("regexp_matches", [string, pattern])
 
 
 class Dialect(BaseDialect, Mixin_Schema, Mixin_MD5, Mixin_NormalizeValue, AbstractMixin_MD5, AbstractMixin_NormalizeValue):
