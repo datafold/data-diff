@@ -10,7 +10,6 @@ from data_diff.abcs.compiler import Compilable
 from data_diff.abcs.database_types import AbstractTable
 from data_diff.schema import Schema
 
-from data_diff.queries.compiler import Compiler
 from data_diff.queries.base import SKIP, args_as_tuple, SqeletonError
 from data_diff.abcs.database_types import DbPath
 
