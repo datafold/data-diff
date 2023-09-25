@@ -134,12 +134,6 @@ class AbstractMixin_Schema(AbstractMixin):
         """
 
 
-class AbstractMixin_Regex(AbstractMixin):
-    @abstractmethod
-    def test_regex(self, string: Compilable, pattern: Compilable) -> Compilable:
-        """Tests whether the regex pattern matches the string. Returns a bool expression."""
-
-
 class AbstractMixin_RandomSample(AbstractMixin):
     @abstractmethod
     def random_sample_n(self, tbl: str, size: int) -> str:
