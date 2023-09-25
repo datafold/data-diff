@@ -152,7 +152,7 @@ class MySQL(ThreadedDatabase):
         mysql = import_mysql()
         try:
             conn = mysql.connect(charset="utf8mb4", use_unicode=True, **self._args)
-            conn.set_charset_collation(charset="utf8mb4", collation='utf8mb4_0900_ai_ci')
+            conn.set_charset_collation(charset="utf8mb4", collation="utf8mb4_0900_ai_ci")
             return conn
 
         except mysql.Error as e:
