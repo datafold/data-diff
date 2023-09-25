@@ -1,3 +1,4 @@
+import abc
 import functools
 from dataclasses import field
 from datetime import datetime
@@ -31,7 +32,6 @@ from data_diff.queries.ast_classes import Alias, BinOp, CaseWhen, Cast, Column, 
     Root, TableAlias, TableOp, TablePath, \
     TimeTravel, TruncateTable, UnaryOp, WhenThen, _ResolveColumn
 from data_diff.abcs.database_types import (
-    AbstractDatabase,
     Array,
     Struct,
     AbstractDialect,
@@ -92,7 +92,7 @@ class Compiler(AbstractCompiler):
     # Database is needed to normalize tables. Dialect is needed for recursive compilations.
     # In theory, it is many-to-many relations: e.g. a generic ODBC driver with multiple dialects.
     # In practice, we currently bind the dialects to the specific database classes.
-    database: AbstractDatabase
+    database: "Database"
 
     in_select: bool = False  # Compilation runtime flag
     in_join: bool = False  # Compilation runtime flag
@@ -789,7 +789,7 @@ class QueryResult:
         return self.rows[i]
 
 
-class Database(AbstractDatabase[T]):
+class Database(abc.ABC):
     """Base abstract class for databases.
 
     Used for providing connection code and implementation specific SQL utilities.
@@ -898,6 +898,12 @@ class Database(AbstractDatabase[T]):
         )
 
     def query_table_schema(self, path: DbPath) -> Dict[str, tuple]:
+        """Query the table for its schema for table in 'path', and return {column: tuple}
+        where the tuple is (table_name, col_name, type_repr, datetime_precision?, numeric_precision?, numeric_scale?)
+
+        Note: This method exists instead of select_table_schema(), just because not all databases support
+              accessing the schema using a SQL query.
+        """
         rows = self.query(self.select_table_schema(path), list)
         if not rows:
             raise RuntimeError(f"{self.name}: Table '{'.'.join(path)}' does not exist, or has no columns")
@@ -907,6 +913,7 @@ class Database(AbstractDatabase[T]):
         return d
 
     def select_table_unique_columns(self, path: DbPath) -> str:
+        "Provide SQL for selecting the names of unique columns in the table"
         schema, name = self._normalize_table_path(path)
 
         return (
@@ -916,6 +923,7 @@ class Database(AbstractDatabase[T]):
         )
 
     def query_table_unique_columns(self, path: DbPath) -> List[str]:
+        """Query the table for its unique columns for table in 'path', and return {column}"""
         if not self.SUPPORTS_UNIQUE_CONSTAINT:
             raise NotImplementedError("This database doesn't support 'unique' constraints")
         res = self.query(self.select_table_unique_columns(path), List[str])
@@ -924,6 +932,14 @@ class Database(AbstractDatabase[T]):
     def _process_table_schema(
         self, path: DbPath, raw_schema: Dict[str, tuple], filter_columns: Sequence[str] = None, where: str = None
     ):
+        """Process the result of query_table_schema().
+
+        Done in a separate step, to minimize the amount of processed columns.
+        Needed because processing each column may:
+        * throw errors and warnings
+        * query the database to sample values
+
+        """
         if filter_columns is None:
             filtered_schema = raw_schema
         else:
@@ -1017,11 +1033,36 @@ class Database(AbstractDatabase[T]):
         return apply_query(callback, sql_code)
 
     def close(self):
+        "Close connection(s) to the database instance. Querying will stop functioning."
         self.is_closed = True
         return super().close()
 
     def list_tables(self, tables_like, schema=None):
         return self.query(self.dialect.list_tables(schema or self.default_schema, tables_like))
+
+    @property
+    @abstractmethod
+    def dialect(self) -> BaseDialect:
+        "The dialect of the database. Used internally by Database, and also available publicly."
+
+    @property
+    @abstractmethod
+    def CONNECT_URI_HELP(self) -> str:
+        "Example URI to show the user in help and error messages"
+
+    @property
+    @abstractmethod
+    def CONNECT_URI_PARAMS(self) -> List[str]:
+        "List of parameters given in the path of the URI"
+
+    @abstractmethod
+    def _query(self, sql_code: str) -> list:
+        "Send query to database and return result"
+
+    @property
+    @abstractmethod
+    def is_autocommit(self) -> bool:
+        "Return whether the database autocommits changes. When false, COMMIT statements are skipped."
 
 
 class ThreadedDatabase(Database):
