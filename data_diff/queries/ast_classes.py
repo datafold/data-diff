@@ -5,13 +5,12 @@ from typing import Any, Generator, List, Optional, Sequence, Union, Dict
 from runtype import dataclass
 from typing_extensions import Self
 
-from data_diff.utils import join_iter, ArithString
+from data_diff.utils import ArithString
 from data_diff.abcs.compiler import Compilable
 from data_diff.abcs.database_types import AbstractTable
-from data_diff.abcs.mixins import AbstractMixin_Regex, AbstractMixin_TimeTravel
 from data_diff.schema import Schema
 
-from data_diff.queries.compiler import Compiler, cv_params, Root, CompileError
+from data_diff.queries.compiler import Compiler
 from data_diff.queries.base import SKIP, args_as_tuple, SqeletonError
 from data_diff.abcs.database_types import DbPath
 
@@ -22,6 +21,10 @@ class QueryBuilderError(SqeletonError):
 
 class QB_TypeError(QueryBuilderError):
     pass
+
+
+class Root:
+    "Nodes inheriting from Root can be used as root statements in SQL (e.g. SELECT yes, RANDOM() no)"
 
 
 class ExprNode(Compilable):
@@ -54,13 +57,6 @@ class Code(ExprNode, Root):
     code: str
     args: Dict[str, Expr] = None
 
-    def compile(self, c: Compiler) -> str:
-        if not self.args:
-            return self.code
-
-        args = {k: c.compile(v) for k, v in self.args.items()}
-        return self.code.format(**args)
-
 
 def _expr_type(e: Expr) -> type:
     if isinstance(e, ExprNode):
@@ -72,9 +68,6 @@ def _expr_type(e: Expr) -> type:
 class Alias(ExprNode):
     expr: Expr
     name: str
-
-    def compile(self, c: Compiler) -> str:
-        return f"{c.compile(self.expr)} AS {c.dialect.quote(self.name)}"
 
     @property
     def type(self):
@@ -178,31 +171,12 @@ class Concat(ExprNode):
     exprs: list
     sep: str = None
 
-    def compile(self, c: Compiler) -> str:
-        # We coalesce because on some DBs (e.g. MySQL) concat('a', NULL) is NULL
-        items = [f"coalesce({c.compile(Code(c.dialect.to_string(c.compile(expr))))}, '<null>')" for expr in self.exprs]
-        assert items
-        if len(items) == 1:
-            return items[0]
-
-        if self.sep:
-            items = list(join_iter(f"'{self.sep}'", items))
-        return c.dialect.concat(items)
-
 
 @dataclass
 class Count(ExprNode):
     expr: Expr = None
     distinct: bool = False
-
     type = int
-
-    def compile(self, c: Compiler) -> str:
-        expr = c.compile(self.expr) if self.expr else "*"
-        if self.distinct:
-            return f"count(distinct {expr})"
-
-        return f"count({expr})"
 
 
 class LazyOps:
@@ -262,21 +236,11 @@ class TestRegex(ExprNode, LazyOps):
     string: Expr
     pattern: Expr
 
-    def compile(self, c: Compiler) -> str:
-        if not isinstance(c.dialect, AbstractMixin_Regex):
-            raise NotImplementedError(f"No regex implementation for database '{c.database}'")
-        regex = c.dialect.test_regex(self.string, self.pattern)
-        return c.compile(regex)
-
 
 @dataclass(eq=False)
 class Func(ExprNode, LazyOps):
     name: str
     args: Sequence[Expr]
-
-    def compile(self, c: Compiler) -> str:
-        args = ", ".join(c.compile(e) for e in self.args)
-        return f"{self.name}({args})"
 
 
 @dataclass
@@ -284,20 +248,11 @@ class WhenThen(ExprNode):
     when: Expr
     then: Expr
 
-    def compile(self, c: Compiler) -> str:
-        return f"WHEN {c.compile(self.when)} THEN {c.compile(self.then)}"
-
 
 @dataclass
 class CaseWhen(ExprNode):
     cases: Sequence[WhenThen]
     else_expr: Expr = None
-
-    def compile(self, c: Compiler) -> str:
-        assert self.cases
-        when_thens = " ".join(c.compile(case) for case in self.cases)
-        else_expr = (" ELSE " + c.compile(self.else_expr)) if self.else_expr is not None else ""
-        return f"CASE {when_thens}{else_expr} END"
 
     @property
     def type(self):
@@ -353,20 +308,11 @@ class IsDistinctFrom(ExprNode, LazyOps):
     b: Expr
     type = bool
 
-    def compile(self, c: Compiler) -> str:
-        a = c.dialect.to_comparable(c.compile(self.a), self.a.type)
-        b = c.dialect.to_comparable(c.compile(self.b), self.b.type)
-        return c.dialect.is_distinct_from(a, b)
-
 
 @dataclass(eq=False, order=False)
 class BinOp(ExprNode, LazyOps):
     op: str
     args: Sequence[Expr]
-
-    def compile(self, c: Compiler) -> str:
-        expr = f" {self.op} ".join(c.compile(a) for a in self.args)
-        return f"({expr})"
 
     @property
     def type(self):
@@ -381,9 +327,6 @@ class BinOp(ExprNode, LazyOps):
 class UnaryOp(ExprNode, LazyOps):
     op: str
     expr: Expr
-
-    def compile(self, c: Compiler) -> str:
-        return f"({self.op}{c.compile(self.expr)})"
 
 
 class BinBoolOp(BinOp):
@@ -401,22 +344,6 @@ class Column(ExprNode, LazyOps):
             raise QueryBuilderError(f"Schema required for table {self.source_table}")
         return self.source_table.schema[self.name]
 
-    def compile(self, c: Compiler) -> str:
-        if c._table_context:
-            if len(c._table_context) > 1:
-                aliases = [
-                    t for t in c._table_context if isinstance(t, TableAlias) and t.source_table is self.source_table
-                ]
-                if not aliases:
-                    return c.dialect.quote(self.name)
-                elif len(aliases) > 1:
-                    raise CompileError(f"Too many aliases for column {self.name}")
-                (alias,) = aliases
-
-                return f"{c.dialect.quote(alias.name)}.{c.dialect.quote(self.name)}"
-
-        return c.dialect.quote(self.name)
-
 
 @dataclass
 class TablePath(ExprNode, ITable):
@@ -426,10 +353,6 @@ class TablePath(ExprNode, ITable):
     @property
     def source_table(self) -> Self:
         return self
-
-    def compile(self, c: Compiler) -> str:
-        path = self.path  # c.database._normalize_table_path(self.name)
-        return ".".join(map(c.dialect.quote, path))
 
     # Statement shorthands
     def create(self, source_table: ITable = None, *, if_not_exists: bool = False, primary_keys: List[str] = None):
@@ -514,9 +437,6 @@ class TableAlias(ExprNode, ITable):
     source_table: ITable
     name: str
 
-    def compile(self, c: Compiler) -> str:
-        return f"{c.compile(self.source_table)} {c.dialect.quote(self.name)}"
-
 
 @dataclass
 class Join(ExprNode, ITable, Root):
@@ -564,29 +484,6 @@ class Join(ExprNode, ITable, Root):
         # TODO Ensure exprs <= self.columns ?
         return self.replace(columns=exprs)
 
-    def compile(self, parent_c: Compiler) -> str:
-        tables = [
-            t if isinstance(t, TableAlias) else TableAlias(t, parent_c.new_unique_name()) for t in self.source_tables
-        ]
-        c = parent_c.add_table_context(*tables, in_join=True, in_select=False)
-        op = " JOIN " if self.op is None else f" {self.op} JOIN "
-        joined = op.join(c.compile(t) for t in tables)
-
-        if self.on_exprs:
-            on = " AND ".join(c.compile(e) for e in self.on_exprs)
-            res = f"{joined} ON {on}"
-        else:
-            res = joined
-
-        columns = "*" if self.columns is None else ", ".join(map(c.compile, self.columns))
-        select = f"SELECT {columns} FROM {res}"
-
-        if parent_c.in_select:
-            select = f"({select}) {c.new_unique_name()}"
-        elif parent_c.in_join:
-            select = f"({select})"
-        return select
-
 
 @dataclass
 class GroupBy(ExprNode, ITable, Root):
@@ -619,36 +516,6 @@ class GroupBy(ExprNode, ITable, Root):
         resolve_names(self.table, exprs)
         return self.replace(values=(self.values or []) + exprs)
 
-    def compile(self, c: Compiler) -> str:
-        if self.values is None:
-            raise CompileError(".group_by() must be followed by a call to .agg()")
-
-        keys = [str(i + 1) for i in range(len(self.keys))]
-        columns = (self.keys or []) + (self.values or [])
-        if isinstance(self.table, Select) and self.table.columns is None and self.table.group_by_exprs is None:
-            return c.compile(
-                self.table.replace(
-                    columns=columns,
-                    group_by_exprs=[Code(k) for k in keys],
-                    having_exprs=self.having_exprs,
-                )
-            )
-
-        keys_str = ", ".join(keys)
-        columns_str = ", ".join(c.compile(x) for x in columns)
-        having_str = (
-            " HAVING " + " AND ".join(map(c.compile, self.having_exprs)) if self.having_exprs is not None else ""
-        )
-        select = (
-            f"SELECT {columns_str} FROM {c.replace(in_select=True).compile(self.table)} GROUP BY {keys_str}{having_str}"
-        )
-
-        if c.in_select:
-            select = f"({select}) {c.new_unique_name()}"
-        elif c.in_join:
-            select = f"({select})"
-        return select
-
 
 @dataclass
 class TableOp(ExprNode, ITable, Root):
@@ -671,15 +538,6 @@ class TableOp(ExprNode, ITable, Root):
         s2 = self.table2.schema
         assert len(s1) == len(s2)
         return s1
-
-    def compile(self, parent_c: Compiler) -> str:
-        c = parent_c.replace(in_select=False)
-        table_expr = f"{c.compile(self.table1)} {self.op} {c.compile(self.table2)}"
-        if parent_c.in_select:
-            table_expr = f"({table_expr}) {c.new_unique_name()}"
-        elif parent_c.in_join:
-            table_expr = f"({table_expr})"
-        return table_expr
 
 
 @dataclass
@@ -704,42 +562,6 @@ class Select(ExprNode, ITable, Root):
     @property
     def source_table(self):
         return self
-
-    def compile(self, parent_c: Compiler) -> str:
-        c = parent_c.replace(in_select=True)  # .add_table_context(self.table)
-
-        columns = ", ".join(map(c.compile, self.columns)) if self.columns else "*"
-        distinct = "DISTINCT " if self.distinct else ""
-        optimizer_hints = c.dialect.optimizer_hints(self.optimizer_hints) if self.optimizer_hints else ""
-        select = f"SELECT {optimizer_hints}{distinct}{columns}"
-
-        if self.table:
-            select += " FROM " + c.compile(self.table)
-        elif c.dialect.PLACEHOLDER_TABLE:
-            select += f" FROM {c.dialect.PLACEHOLDER_TABLE}"
-
-        if self.where_exprs:
-            select += " WHERE " + " AND ".join(map(c.compile, self.where_exprs))
-
-        if self.group_by_exprs:
-            select += " GROUP BY " + ", ".join(map(c.compile, self.group_by_exprs))
-
-        if self.having_exprs:
-            assert self.group_by_exprs
-            select += " HAVING " + " AND ".join(map(c.compile, self.having_exprs))
-
-        if self.order_by_exprs:
-            select += " ORDER BY " + ", ".join(map(c.compile, self.order_by_exprs))
-
-        if self.limit_expr is not None:
-            has_order_by = bool(self.order_by_exprs)
-            select += " " + c.dialect.offset_limit(0, self.limit_expr, has_order_by=has_order_by)
-
-        if parent_c.in_select:
-            select = f"({select}) {c.new_unique_name()}"
-        elif parent_c.in_join:
-            select = f"({select})"
-        return select
 
     @classmethod
     def make(cls, table: ITable, distinct: bool = SKIP, optimizer_hints: str = SKIP, **kwargs):
@@ -783,16 +605,6 @@ class Cte(ExprNode, ITable):
     name: str = None
     params: Sequence[str] = None
 
-    def compile(self, parent_c: Compiler) -> str:
-        c = parent_c.replace(_table_context=[], in_select=False)
-        compiled = c.compile(self.source_table)
-
-        name = self.name or parent_c.new_unique_name()
-        name_params = f"{name}({', '.join(self.params)})" if self.params else name
-        parent_c._subqueries[name_params] = compiled
-
-        return name
-
     @property
     def schema(self):
         # TODO add cte to schema
@@ -829,9 +641,6 @@ class _ResolveColumn(ExprNode, LazyOps):
             raise QueryBuilderError(f"Column not resolved: {self.resolve_name}")
         return self.resolved
 
-    def compile(self, c: Compiler) -> str:
-        return self._get_resolved().compile(c)
-
     @property
     def type(self):
         return self._get_resolved().type
@@ -860,12 +669,7 @@ class This:
 class In(ExprNode):
     expr: Expr
     list: Sequence[Expr]
-
     type = bool
-
-    def compile(self, c: Compiler):
-        elems = ", ".join(map(c.compile, self.list))
-        return f"({c.compile(self.expr)} IN ({elems}))"
 
 
 @dataclass
@@ -873,44 +677,25 @@ class Cast(ExprNode):
     expr: Expr
     target_type: Expr
 
-    def compile(self, c: Compiler) -> str:
-        return f"cast({c.compile(self.expr)} as {c.compile(self.target_type)})"
-
 
 @dataclass
 class Random(ExprNode, LazyOps):
     type = float
-
-    def compile(self, c: Compiler) -> str:
-        return c.dialect.random()
 
 
 @dataclass
 class ConstantTable(ExprNode):
     rows: Sequence[Sequence]
 
-    def compile(self, c: Compiler) -> str:
-        raise NotImplementedError()
-
-    def compile_for_insert(self, c: Compiler):
-        return c.dialect.constant_values(self.rows)
-
 
 @dataclass
 class Explain(ExprNode, Root):
     select: Select
-
     type = str
-
-    def compile(self, c: Compiler) -> str:
-        return c.dialect.explain_as_text(c.compile(self.select))
 
 
 class CurrentTimestamp(ExprNode):
     type = datetime
-
-    def compile(self, c: Compiler) -> str:
-        return c.dialect.current_timestamp()
 
 
 @dataclass
@@ -920,14 +705,6 @@ class TimeTravel(ITable):
     timestamp: datetime = None
     offset: int = None
     statement: str = None
-
-    def compile(self, c: Compiler) -> str:
-        assert isinstance(c, AbstractMixin_TimeTravel)
-        return c.compile(
-            c.time_travel(
-                self.table, before=self.before, timestamp=self.timestamp, offset=self.offset, statement=self.statement
-            )
-        )
 
 
 # DDL
@@ -944,36 +721,16 @@ class CreateTable(Statement):
     if_not_exists: bool = False
     primary_keys: List[str] = None
 
-    def compile(self, c: Compiler) -> str:
-        ne = "IF NOT EXISTS " if self.if_not_exists else ""
-        if self.source_table:
-            return f"CREATE TABLE {ne}{c.compile(self.path)} AS {c.compile(self.source_table)}"
-
-        schema = ", ".join(f"{c.dialect.quote(k)} {c.dialect.type_repr(v)}" for k, v in self.path.schema.items())
-        pks = (
-            ", PRIMARY KEY (%s)" % ", ".join(self.primary_keys)
-            if self.primary_keys and c.dialect.SUPPORTS_PRIMARY_KEY
-            else ""
-        )
-        return f"CREATE TABLE {ne}{c.compile(self.path)}({schema}{pks})"
-
 
 @dataclass
 class DropTable(Statement):
     path: TablePath
     if_exists: bool = False
 
-    def compile(self, c: Compiler) -> str:
-        ie = "IF EXISTS " if self.if_exists else ""
-        return f"DROP TABLE {ie}{c.compile(self.path)}"
-
 
 @dataclass
 class TruncateTable(Statement):
     path: TablePath
-
-    def compile(self, c: Compiler) -> str:
-        return f"TRUNCATE TABLE {c.compile(self.path)}"
 
 
 @dataclass
@@ -982,16 +739,6 @@ class InsertToTable(Statement):
     expr: Expr
     columns: List[str] = None
     returning_exprs: List[str] = None
-
-    def compile(self, c: Compiler) -> str:
-        if isinstance(self.expr, ConstantTable):
-            expr = self.expr.compile_for_insert(c)
-        else:
-            expr = c.compile(self.expr)
-
-        columns = "(%s)" % ", ".join(map(c.dialect.quote, self.columns)) if self.columns is not None else ""
-
-        return f"INSERT INTO {c.compile(self.path)}{columns} {expr}"
 
     def returning(self, *exprs) -> Self:
         """Add a 'RETURNING' clause to the insert expression.
@@ -1014,20 +761,12 @@ class InsertToTable(Statement):
 class Commit(Statement):
     """Generate a COMMIT statement, if we're in the middle of a transaction, or in auto-commit. Otherwise SKIP."""
 
-    def compile(self, c: Compiler) -> str:
-        return "COMMIT" if not c.database.is_autocommit else SKIP
-
 
 @dataclass
 class Param(ExprNode, ITable):
     """A value placeholder, to be specified at compilation time using the `cv_params` context variable."""
-
     name: str
 
     @property
     def source_table(self):
         return self
-
-    def compile(self, c: Compiler) -> str:
-        params = cv_params.get()
-        return c._compile(params[self.name])
