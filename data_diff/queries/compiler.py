@@ -26,7 +26,7 @@ class Root:
 @dataclass
 class Compiler(AbstractCompiler):
     database: AbstractDatabase
-    params: dict = field(default_factory=dict)
+
     in_select: bool = False  # Compilation runtime flag
     in_join: bool = False  # Compilation runtime flag
 
