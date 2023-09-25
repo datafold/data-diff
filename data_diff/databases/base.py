@@ -1,4 +1,5 @@
 import functools
+from dataclasses import field
 from datetime import datetime
 import math
 import sys
@@ -15,10 +16,10 @@ import contextvars
 from runtype import dataclass
 from typing_extensions import Self
 
-from data_diff.queries.compiler import CompileError
+from data_diff.abcs.compiler import AbstractCompiler
 from data_diff.queries.extras import ApplyFuncAndNormalizeAsString, Checksum, NormalizeAsString
 from data_diff.utils import ArithString, is_uuid, join_iter, safezip
-from data_diff.queries.api import Expr, Compiler, table, Select, SKIP, Explain, Code, this
+from data_diff.queries.api import Expr, table, Select, SKIP, Explain, Code, this
 from data_diff.queries.ast_classes import Alias, BinOp, CaseWhen, Cast, Column, Commit, Concat, ConstantTable, Count, \
     CreateTable, Cte, \
     CurrentTimestamp, DropTable, Func, \
@@ -62,6 +63,65 @@ from data_diff.abcs.mixins import (
 
 logger = logging.getLogger("database")
 cv_params = contextvars.ContextVar("params")
+
+
+class CompileError(Exception):
+    pass
+
+
+# TODO: LATER: Resolve the circular imports of databases-compiler-dialects:
+#   A database uses a compiler to render the SQL query.
+#   The compiler delegates to a dialect.
+#   The dialect renders the SQL.
+#   AS IS: The dialect requires the db to normalize table paths — leading to the back-dependency.
+#   TO BE: All the tables paths must be pre-normalized before SQL rendering.
+#   Also: c.database.is_autocommit in render_commit().
+#   After this, the Compiler can cease referring Database/Dialect at all,
+#   and be used only as a CompilingContext (a counter/data-bearing class).
+#   As a result, it becomes low-level util, and the circular dependency auto-resolves.
+#   Meanwhile, the easy fix is to simply move the Compiler here.
+@dataclass
+class Compiler(AbstractCompiler):
+    """
+    Compiler bears the context for a single compilation.
+
+    There can be multiple compilation per app run.
+    There can be multiple compilers in one compilation (with varying contexts).
+    """
+
+    # Database is needed to normalize tables. Dialect is needed for recursive compilations.
+    # In theory, it is many-to-many relations: e.g. a generic ODBC driver with multiple dialects.
+    # In practice, we currently bind the dialects to the specific database classes.
+    database: AbstractDatabase
+
+    in_select: bool = False  # Compilation runtime flag
+    in_join: bool = False  # Compilation runtime flag
+
+    _table_context: List = field(default_factory=list)  # List[ITable]
+    _subqueries: Dict[str, Any] = field(default_factory=dict)  # XXX not thread-safe
+    root: bool = True
+
+    _counter: List = field(default_factory=lambda: [0])
+
+    @property
+    def dialect(self) -> AbstractDialect:
+        return self.database.dialect
+
+    # TODO: DEPRECATED: Remove once the dialect is used directly in all places.
+    def compile(self, elem, params=None) -> str:
+        return self.dialect.compile(self, elem, params)
+
+    def new_unique_name(self, prefix="tmp"):
+        self._counter[0] += 1
+        return f"{prefix}{self._counter[0]}"
+
+    def new_unique_table_name(self, prefix="tmp") -> DbPath:
+        self._counter[0] += 1
+        table_name = f"{prefix}{self._counter[0]}_{'%x'%random.randrange(2**32)}"
+        return self.database.dialect.parse_table_name(table_name)
+
+    def add_table_context(self, *tables: Sequence, **kw) -> Self:
+        return self.replace(_table_context=self._table_context + list(tables), **kw)
 
 
 def parse_table_name(t):
