@@ -83,6 +83,3 @@ class Compiler(AbstractCompiler):
 
     def add_table_context(self, *tables: Sequence, **kw) -> Self:
         return self.replace(_table_context=self._table_context + list(tables), **kw)
-
-    def quote(self, s: str):
-        return self.dialect.quote(s)

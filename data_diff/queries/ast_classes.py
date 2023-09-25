@@ -74,7 +74,7 @@ class Alias(ExprNode):
     name: str
 
     def compile(self, c: Compiler) -> str:
-        return f"{c.compile(self.expr)} AS {c.quote(self.name)}"
+        return f"{c.compile(self.expr)} AS {c.dialect.quote(self.name)}"
 
     @property
     def type(self):
@@ -408,14 +408,14 @@ class Column(ExprNode, LazyOps):
                     t for t in c._table_context if isinstance(t, TableAlias) and t.source_table is self.source_table
                 ]
                 if not aliases:
-                    return c.quote(self.name)
+                    return c.dialect.quote(self.name)
                 elif len(aliases) > 1:
                     raise CompileError(f"Too many aliases for column {self.name}")
                 (alias,) = aliases
 
-                return f"{c.quote(alias.name)}.{c.quote(self.name)}"
+                return f"{c.dialect.quote(alias.name)}.{c.dialect.quote(self.name)}"
 
-        return c.quote(self.name)
+        return c.dialect.quote(self.name)
 
 
 @dataclass
@@ -429,7 +429,7 @@ class TablePath(ExprNode, ITable):
 
     def compile(self, c: Compiler) -> str:
         path = self.path  # c.database._normalize_table_path(self.name)
-        return ".".join(map(c.quote, path))
+        return ".".join(map(c.dialect.quote, path))
 
     # Statement shorthands
     def create(self, source_table: ITable = None, *, if_not_exists: bool = False, primary_keys: List[str] = None):
@@ -515,7 +515,7 @@ class TableAlias(ExprNode, ITable):
     name: str
 
     def compile(self, c: Compiler) -> str:
-        return f"{c.compile(self.source_table)} {c.quote(self.name)}"
+        return f"{c.compile(self.source_table)} {c.dialect.quote(self.name)}"
 
 
 @dataclass
@@ -989,7 +989,7 @@ class InsertToTable(Statement):
         else:
             expr = c.compile(self.expr)
 
-        columns = "(%s)" % ", ".join(map(c.quote, self.columns)) if self.columns is not None else ""
+        columns = "(%s)" % ", ".join(map(c.dialect.quote, self.columns)) if self.columns is not None else ""
 
         return f"INSERT INTO {c.compile(self.path)}{columns} {expr}"
 
