@@ -212,6 +212,10 @@ class Dialect(BaseDialect, Mixin_Schema, Mixin_MD5, Mixin_NormalizeValue, Abstra
     def set_timezone_to_utc(self) -> str:
         raise NotImplementedError()
 
+    def parse_table_name(self, name: str) -> DbPath:
+        path = parse_table_name(name)
+        return tuple(i for i in path if i is not None)
+
 
 class BigQuery(Database):
     CONNECT_URI_HELP = "bigquery://<project>/<dataset>"
@@ -287,10 +291,6 @@ class BigQuery(Database):
             raise ValueError(
                 f"{self.name}: Bad table path for {self}: '{'.'.join(path)}'. Expected form: [project.]schema.table"
             )
-
-    def parse_table_name(self, name: str) -> DbPath:
-        path = parse_table_name(name)
-        return tuple(i for i in self._normalize_table_path(path) if i is not None)
 
     @property
     def is_autocommit(self) -> bool:

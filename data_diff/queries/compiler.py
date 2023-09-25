@@ -79,7 +79,8 @@ class Compiler(AbstractCompiler):
 
     def new_unique_table_name(self, prefix="tmp") -> DbPath:
         self._counter[0] += 1
-        return self.database.parse_table_name(f"{prefix}{self._counter[0]}_{'%x'%random.randrange(2**32)}")
+        table_name = f"{prefix}{self._counter[0]}_{'%x'%random.randrange(2**32)}"
+        return self.database.dialect.parse_table_name(table_name)
 
     def add_table_context(self, *tables: Sequence, **kw) -> Self:
         return self.replace(_table_context=self._table_context + list(tables), **kw)

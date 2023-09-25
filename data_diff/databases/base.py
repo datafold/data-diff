@@ -156,6 +156,9 @@ class BaseDialect(AbstractDialect):
 
     PLACEHOLDER_TABLE = None  # Used for Oracle
 
+    def parse_table_name(self, name: str) -> DbPath:
+        return parse_table_name(name)
+
     def offset_limit(
         self, offset: Optional[int] = None, limit: Optional[int] = None, has_order_by: Optional[bool] = None
     ) -> str:
@@ -517,9 +520,6 @@ class Database(AbstractDatabase[T]):
             return path
 
         raise ValueError(f"{self.name}: Bad table path for {self}: '{'.'.join(path)}'. Expected form: schema.table")
-
-    def parse_table_name(self, name: str) -> DbPath:
-        return parse_table_name(name)
 
     def _query_cursor(self, c, sql_code: str) -> QueryResult:
         assert isinstance(sql_code, str), sql_code
