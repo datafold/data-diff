@@ -1,12 +1,10 @@
 import decimal
 from abc import ABC, abstractmethod
-from typing import Sequence, Optional, Tuple, Union, Dict, List
+from typing import Tuple, Union
 from datetime import datetime
 
 from runtype import dataclass
-from typing_extensions import Self
 
-from data_diff.abcs.compiler import AbstractCompiler
 from data_diff.utils import ArithAlphanumeric, ArithUUID, Unknown
 
 
@@ -172,91 +170,3 @@ class UnknownColType(ColType):
     text: str
 
     supported = False
-
-
-class AbstractTable(ABC):
-    @abstractmethod
-    def select(self, *exprs, distinct=False, **named_exprs) -> "AbstractTable":
-        """Choose new columns, based on the old ones. (aka Projection)
-
-        Parameters:
-            exprs: List of expressions to constitute the columns of the new table.
-                    If not provided, returns all columns in source table (i.e. ``select *``)
-            distinct: 'select' or 'select distinct'
-            named_exprs: More expressions to constitute the columns of the new table, aliased to keyword name.
-
-        """
-        # XXX distinct=SKIP
-
-    @abstractmethod
-    def where(self, *exprs) -> "AbstractTable":
-        """Filter the rows, based on the given predicates. (aka Selection)"""
-
-    @abstractmethod
-    def order_by(self, *exprs) -> "AbstractTable":
-        """Order the rows lexicographically, according to the given expressions."""
-
-    @abstractmethod
-    def limit(self, limit: int) -> "AbstractTable":
-        """Stop yielding rows after the given limit. i.e. take the first 'n=limit' rows"""
-
-    @abstractmethod
-    def join(self, target) -> "AbstractTable":
-        """Join the current table with the target table, returning a new table containing both side-by-side.
-
-        When joining, it's recommended to use explicit tables names, instead of `this`, in order to avoid potential name collisions.
-
-        Example:
-            ::
-
-                person = table('person')
-                city = table('city')
-
-                name_and_city = (
-                    person
-                    .join(city)
-                    .on(person['city_id'] == city['id'])
-                    .select(person['id'], city['name'])
-                )
-        """
-
-    @abstractmethod
-    def group_by(self, *keys):
-        """Behaves like in SQL, except for a small change in syntax:
-
-        A call to `.agg()` must follow every call to `.group_by()`.
-
-        Example:
-            ::
-
-                # SELECT a, sum(b) FROM tmp GROUP BY 1
-                table('tmp').group_by(this.a).agg(this.b.sum())
-
-                # SELECT a, sum(b) FROM a GROUP BY 1 HAVING (b > 10)
-                (table('tmp')
-                    .group_by(this.a)
-                    .agg(this.b.sum())
-                    .having(this.b > 10)
-                )
-
-        """
-
-    @abstractmethod
-    def count(self) -> int:
-        """SELECT count() FROM self"""
-
-    @abstractmethod
-    def union(self, other: "ITable"):
-        """SELECT * FROM self UNION other"""
-
-    @abstractmethod
-    def union_all(self, other: "ITable"):
-        """SELECT * FROM self UNION ALL other"""
-
-    @abstractmethod
-    def minus(self, other: "ITable"):
-        """SELECT * FROM self EXCEPT other"""
-
-    @abstractmethod
-    def intersect(self, other: "ITable"):
-        """SELECT * FROM self INTERSECT other"""
