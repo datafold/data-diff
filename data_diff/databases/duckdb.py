@@ -14,7 +14,6 @@ from data_diff.abcs.database_types import (
     Text,
     FractionalType,
     Boolean,
-    AbstractTable,
 )
 from data_diff.abcs.mixins import (
     AbstractMixin_MD5,
@@ -30,7 +29,7 @@ from data_diff.databases.base import (
     TIMESTAMP_PRECISION_POS,
 )
 from data_diff.databases.base import MD5_HEXDIGITS, CHECKSUM_HEXDIGITS, Mixin_Schema
-from data_diff.queries.ast_classes import Func, Compilable
+from data_diff.queries.ast_classes import Func, Compilable, ITable
 from data_diff.queries.api import code
 
 
@@ -62,10 +61,10 @@ class Mixin_NormalizeValue(AbstractMixin_NormalizeValue):
 
 
 class Mixin_RandomSample(AbstractMixin_RandomSample):
-    def random_sample_n(self, tbl: AbstractTable, size: int) -> AbstractTable:
+    def random_sample_n(self, tbl: ITable, size: int) -> ITable:
         return code("SELECT * FROM ({tbl}) USING SAMPLE {size};", tbl=tbl, size=size)
 
-    def random_sample_ratio_approx(self, tbl: AbstractTable, ratio: float) -> AbstractTable:
+    def random_sample_ratio_approx(self, tbl: ITable, ratio: float) -> ITable:
         return code("SELECT * FROM ({tbl}) USING SAMPLE {percent}%;", tbl=tbl, percent=int(100 * ratio))
 
 

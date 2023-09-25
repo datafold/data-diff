@@ -146,7 +146,7 @@ class AbstractMixin_RandomSample(AbstractMixin):
         i.e. the actual mount of rows returned may vary by standard deviation.
         """
 
-    # def random_sample_ratio(self, table: AbstractTable, ratio: float):
+    # def random_sample_ratio(self, table: ITable, ratio: float):
     #     """Take a random sample of the size determined by the ratio (0..1), where 0 means no rows, and 1 means all rows
     #     """
 
