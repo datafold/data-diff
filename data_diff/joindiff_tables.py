@@ -10,7 +10,7 @@ from itertools import chain
 
 from runtype import dataclass
 
-from data_diff.sqeleton.databases import Database, MsSQL, MySQL, BigQuery, Presto, Oracle, Snowflake, DbPath
+from data_diff.sqeleton.databases import Database, MsSQL, MySQL, BigQuery, Presto, Oracle, Snowflake, DuckDB, DbPath #TODO: add in duckdb
 from data_diff.sqeleton.abcs import NumericType
 from data_diff.sqeleton.queries import (
     table,
@@ -163,7 +163,7 @@ class JoinDiffer(TableDiffer):
             drop_table(db, self.materialize_to_table)
 
         with self._run_in_background(*bg_funcs):
-            if isinstance(db, (Snowflake, BigQuery)):
+            if isinstance(db, (Snowflake, BigQuery, DuckDB)): #TODO: duckdb can work here?
                 # Don't segment the table; let the database handling parallelization
                 yield from self._diff_segments(None, table1, table2, info_tree, None)
             else:
