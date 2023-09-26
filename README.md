@@ -86,7 +86,7 @@ Run `data-diff` with connection URIs. In the following example, we compare table
 data-diff \
   postgresql://<username>:'<password>'@localhost:5432/<database> \
   <table> \
-  "snowflake://<username>:<password>@<password>/<DATABASE>/<SCHEMA>?warehouse=<WAREHOUSE>&role=<ROLE>" \
+  "snowflake://<username>:<password>@<account>/<DATABASE>/<SCHEMA>?warehouse=<WAREHOUSE>&role=<ROLE>" \
   <TABLE> \
   -k <primary key column> \
   -c <columns to compare> \
