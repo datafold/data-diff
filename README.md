@@ -134,7 +134,7 @@ Run `data-diff` with a `toml` configuration file. In the following example, we c
 ```
 
 ```bash
-# export the motherduck_token
+# export relevant environment variables, example below
 export motherduck_token=<MOTHERDUCK_TOKEN>
 
 # run the configured data-diff job
