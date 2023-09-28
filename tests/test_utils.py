@@ -15,8 +15,15 @@ class TestUtils(unittest.TestCase):
         remove_passwords_in_dict(d, "$$$$")
         assert d["database_url"] == "mysql://user:$$$$@localhost/db"
 
+        # TODO: add a database url test for motherduck tokens
+
         # Test replacing password in nested dictionary
         d = {"info": {"password": "mypassword"}}
+        remove_passwords_in_dict(d, "%%")
+        assert d["info"]["password"] == "%%"
+
+        # Test replacing a motherduck token in nested dictionary
+        d = {'database1': {'driver': 'duckdb', 'filepath':'md:datafold_demo?motherduck_token=awieojfaowiejacijobhiwaef'}}
         remove_passwords_in_dict(d, "%%")
         assert d["info"]["password"] == "%%"
 
