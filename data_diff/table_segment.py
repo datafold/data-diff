@@ -7,11 +7,13 @@ from runtype import dataclass
 from typing_extensions import Self
 
 from data_diff.utils import safezip, Vector
-from data_diff.sqeleton.utils import ArithString, split_space
-from data_diff.sqeleton.databases import Database, DbPath, DbKey, DbTime
-from data_diff.sqeleton.schema import Schema, create_schema
-from data_diff.sqeleton.queries import Count, Checksum, SKIP, table, this, Expr, min_, max_, Code
-from data_diff.sqeleton.queries.extras import ApplyFuncAndNormalizeAsString, NormalizeAsString
+from data_diff.utils import ArithString, split_space
+from data_diff.databases.base import Database
+from data_diff.abcs.database_types import DbPath, DbKey, DbTime
+from data_diff.schema import Schema, create_schema
+from data_diff.queries.extras import Checksum
+from data_diff.queries.api import Count, SKIP, table, this, Expr, min_, max_, Code
+from data_diff.queries.extras import ApplyFuncAndNormalizeAsString, NormalizeAsString
 
 logger = logging.getLogger("table_segment")
 

@@ -1,8 +1,6 @@
-from typing import Optional
-
-from data_diff.sqeleton.utils import CaseAwareMapping, CaseSensitiveDict
-from data_diff.sqeleton.queries.ast_classes import *
-from data_diff.sqeleton.queries.base import args_as_tuple
+from data_diff.utils import CaseAwareMapping, CaseSensitiveDict
+from data_diff.queries.ast_classes import *
+from data_diff.queries.base import args_as_tuple
 
 
 this = This()
