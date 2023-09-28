@@ -7,10 +7,8 @@ from typing_extensions import Self
 
 from data_diff.utils import ArithString
 from data_diff.abcs.compiler import Compilable
-from data_diff.abcs.database_types import AbstractTable
 from data_diff.schema import Schema
 
-from data_diff.queries.compiler import Compiler
 from data_diff.queries.base import SKIP, args_as_tuple, SqeletonError
 from data_diff.abcs.database_types import DbPath
 
@@ -82,12 +80,20 @@ def _drop_skips_dict(exprs_dict):
     return {k: v for k, v in exprs_dict.items() if v is not SKIP}
 
 
-class ITable(AbstractTable):
+class ITable:
     source_table: Any
     schema: Schema = None
 
     def select(self, *exprs, distinct=SKIP, optimizer_hints=SKIP, **named_exprs) -> "ITable":
-        """Create a new table with the specified fields"""
+        """Choose new columns, based on the old ones. (aka Projection)
+
+        Parameters:
+            exprs: List of expressions to constitute the columns of the new table.
+                    If not provided, returns all columns in source table (i.e. ``select *``)
+            distinct: 'select' or 'select distinct'
+            named_exprs: More expressions to constitute the columns of the new table, aliased to keyword name.
+
+        """
         exprs = args_as_tuple(exprs)
         exprs = _drop_skips(exprs)
         named_exprs = _drop_skips_dict(named_exprs)
@@ -96,6 +102,7 @@ class ITable(AbstractTable):
         return Select.make(self, columns=exprs, distinct=distinct, optimizer_hints=optimizer_hints)
 
     def where(self, *exprs):
+        """Filter the rows, based on the given predicates. (aka Selection)"""
         exprs = args_as_tuple(exprs)
         exprs = _drop_skips(exprs)
         if not exprs:
@@ -105,6 +112,7 @@ class ITable(AbstractTable):
         return Select.make(self, where_exprs=exprs)
 
     def order_by(self, *exprs):
+        """Order the rows lexicographically, according to the given expressions."""
         exprs = _drop_skips(exprs)
         if not exprs:
             return self
@@ -113,19 +121,50 @@ class ITable(AbstractTable):
         return Select.make(self, order_by_exprs=exprs)
 
     def limit(self, limit: int):
+        """Stop yielding rows after the given limit. i.e. take the first 'n=limit' rows"""
         if limit is SKIP:
             return self
 
         return Select.make(self, limit_expr=limit)
 
     def join(self, target: "ITable"):
-        """Join this table with the target table."""
+        """Join the current table with the target table, returning a new table containing both side-by-side.
+
+        When joining, it's recommended to use explicit tables names, instead of `this`, in order to avoid potential name collisions.
+
+        Example:
+            ::
+
+                person = table('person')
+                city = table('city')
+
+                name_and_city = (
+                    person
+                    .join(city)
+                    .on(person['city_id'] == city['id'])
+                    .select(person['id'], city['name'])
+                )
+        """
         return Join([self, target])
 
     def group_by(self, *keys) -> "GroupBy":
-        """Group according to the given keys.
+        """Behaves like in SQL, except for a small change in syntax:
 
-        Must be followed by a call to :ref:``GroupBy.agg()``
+        A call to `.agg()` must follow every call to `.group_by()`.
+
+        Example:
+            ::
+
+                # SELECT a, sum(b) FROM tmp GROUP BY 1
+                table('tmp').group_by(this.a).agg(this.b.sum())
+
+                # SELECT a, sum(b) FROM a GROUP BY 1 HAVING (b > 10)
+                (table('tmp')
+                    .group_by(this.a)
+                    .agg(this.b.sum())
+                    .having(this.b > 10)
+                )
+
         """
         keys = _drop_skips(keys)
         resolve_names(self.source_table, keys)
@@ -146,6 +185,7 @@ class ITable(AbstractTable):
         return self._get_column(column)
 
     def count(self):
+        """SELECT count() FROM self"""
         return Select(self, [Count()])
 
     def union(self, other: "ITable"):
@@ -218,9 +258,6 @@ class LazyOps:
     def like(self, other):
         return BinBoolOp("LIKE", [self, other])
 
-    def test_regex(self, other):
-        return TestRegex(self, other)
-
     def sum(self):
         return Func("SUM", [self])
 
@@ -229,12 +266,6 @@ class LazyOps:
 
     def min(self):
         return Func("MIN", [self])
-
-
-@dataclass
-class TestRegex(ExprNode, LazyOps):
-    string: Expr
-    pattern: Expr
 
 
 @dataclass(eq=False)

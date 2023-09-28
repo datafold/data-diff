@@ -4,7 +4,7 @@ import unittest
 from data_diff.abcs.database_types import AbstractDatabase, AbstractDialect
 from data_diff.utils import CaseInsensitiveDict, CaseSensitiveDict
 
-from data_diff.queries.compiler import Compiler, CompileError
+from data_diff.databases.base import Compiler, CompileError
 from data_diff.queries.api import outerjoin, cte, when, coalesce
 from data_diff.queries.ast_classes import Random
 from data_diff.queries.api import code, this, table

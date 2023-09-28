@@ -1,14 +1,15 @@
 import logging
 
+from data_diff import Database
 from data_diff.utils import CaseAwareMapping, CaseInsensitiveDict, CaseSensitiveDict
-from data_diff.abcs.database_types import AbstractDatabase, DbPath
+from data_diff.abcs.database_types import DbPath
 
 logger = logging.getLogger("schema")
 
 Schema = CaseAwareMapping
 
 
-def create_schema(db: AbstractDatabase, table_path: DbPath, schema: dict, case_sensitive: bool) -> CaseAwareMapping:
+def create_schema(db: Database, table_path: DbPath, schema: dict, case_sensitive: bool) -> CaseAwareMapping:
     logger.debug(f"[{db.name}] Schema = {schema}")
 
     if case_sensitive:

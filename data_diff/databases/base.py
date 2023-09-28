@@ -1,4 +1,6 @@
+import abc
 import functools
+from dataclasses import field
 from datetime import datetime
 import math
 import sys
@@ -15,26 +17,23 @@ import contextvars
 from runtype import dataclass
 from typing_extensions import Self
 
-from data_diff.queries.compiler import CompileError
+from data_diff.abcs.compiler import AbstractCompiler
 from data_diff.queries.extras import ApplyFuncAndNormalizeAsString, Checksum, NormalizeAsString
 from data_diff.utils import ArithString, is_uuid, join_iter, safezip
-from data_diff.queries.api import Expr, Compiler, table, Select, SKIP, Explain, Code, this
+from data_diff.queries.api import Expr, table, Select, SKIP, Explain, Code, this
 from data_diff.queries.ast_classes import Alias, BinOp, CaseWhen, Cast, Column, Commit, Concat, ConstantTable, Count, \
     CreateTable, Cte, \
     CurrentTimestamp, DropTable, Func, \
     GroupBy, \
-    In, InsertToTable, IsDistinctFrom, \
+    ITable, In, InsertToTable, IsDistinctFrom, \
     Join, \
     Param, \
     Random, \
-    Root, TableAlias, TableOp, TablePath, TestRegex, \
+    Root, TableAlias, TableOp, TablePath, \
     TimeTravel, TruncateTable, UnaryOp, WhenThen, _ResolveColumn
 from data_diff.abcs.database_types import (
-    AbstractDatabase,
     Array,
     Struct,
-    AbstractDialect,
-    AbstractTable,
     ColType,
     Integer,
     Decimal,
@@ -52,17 +51,75 @@ from data_diff.abcs.database_types import (
     Boolean,
     JSON,
 )
-from data_diff.abcs.mixins import AbstractMixin_Regex, AbstractMixin_TimeTravel, Compilable
+from data_diff.abcs.mixins import AbstractMixin_TimeTravel, Compilable
 from data_diff.abcs.mixins import (
     AbstractMixin_Schema,
     AbstractMixin_RandomSample,
     AbstractMixin_NormalizeValue,
     AbstractMixin_OptimizerHints,
 )
-from data_diff.bound_exprs import BoundNode, bound_table
 
 logger = logging.getLogger("database")
 cv_params = contextvars.ContextVar("params")
+
+
+class CompileError(Exception):
+    pass
+
+
+# TODO: LATER: Resolve the circular imports of databases-compiler-dialects:
+#   A database uses a compiler to render the SQL query.
+#   The compiler delegates to a dialect.
+#   The dialect renders the SQL.
+#   AS IS: The dialect requires the db to normalize table paths — leading to the back-dependency.
+#   TO BE: All the tables paths must be pre-normalized before SQL rendering.
+#   Also: c.database.is_autocommit in render_commit().
+#   After this, the Compiler can cease referring Database/Dialect at all,
+#   and be used only as a CompilingContext (a counter/data-bearing class).
+#   As a result, it becomes low-level util, and the circular dependency auto-resolves.
+#   Meanwhile, the easy fix is to simply move the Compiler here.
+@dataclass
+class Compiler(AbstractCompiler):
+    """
+    Compiler bears the context for a single compilation.
+
+    There can be multiple compilation per app run.
+    There can be multiple compilers in one compilation (with varying contexts).
+    """
+
+    # Database is needed to normalize tables. Dialect is needed for recursive compilations.
+    # In theory, it is many-to-many relations: e.g. a generic ODBC driver with multiple dialects.
+    # In practice, we currently bind the dialects to the specific database classes.
+    database: "Database"
+
+    in_select: bool = False  # Compilation runtime flag
+    in_join: bool = False  # Compilation runtime flag
+
+    _table_context: List = field(default_factory=list)  # List[ITable]
+    _subqueries: Dict[str, Any] = field(default_factory=dict)  # XXX not thread-safe
+    root: bool = True
+
+    _counter: List = field(default_factory=lambda: [0])
+
+    @property
+    def dialect(self) -> "Dialect":
+        return self.database.dialect
+
+    # TODO: DEPRECATED: Remove once the dialect is used directly in all places.
+    def compile(self, elem, params=None) -> str:
+        return self.dialect.compile(self, elem, params)
+
+    def new_unique_name(self, prefix="tmp"):
+        self._counter[0] += 1
+        return f"{prefix}{self._counter[0]}"
+
+    def new_unique_table_name(self, prefix="tmp") -> DbPath:
+        self._counter[0] += 1
+        table_name = f"{prefix}{self._counter[0]}_{'%x'%random.randrange(2**32)}"
+        return self.database.dialect.parse_table_name(table_name)
+
+    def add_table_context(self, *tables: Sequence, **kw) -> Self:
+        return self.replace(_table_context=self._table_context + list(tables), **kw)
 
 
 def parse_table_name(t):
@@ -149,11 +206,11 @@ class Mixin_Schema(AbstractMixin_Schema):
 
 
 class Mixin_RandomSample(AbstractMixin_RandomSample):
-    def random_sample_n(self, tbl: AbstractTable, size: int) -> AbstractTable:
+    def random_sample_n(self, tbl: ITable, size: int) -> ITable:
         # TODO use a more efficient algorithm, when the table count is known
         return tbl.order_by(Random()).limit(size)
 
-    def random_sample_ratio_approx(self, tbl: AbstractTable, ratio: float) -> AbstractTable:
+    def random_sample_ratio_approx(self, tbl: ITable, ratio: float) -> ITable:
         return tbl.where(Random() < ratio)
 
 
@@ -162,7 +219,7 @@ class Mixin_OptimizerHints(AbstractMixin_OptimizerHints):
         return f"/*+ {hints} */ "
 
 
-class BaseDialect(AbstractDialect):
+class BaseDialect(abc.ABC):
     SUPPORTS_PRIMARY_KEY = False
     SUPPORTS_INDEXES = False
     TYPE_CLASSES: Dict[str, type] = {}
@@ -171,6 +228,7 @@ class BaseDialect(AbstractDialect):
     PLACEHOLDER_TABLE = None  # Used for Oracle
 
     def parse_table_name(self, name: str) -> DbPath:
+        "Parse the given table name into a DbPath"
         return parse_table_name(name)
 
     def compile(self, compiler: Compiler, elem, params=None) -> str:
@@ -225,8 +283,6 @@ class BaseDialect(AbstractDialect):
             return self.render_checksum(c, elem)
         elif isinstance(elem, Concat):
             return self.render_concat(c, elem)
-        elif isinstance(elem, TestRegex):
-            return self.render_testregex(c, elem)
         elif isinstance(elem, Func):
             return self.render_func(c, elem)
         elif isinstance(elem, WhenThen):
@@ -277,8 +333,6 @@ class BaseDialect(AbstractDialect):
             return self.render_inserttotable(c, elem)
         elif isinstance(elem, Code):
             return self.render_code(c, elem)
-        elif isinstance(elem, BoundNode):
-            return self.render_boundnode(c, elem)
         elif isinstance(elem, _ResolveColumn):
             return self.render__resolvecolumn(c, elem)
 
@@ -372,13 +426,6 @@ class BaseDialect(AbstractDialect):
     def render_alias(self, c: Compiler, elem: Alias) -> str:
         return f"{self.compile(c, elem.expr)} AS {self.quote(elem.name)}"
 
-    def render_testregex(self, c: Compiler, elem: TestRegex) -> str:
-        # TODO: move this method to that mixin! raise here instead, unconditionally.
-        if not isinstance(self, AbstractMixin_Regex):
-            raise NotImplementedError(f"No regex implementation for database '{c.dialect}'")
-        regex = self.test_regex(elem.string, elem.pattern)
-        return self.compile(c, regex)
-
     def render_count(self, c: Compiler, elem: Count) -> str:
         expr = self.compile(c, elem.expr) if elem.expr else "*"
         if elem.distinct:
@@ -432,10 +479,6 @@ class BaseDialect(AbstractDialect):
         elif parent_c.in_join:
             table_expr = f"({table_expr})"
         return table_expr
-
-    def render_boundnode(self, c: Compiler, elem: BoundNode) -> str:
-        assert self is elem.database.dialect
-        return self.compile(c, elem.node)
 
     def render__resolvecolumn(self, c: Compiler, elem: _ResolveColumn) -> str:
         return self.compile(c, elem._get_resolved())
@@ -594,12 +637,14 @@ class BaseDialect(AbstractDialect):
     def offset_limit(
         self, offset: Optional[int] = None, limit: Optional[int] = None, has_order_by: Optional[bool] = None
     ) -> str:
+        "Provide SQL fragment for limit and offset inside a select"
         if offset:
             raise NotImplementedError("No support for OFFSET in query")
 
         return f"LIMIT {limit}"
 
     def concat(self, items: List[str]) -> str:
+        "Provide SQL for concatenating a bunch of columns into a string"
         assert len(items) > 1
         joined_exprs = ", ".join(items)
         return f"concat({joined_exprs})"
@@ -609,24 +654,31 @@ class BaseDialect(AbstractDialect):
         return value
 
     def is_distinct_from(self, a: str, b: str) -> str:
+        "Provide SQL for a comparison where NULL = NULL is true"
         return f"{a} is distinct from {b}"
 
     def timestamp_value(self, t: DbTime) -> str:
+        "Provide SQL for the given timestamp value"
         return f"'{t.isoformat()}'"
 
     def random(self) -> str:
+        "Provide SQL for generating a random number betweein 0..1"
         return "random()"
 
     def current_timestamp(self) -> str:
+        "Provide SQL for returning the current timestamp, aka now"
         return "current_timestamp()"
 
     def current_database(self) -> str:
+        "Provide SQL for returning the current default database."
         return "current_database()"
 
     def current_schema(self) -> str:
+        "Provide SQL for returning the current default schema."
         return "current_schema()"
 
     def explain_as_text(self, query: str) -> str:
+        "Provide SQL for explaining a query, returned as table(varchar)"
         return f"EXPLAIN {query}"
 
     def _constant_value(self, v):
@@ -675,7 +727,7 @@ class BaseDialect(AbstractDialect):
         numeric_precision: int = None,
         numeric_scale: int = None,
     ) -> ColType:
-        """ """
+        "Parse type info as returned by the database"
 
         cls = self._parse_type_repr(type_repr)
         if cls is None:
@@ -718,6 +770,7 @@ class BaseDialect(AbstractDialect):
 
     @classmethod
     def load_mixins(cls, *abstract_mixins) -> Self:
+        "Load a list of mixins that implement the given abstract mixins"
         mixins = {m for m in cls.MIXINS if issubclass(m, abstract_mixins)}
 
         class _DialectWithMixins(cls, *mixins, *abstract_mixins):
@@ -725,6 +778,30 @@ class BaseDialect(AbstractDialect):
 
         _DialectWithMixins.__name__ = cls.__name__
         return _DialectWithMixins()
+
+
+    @property
+    @abstractmethod
+    def name(self) -> str:
+        "Name of the dialect"
+
+    @property
+    @abstractmethod
+    def ROUNDS_ON_PREC_LOSS(self) -> bool:
+        "True if db rounds real values when losing precision, False if it truncates."
+
+    @abstractmethod
+    def quote(self, s: str):
+        "Quote SQL name"
+
+    @abstractmethod
+    def to_string(self, s: str) -> str:
+        # TODO rewrite using cast_to(x, str)
+        "Provide SQL for casting a column to string"
+
+    @abstractmethod
+    def set_timezone_to_utc(self) -> str:
+        "Provide SQL for setting the session timezone to UTC"
 
 
 T = TypeVar("T", bound=BaseDialect)
@@ -745,7 +822,7 @@ class QueryResult:
         return self.rows[i]
 
 
-class Database(AbstractDatabase[T]):
+class Database(abc.ABC):
     """Base abstract class for databases.
 
     Used for providing connection code and implementation specific SQL utilities.
@@ -854,6 +931,12 @@ class Database(AbstractDatabase[T]):
         )
 
     def query_table_schema(self, path: DbPath) -> Dict[str, tuple]:
+        """Query the table for its schema for table in 'path', and return {column: tuple}
+        where the tuple is (table_name, col_name, type_repr, datetime_precision?, numeric_precision?, numeric_scale?)
+
+        Note: This method exists instead of select_table_schema(), just because not all databases support
+              accessing the schema using a SQL query.
+        """
         rows = self.query(self.select_table_schema(path), list)
         if not rows:
             raise RuntimeError(f"{self.name}: Table '{'.'.join(path)}' does not exist, or has no columns")
@@ -863,6 +946,7 @@ class Database(AbstractDatabase[T]):
         return d
 
     def select_table_unique_columns(self, path: DbPath) -> str:
+        "Provide SQL for selecting the names of unique columns in the table"
         schema, name = self._normalize_table_path(path)
 
         return (
@@ -872,6 +956,7 @@ class Database(AbstractDatabase[T]):
         )
 
     def query_table_unique_columns(self, path: DbPath) -> List[str]:
+        """Query the table for its unique columns for table in 'path', and return {column}"""
         if not self.SUPPORTS_UNIQUE_CONSTAINT:
             raise NotImplementedError("This database doesn't support 'unique' constraints")
         res = self.query(self.select_table_unique_columns(path), List[str])
@@ -880,6 +965,14 @@ class Database(AbstractDatabase[T]):
     def _process_table_schema(
         self, path: DbPath, raw_schema: Dict[str, tuple], filter_columns: Sequence[str] = None, where: str = None
     ):
+        """Process the result of query_table_schema().
+
+        Done in a separate step, to minimize the amount of processed columns.
+        Needed because processing each column may:
+        * throw errors and warnings
+        * query the database to sample values
+
+        """
         if filter_columns is None:
             filtered_schema = raw_schema
         else:
@@ -973,14 +1066,36 @@ class Database(AbstractDatabase[T]):
         return apply_query(callback, sql_code)
 
     def close(self):
+        "Close connection(s) to the database instance. Querying will stop functioning."
         self.is_closed = True
         return super().close()
 
     def list_tables(self, tables_like, schema=None):
         return self.query(self.dialect.list_tables(schema or self.default_schema, tables_like))
 
-    def table(self, *path, **kw):
-        return bound_table(self, path, **kw)
+    @property
+    @abstractmethod
+    def dialect(self) -> BaseDialect:
+        "The dialect of the database. Used internally by Database, and also available publicly."
+
+    @property
+    @abstractmethod
+    def CONNECT_URI_HELP(self) -> str:
+        "Example URI to show the user in help and error messages"
+
+    @property
+    @abstractmethod
+    def CONNECT_URI_PARAMS(self) -> List[str]:
+        "List of parameters given in the path of the URI"
+
+    @abstractmethod
+    def _query(self, sql_code: str) -> list:
+        "Send query to database and return result"
+
+    @property
+    @abstractmethod
+    def is_autocommit(self) -> bool:
+        "Return whether the database autocommits changes. When false, COMMIT statements are skipped."
 
 
 class ThreadedDatabase(Database):
