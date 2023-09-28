@@ -1,8 +1,5 @@
 from typing import Generator
 
-from ..abcs import DbPath, DbKey
-from ..schema import Schema
-
 
 class _SKIP:
     def __repr__(self):

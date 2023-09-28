@@ -13,7 +13,7 @@ from uuid import uuid4
 import toml
 from rich import get_console
 
-from .version import __version__
+from data_diff.version import __version__
 
 TRACK_URL = "https://hosted.rudderlabs.com/v1/track"
 START_EVENT = "os_diff_run_start"

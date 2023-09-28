@@ -4,7 +4,7 @@ from typing import Any, Optional, List, Dict, Tuple, Type
 
 from runtype import dataclass
 from data_diff.diff_tables import DiffResultWrapper
-from data_diff.sqeleton.abcs.database_types import (
+from data_diff.abcs.database_types import (
     JSON,
     Boolean,
     ColType,

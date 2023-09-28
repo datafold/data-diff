@@ -10,14 +10,11 @@ from itertools import chain
 
 from runtype import dataclass
 
-from data_diff.sqeleton.databases import Database, MsSQL, MySQL, BigQuery, Presto, Oracle, Snowflake, DbPath
-from data_diff.sqeleton.abcs import NumericType
-from data_diff.sqeleton.queries import (
+from data_diff.databases import Database, MsSQL, MySQL, BigQuery, Presto, Oracle, Snowflake
+from data_diff.abcs.database_types import NumericType, DbPath
+from data_diff.queries.api import (
     table,
     sum_,
-    min_,
-    max_,
-    avg,
     and_,
     if_,
     or_,
@@ -28,16 +25,14 @@ from data_diff.sqeleton.queries import (
     when,
     Compiler,
 )
-from data_diff.sqeleton.queries.ast_classes import Concat, Count, Expr, Func, Random, TablePath, Code, ITable
-from data_diff.sqeleton.queries.extras import NormalizeAsString
-
-from .info_tree import InfoTree
-
-from .query_utils import append_to_table, drop_table
-from .utils import safezip
-from .table_segment import TableSegment
-from .diff_tables import TableDiffer, DiffResult
-from .thread_utils import ThreadedYielder
+from data_diff.queries.ast_classes import Concat, Count, Expr, Random, TablePath, Code, ITable
+from data_diff.queries.extras import NormalizeAsString
+from data_diff.info_tree import InfoTree
+from data_diff.query_utils import append_to_table, drop_table
+from data_diff.utils import safezip
+from data_diff.table_segment import TableSegment
+from data_diff.diff_tables import TableDiffer, DiffResult
+from data_diff.thread_utils import ThreadedYielder
 
 
 logger = logging.getLogger("joindiff_tables")
@@ -63,15 +58,15 @@ def sample(table_expr):
 
 def create_temp_table(c: Compiler, path: TablePath, expr: Expr) -> str:
     db = c.database
-    c = c.replace(root=False)  # we're compiling fragments, not full queries
+    c: Compiler = c.replace(root=False)  # we're compiling fragments, not full queries
     if isinstance(db, BigQuery):
-        return f"create table {c.compile(path)} OPTIONS(expiration_timestamp=TIMESTAMP_ADD(CURRENT_TIMESTAMP(), INTERVAL 1 DAY)) as {c.compile(expr)}"
+        return f"create table {c.dialect.compile(c, path)} OPTIONS(expiration_timestamp=TIMESTAMP_ADD(CURRENT_TIMESTAMP(), INTERVAL 1 DAY)) as {c.dialect.compile(c, expr)}"
     elif isinstance(db, Presto):
-        return f"create table {c.compile(path)} as {c.compile(expr)}"
+        return f"create table {c.dialect.compile(c, path)} as {c.dialect.compile(c, expr)}"
     elif isinstance(db, Oracle):
-        return f"create global temporary table {c.compile(path)} as {c.compile(expr)}"
+        return f"create global temporary table {c.dialect.compile(c, path)} as {c.dialect.compile(c, expr)}"
     else:
-        return f"create temporary table {c.compile(path)} as {c.compile(expr)}"
+        return f"create temporary table {c.dialect.compile(c, path)} as {c.dialect.compile(c, expr)}"
 
 
 def bool_to_int(x):

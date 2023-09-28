@@ -8,14 +8,14 @@ from rich.table import Table
 from rich.prompt import Confirm, Prompt, FloatPrompt, IntPrompt, InvalidResponse
 from typing_extensions import Literal
 
-from .datafold_api import (
+from data_diff.cloud.datafold_api import (
     DatafoldAPI,
     TCloudApiDataSourceConfigSchema,
     TCloudApiDataSource,
     TDsConfig,
     TestDataSourceStatus,
 )
-from ..dbt_parser import DbtParser
+from data_diff.dbt_parser import DbtParser
 
 
 UNKNOWN_VALUE = "unknown_value"
