@@ -7,9 +7,9 @@ from data_diff.table_segment import TableSegment
 from data_diff import databases as db
 from data_diff.joindiff_tables import JoinDiffer
 
-from .test_diff_tables import DiffTestCase
+from tests.test_diff_tables import DiffTestCase
 
-from .common import (
+from tests.common import (
     random_table_suffix,
     test_each_database_in_list,
 )

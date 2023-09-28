@@ -6,7 +6,7 @@ from itertools import product
 from runtype import dataclass
 from typing_extensions import Self
 
-from .utils import safezip, Vector
+from data_diff.utils import safezip, Vector
 from data_diff.sqeleton.utils import ArithString, split_space
 from data_diff.sqeleton.databases import Database, DbPath, DbKey, DbTime
 from data_diff.sqeleton.schema import Schema, create_schema

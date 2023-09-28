@@ -1,7 +1,7 @@
 from typing import Dict, List, Optional
 
-from ..utils import match_regexps
-from ..abcs.database_types import (
+from data_diff.sqeleton.utils import match_regexps
+from data_diff.sqeleton.abcs.database_types import (
     Decimal,
     Float,
     Text,
@@ -14,10 +14,10 @@ from ..abcs.database_types import (
     TimestampTZ,
     FractionalType,
 )
-from ..abcs.mixins import AbstractMixin_MD5, AbstractMixin_NormalizeValue, AbstractMixin_Schema
-from ..abcs import Compilable
-from ..queries import this, table, SKIP
-from .base import (
+from data_diff.sqeleton.abcs.mixins import AbstractMixin_MD5, AbstractMixin_NormalizeValue, AbstractMixin_Schema
+from data_diff.sqeleton.abcs import Compilable
+from data_diff.sqeleton.queries import this, table, SKIP
+from data_diff.sqeleton.databases.base import (
     BaseDialect,
     Mixin_OptimizerHints,
     ThreadedDatabase,
@@ -26,7 +26,7 @@ from .base import (
     QueryError,
     Mixin_RandomSample,
 )
-from .base import TIMESTAMP_PRECISION_POS
+from data_diff.sqeleton.databases.base import TIMESTAMP_PRECISION_POS
 
 SESSION_TIME_ZONE = None  # Changed by the tests
 

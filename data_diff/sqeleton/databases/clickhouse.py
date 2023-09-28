@@ -1,6 +1,6 @@
 from typing import Optional, Type
 
-from .base import (
+from data_diff.sqeleton.databases.base import (
     MD5_HEXDIGITS,
     CHECKSUM_HEXDIGITS,
     TIMESTAMP_PRECISION_POS,
@@ -10,7 +10,7 @@ from .base import (
     ConnectError,
     Mixin_RandomSample,
 )
-from ..abcs.database_types import (
+from data_diff.sqeleton.abcs.database_types import (
     ColType,
     Decimal,
     Float,
@@ -22,7 +22,7 @@ from ..abcs.database_types import (
     Timestamp,
     Boolean,
 )
-from ..abcs.mixins import AbstractMixin_MD5, AbstractMixin_NormalizeValue
+from data_diff.sqeleton.abcs.mixins import AbstractMixin_MD5, AbstractMixin_NormalizeValue
 
 # https://clickhouse.com/docs/en/operations/server-configuration-parameters/settings/#default-database
 DEFAULT_DATABASE = "default"

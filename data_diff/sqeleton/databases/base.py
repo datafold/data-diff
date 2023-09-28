@@ -13,10 +13,10 @@ import decimal
 from runtype import dataclass
 from typing_extensions import Self
 
-from ..utils import is_uuid, safezip
-from ..queries import Expr, Compiler, table, Select, SKIP, Explain, Code, this
-from ..queries.ast_classes import Random
-from ..abcs.database_types import (
+from data_diff.sqeleton.utils import is_uuid, safezip
+from data_diff.sqeleton.queries import Expr, Compiler, table, Select, SKIP, Explain, Code, this
+from data_diff.sqeleton.queries.ast_classes import Random
+from data_diff.sqeleton.abcs.database_types import (
     AbstractDatabase,
     Array,
     Struct,
@@ -39,14 +39,14 @@ from ..abcs.database_types import (
     Boolean,
     JSON,
 )
-from ..abcs.mixins import Compilable
-from ..abcs.mixins import (
+from data_diff.sqeleton.abcs.mixins import Compilable
+from data_diff.sqeleton.abcs.mixins import (
     AbstractMixin_Schema,
     AbstractMixin_RandomSample,
     AbstractMixin_NormalizeValue,
     AbstractMixin_OptimizerHints,
 )
-from ..bound_exprs import bound_table
+from data_diff.sqeleton.bound_exprs import bound_table
 
 logger = logging.getLogger("database")
 

@@ -1,7 +1,7 @@
 from typing import Union
 
-from ..utils import match_regexps
-from ..abcs.database_types import (
+from data_diff.sqeleton.utils import match_regexps
+from data_diff.sqeleton.abcs.database_types import (
     Timestamp,
     TimestampTZ,
     DbPath,
@@ -16,13 +16,13 @@ from ..abcs.database_types import (
     Boolean,
     AbstractTable,
 )
-from ..abcs.mixins import (
+from data_diff.sqeleton.abcs.mixins import (
     AbstractMixin_MD5,
     AbstractMixin_NormalizeValue,
     AbstractMixin_RandomSample,
     AbstractMixin_Regex,
 )
-from .base import (
+from data_diff.sqeleton.databases.base import (
     Database,
     BaseDialect,
     import_helper,
@@ -30,9 +30,9 @@ from .base import (
     ThreadLocalInterpreter,
     TIMESTAMP_PRECISION_POS,
 )
-from .base import MD5_HEXDIGITS, CHECKSUM_HEXDIGITS, Mixin_Schema
-from ..queries.ast_classes import Func, Compilable
-from ..queries.api import code
+from data_diff.sqeleton.databases.base import MD5_HEXDIGITS, CHECKSUM_HEXDIGITS, Mixin_Schema
+from data_diff.sqeleton.queries.ast_classes import Func, Compilable
+from data_diff.sqeleton.queries.api import code
 
 
 @import_helper("duckdb")

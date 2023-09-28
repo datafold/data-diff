@@ -1,4 +1,4 @@
-from .database_types import (
+from data_diff.sqeleton.abcs.database_types import (
     AbstractDatabase,
     AbstractDialect,
     DbKey,
@@ -12,4 +12,4 @@ from .database_types import (
     Boolean,
     JSON,
 )
-from .compiler import AbstractCompiler, Compilable
+from data_diff.sqeleton.abcs.compiler import AbstractCompiler, Compilable

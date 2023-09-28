@@ -1,5 +1,5 @@
-from .compiler import Compiler, CompileError
-from .api import (
+from data_diff.sqeleton.queries.compiler import Compiler, CompileError
+from data_diff.sqeleton.queries.api import (
     this,
     join,
     outerjoin,
@@ -21,5 +21,5 @@ from .api import (
     current_timestamp,
     code,
 )
-from .ast_classes import Expr, ExprNode, Select, Count, BinOp, Explain, In, Code, Column
-from .extras import Checksum, NormalizeAsString, ApplyFuncAndNormalizeAsString
+from data_diff.sqeleton.queries.ast_classes import Expr, ExprNode, Select, Count, BinOp, Explain, In, Code, Column
+from data_diff.sqeleton.queries.extras import Checksum, NormalizeAsString, ApplyFuncAndNormalizeAsString

@@ -5,8 +5,8 @@ from datetime import datetime, timedelta
 
 from data_diff.sqeleton.queries import commit, current_timestamp
 
-from .common import DiffTestCase, CONN_STRINGS
-from .test_diff_tables import test_each_database
+from tests.common import DiffTestCase, CONN_STRINGS
+from tests.test_diff_tables import test_each_database
 
 
 def run_datadiff_cli(*args):
