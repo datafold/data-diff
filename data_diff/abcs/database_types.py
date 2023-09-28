@@ -1,11 +1,12 @@
 import decimal
 from abc import ABC, abstractmethod
-from typing import Sequence, Optional, Tuple, Type, Union, Dict, List
+from typing import Sequence, Optional, Tuple, Union, Dict, List
 from datetime import datetime
 
 from runtype import dataclass
 from typing_extensions import Self
 
+from data_diff.abcs.compiler import AbstractCompiler
 from data_diff.utils import ArithAlphanumeric, ArithUUID, Unknown
 
 
@@ -176,6 +177,14 @@ class UnknownColType(ColType):
 class AbstractDialect(ABC):
     """Dialect-dependent query expressions"""
 
+    @abstractmethod
+    def compile(self, compiler: AbstractCompiler, elem, params=None) -> str:
+        raise NotImplementedError
+
+    @abstractmethod
+    def parse_table_name(self, name: str) -> DbPath:
+        "Parse the given table name into a DbPath"
+
     @property
     @abstractmethod
     def name(self) -> str:
@@ -318,10 +327,6 @@ class AbstractDatabase(Generic[T_Dialect]):
         * query the database to sample values
 
         """
-
-    @abstractmethod
-    def parse_table_name(self, name: str) -> DbPath:
-        "Parse the given table name into a DbPath"
 
     @abstractmethod
     def close(self):

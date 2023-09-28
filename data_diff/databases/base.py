@@ -1,3 +1,4 @@
+import functools
 from datetime import datetime
 import math
 import sys
@@ -9,13 +10,25 @@ import threading
 from abc import abstractmethod
 from uuid import UUID
 import decimal
+import contextvars
 
 from runtype import dataclass
 from typing_extensions import Self
 
-from data_diff.utils import is_uuid, safezip
+from data_diff.queries.compiler import CompileError
+from data_diff.queries.extras import ApplyFuncAndNormalizeAsString, Checksum, NormalizeAsString
+from data_diff.utils import ArithString, is_uuid, join_iter, safezip
 from data_diff.queries.api import Expr, Compiler, table, Select, SKIP, Explain, Code, this
-from data_diff.queries.ast_classes import Random
+from data_diff.queries.ast_classes import Alias, BinOp, CaseWhen, Cast, Column, Commit, Concat, ConstantTable, Count, \
+    CreateTable, Cte, \
+    CurrentTimestamp, DropTable, Func, \
+    GroupBy, \
+    In, InsertToTable, IsDistinctFrom, \
+    Join, \
+    Param, \
+    Random, \
+    Root, TableAlias, TableOp, TablePath, TestRegex, \
+    TimeTravel, TruncateTable, UnaryOp, WhenThen, _ResolveColumn
 from data_diff.abcs.database_types import (
     AbstractDatabase,
     Array,
@@ -39,16 +52,17 @@ from data_diff.abcs.database_types import (
     Boolean,
     JSON,
 )
-from data_diff.abcs.mixins import Compilable
+from data_diff.abcs.mixins import AbstractMixin_Regex, AbstractMixin_TimeTravel, Compilable
 from data_diff.abcs.mixins import (
     AbstractMixin_Schema,
     AbstractMixin_RandomSample,
     AbstractMixin_NormalizeValue,
     AbstractMixin_OptimizerHints,
 )
-from data_diff.bound_exprs import bound_table
+from data_diff.bound_exprs import BoundNode, bound_table
 
 logger = logging.getLogger("database")
+cv_params = contextvars.ContextVar("params")
 
 
 def parse_table_name(t):
@@ -98,7 +112,7 @@ class ThreadLocalInterpreter:
     def apply_queries(self, callback: Callable[[str], Any]):
         q: Expr = next(self.gen)
         while True:
-            sql = self.compiler.compile(q)
+            sql = self.compiler.database.dialect.compile(self.compiler, q)
             logger.debug("Running SQL (%s-TL): %s", self.compiler.database.name, sql)
             try:
                 try:
@@ -155,6 +169,427 @@ class BaseDialect(AbstractDialect):
     MIXINS = frozenset()
 
     PLACEHOLDER_TABLE = None  # Used for Oracle
+
+    def parse_table_name(self, name: str) -> DbPath:
+        return parse_table_name(name)
+
+    def compile(self, compiler: Compiler, elem, params=None) -> str:
+        if params:
+            cv_params.set(params)
+
+        if compiler.root and isinstance(elem, Compilable) and not isinstance(elem, Root):
+            from data_diff.queries.ast_classes import Select
+
+            elem = Select(columns=[elem])
+
+        res = self._compile(compiler, elem)
+        if compiler.root and compiler._subqueries:
+            subq = ", ".join(f"\n  {k} AS ({v})" for k, v in compiler._subqueries.items())
+            compiler._subqueries.clear()
+            return f"WITH {subq}\n{res}"
+        return res
+
+    def _compile(self, compiler: Compiler, elem) -> str:
+        if elem is None:
+            return "NULL"
+        elif isinstance(elem, Compilable):
+            return self.render_compilable(compiler.replace(root=False), elem)
+        elif isinstance(elem, str):
+            return f"'{elem}'"
+        elif isinstance(elem, (int, float)):
+            return str(elem)
+        elif isinstance(elem, datetime):
+            return self.timestamp_value(elem)
+        elif isinstance(elem, bytes):
+            return f"b'{elem.decode()}'"
+        elif isinstance(elem, ArithString):
+            return f"'{elem}'"
+        assert False, elem
+
+    def render_compilable(self, c: Compiler, elem: Compilable) -> str:
+        # All ifs are only for better code navigation, IDE usage detection, and type checking.
+        # The last catch-all would render them anyway — it is a typical "visitor" pattern.
+        if isinstance(elem, Column):
+            return self.render_column(c, elem)
+        elif isinstance(elem, Cte):
+            return self.render_cte(c, elem)
+        elif isinstance(elem, Commit):
+            return self.render_commit(c, elem)
+        elif isinstance(elem, Param):
+            return self.render_param(c, elem)
+        elif isinstance(elem, NormalizeAsString):
+            return self.render_normalizeasstring(c, elem)
+        elif isinstance(elem, ApplyFuncAndNormalizeAsString):
+            return self.render_applyfuncandnormalizeasstring(c, elem)
+        elif isinstance(elem, Checksum):
+            return self.render_checksum(c, elem)
+        elif isinstance(elem, Concat):
+            return self.render_concat(c, elem)
+        elif isinstance(elem, TestRegex):
+            return self.render_testregex(c, elem)
+        elif isinstance(elem, Func):
+            return self.render_func(c, elem)
+        elif isinstance(elem, WhenThen):
+            return self.render_whenthen(c, elem)
+        elif isinstance(elem, CaseWhen):
+            return self.render_casewhen(c, elem)
+        elif isinstance(elem, IsDistinctFrom):
+            return self.render_isdistinctfrom(c, elem)
+        elif isinstance(elem, UnaryOp):
+            return self.render_unaryop(c, elem)
+        elif isinstance(elem, BinOp):
+            return self.render_binop(c, elem)
+        elif isinstance(elem, TablePath):
+            return self.render_tablepath(c, elem)
+        elif isinstance(elem, TableAlias):
+            return self.render_tablealias(c, elem)
+        elif isinstance(elem, TableOp):
+            return self.render_tableop(c, elem)
+        elif isinstance(elem, Select):
+            return self.render_select(c, elem)
+        elif isinstance(elem, Join):
+            return self.render_join(c, elem)
+        elif isinstance(elem, GroupBy):
+            return self.render_groupby(c, elem)
+        elif isinstance(elem, Count):
+            return self.render_count(c, elem)
+        elif isinstance(elem, Alias):
+            return self.render_alias(c, elem)
+        elif isinstance(elem, In):
+            return self.render_in(c, elem)
+        elif isinstance(elem, Cast):
+            return self.render_cast(c, elem)
+        elif isinstance(elem, Random):
+            return self.render_random(c, elem)
+        elif isinstance(elem, Explain):
+            return self.render_explain(c, elem)
+        elif isinstance(elem, CurrentTimestamp):
+            return self.render_currenttimestamp(c, elem)
+        elif isinstance(elem, TimeTravel):
+            return self.render_timetravel(c, elem)
+        elif isinstance(elem, CreateTable):
+            return self.render_createtable(c, elem)
+        elif isinstance(elem, DropTable):
+            return self.render_droptable(c, elem)
+        elif isinstance(elem, TruncateTable):
+            return self.render_truncatetable(c, elem)
+        elif isinstance(elem, InsertToTable):
+            return self.render_inserttotable(c, elem)
+        elif isinstance(elem, Code):
+            return self.render_code(c, elem)
+        elif isinstance(elem, BoundNode):
+            return self.render_boundnode(c, elem)
+        elif isinstance(elem, _ResolveColumn):
+            return self.render__resolvecolumn(c, elem)
+
+        method_name = f"render_{elem.__class__.__name__.lower()}"
+        method = getattr(self, method_name, None)
+        if method is not None:
+            return method(c, elem)
+        else:
+            raise RuntimeError(f"Cannot render AST of type {elem.__class__}")
+        # return elem.compile(compiler.replace(root=False))
+
+    def render_column(self, c: Compiler, elem: Column) -> str:
+        if c._table_context:
+            if len(c._table_context) > 1:
+                aliases = [
+                    t for t in c._table_context if isinstance(t, TableAlias) and t.source_table is elem.source_table
+                ]
+                if not aliases:
+                    return self.quote(elem.name)
+                elif len(aliases) > 1:
+                    raise CompileError(f"Too many aliases for column {elem.name}")
+                (alias,) = aliases
+
+                return f"{self.quote(alias.name)}.{self.quote(elem.name)}"
+
+        return self.quote(elem.name)
+
+    def render_cte(self, parent_c: Compiler, elem: Cte) -> str:
+        c: Compiler = parent_c.replace(_table_context=[], in_select=False)
+        compiled = self.compile(c, elem.source_table)
+
+        name = elem.name or parent_c.new_unique_name()
+        name_params = f"{name}({', '.join(elem.params)})" if elem.params else name
+        parent_c._subqueries[name_params] = compiled
+
+        return name
+
+    def render_commit(self, c: Compiler, elem: Commit) -> str:
+        return "COMMIT" if not c.database.is_autocommit else SKIP
+
+    def render_param(self, c: Compiler, elem: Param) -> str:
+        params = cv_params.get()
+        return self._compile(c, params[elem.name])
+
+    def render_normalizeasstring(self, c: Compiler, elem: NormalizeAsString) -> str:
+        expr = self.compile(c, elem.expr)
+        return self.normalize_value_by_type(expr, elem.expr_type or elem.expr.type)
+
+    def render_applyfuncandnormalizeasstring(self, c: Compiler, elem: ApplyFuncAndNormalizeAsString) -> str:
+        expr = elem.expr
+        expr_type = expr.type
+
+        if isinstance(expr_type, Native_UUID):
+            # Normalize first, apply template after (for uuids)
+            # Needed because min/max(uuid) fails in postgresql
+            expr = NormalizeAsString(expr, expr_type)
+            if elem.apply_func is not None:
+                expr = elem.apply_func(expr)  # Apply template using Python's string formatting
+
+        else:
+            # Apply template before normalizing (for ints)
+            if elem.apply_func is not None:
+                expr = elem.apply_func(expr)  # Apply template using Python's string formatting
+            expr = NormalizeAsString(expr, expr_type)
+
+        return self.compile(c, expr)
+
+    def render_checksum(self, c: Compiler, elem: Checksum) -> str:
+        if len(elem.exprs) > 1:
+            exprs = [Code(f"coalesce({self.compile(c, expr)}, '<null>')") for expr in elem.exprs]
+            # exprs = [self.compile(c, e) for e in exprs]
+            expr = Concat(exprs, "|")
+        else:
+            # No need to coalesce - safe to assume that key cannot be null
+            (expr,) = elem.exprs
+        expr = self.compile(c, expr)
+        md5 = self.md5_as_int(expr)
+        return f"sum({md5})"
+
+    def render_concat(self, c: Compiler, elem: Concat) -> str:
+        # We coalesce because on some DBs (e.g. MySQL) concat('a', NULL) is NULL
+        items = [f"coalesce({self.compile(c, Code(self.to_string(self.compile(c, expr))))}, '<null>')" for expr in elem.exprs]
+        assert items
+        if len(items) == 1:
+            return items[0]
+
+        if elem.sep:
+            items = list(join_iter(f"'{elem.sep}'", items))
+        return self.concat(items)
+
+    def render_alias(self, c: Compiler, elem: Alias) -> str:
+        return f"{self.compile(c, elem.expr)} AS {self.quote(elem.name)}"
+
+    def render_testregex(self, c: Compiler, elem: TestRegex) -> str:
+        # TODO: move this method to that mixin! raise here instead, unconditionally.
+        if not isinstance(self, AbstractMixin_Regex):
+            raise NotImplementedError(f"No regex implementation for database '{c.dialect}'")
+        regex = self.test_regex(elem.string, elem.pattern)
+        return self.compile(c, regex)
+
+    def render_count(self, c: Compiler, elem: Count) -> str:
+        expr = self.compile(c, elem.expr) if elem.expr else "*"
+        if elem.distinct:
+            return f"count(distinct {expr})"
+        return f"count({expr})"
+
+    def render_code(self, c: Compiler, elem: Code) -> str:
+        if not elem.args:
+            return elem.code
+
+        args = {k: self.compile(c, v) for k, v in elem.args.items()}
+        return elem.code.format(**args)
+
+    def render_func(self, c: Compiler, elem: Func) -> str:
+        args = ", ".join(self.compile(c, e) for e in elem.args)
+        return f"{elem.name}({args})"
+
+    def render_whenthen(self, c: Compiler, elem: WhenThen) -> str:
+        return f"WHEN {self.compile(c, elem.when)} THEN {self.compile(c, elem.then)}"
+
+    def render_casewhen(self, c: Compiler, elem: CaseWhen) -> str:
+        assert elem.cases
+        when_thens = " ".join(self.compile(c, case) for case in elem.cases)
+        else_expr = (" ELSE " + self.compile(c, elem.else_expr)) if elem.else_expr is not None else ""
+        return f"CASE {when_thens}{else_expr} END"
+
+    def render_isdistinctfrom(self, c: Compiler, elem: IsDistinctFrom) -> str:
+        a = self.to_comparable(self.compile(c, elem.a), elem.a.type)
+        b = self.to_comparable(self.compile(c, elem.b), elem.b.type)
+        return self.is_distinct_from(a, b)
+
+    def render_unaryop(self, c: Compiler, elem: UnaryOp) -> str:
+        return f"({elem.op}{self.compile(c, elem.expr)})"
+
+    def render_binop(self, c: Compiler, elem: BinOp) -> str:
+        expr = f" {elem.op} ".join(self.compile(c, a) for a in elem.args)
+        return f"({expr})"
+
+    def render_tablepath(self, c: Compiler, elem: TablePath) -> str:
+        path = elem.path  # c.database._normalize_table_path(self.name)
+        return ".".join(map(self.quote, path))
+
+    def render_tablealias(self, c: Compiler, elem: TableAlias) -> str:
+        return f"{self.compile(c, elem.source_table)} {self.quote(elem.name)}"
+
+    def render_tableop(self, parent_c: Compiler, elem: TableOp) -> str:
+        c: Compiler = parent_c.replace(in_select=False)
+        table_expr = f"{self.compile(c, elem.table1)} {elem.op} {self.compile(c, elem.table2)}"
+        if parent_c.in_select:
+            table_expr = f"({table_expr}) {c.new_unique_name()}"
+        elif parent_c.in_join:
+            table_expr = f"({table_expr})"
+        return table_expr
+
+    def render_boundnode(self, c: Compiler, elem: BoundNode) -> str:
+        assert self is elem.database.dialect
+        return self.compile(c, elem.node)
+
+    def render__resolvecolumn(self, c: Compiler, elem: _ResolveColumn) -> str:
+        return self.compile(c, elem._get_resolved())
+
+    def render_select(self, parent_c: Compiler, elem: Select) -> str:
+        c: Compiler = parent_c.replace(in_select=True)  # .add_table_context(self.table)
+        compile_fn = functools.partial(self.compile, c)
+
+        columns = ", ".join(map(compile_fn, elem.columns)) if elem.columns else "*"
+        distinct = "DISTINCT " if elem.distinct else ""
+        optimizer_hints = self.optimizer_hints(elem.optimizer_hints) if elem.optimizer_hints else ""
+        select = f"SELECT {optimizer_hints}{distinct}{columns}"
+
+        if elem.table:
+            select += " FROM " + self.compile(c, elem.table)
+        elif self.PLACEHOLDER_TABLE:
+            select += f" FROM {self.PLACEHOLDER_TABLE}"
+
+        if elem.where_exprs:
+            select += " WHERE " + " AND ".join(map(compile_fn, elem.where_exprs))
+
+        if elem.group_by_exprs:
+            select += " GROUP BY " + ", ".join(map(compile_fn, elem.group_by_exprs))
+
+        if elem.having_exprs:
+            assert elem.group_by_exprs
+            select += " HAVING " + " AND ".join(map(compile_fn, elem.having_exprs))
+
+        if elem.order_by_exprs:
+            select += " ORDER BY " + ", ".join(map(compile_fn, elem.order_by_exprs))
+
+        if elem.limit_expr is not None:
+            has_order_by = bool(elem.order_by_exprs)
+            select += " " + self.offset_limit(0, elem.limit_expr, has_order_by=has_order_by)
+
+        if parent_c.in_select:
+            select = f"({select}) {c.new_unique_name()}"
+        elif parent_c.in_join:
+            select = f"({select})"
+        return select
+
+    def render_join(self, parent_c: Compiler, elem: Join) -> str:
+        tables = [
+            t if isinstance(t, TableAlias) else TableAlias(t, parent_c.new_unique_name()) for t in elem.source_tables
+        ]
+        c = parent_c.add_table_context(*tables, in_join=True, in_select=False)
+        op = " JOIN " if elem.op is None else f" {elem.op} JOIN "
+        joined = op.join(self.compile(c, t) for t in tables)
+
+        if elem.on_exprs:
+            on = " AND ".join(self.compile(c, e) for e in elem.on_exprs)
+            res = f"{joined} ON {on}"
+        else:
+            res = joined
+
+        compile_fn = functools.partial(self.compile, c)
+        columns = "*" if elem.columns is None else ", ".join(map(compile_fn, elem.columns))
+        select = f"SELECT {columns} FROM {res}"
+
+        if parent_c.in_select:
+            select = f"({select}) {c.new_unique_name()}"
+        elif parent_c.in_join:
+            select = f"({select})"
+        return select
+
+    def render_groupby(self, c: Compiler, elem: GroupBy) -> str:
+        compile_fn = functools.partial(self.compile, c)
+
+        if elem.values is None:
+            raise CompileError(".group_by() must be followed by a call to .agg()")
+
+        keys = [str(i + 1) for i in range(len(elem.keys))]
+        columns = (elem.keys or []) + (elem.values or [])
+        if isinstance(elem.table, Select) and elem.table.columns is None and elem.table.group_by_exprs is None:
+            return self.compile(
+                c,
+                elem.table.replace(
+                    columns=columns,
+                    group_by_exprs=[Code(k) for k in keys],
+                    having_exprs=elem.having_exprs,
+                )
+            )
+
+        keys_str = ", ".join(keys)
+        columns_str = ", ".join(self.compile(c, x) for x in columns)
+        having_str = (
+            " HAVING " + " AND ".join(map(compile_fn, elem.having_exprs)) if elem.having_exprs is not None else ""
+        )
+        select = (
+            f"SELECT {columns_str} FROM {self.compile(c.replace(in_select=True), elem.table)} GROUP BY {keys_str}{having_str}"
+        )
+
+        if c.in_select:
+            select = f"({select}) {c.new_unique_name()}"
+        elif c.in_join:
+            select = f"({select})"
+        return select
+
+    def render_in(self, c: Compiler, elem: In) -> str:
+        compile_fn = functools.partial(self.compile, c)
+        elems = ", ".join(map(compile_fn, elem.list))
+        return f"({self.compile(c, elem.expr)} IN ({elems}))"
+
+    def render_cast(self, c: Compiler, elem: Cast) -> str:
+        return f"cast({self.compile(c, elem.expr)} as {self.compile(c, elem.target_type)})"
+
+    def render_random(self, c: Compiler, elem: Random) -> str:
+        return self.random()
+
+    def render_explain(self, c: Compiler, elem: Explain) -> str:
+        return self.explain_as_text(self.compile(c, elem.select))
+
+    def render_currenttimestamp(self, c: Compiler, elem: CurrentTimestamp) -> str:
+        return self.current_timestamp()
+
+    def render_timetravel(self, c: Compiler, elem: TimeTravel) -> str:
+        assert isinstance(c, AbstractMixin_TimeTravel)
+        return self.compile(
+            c,
+            # TODO: why is it c.? why not self? time-trvelling is the dialect's thing, isnt't it?
+            c.time_travel(
+                elem.table, before=elem.before, timestamp=elem.timestamp, offset=elem.offset, statement=elem.statement
+            )
+        )
+
+    def render_createtable(self, c: Compiler, elem: CreateTable) -> str:
+        ne = "IF NOT EXISTS " if elem.if_not_exists else ""
+        if elem.source_table:
+            return f"CREATE TABLE {ne}{self.compile(c, elem.path)} AS {self.compile(c, elem.source_table)}"
+
+        schema = ", ".join(f"{self.quote(k)} {self.type_repr(v)}" for k, v in elem.path.schema.items())
+        pks = (
+            ", PRIMARY KEY (%s)" % ", ".join(elem.primary_keys)
+            if elem.primary_keys and self.SUPPORTS_PRIMARY_KEY
+            else ""
+        )
+        return f"CREATE TABLE {ne}{self.compile(c, elem.path)}({schema}{pks})"
+
+    def render_droptable(self, c: Compiler, elem: DropTable) -> str:
+        ie = "IF EXISTS " if elem.if_exists else ""
+        return f"DROP TABLE {ie}{self.compile(c, elem.path)}"
+
+    def render_truncatetable(self, c: Compiler, elem: TruncateTable) -> str:
+        return f"TRUNCATE TABLE {self.compile(c, elem.path)}"
+
+    def render_inserttotable(self, c: Compiler, elem: InsertToTable) -> str:
+        if isinstance(elem.expr, ConstantTable):
+            expr = self.constant_values(elem.expr.rows)
+        else:
+            expr = self.compile(c, elem.expr)
+
+        columns = "(%s)" % ", ".join(map(self.quote, elem.columns)) if elem.columns is not None else ""
+
+        return f"INSERT INTO {self.compile(c, elem.path)}{columns} {expr}"
 
     def offset_limit(
         self, offset: Optional[int] = None, limit: Optional[int] = None, has_order_by: Optional[bool] = None
@@ -332,8 +767,7 @@ class Database(AbstractDatabase[T]):
         return type(self).__name__
 
     def compile(self, sql_ast):
-        compiler = Compiler(self)
-        return compiler.compile(sql_ast)
+        return self.dialect.compile(Compiler(self), sql_ast)
 
     def query(self, sql_ast: Union[Expr, Generator], res_type: type = None):
         """Query the given SQL code/AST, and attempt to convert the result to type 'res_type'
@@ -356,14 +790,14 @@ class Database(AbstractDatabase[T]):
             else:
                 if res_type is None:
                     res_type = sql_ast.type
-                sql_code = compiler.compile(sql_ast)
+                sql_code = self.compile(sql_ast)
                 if sql_code is SKIP:
                     return SKIP
 
             logger.debug("Running SQL (%s): %s", self.name, sql_code)
 
         if self._interactive and isinstance(sql_ast, Select):
-            explained_sql = compiler.compile(Explain(sql_ast))
+            explained_sql = self.compile(Explain(sql_ast))
             explain = self._query(explained_sql)
             for row in explain:
                 # Most returned a 1-tuple. Presto returns a string
@@ -517,9 +951,6 @@ class Database(AbstractDatabase[T]):
             return path
 
         raise ValueError(f"{self.name}: Bad table path for {self}: '{'.'.join(path)}'. Expected form: schema.table")
-
-    def parse_table_name(self, name: str) -> DbPath:
-        return parse_table_name(name)
 
     def _query_cursor(self, c, sql_code: str) -> QueryResult:
         assert isinstance(sql_code, str), sql_code

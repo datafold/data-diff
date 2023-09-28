@@ -8,7 +8,6 @@ from runtype import dataclass
 from typing_extensions import Self
 
 from data_diff.abcs.database_types import AbstractDatabase
-from data_diff.abcs.compiler import AbstractCompiler
 from data_diff.queries.ast_classes import ExprNode, TablePath, Compilable
 from data_diff.queries.api import table
 from data_diff.schema import create_schema
@@ -36,10 +35,6 @@ class BoundNode(ExprNode):
     @property
     def type(self):
         return self.node.type
-
-    def compile(self, c: AbstractCompiler) -> str:
-        assert c.database is self.database
-        return self.node.compile(c)
 
 
 def bind_node(node, database):

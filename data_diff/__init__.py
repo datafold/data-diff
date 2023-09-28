@@ -1,6 +1,7 @@
 from typing import Sequence, Tuple, Iterator, Optional, Union
 
 from data_diff.abcs.database_types import DbTime, DbPath
+from data_diff.databases import Database
 from data_diff.tracking import disable_tracking
 from data_diff.databases._connect import connect
 from data_diff.diff_tables import Algorithm
@@ -31,10 +32,10 @@ def connect_to_table(
     if isinstance(key_columns, str):
         key_columns = (key_columns,)
 
-    db = connect(db_info, thread_count=thread_count)
+    db: Database = connect(db_info, thread_count=thread_count)
 
     if isinstance(table_name, str):
-        table_name = db.parse_table_name(table_name)
+        table_name = db.dialect.parse_table_name(table_name)
 
     return TableSegment(db, table_name, key_columns, **kwargs)
 
@@ -161,7 +162,8 @@ def diff_tables(
         )
     elif algorithm == Algorithm.JOINDIFF:
         if isinstance(materialize_to_table, str):
-            materialize_to_table = table1.database.parse_table_name(eval_name_template(materialize_to_table))
+            table_name = eval_name_template(materialize_to_table)
+            materialize_to_table = table1.database.dialect.parse_table_name(table_name)
         differ = JoinDiffer(
             threaded=threaded,
             max_threadpool_size=max_threadpool_size,

@@ -6,12 +6,13 @@ import time
 import json
 import logging
 from itertools import islice
-from typing import Dict, Optional
+from typing import Dict, Optional, Tuple
 
 import rich
 from rich.logging import RichHandler
 import click
 
+from data_diff import Database
 from data_diff.schema import create_schema
 from data_diff.queries.api import current_timestamp
 
@@ -425,7 +426,7 @@ def _data_diff(
             logging.error(f"Error while parsing age expression: {e}")
             return
 
-    dbs = db1, db2
+    dbs: Tuple[Database, Database] = db1, db2
 
     if interactive:
         for db in dbs:
@@ -444,7 +445,7 @@ def _data_diff(
             materialize_all_rows=materialize_all_rows,
             table_write_limit=table_write_limit,
             materialize_to_table=materialize_to_table
-            and db1.parse_table_name(eval_name_template(materialize_to_table)),
+            and db1.dialect.parse_table_name(eval_name_template(materialize_to_table)),
         )
     else:
         assert algorithm == Algorithm.HASHDIFF
@@ -456,7 +457,7 @@ def _data_diff(
         )
 
     table_names = table1, table2
-    table_paths = [db.parse_table_name(t) for db, t in safezip(dbs, table_names)]
+    table_paths = [db.dialect.parse_table_name(t) for db, t in safezip(dbs, table_names)]
 
     schemas = list(differ._thread_map(_get_schema, safezip(dbs, table_paths)))
     schema1, schema2 = schemas = [

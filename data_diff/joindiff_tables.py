@@ -58,15 +58,15 @@ def sample(table_expr):
 
 def create_temp_table(c: Compiler, path: TablePath, expr: Expr) -> str:
     db = c.database
-    c = c.replace(root=False)  # we're compiling fragments, not full queries
+    c: Compiler = c.replace(root=False)  # we're compiling fragments, not full queries
     if isinstance(db, BigQuery):
-        return f"create table {c.compile(path)} OPTIONS(expiration_timestamp=TIMESTAMP_ADD(CURRENT_TIMESTAMP(), INTERVAL 1 DAY)) as {c.compile(expr)}"
+        return f"create table {c.dialect.compile(c, path)} OPTIONS(expiration_timestamp=TIMESTAMP_ADD(CURRENT_TIMESTAMP(), INTERVAL 1 DAY)) as {c.dialect.compile(c, expr)}"
     elif isinstance(db, Presto):
-        return f"create table {c.compile(path)} as {c.compile(expr)}"
+        return f"create table {c.dialect.compile(c, path)} as {c.dialect.compile(c, expr)}"
     elif isinstance(db, Oracle):
-        return f"create global temporary table {c.compile(path)} as {c.compile(expr)}"
+        return f"create global temporary table {c.dialect.compile(c, path)} as {c.dialect.compile(c, expr)}"
     else:
-        return f"create temporary table {c.compile(path)} as {c.compile(expr)}"
+        return f"create temporary table {c.dialect.compile(c, path)} as {c.dialect.compile(c, expr)}"
 
 
 def bool_to_int(x):
