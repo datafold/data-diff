@@ -83,8 +83,13 @@ def _drop_skips_dict(exprs_dict):
 
 
 class ITable:
-    source_table: Any
-    schema: Schema = None
+    @property
+    def source_table(self) -> "ITable":  # not always Self, it can be a substitute
+        return self
+
+    @property
+    def schema(self) -> Optional[Schema]:
+        return None
 
     def select(self, *exprs, distinct=SKIP, optimizer_hints=SKIP, **named_exprs) -> "ITable":
         """Choose new columns, based on the old ones. (aka Projection)
@@ -389,11 +394,7 @@ class Column(ExprNode, LazyOps):
 @dataclass
 class TablePath(ExprNode, ITable):
     path: DbPath
-    schema: Optional[Schema] = field(default=None, repr=False)
-
-    @property
-    def source_table(self) -> Self:
-        return self
+    schema: Optional[Schema] = None  # overrides the inherited property
 
     # Statement shorthands
     def create(self, source_table: ITable = None, *, if_not_exists: bool = False, primary_keys: List[str] = None):
@@ -475,8 +476,16 @@ class TablePath(ExprNode, ITable):
 
 @dataclass
 class TableAlias(ExprNode, ITable):
-    source_table: ITable
+    table: ITable
     name: str
+
+    @property
+    def source_table(self) -> ITable:
+        return self.table
+
+    @property
+    def schema(self) -> Schema:
+        return self.table.schema
 
 
 @dataclass
@@ -487,11 +496,7 @@ class Join(ExprNode, ITable, Root):
     columns: Sequence[Expr] = None
 
     @property
-    def source_table(self) -> Self:
-        return self
-
-    @property
-    def schema(self):
+    def schema(self) -> Schema:
         assert self.columns  # TODO Implement SELECT *
         s = self.source_tables[0].schema  # TODO validate types match between both tables
         return type(s)({c.name: c.type for c in self.columns})
@@ -533,10 +538,6 @@ class GroupBy(ExprNode, ITable, Root):
     values: Sequence[Expr] = None
     having_exprs: Sequence[Expr] = None
 
-    @property
-    def source_table(self):
-        return self
-
     def __post_init__(self):
         assert self.keys or self.values
 
@@ -565,16 +566,12 @@ class TableOp(ExprNode, ITable, Root):
     table2: ITable
 
     @property
-    def source_table(self):
-        return self
-
-    @property
     def type(self):
         # TODO ensure types of both tables are compatible
         return self.table1.type
 
     @property
-    def schema(self):
+    def schema(self) -> Schema:
         s1 = self.table1.schema
         s2 = self.table2.schema
         assert len(s1) == len(s2)
@@ -594,15 +591,11 @@ class Select(ExprNode, ITable, Root):
     optimizer_hints: Sequence[Expr] = None
 
     @property
-    def schema(self):
+    def schema(self) -> Schema:
         s = self.table.schema
         if s is None or self.columns is None:
             return s
         return type(s)({c.name: c.type for c in self.columns})
-
-    @property
-    def source_table(self):
-        return self
 
     @classmethod
     def make(cls, table: ITable, distinct: bool = SKIP, optimizer_hints: str = SKIP, **kwargs):
@@ -642,14 +635,18 @@ class Select(ExprNode, ITable, Root):
 
 @dataclass
 class Cte(ExprNode, ITable):
-    source_table: Expr
+    table: Expr
     name: str = None
     params: Sequence[str] = None
 
     @property
-    def schema(self):
+    def source_table(self) -> "ITable":
+        return self.table
+
+    @property
+    def schema(self) -> Schema:
         # TODO add cte to schema
-        return self.source_table.schema
+        return self.table.schema
 
 
 def _named_exprs_as_aliases(named_exprs):
@@ -820,7 +817,3 @@ class Param(ExprNode, ITable):
     """A value placeholder, to be specified at compilation time using the `cv_params` context variable."""
 
     name: str
-
-    @property
-    def source_table(self):
-        return self
