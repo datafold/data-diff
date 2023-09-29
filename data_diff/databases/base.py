@@ -1140,8 +1140,7 @@ class ThreadedDatabase(Database):
         return False
 
 
-# TODO FYI mssql md5_as_int currently requires this to be reduced
-CHECKSUM_HEXDIGITS = 14  # Must be 15 or lower, otherwise SUM() overflows
+CHECKSUM_HEXDIGITS = 12  # Must be 12 or lower, otherwise SUM() overflows
 MD5_HEXDIGITS = 32
 
 _CHECKSUM_BITSIZE = CHECKSUM_HEXDIGITS << 2
