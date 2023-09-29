@@ -1,6 +1,8 @@
 from typing import Union, List
 import logging
 
+import attrs
+
 from data_diff.abcs.database_types import (
     Timestamp,
     TimestampTZ,
@@ -41,11 +43,13 @@ def import_snowflake():
     return snowflake, serialization, default_backend
 
 
+@attrs.define
 class Mixin_MD5(AbstractMixin_MD5):
     def md5_as_int(self, s: str) -> str:
         return f"BITAND(md5_number_lower64({s}), {CHECKSUM_MASK})"
 
 
+@attrs.define
 class Mixin_NormalizeValue(AbstractMixin_NormalizeValue):
     def normalize_timestamp(self, value: str, coltype: TemporalType) -> str:
         if coltype.rounds:
@@ -62,6 +66,7 @@ class Mixin_NormalizeValue(AbstractMixin_NormalizeValue):
         return self.to_string(f"{value}::int")
 
 
+@attrs.define
 class Mixin_Schema(AbstractMixin_Schema):
     def table_information(self) -> Compilable:
         return table("INFORMATION_SCHEMA", "TABLES")

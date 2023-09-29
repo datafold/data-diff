@@ -1,6 +1,9 @@
-from typing import List
+from typing import ClassVar, Dict, List, Type
+
+import attrs
+
 from data_diff.abcs.database_types import (
-    DbPath,
+    ColType, DbPath,
     JSON,
     Timestamp,
     TimestampTZ,
@@ -35,11 +38,13 @@ def import_postgresql():
     return psycopg2
 
 
+@attrs.define
 class Mixin_MD5(AbstractMixin_MD5):
     def md5_as_int(self, s: str) -> str:
         return f"('x' || substring(md5({s}), {1+MD5_HEXDIGITS-CHECKSUM_HEXDIGITS}))::bit({_CHECKSUM_BITSIZE})::bigint"
 
 
+@attrs.define
 class Mixin_NormalizeValue(AbstractMixin_NormalizeValue):
     def normalize_timestamp(self, value: str, coltype: TemporalType) -> str:
         if coltype.rounds:
@@ -60,6 +65,7 @@ class Mixin_NormalizeValue(AbstractMixin_NormalizeValue):
         return f"{value}::text"
 
 
+@attrs.define
 class PostgresqlDialect(BaseDialect, Mixin_Schema, Mixin_MD5, Mixin_NormalizeValue, AbstractMixin_MD5, AbstractMixin_NormalizeValue):
     name = "PostgreSQL"
     ROUNDS_ON_PREC_LOSS = True
@@ -67,7 +73,7 @@ class PostgresqlDialect(BaseDialect, Mixin_Schema, Mixin_MD5, Mixin_NormalizeVal
     SUPPORTS_INDEXES = True
     MIXINS = {Mixin_Schema, Mixin_MD5, Mixin_NormalizeValue, Mixin_RandomSample}
 
-    TYPE_CLASSES = {
+    TYPE_CLASSES: ClassVar[Dict[str, Type[ColType]]] = {
         # Timestamps
         "timestamp with time zone": TimestampTZ,
         "timestamp without time zone": Timestamp,
@@ -118,6 +124,7 @@ class PostgresqlDialect(BaseDialect, Mixin_Schema, Mixin_MD5, Mixin_NormalizeVal
         return super().type_repr(t)
 
 
+@attrs.define
 class PostgreSQL(ThreadedDatabase):
     dialect = PostgresqlDialect()
     SUPPORTS_UNIQUE_CONSTAINT = True

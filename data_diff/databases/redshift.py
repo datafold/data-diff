@@ -1,6 +1,9 @@
-from typing import List, Dict
+from typing import ClassVar, List, Dict, Type
+
+import attrs
+
 from data_diff.abcs.database_types import (
-    Float,
+    ColType, Float,
     JSON,
     TemporalType,
     FractionalType,
@@ -18,11 +21,13 @@ from data_diff.databases.postgresql import (
 )
 
 
+@attrs.define
 class Mixin_MD5(AbstractMixin_MD5):
     def md5_as_int(self, s: str) -> str:
         return f"strtol(substring(md5({s}), {1+MD5_HEXDIGITS-CHECKSUM_HEXDIGITS}), 16)::decimal(38)"
 
 
+@attrs.define
 class Mixin_NormalizeValue(Mixin_NormalizeValue):
     def normalize_timestamp(self, value: str, coltype: TemporalType) -> str:
         if coltype.rounds:
@@ -51,9 +56,10 @@ class Mixin_NormalizeValue(Mixin_NormalizeValue):
         return f"nvl2({value}, json_serialize({value}), NULL)"
 
 
+@attrs.define
 class Dialect(PostgresqlDialect, Mixin_MD5, Mixin_NormalizeValue, AbstractMixin_MD5, AbstractMixin_NormalizeValue):
     name = "Redshift"
-    TYPE_CLASSES = {
+    TYPE_CLASSES: ClassVar[Dict[str, Type[ColType]]] = {
         **PostgresqlDialect.TYPE_CLASSES,
         "double": Float,
         "real": Float,
@@ -74,6 +80,7 @@ class Dialect(PostgresqlDialect, Mixin_MD5, Mixin_NormalizeValue, AbstractMixin_
         return super().type_repr(t)
 
 
+@attrs.define
 class Redshift(PostgreSQL):
     dialect = Dialect()
     CONNECT_URI_HELP = "redshift://<user>:<password>@<host>/<database>"

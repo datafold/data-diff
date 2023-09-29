@@ -1,5 +1,7 @@
 from typing import Optional, Type
 
+import attrs
+
 from data_diff.databases.base import (
     MD5_HEXDIGITS,
     CHECKSUM_HEXDIGITS,
@@ -35,12 +37,14 @@ def import_clickhouse():
     return clickhouse_driver
 
 
+@attrs.define
 class Mixin_MD5(AbstractMixin_MD5):
     def md5_as_int(self, s: str) -> str:
         substr_idx = 1 + MD5_HEXDIGITS - CHECKSUM_HEXDIGITS
         return f"reinterpretAsUInt128(reverse(unhex(lowerUTF8(substr(hex(MD5({s})), {substr_idx})))))"
 
 
+@attrs.define
 class Mixin_NormalizeValue(AbstractMixin_NormalizeValue):
     def normalize_number(self, value: str, coltype: FractionalType) -> str:
         # If a decimal value has trailing zeros in a fractional part, when casting to string they are dropped.
@@ -99,6 +103,7 @@ class Mixin_NormalizeValue(AbstractMixin_NormalizeValue):
         return f"rpad({value}, {TIMESTAMP_PRECISION_POS + 6}, '0')"
 
 
+@attrs.define
 class Dialect(BaseDialect, Mixin_MD5, Mixin_NormalizeValue, AbstractMixin_MD5, AbstractMixin_NormalizeValue):
     name = "Clickhouse"
     ROUNDS_ON_PREC_LOSS = False
@@ -163,6 +168,7 @@ class Dialect(BaseDialect, Mixin_MD5, Mixin_NormalizeValue, AbstractMixin_MD5, A
         return "now()"
 
 
+@attrs.define
 class Clickhouse(ThreadedDatabase):
     dialect = Dialect()
     CONNECT_URI_HELP = "clickhouse://<user>:<password>@<host>/<database>"

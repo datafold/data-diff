@@ -3,6 +3,8 @@ from collections import defaultdict
 import json
 from pathlib import Path
 from typing import List, Dict, Tuple, Set, Optional
+
+import attrs
 import yaml
 from pydantic import BaseModel
 
@@ -94,6 +96,7 @@ class TDatadiffConfig(BaseModel):
     datasource_id: Optional[int] = None
 
 
+@attrs.define(init=False)
 class DbtParser:
     def __init__(
         self,

@@ -7,6 +7,8 @@ from concurrent.futures.thread import _WorkItem
 from time import sleep
 from typing import Callable, Iterator, Optional
 
+import attrs
+
 
 class AutoPriorityQueue(PriorityQueue):
     """Overrides PriorityQueue to automatically get the priority from _WorkItem.kwargs
@@ -31,19 +33,22 @@ class PriorityThreadPoolExecutor(ThreadPoolExecutor):
 
     XXX WARNING: Might break in future versions of Python
     """
-
     def __init__(self, *args):
         super().__init__(*args)
-
         self._work_queue = AutoPriorityQueue()
 
 
+@attrs.define(init=False)
 class ThreadedYielder(Iterable):
     """Yields results from multiple threads into a single iterator, ordered by priority.
 
     To add a source iterator, call ``submit()`` with a function that returns an iterator.
     Priority for the iterator can be provided via the keyword argument 'priority'. (higher runs first)
     """
+    _pool: ThreadPoolExecutor
+    _futures: deque
+    _yield: deque = attrs.field(alias='_yield')  # Python keyword!
+    _exception: Optional[None]
 
     def __init__(self, max_workers: Optional[int] = None):
         self._pool = PriorityThreadPoolExecutor(max_workers)

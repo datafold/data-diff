@@ -1,3 +1,5 @@
+import attrs
+
 from data_diff.abcs.mixins import AbstractMixin_MD5, AbstractMixin_NormalizeValue
 from data_diff.abcs.database_types import TemporalType, ColType_UUID
 from data_diff.databases import presto
@@ -15,6 +17,7 @@ def import_trino():
 Mixin_MD5 = presto.Mixin_MD5
 
 
+@attrs.define
 class Mixin_NormalizeValue(presto.Mixin_NormalizeValue):
     def normalize_timestamp(self, value: str, coltype: TemporalType) -> str:
         if coltype.rounds:

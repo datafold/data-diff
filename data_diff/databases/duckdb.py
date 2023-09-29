@@ -1,5 +1,7 @@
 from typing import Union
 
+import attrs
+
 from data_diff.utils import match_regexps
 from data_diff.abcs.database_types import (
     Timestamp,
@@ -40,11 +42,13 @@ def import_duckdb():
     return duckdb
 
 
+@attrs.define
 class Mixin_MD5(AbstractMixin_MD5):
     def md5_as_int(self, s: str) -> str:
         return f"('0x' || SUBSTRING(md5({s}), {1+MD5_HEXDIGITS-CHECKSUM_HEXDIGITS},{CHECKSUM_HEXDIGITS}))::BIGINT"
 
 
+@attrs.define
 class Mixin_NormalizeValue(AbstractMixin_NormalizeValue):
     def normalize_timestamp(self, value: str, coltype: TemporalType) -> str:
         # It's precision 6 by default. If precision is less than 6 -> we remove the trailing numbers.
@@ -60,6 +64,7 @@ class Mixin_NormalizeValue(AbstractMixin_NormalizeValue):
         return self.to_string(f"{value}::INTEGER")
 
 
+@attrs.define
 class Mixin_RandomSample(AbstractMixin_RandomSample):
     def random_sample_n(self, tbl: ITable, size: int) -> ITable:
         return code("SELECT * FROM ({tbl}) USING SAMPLE {size};", tbl=tbl, size=size)
@@ -68,6 +73,7 @@ class Mixin_RandomSample(AbstractMixin_RandomSample):
         return code("SELECT * FROM ({tbl}) USING SAMPLE {percent}%;", tbl=tbl, percent=int(100 * ratio))
 
 
+@attrs.define
 class Dialect(BaseDialect, Mixin_Schema, Mixin_MD5, Mixin_NormalizeValue, AbstractMixin_MD5, AbstractMixin_NormalizeValue):
     name = "DuckDB"
     ROUNDS_ON_PREC_LOSS = False
@@ -130,6 +136,7 @@ class Dialect(BaseDialect, Mixin_Schema, Mixin_MD5, Mixin_NormalizeValue, Abstra
         return "current_timestamp"
 
 
+@attrs.define
 class DuckDB(Database):
     dialect = Dialect()
     SUPPORTS_UNIQUE_CONSTAINT = False  # Temporary, until we implement it

@@ -2,6 +2,8 @@ import math
 from typing import Dict, Sequence
 import logging
 
+import attrs
+
 from data_diff.abcs.database_types import (
     Integer,
     Float,
@@ -34,11 +36,13 @@ def import_databricks():
     return databricks
 
 
+@attrs.define
 class Mixin_MD5(AbstractMixin_MD5):
     def md5_as_int(self, s: str) -> str:
         return f"cast(conv(substr(md5({s}), {1+MD5_HEXDIGITS-CHECKSUM_HEXDIGITS}), 16, 10) as decimal(38, 0))"
 
 
+@attrs.define
 class Mixin_NormalizeValue(AbstractMixin_NormalizeValue):
     def normalize_timestamp(self, value: str, coltype: TemporalType) -> str:
         """Databricks timestamp contains no more than 6 digits in precision"""
@@ -60,6 +64,7 @@ class Mixin_NormalizeValue(AbstractMixin_NormalizeValue):
         return self.to_string(f"cast ({value} as int)")
 
 
+@attrs.define
 class Dialect(BaseDialect, Mixin_MD5, Mixin_NormalizeValue, AbstractMixin_MD5, AbstractMixin_NormalizeValue):
     name = "Databricks"
     ROUNDS_ON_PREC_LOSS = True
@@ -99,6 +104,7 @@ class Dialect(BaseDialect, Mixin_MD5, Mixin_NormalizeValue, AbstractMixin_MD5, A
         return tuple(i for i in path if i is not None)
 
 
+@attrs.define(init=False)
 class Databricks(ThreadedDatabase):
     dialect = Dialect()
     CONNECT_URI_HELP = "databricks://:<access_token>@<server_hostname>/<http_path>"

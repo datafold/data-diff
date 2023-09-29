@@ -1,4 +1,7 @@
 from typing import Optional
+
+import attrs
+
 from data_diff.abcs.mixins import AbstractMixin_MD5, AbstractMixin_NormalizeValue
 from data_diff.databases.base import (
     CHECKSUM_HEXDIGITS,
@@ -34,6 +37,7 @@ def import_mssql():
     return pyodbc
 
 
+@attrs.define
 class Mixin_NormalizeValue(AbstractMixin_NormalizeValue):
     def normalize_timestamp(self, value: str, coltype: TemporalType) -> str:
         if coltype.precision > 0:
@@ -53,11 +57,13 @@ class Mixin_NormalizeValue(AbstractMixin_NormalizeValue):
         return f"FORMAT({value}, 'N{coltype.precision}')"
 
 
+@attrs.define
 class Mixin_MD5(AbstractMixin_MD5):
     def md5_as_int(self, s: str) -> str:
         return f"convert(bigint, convert(varbinary, '0x' + RIGHT(CONVERT(NVARCHAR(32), HashBytes('MD5', {s}), 2), {CHECKSUM_HEXDIGITS}), 1))"
 
 
+@attrs.define
 class Dialect(BaseDialect, Mixin_Schema, Mixin_OptimizerHints, Mixin_MD5, Mixin_NormalizeValue, AbstractMixin_MD5, AbstractMixin_NormalizeValue):
     name = "MsSQL"
     ROUNDS_ON_PREC_LOSS = True

@@ -5,7 +5,7 @@ from datetime import datetime
 import math
 import sys
 import logging
-from typing import Any, Callable, Dict, Generator, Tuple, Optional, Sequence, Type, List, Union, TypeVar
+from typing import Any, Callable, ClassVar, Dict, Generator, Tuple, Optional, Sequence, Type, List, Union, TypeVar
 from functools import partial, wraps
 from concurrent.futures import ThreadPoolExecutor
 import threading
@@ -156,15 +156,14 @@ def _one(seq):
     return x
 
 
+@attrs.define
 class ThreadLocalInterpreter:
     """An interpeter used to execute a sequence of queries within the same thread and cursor.
 
     Useful for cursor-sensitive operations, such as creating a temporary table.
     """
-
-    def __init__(self, compiler: Compiler, gen: Generator):
-        self.gen = gen
-        self.compiler = compiler
+    compiler: Compiler
+    gen: Generator
 
     def apply_queries(self, callback: Callable[[str], Any]):
         q: Expr = next(self.gen)
@@ -189,6 +188,7 @@ def apply_query(callback: Callable[[str], Any], sql_code: Union[str, ThreadLocal
         return callback(sql_code)
 
 
+@attrs.define
 class Mixin_Schema(AbstractMixin_Schema):
     def table_information(self) -> Compilable:
         return table("information_schema", "tables")
@@ -205,6 +205,7 @@ class Mixin_Schema(AbstractMixin_Schema):
         )
 
 
+@attrs.define
 class Mixin_RandomSample(AbstractMixin_RandomSample):
     def random_sample_n(self, tbl: ITable, size: int) -> ITable:
         # TODO use a more efficient algorithm, when the table count is known
@@ -214,15 +215,17 @@ class Mixin_RandomSample(AbstractMixin_RandomSample):
         return tbl.where(Random() < ratio)
 
 
+@attrs.define
 class Mixin_OptimizerHints(AbstractMixin_OptimizerHints):
     def optimizer_hints(self, hints: str) -> str:
         return f"/*+ {hints} */ "
 
 
+@attrs.define
 class BaseDialect(abc.ABC):
     SUPPORTS_PRIMARY_KEY = False
     SUPPORTS_INDEXES = False
-    TYPE_CLASSES: Dict[str, type] = {}
+    TYPE_CLASSES: ClassVar[Dict[str, Type[ColType]]] = {}
     MIXINS = frozenset()
 
     PLACEHOLDER_TABLE = None  # Used for Oracle
@@ -522,7 +525,7 @@ class BaseDialect(abc.ABC):
 
     def render_join(self, parent_c: Compiler, elem: Join) -> str:
         tables = [
-            t if isinstance(t, TableAlias) else TableAlias(source_table=t, name=parent_c.new_unique_name()) for t in elem.source_tables
+            t if isinstance(t, TableAlias) else TableAlias(t, name=parent_c.new_unique_name()) for t in elem.source_tables
         ]
         c = parent_c.add_table_context(*tables, in_join=True, in_select=False)
         op = " JOIN " if elem.op is None else f" {elem.op} JOIN "
@@ -823,6 +826,7 @@ class QueryResult:
         return self.rows[i]
 
 
+@attrs.define
 class Database(abc.ABC):
     """Base abstract class for databases.
 
@@ -1099,6 +1103,7 @@ class Database(abc.ABC):
         "Return whether the database autocommits changes. When false, COMMIT statements are skipped."
 
 
+@attrs.define(init=False, slots=False)
 class ThreadedDatabase(Database):
     """Access the database through singleton threads.
 

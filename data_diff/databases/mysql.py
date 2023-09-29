@@ -1,3 +1,5 @@
+import attrs
+
 from data_diff.abcs.database_types import (
     Datetime,
     Timestamp,
@@ -40,11 +42,13 @@ def import_mysql():
     return mysql.connector
 
 
+@attrs.define
 class Mixin_MD5(AbstractMixin_MD5):
     def md5_as_int(self, s: str) -> str:
         return f"cast(conv(substring(md5({s}), {1+MD5_HEXDIGITS-CHECKSUM_HEXDIGITS}), 16, 10) as unsigned)"
 
 
+@attrs.define
 class Mixin_NormalizeValue(AbstractMixin_NormalizeValue):
     def normalize_timestamp(self, value: str, coltype: TemporalType) -> str:
         if coltype.rounds:
@@ -60,6 +64,7 @@ class Mixin_NormalizeValue(AbstractMixin_NormalizeValue):
         return f"TRIM(CAST({value} AS char))"
 
 
+@attrs.define
 class Dialect(BaseDialect, Mixin_Schema, Mixin_OptimizerHints, Mixin_MD5, Mixin_NormalizeValue, AbstractMixin_MD5, AbstractMixin_NormalizeValue):
     name = "MySQL"
     ROUNDS_ON_PREC_LOSS = True

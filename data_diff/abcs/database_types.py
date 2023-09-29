@@ -26,26 +26,33 @@ class PrecisionType(ColType):
     rounds: Union[bool, Unknown] = Unknown
 
 
+
+@attrs.define
 class Boolean(ColType):
     precision = 0
 
 
+@attrs.define
 class TemporalType(PrecisionType):
     pass
 
 
+@attrs.define
 class Timestamp(TemporalType):
     pass
 
 
+@attrs.define
 class TimestampTZ(TemporalType):
     pass
 
 
+@attrs.define
 class Datetime(TemporalType):
     pass
 
 
+@attrs.define
 class Date(TemporalType):
     pass
 
@@ -56,14 +63,17 @@ class NumericType(ColType):
     precision: int
 
 
+@attrs.define
 class FractionalType(NumericType):
     pass
 
 
+@attrs.define
 class Float(FractionalType):
     python_type = float
 
 
+@attrs.define
 class IKey(ABC):
     "Interface for ColType, for using a column as a key in table."
 
@@ -76,6 +86,7 @@ class IKey(ABC):
         return self.python_type(value)
 
 
+@attrs.define
 class Decimal(FractionalType, IKey):  # Snowflake may use Decimal as a key
     @property
     def python_type(self) -> type:
@@ -89,22 +100,27 @@ class StringType(ColType):
     python_type = str
 
 
+@attrs.define
 class ColType_UUID(ColType, IKey):
     python_type = ArithUUID
 
 
+@attrs.define
 class ColType_Alphanum(ColType, IKey):
     python_type = ArithAlphanumeric
 
 
+@attrs.define
 class Native_UUID(ColType_UUID):
     pass
 
 
+@attrs.define
 class String_UUID(ColType_UUID, StringType):
     pass
 
 
+@attrs.define
 class String_Alphanum(ColType_Alphanum, StringType):
     @staticmethod
     def test_value(value: str) -> bool:
@@ -118,6 +134,7 @@ class String_Alphanum(ColType_Alphanum, StringType):
         return self.python_type(value)
 
 
+@attrs.define
 class String_VaryingAlphanum(String_Alphanum):
     pass
 

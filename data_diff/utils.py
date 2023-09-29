@@ -3,13 +3,14 @@ import logging
 import re
 import string
 from abc import abstractmethod
-from typing import Any, Dict, Iterable, Iterator, List, MutableMapping, Sequence, TypeVar, Union
+from typing import Any, Dict, Iterable, Iterator, List, MutableMapping, Optional, Sequence, TypeVar, Union
 from urllib.parse import urlparse
 import operator
 import threading
 from datetime import datetime
 from uuid import UUID
 
+import attrs
 from packaging.version import parse as parse_version
 import requests
 from tabulate import tabulate
@@ -61,6 +62,7 @@ def match_regexps(regexps: Dict[str, Any], s: str) -> Sequence[tuple]:
 V = TypeVar("V")
 
 
+@attrs.define
 class CaseAwareMapping(MutableMapping[str, V]):
     @abstractmethod
     def get_key(self, key: str) -> str:
@@ -70,7 +72,10 @@ class CaseAwareMapping(MutableMapping[str, V]):
         return type(self)(initial)
 
 
+@attrs.define(repr=False, init=False)
 class CaseInsensitiveDict(CaseAwareMapping):
+    _dict: Dict[str, Any]
+
     def __init__(self, initial):
         self._dict = {k.lower(): (k, v) for k, v in dict(initial).items()}
 
@@ -99,6 +104,7 @@ class CaseInsensitiveDict(CaseAwareMapping):
         return repr(dict(self.items()))
 
 
+@attrs.define
 class CaseSensitiveDict(dict, CaseAwareMapping):
     def get_key(self, key):
         self[key]  # Throw KeyError if key doesn't exist
@@ -114,6 +120,7 @@ class CaseSensitiveDict(dict, CaseAwareMapping):
 alphanums = " -" + string.digits + string.ascii_uppercase + "_" + string.ascii_lowercase
 
 
+@attrs.define
 class ArithString:
     @classmethod
     def new(cls, *args, **kw) -> Self:
@@ -125,6 +132,7 @@ class ArithString:
         return [self.new(int=i) for i in checkpoints]
 
 
+@attrs.define
 class ArithUUID(UUID, ArithString):
     "A UUID that supports basic arithmetic (add, sub)"
 
@@ -173,19 +181,20 @@ def alphanums_to_numbers(s1: str, s2: str):
     return n1, n2
 
 
+@attrs.define
 class ArithAlphanumeric(ArithString):
-    def __init__(self, s: str, max_len=None):
-        if s is None:
-            raise ValueError("Alphanum string cannot be None")
-        if max_len and len(s) > max_len:
-            raise ValueError(f"Length of alphanum value '{str}' is longer than the expected {max_len}")
+    _str: str
+    _max_len: Optional[int] = None
 
-        for ch in s:
+    def __attrs_post_init__(self):
+        if self._str is None:
+            raise ValueError("Alphanum string cannot be None")
+        if self._max_len and len(self._str) > self._max_len:
+            raise ValueError(f"Length of alphanum value '{str}' is longer than the expected {self._max_len}")
+
+        for ch in self._str:
             if ch not in alphanums:
                 raise ValueError(f"Unexpected character {ch} in alphanum string")
-
-        self._str = s
-        self._max_len = max_len
 
     # @property
     # def int(self):
