@@ -133,7 +133,7 @@ class TestQueries(unittest.TestCase):
         t = table(name)
         raw_schema = db.query_table_schema(t.path)
         schema = db._process_table_schema(t.path, raw_schema)
-        schema = create_schema(self.database, t, schema, case_sensitive=True)
+        schema = create_schema(db.name, t, schema, case_sensitive=True)
         t = t.replace(schema=schema)
         t.schema["created_at"] = t.schema["created_at"].replace(precision=t.schema["created_at"].precision)
 
