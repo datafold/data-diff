@@ -68,7 +68,9 @@ class Mixin_RandomSample(AbstractMixin_RandomSample):
         return code("SELECT * FROM ({tbl}) USING SAMPLE {percent}%;", tbl=tbl, percent=int(100 * ratio))
 
 
-class Dialect(BaseDialect, Mixin_Schema, Mixin_MD5, Mixin_NormalizeValue, AbstractMixin_MD5, AbstractMixin_NormalizeValue):
+class Dialect(
+    BaseDialect, Mixin_Schema, Mixin_MD5, Mixin_NormalizeValue, AbstractMixin_MD5, AbstractMixin_NormalizeValue
+):
     name = "DuckDB"
     ROUNDS_ON_PREC_LOSS = False
     SUPPORTS_PRIMARY_KEY = True

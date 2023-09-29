@@ -9,7 +9,13 @@ from data_diff import databases as dbs
 from data_diff.queries.api import table, current_timestamp
 from data_diff.queries.extras import NormalizeAsString
 from data_diff.schema import create_schema
-from tests.common import TEST_MYSQL_CONN_STRING, test_each_database_in_list, get_conn, str_to_checksum, random_table_suffix
+from tests.common import (
+    TEST_MYSQL_CONN_STRING,
+    test_each_database_in_list,
+    get_conn,
+    str_to_checksum,
+    random_table_suffix,
+)
 from data_diff.abcs.database_types import TimestampTZ
 
 TEST_DATABASES = {
