@@ -12,6 +12,7 @@ from runtype import dataclass
 
 from data_diff.databases import Database, MsSQL, MySQL, BigQuery, Presto, Oracle, Snowflake
 from data_diff.abcs.database_types import NumericType, DbPath
+from data_diff.databases.base import Compiler
 from data_diff.queries.api import (
     table,
     sum_,
@@ -23,7 +24,6 @@ from data_diff.queries.api import (
     rightjoin,
     this,
     when,
-    Compiler,
 )
 from data_diff.queries.ast_classes import Concat, Count, Expr, Random, TablePath, Code, ITable
 from data_diff.queries.extras import NormalizeAsString
