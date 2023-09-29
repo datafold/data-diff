@@ -15,7 +15,9 @@ DbTime = datetime
 
 @dataclass
 class ColType:
-    supported = True
+    @property
+    def supported(self) -> bool:
+        return True
 
 
 @dataclass
@@ -132,7 +134,9 @@ class String_FixedAlphanum(String_Alphanum):
 
 @dataclass
 class Text(StringType):
-    supported = False
+    @property
+    def supported(self) -> bool:
+        return False
 
 
 # In majority of DBMSes, it is called JSON/JSONB. Only in Snowflake, it is OBJECT.
@@ -169,4 +173,6 @@ class Integer(NumericType, IKey):
 class UnknownColType(ColType):
     text: str
 
-    supported = False
+    @property
+    def supported(self) -> bool:
+        return False
