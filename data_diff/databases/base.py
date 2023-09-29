@@ -815,7 +815,7 @@ T = TypeVar("T", bound=BaseDialect)
 @dataclass
 class QueryResult:
     rows: list
-    columns: list = None
+    columns: Optional[list] = None
 
     def __iter__(self):
         return iter(self.rows)

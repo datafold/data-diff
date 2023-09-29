@@ -55,7 +55,7 @@ Expr = Union[ExprNode, str, bool, int, float, datetime, ArithString, None]
 @dataclass
 class Code(ExprNode, Root):
     code: str
-    args: Dict[str, Expr] = None
+    args: Optional[Dict[str, Expr]] = None
 
 
 def _expr_type(e: Expr) -> type:
@@ -216,7 +216,7 @@ class ITable:
 @dataclass
 class Concat(ExprNode):
     exprs: list
-    sep: str = None
+    sep: Optional[str] = None
 
 
 @dataclass
@@ -293,7 +293,7 @@ class WhenThen(ExprNode):
 @dataclass
 class CaseWhen(ExprNode):
     cases: Sequence[WhenThen]
-    else_expr: Expr = None
+    else_expr: Optional[Expr] = None
 
     @property
     def type(self):
@@ -491,9 +491,9 @@ class TableAlias(ExprNode, ITable):
 @dataclass
 class Join(ExprNode, ITable, Root):
     source_tables: Sequence[ITable]
-    op: str = None
-    on_exprs: Sequence[Expr] = None
-    columns: Sequence[Expr] = None
+    op: Optional[str] = None
+    on_exprs: Optional[Sequence[Expr]] = None
+    columns: Optional[Sequence[Expr]] = None
 
     @property
     def schema(self) -> Schema:
@@ -534,9 +534,9 @@ class Join(ExprNode, ITable, Root):
 @dataclass
 class GroupBy(ExprNode, ITable, Root):
     table: ITable
-    keys: Sequence[Expr] = None  # IKey?
-    values: Sequence[Expr] = None
-    having_exprs: Sequence[Expr] = None
+    keys: Optional[Sequence[Expr]] = None  # IKey?
+    values: Optional[Sequence[Expr]] = None
+    having_exprs: Optional[Sequence[Expr]] = None
 
     def __post_init__(self):
         assert self.keys or self.values
@@ -580,15 +580,15 @@ class TableOp(ExprNode, ITable, Root):
 
 @dataclass
 class Select(ExprNode, ITable, Root):
-    table: Expr = None
-    columns: Sequence[Expr] = None
-    where_exprs: Sequence[Expr] = None
-    order_by_exprs: Sequence[Expr] = None
-    group_by_exprs: Sequence[Expr] = None
-    having_exprs: Sequence[Expr] = None
-    limit_expr: int = None
+    table: Optional[Expr] = None
+    columns: Optional[Sequence[Expr]] = None
+    where_exprs: Optional[Sequence[Expr]] = None
+    order_by_exprs: Optional[Sequence[Expr]] = None
+    group_by_exprs: Optional[Sequence[Expr]] = None
+    having_exprs: Optional[Sequence[Expr]] = None
+    limit_expr: Optional[int] = None
     distinct: bool = False
-    optimizer_hints: Sequence[Expr] = None
+    optimizer_hints: Optional[Sequence[Expr]] = None
 
     @property
     def schema(self) -> Schema:
@@ -636,8 +636,8 @@ class Select(ExprNode, ITable, Root):
 @dataclass
 class Cte(ExprNode, ITable):
     table: Expr
-    name: str = None
-    params: Sequence[str] = None
+    name: Optional[str] = None
+    params: Optional[Sequence[str]] = None
 
     @property
     def source_table(self) -> "ITable":
@@ -667,7 +667,7 @@ def resolve_names(source_table, exprs):
 @dataclass(frozen=False, eq=False, order=False)
 class _ResolveColumn(ExprNode, LazyOps):
     resolve_name: str
-    resolved: Expr = None
+    resolved: Optional[Expr] = None
 
     def resolve(self, expr: Expr):
         if self.resolved is not None:
@@ -750,9 +750,9 @@ class CurrentTimestamp(ExprNode):
 class TimeTravel(ITable):
     table: TablePath
     before: bool = False
-    timestamp: datetime = None
-    offset: int = None
-    statement: str = None
+    timestamp: Optional[datetime] = None
+    offset: Optional[int] = None
+    statement: Optional[str] = None
 
 
 # DDL
@@ -767,9 +767,9 @@ class Statement(Compilable, Root):
 @dataclass
 class CreateTable(Statement):
     path: TablePath
-    source_table: Expr = None
+    source_table: Optional[Expr] = None
     if_not_exists: bool = False
-    primary_keys: List[str] = None
+    primary_keys: Optional[List[str]] = None
 
 
 @dataclass
@@ -787,8 +787,8 @@ class TruncateTable(Statement):
 class InsertToTable(Statement):
     path: TablePath
     expr: Expr
-    columns: List[str] = None
-    returning_exprs: List[str] = None
+    columns: Optional[List[str]] = None
+    returning_exprs: Optional[List[str]] = None
 
     def returning(self, *exprs) -> Self:
         """Add a 'RETURNING' clause to the insert expression.

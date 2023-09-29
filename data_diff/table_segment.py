@@ -112,18 +112,18 @@ class TableSegment:
 
     # Columns
     key_columns: Tuple[str, ...]
-    update_column: str = None
+    update_column: Optional[str] = None
     extra_columns: Tuple[str, ...] = ()
 
     # Restrict the segment
-    min_key: Vector = None
-    max_key: Vector = None
-    min_update: DbTime = None
-    max_update: DbTime = None
-    where: str = None
+    min_key: Optional[Vector] = None
+    max_key: Optional[Vector] = None
+    min_update: Optional[DbTime] = None
+    max_update: Optional[DbTime] = None
+    where: Optional[str] = None
 
-    case_sensitive: bool = True
-    _schema: Schema = None
+    case_sensitive: Optional[bool] = True
+    _schema: Optional[Schema] = None
 
     def __post_init__(self):
         if not self.update_column and (self.min_update or self.max_update):
