@@ -138,7 +138,7 @@ class JoinDiffer(TableDiffer):
 
     validate_unique_key: bool = True
     sample_exclusive_rows: bool = False
-    materialize_to_table: DbPath = None
+    materialize_to_table: Optional[DbPath] = None
     materialize_all_rows: bool = False
     table_write_limit: int = TABLE_WRITE_LIMIT
     skip_null_keys: bool = False

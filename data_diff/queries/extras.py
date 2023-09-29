@@ -10,7 +10,7 @@ from data_diff.queries.ast_classes import Expr, ExprNode
 @dataclass
 class NormalizeAsString(ExprNode):
     expr: ExprNode
-    expr_type: ColType = None
+    expr_type: Optional[ColType] = None
 
     @property
     def type(self) -> Optional[type]:
@@ -20,7 +20,7 @@ class NormalizeAsString(ExprNode):
 @dataclass
 class ApplyFuncAndNormalizeAsString(ExprNode):
     expr: ExprNode
-    apply_func: Callable = None
+    apply_func: Optional[Callable] = None
 
 
 @dataclass

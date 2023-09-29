@@ -10,13 +10,13 @@ from data_diff.table_segment import TableSegment
 class SegmentInfo:
     tables: List[TableSegment]
 
-    diff: List[Union[Tuple[Any, ...], List[Any]]] = None
-    diff_schema: Tuple[Tuple[str, type], ...] = None
-    is_diff: bool = None
-    diff_count: int = None
+    diff: Optional[List[Union[Tuple[Any, ...], List[Any]]]] = None
+    diff_schema: Optional[Tuple[Tuple[str, type], ...]] = None
+    is_diff: Optional[bool] = None
+    diff_count: Optional[int] = None
 
     rowcounts: Dict[int, int] = field(default_factory=dict)
-    max_rows: int = None
+    max_rows: Optional[int] = None
 
     def set_diff(self, diff: List[Union[Tuple[Any, ...], List[Any]]], schema: Optional[Tuple[Tuple[str, type]]] = None):
         self.diff_schema = schema
