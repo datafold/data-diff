@@ -179,6 +179,7 @@ class DiffResultWrapper:
         return json_output
 
 
+@attrs.define(frozen=True)
 class TableDiffer(ThreadBase, ABC):
     bisection_factor = 32
     stats: dict = {}

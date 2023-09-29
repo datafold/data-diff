@@ -20,6 +20,7 @@ class QB_TypeError(QueryBuilderError):
     pass
 
 
+@attrs.define(frozen=True)
 class Root:
     "Nodes inheriting from Root can be used as root statements in SQL (e.g. SELECT yes, RANDOM() no)"
 
@@ -82,6 +83,7 @@ def _drop_skips_dict(exprs_dict):
     return {k: v for k, v in exprs_dict.items() if v is not SKIP}
 
 
+@attrs.define(frozen=True)
 class ITable:
     @property
     def source_table(self) -> "ITable":  # not always Self, it can be a substitute
@@ -374,6 +376,7 @@ class UnaryOp(LazyOps, ExprNode):
     expr: Expr
 
 
+@attrs.define(frozen=True)
 class BinBoolOp(BinOp):
     @property
     def type(self) -> Optional[type]:
@@ -689,6 +692,7 @@ class _ResolveColumn(LazyOps, ExprNode):
         return self._get_resolved().name
 
 
+@attrs.define(frozen=True)
 class This:
     """Builder object for accessing table attributes.
 
@@ -741,6 +745,7 @@ class Explain(ExprNode, Root):
         return str
 
 
+@attrs.define(frozen=True)
 class CurrentTimestamp(ExprNode):
     @property
     def type(self) -> Optional[type]:
@@ -759,6 +764,7 @@ class TimeTravel(ITable):  # TODO: Unused?
 # DDL
 
 
+@attrs.define(frozen=True)
 class Statement(Compilable, Root):
     @property
     def type(self) -> Optional[type]:

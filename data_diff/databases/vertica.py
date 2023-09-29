@@ -1,5 +1,7 @@
 from typing import Any, Dict, List
 
+import attrs
+
 from data_diff.utils import match_regexps
 from data_diff.databases.base import (
     CHECKSUM_HEXDIGITS,
@@ -37,11 +39,13 @@ def import_vertica():
     return vertica_python
 
 
+@attrs.define(frozen=False)
 class Mixin_MD5(AbstractMixin_MD5):
     def md5_as_int(self, s: str) -> str:
         return f"CAST(HEX_TO_INTEGER(SUBSTRING(MD5({s}), {1 + MD5_HEXDIGITS - CHECKSUM_HEXDIGITS})) AS NUMERIC(38, 0))"
 
 
+@attrs.define(frozen=False)
 class Mixin_NormalizeValue(AbstractMixin_NormalizeValue):
     def normalize_timestamp(self, value: str, coltype: TemporalType) -> str:
         if coltype.rounds:
@@ -151,6 +155,7 @@ class Dialect(
         return "current_timestamp(6)"
 
 
+@attrs.define(frozen=False, init=False, kw_only=True)
 class Vertica(ThreadedDatabase):
     dialect = Dialect()
     CONNECT_URI_HELP = "vertica://<user>:<password>@<host>/<database>"

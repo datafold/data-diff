@@ -20,6 +20,9 @@ keys are not evenly distributed.
 from random import randint, randrange
 
 from typing import Tuple
+
+import attrs
+
 from data_diff.utils import safezip
 
 Vector = Tuple[int]
@@ -56,6 +59,7 @@ def irandrange(start, stop):
     return randrange(start, stop)
 
 
+@attrs.define(frozen=True)
 class LexicographicSpace:
     """Lexicographic space of arbitrary dimensions.
 

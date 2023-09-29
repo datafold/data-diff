@@ -2,7 +2,9 @@ from argparse import Namespace
 from collections import defaultdict
 import json
 from pathlib import Path
-from typing import List, Dict, Tuple, Set, Optional
+from typing import Any, List, Dict, Tuple, Set, Optional
+
+import attrs
 import yaml
 from pydantic import BaseModel
 
@@ -94,7 +96,22 @@ class TDatadiffConfig(BaseModel):
     datasource_id: Optional[int] = None
 
 
+@attrs.define(frozen=False, init=False)
 class DbtParser:
+    dbt_runner: Optional[Any]  # dbt.cli.main.dbtRunner if installed
+    project_dir: Path
+    connection: Dict[str, Any]
+    project_dict: Dict[str, Any]
+    dev_manifest_obj: ManifestJsonConfig
+    prod_manifest_obj: Optional[ManifestJsonConfig]
+    dbt_user_id: str
+    dbt_version: str
+    dbt_project_id: str
+    requires_upper: bool
+    threads: Optional[int]
+    unique_columns: Dict[str, Set[str]]
+    profiles_dir: Path
+
     def __init__(
         self,
         profiles_dir_override: Optional[str] = None,
