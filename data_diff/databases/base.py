@@ -1,6 +1,6 @@
 import abc
 import functools
-from dataclasses import field
+import random
 from datetime import datetime
 import math
 import sys
@@ -14,7 +14,7 @@ from uuid import UUID
 import decimal
 import contextvars
 
-from runtype import dataclass
+import attrs
 from typing_extensions import Self
 
 from data_diff.abcs.compiler import AbstractCompiler
@@ -78,7 +78,7 @@ class CompileError(Exception):
 #   and be used only as a CompilingContext (a counter/data-bearing class).
 #   As a result, it becomes low-level util, and the circular dependency auto-resolves.
 #   Meanwhile, the easy fix is to simply move the Compiler here.
-@dataclass
+@attrs.define
 class Compiler(AbstractCompiler):
     """
     Compiler bears the context for a single compilation.
@@ -95,11 +95,11 @@ class Compiler(AbstractCompiler):
     in_select: bool = False  # Compilation runtime flag
     in_join: bool = False  # Compilation runtime flag
 
-    _table_context: List = field(default_factory=list)  # List[ITable]
-    _subqueries: Dict[str, Any] = field(default_factory=dict)  # XXX not thread-safe
+    _table_context: List = attrs.field(factory=list)  # List[ITable]
+    _subqueries: Dict[str, Any] = attrs.field(factory=dict)  # XXX not thread-safe
     root: bool = True
 
-    _counter: List = field(default_factory=lambda: [0])
+    _counter: List = attrs.field(factory=lambda: [0])
 
     @property
     def dialect(self) -> "Dialect":
@@ -119,7 +119,7 @@ class Compiler(AbstractCompiler):
         return self.database.dialect.parse_table_name(table_name)
 
     def add_table_context(self, *tables: Sequence, **kw) -> Self:
-        return self.replace(_table_context=self._table_context + list(tables), **kw)
+        return attrs.evolve(self, table_context=self._table_context + list(tables), **kw)
 
 
 def parse_table_name(t):
@@ -251,7 +251,7 @@ class BaseDialect(abc.ABC):
         if elem is None:
             return "NULL"
         elif isinstance(elem, Compilable):
-            return self.render_compilable(compiler.replace(root=False), elem)
+            return self.render_compilable(attrs.evolve(compiler, root=False), elem)
         elif isinstance(elem, str):
             return f"'{elem}'"
         elif isinstance(elem, (int, float)):
@@ -361,7 +361,7 @@ class BaseDialect(abc.ABC):
         return self.quote(elem.name)
 
     def render_cte(self, parent_c: Compiler, elem: Cte) -> str:
-        c: Compiler = parent_c.replace(_table_context=[], in_select=False)
+        c: Compiler = attrs.evolve(parent_c, table_context=[], in_select=False)
         compiled = self.compile(c, elem.source_table)
 
         name = elem.name or parent_c.new_unique_name()
@@ -472,7 +472,7 @@ class BaseDialect(abc.ABC):
         return f"{self.compile(c, elem.source_table)} {self.quote(elem.name)}"
 
     def render_tableop(self, parent_c: Compiler, elem: TableOp) -> str:
-        c: Compiler = parent_c.replace(in_select=False)
+        c: Compiler = attrs.evolve(parent_c, in_select=False)
         table_expr = f"{self.compile(c, elem.table1)} {elem.op} {self.compile(c, elem.table2)}"
         if parent_c.in_select:
             table_expr = f"({table_expr}) {c.new_unique_name()}"
@@ -484,7 +484,7 @@ class BaseDialect(abc.ABC):
         return self.compile(c, elem._get_resolved())
 
     def render_select(self, parent_c: Compiler, elem: Select) -> str:
-        c: Compiler = parent_c.replace(in_select=True)  # .add_table_context(self.table)
+        c: Compiler = attrs.evolve(parent_c, in_select=True)  # .add_table_context(self.table)
         compile_fn = functools.partial(self.compile, c)
 
         columns = ", ".join(map(compile_fn, elem.columns)) if elem.columns else "*"
@@ -522,7 +522,7 @@ class BaseDialect(abc.ABC):
 
     def render_join(self, parent_c: Compiler, elem: Join) -> str:
         tables = [
-            t if isinstance(t, TableAlias) else TableAlias(t, parent_c.new_unique_name()) for t in elem.source_tables
+            t if isinstance(t, TableAlias) else TableAlias(source_table=t, name=parent_c.new_unique_name()) for t in elem.source_tables
         ]
         c = parent_c.add_table_context(*tables, in_join=True, in_select=False)
         op = " JOIN " if elem.op is None else f" {elem.op} JOIN "
@@ -555,7 +555,8 @@ class BaseDialect(abc.ABC):
         if isinstance(elem.table, Select) and elem.table.columns is None and elem.table.group_by_exprs is None:
             return self.compile(
                 c,
-                elem.table.replace(
+                attrs.evolve(
+                    elem.table,
                     columns=columns,
                     group_by_exprs=[Code(k) for k in keys],
                     having_exprs=elem.having_exprs,
@@ -568,7 +569,7 @@ class BaseDialect(abc.ABC):
             " HAVING " + " AND ".join(map(compile_fn, elem.having_exprs)) if elem.having_exprs is not None else ""
         )
         select = (
-            f"SELECT {columns_str} FROM {self.compile(c.replace(in_select=True), elem.table)} GROUP BY {keys_str}{having_str}"
+            f"SELECT {columns_str} FROM {self.compile(attrs.evolve(c, in_select=True), elem.table)} GROUP BY {keys_str}{having_str}"
         )
 
         if c.in_select:
@@ -807,7 +808,7 @@ class BaseDialect(abc.ABC):
 T = TypeVar("T", bound=BaseDialect)
 
 
-@dataclass
+@attrs.define
 class QueryResult:
     rows: list
     columns: Optional[list] = None

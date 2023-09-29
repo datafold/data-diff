@@ -69,7 +69,7 @@ def table(*path: str, schema: Union[dict, CaseAwareMapping] = None) -> TablePath
     if schema and not isinstance(schema, CaseAwareMapping):
         assert isinstance(schema, dict)
         schema = CaseSensitiveDict(schema)
-    return TablePath(path, schema)
+    return TablePath(path, schema=schema)
 
 
 def or_(*exprs: Expr):

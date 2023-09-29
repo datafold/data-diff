@@ -1,8 +1,7 @@
-from dataclasses import field
 from datetime import datetime
 from typing import Any, Generator, List, Optional, Sequence, Union, Dict
 
-from runtype import dataclass
+import attrs
 from typing_extensions import Self
 
 from data_diff.utils import ArithString
@@ -25,6 +24,7 @@ class Root:
     "Nodes inheriting from Root can be used as root statements in SQL (e.g. SELECT yes, RANDOM() no)"
 
 
+@attrs.define(eq=False)
 class ExprNode(Compilable):
     "Base class for query expression nodes"
 
@@ -34,7 +34,7 @@ class ExprNode(Compilable):
 
     def _dfs_values(self):
         yield self
-        for k, vs in dict(self).items():  # __dict__ provided by runtype.dataclass
+        for k, vs in attrs.asdict(self, recurse=False).items():
             if k == "source_table":
                 # Skip data-sources, we're only interested in data-parameters
                 continue
@@ -52,7 +52,7 @@ class ExprNode(Compilable):
 Expr = Union[ExprNode, str, bool, int, float, datetime, ArithString, None]
 
 
-@dataclass
+@attrs.define(eq=False)
 class Code(ExprNode, Root):
     code: str
     args: Optional[Dict[str, Expr]] = None
@@ -64,7 +64,7 @@ def _expr_type(e: Expr) -> type:
     return type(e)
 
 
-@dataclass
+@attrs.define(eq=False)
 class Alias(ExprNode):
     expr: Expr
     name: str
@@ -214,13 +214,13 @@ class ITable:
         return TableOp("INTERSECT", self, other)
 
 
-@dataclass
+@attrs.define(eq=False)
 class Concat(ExprNode):
     exprs: list
     sep: Optional[str] = None
 
 
-@dataclass
+@attrs.define(eq=False)
 class Count(ExprNode):
     expr: Expr = None
     distinct: bool = False
@@ -230,6 +230,7 @@ class Count(ExprNode):
         return int
 
 
+@attrs.define(eq=False)
 class LazyOps:
     def __add__(self, other):
         return BinOp("+", [self, other])
@@ -279,19 +280,19 @@ class LazyOps:
         return Func("MIN", [self])
 
 
-@dataclass(eq=False)
-class Func(ExprNode, LazyOps):
+@attrs.define(eq=False)
+class Func(LazyOps, ExprNode):
     name: str
     args: Sequence[Expr]
 
 
-@dataclass
+@attrs.define(eq=False)
 class WhenThen(ExprNode):
     when: Expr
     then: Expr
 
 
-@dataclass
+@attrs.define(eq=False)
 class CaseWhen(ExprNode):
     cases: Sequence[WhenThen]
     else_expr: Optional[Expr] = None
@@ -329,10 +330,10 @@ class CaseWhen(ExprNode):
         if self.else_expr is not None:
             raise QueryBuilderError(f"Else clause already specified in {self}")
 
-        return self.replace(else_expr=then)
+        return attrs.evolve(self, else_expr=then)
 
 
-@dataclass
+@attrs.define(eq=False)
 class QB_When:
     "Partial case-when, used for query-building"
     casewhen: CaseWhen
@@ -341,11 +342,11 @@ class QB_When:
     def then(self, then: Expr) -> CaseWhen:
         """Add a 'then' clause after a 'when' was added."""
         case = WhenThen(self.when, then)
-        return self.casewhen.replace(cases=self.casewhen.cases + [case])
+        return attrs.evolve(self.casewhen, cases=self.casewhen.cases + [case])
 
 
-@dataclass(eq=False, order=False)
-class IsDistinctFrom(ExprNode, LazyOps):
+@attrs.define(eq=False)
+class IsDistinctFrom(LazyOps, ExprNode):
     a: Expr
     b: Expr
 
@@ -354,8 +355,8 @@ class IsDistinctFrom(ExprNode, LazyOps):
         return bool
 
 
-@dataclass(eq=False, order=False)
-class BinOp(ExprNode, LazyOps):
+@attrs.define(eq=False)
+class BinOp(LazyOps, ExprNode):
     op: str
     args: Sequence[Expr]
 
@@ -368,8 +369,8 @@ class BinOp(ExprNode, LazyOps):
         return t
 
 
-@dataclass
-class UnaryOp(ExprNode, LazyOps):
+@attrs.define(eq=False)
+class UnaryOp(LazyOps, ExprNode):
     op: str
     expr: Expr
 
@@ -380,8 +381,8 @@ class BinBoolOp(BinOp):
         return bool
 
 
-@dataclass(eq=False, order=False)
-class Column(ExprNode, LazyOps):
+@attrs.define(eq=False)
+class Column(LazyOps, ExprNode):
     source_table: ITable
     name: str
 
@@ -392,7 +393,7 @@ class Column(ExprNode, LazyOps):
         return self.source_table.schema[self.name]
 
 
-@dataclass
+@attrs.define(eq=False)
 class TablePath(ExprNode, ITable):
     path: DbPath
     schema: Schema  # overrides the inherited property
@@ -475,7 +476,7 @@ class TablePath(ExprNode, ITable):
             assert offset is None and statement is None
 
 
-@dataclass
+@attrs.define(eq=False)
 class TableAlias(ExprNode, ITable):
     table: ITable
     name: str
@@ -489,7 +490,7 @@ class TableAlias(ExprNode, ITable):
         return self.table.schema
 
 
-@dataclass
+@attrs.define(eq=False)
 class Join(ExprNode, ITable, Root):
     source_tables: Sequence[ITable]
     op: Optional[str] = None
@@ -513,7 +514,7 @@ class Join(ExprNode, ITable, Root):
         if not exprs:
             return self
 
-        return self.replace(on_exprs=(self.on_exprs or []) + exprs)
+        return attrs.evolve(self, on_exprs=(self.on_exprs or []) + exprs)
 
     def select(self, *exprs, **named_exprs) -> Union[Self, ITable]:
         """Select fields to return from the JOIN operation
@@ -529,17 +530,17 @@ class Join(ExprNode, ITable, Root):
         exprs += _named_exprs_as_aliases(named_exprs)
         resolve_names(self.source_table, exprs)
         # TODO Ensure exprs <= self.columns ?
-        return self.replace(columns=exprs)
+        return attrs.evolve(self, columns=exprs)
 
 
-@dataclass
+@attrs.define(eq=False)
 class GroupBy(ExprNode, ITable, Root):
     table: ITable
     keys: Optional[Sequence[Expr]] = None  # IKey?
     values: Optional[Sequence[Expr]] = None
     having_exprs: Optional[Sequence[Expr]] = None
 
-    def __post_init__(self):
+    def __attrs_post_init__(self):
         assert self.keys or self.values
 
     def having(self, *exprs) -> Self:
@@ -550,17 +551,17 @@ class GroupBy(ExprNode, ITable, Root):
             return self
 
         resolve_names(self.table, exprs)
-        return self.replace(having_exprs=(self.having_exprs or []) + exprs)
+        return attrs.evolve(self, having_exprs=(self.having_exprs or []) + exprs)
 
     def agg(self, *exprs) -> Self:
         """Select aggregated fields for the group-by."""
         exprs = args_as_tuple(exprs)
         exprs = _drop_skips(exprs)
         resolve_names(self.table, exprs)
-        return self.replace(values=(self.values or []) + exprs)
+        return attrs.evolve(self, values=(self.values or []) + exprs)
 
 
-@dataclass
+@attrs.define(eq=False)
 class TableOp(ExprNode, ITable, Root):
     op: str
     table1: ITable
@@ -579,7 +580,7 @@ class TableOp(ExprNode, ITable, Root):
         return s1
 
 
-@dataclass
+@attrs.define(eq=False)
 class Select(ExprNode, ITable, Root):
     table: Optional[Expr] = None
     columns: Optional[Sequence[Expr]] = None
@@ -631,10 +632,10 @@ class Select(ExprNode, ITable, Root):
                 else:
                     raise ValueError(k)
 
-        return table.replace(**kwargs)
+        return attrs.evolve(table, **kwargs)
 
 
-@dataclass
+@attrs.define(eq=False)
 class Cte(ExprNode, ITable):
     table: Expr
     name: Optional[str] = None
@@ -665,8 +666,8 @@ def resolve_names(source_table, exprs):
                     i += 1
 
 
-@dataclass(frozen=False, eq=False, order=False)
-class _ResolveColumn(ExprNode, LazyOps):
+@attrs.define(eq=False)
+class _ResolveColumn(LazyOps, ExprNode):
     resolve_name: str
     resolved: Optional[Expr] = None
 
@@ -704,7 +705,7 @@ class This:
         return _ResolveColumn(name)
 
 
-@dataclass
+@attrs.define(eq=False)
 class In(ExprNode):
     expr: Expr
     list: Sequence[Expr]
@@ -714,25 +715,25 @@ class In(ExprNode):
         return bool
 
 
-@dataclass
+@attrs.define(eq=False)
 class Cast(ExprNode):
     expr: Expr
     target_type: Expr
 
 
-@dataclass
-class Random(ExprNode, LazyOps):
+@attrs.define(eq=False)
+class Random(LazyOps, ExprNode):
     @property
     def type(self) -> Optional[type]:
         return float
 
 
-@dataclass
+@attrs.define(eq=False)
 class ConstantTable(ExprNode):
     rows: Sequence[Sequence]
 
 
-@dataclass
+@attrs.define(eq=False)
 class Explain(ExprNode, Root):
     select: Select
 
@@ -747,8 +748,8 @@ class CurrentTimestamp(ExprNode):
         return datetime
 
 
-@dataclass
-class TimeTravel(ITable):
+@attrs.define(eq=False)
+class TimeTravel(ITable):  # TODO: Unused?
     table: TablePath
     before: bool = False
     timestamp: Optional[datetime] = None
@@ -765,7 +766,7 @@ class Statement(Compilable, Root):
         return None
 
 
-@dataclass
+@attrs.define(eq=False)
 class CreateTable(Statement):
     path: TablePath
     source_table: Optional[Expr] = None
@@ -773,18 +774,18 @@ class CreateTable(Statement):
     primary_keys: Optional[List[str]] = None
 
 
-@dataclass
+@attrs.define(eq=False)
 class DropTable(Statement):
     path: TablePath
     if_exists: bool = False
 
 
-@dataclass
+@attrs.define(eq=False)
 class TruncateTable(Statement):
     path: TablePath
 
 
-@dataclass
+@attrs.define(eq=False)
 class InsertToTable(Statement):
     path: TablePath
     expr: Expr
@@ -805,15 +806,15 @@ class InsertToTable(Statement):
             return self
 
         resolve_names(self.path, exprs)
-        return self.replace(returning_exprs=exprs)
+        return attrs.evolve(self, returning_exprs=exprs)
 
 
-@dataclass
+@attrs.define(eq=False)
 class Commit(Statement):
     """Generate a COMMIT statement, if we're in the middle of a transaction, or in auto-commit. Otherwise SKIP."""
 
 
-@dataclass
-class Param(ExprNode, ITable):
+@attrs.define(eq=False)
+class Param(ExprNode, ITable):  # TODO: Unused?
     """A value placeholder, to be specified at compilation time using the `cv_params` context variable."""
     name: str
