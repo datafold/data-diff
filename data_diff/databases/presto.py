@@ -2,6 +2,8 @@ from functools import partial
 import re
 from typing import Any
 
+import attrs
+
 from data_diff.utils import match_regexps
 
 from data_diff.abcs.database_types import (
@@ -51,11 +53,13 @@ def import_presto():
     return prestodb
 
 
+@attrs.define(frozen=False)
 class Mixin_MD5(AbstractMixin_MD5):
     def md5_as_int(self, s: str) -> str:
         return f"cast(from_base(substr(to_hex(md5(to_utf8({s}))), {1+MD5_HEXDIGITS-CHECKSUM_HEXDIGITS}), 16) as decimal(38, 0))"
 
 
+@attrs.define(frozen=False)
 class Mixin_NormalizeValue(AbstractMixin_NormalizeValue):
     def normalize_uuid(self, value: str, coltype: ColType_UUID) -> str:
         # Trim doesn't work on CHAR type
@@ -154,6 +158,7 @@ class Dialect(
         return "current_timestamp"
 
 
+@attrs.define(frozen=False, init=False, kw_only=True)
 class Presto(Database):
     dialect = Dialect()
     CONNECT_URI_HELP = "presto://<user>@<host>/<catalog>/<schema>"

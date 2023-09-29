@@ -168,6 +168,7 @@ def _one(seq):
     return x
 
 
+@attrs.define(frozen=False)
 class ThreadLocalInterpreter:
     """An interpeter used to execute a sequence of queries within the same thread and cursor.
 
@@ -176,11 +177,6 @@ class ThreadLocalInterpreter:
 
     compiler: Compiler
     gen: Generator
-
-    def __init__(self, compiler: Compiler, gen: Generator):
-        super().__init__()
-        self.gen = gen
-        self.compiler = compiler
 
     def apply_queries(self, callback: Callable[[str], Any]):
         q: Expr = next(self.gen)
@@ -205,6 +201,7 @@ def apply_query(callback: Callable[[str], Any], sql_code: Union[str, ThreadLocal
         return callback(sql_code)
 
 
+@attrs.define(frozen=False)
 class Mixin_Schema(AbstractMixin_Schema):
     def table_information(self) -> Compilable:
         return table("information_schema", "tables")
@@ -221,6 +218,7 @@ class Mixin_Schema(AbstractMixin_Schema):
         )
 
 
+@attrs.define(frozen=False)
 class Mixin_RandomSample(AbstractMixin_RandomSample):
     def random_sample_n(self, tbl: ITable, size: int) -> ITable:
         # TODO use a more efficient algorithm, when the table count is known
@@ -230,15 +228,17 @@ class Mixin_RandomSample(AbstractMixin_RandomSample):
         return tbl.where(Random() < ratio)
 
 
+@attrs.define(frozen=False)
 class Mixin_OptimizerHints(AbstractMixin_OptimizerHints):
     def optimizer_hints(self, hints: str) -> str:
         return f"/*+ {hints} */ "
 
 
+@attrs.define(frozen=False)
 class BaseDialect(abc.ABC):
     SUPPORTS_PRIMARY_KEY: ClassVar[bool] = False
     SUPPORTS_INDEXES: ClassVar[bool] = False
-    TYPE_CLASSES: ClassVar[Dict[str, type]] = {}
+    TYPE_CLASSES: ClassVar[Dict[str, Type[ColType]]] = {}
 
     PLACEHOLDER_TABLE = None  # Used for Oracle
 
@@ -539,7 +539,7 @@ class BaseDialect(abc.ABC):
 
     def render_join(self, parent_c: Compiler, elem: Join) -> str:
         tables = [
-            t if isinstance(t, TableAlias) else TableAlias(source_table=t, name=parent_c.new_unique_name())
+            t if isinstance(t, TableAlias) else TableAlias(t, name=parent_c.new_unique_name())
             for t in elem.source_tables
         ]
         c = parent_c.add_table_context(*tables, in_join=True, in_select=False)
@@ -827,6 +827,7 @@ class QueryResult:
         return self.rows[i]
 
 
+@attrs.define(frozen=False, kw_only=True)
 class Database(abc.ABC):
     """Base abstract class for databases.
 
@@ -1102,22 +1103,22 @@ class Database(abc.ABC):
         "Return whether the database autocommits changes. When false, COMMIT statements are skipped."
 
 
+@attrs.define(frozen=False)
 class ThreadedDatabase(Database):
     """Access the database through singleton threads.
 
     Used for database connectors that do not support sharing their connection between different threads.
     """
 
-    _init_error: Optional[Exception]
-    _queue: ThreadPoolExecutor
-    thread_local: threading.local
+    thread_count: int = 1
 
-    def __init__(self, thread_count=1):
-        super().__init__()
-        self._init_error = None
-        self._queue = ThreadPoolExecutor(thread_count, initializer=self.set_conn)
-        self.thread_local = threading.local()
-        logger.info(f"[{self.name}] Starting a threadpool, size={thread_count}.")
+    _init_error: Optional[Exception] = None
+    _queue: Optional[ThreadPoolExecutor] = None
+    thread_local: threading.local = attrs.field(factory=threading.local)
+
+    def __attrs_post_init__(self):
+        self._queue = ThreadPoolExecutor(self.thread_count, initializer=self.set_conn)
+        logger.info(f"[{self.name}] Starting a threadpool, size={self.thread_count}.")
 
     def set_conn(self):
         assert not hasattr(self.thread_local, "conn")

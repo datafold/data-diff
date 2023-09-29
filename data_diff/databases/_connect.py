@@ -93,6 +93,7 @@ DATABASE_BY_SCHEME = {
 }
 
 
+@attrs.define(frozen=False, init=False)
 class Connect:
     """Provides methods for connecting to a supported database using a URL or connection dict."""
 
@@ -288,6 +289,7 @@ class Connect:
         return db_conf
 
 
+@attrs.define(frozen=False, init=False)
 class Connect_SetUTC(Connect):
     """Provides methods for connecting to a supported database using a URL or connection dict.
 

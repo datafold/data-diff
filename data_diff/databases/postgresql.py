@@ -1,4 +1,7 @@
 from typing import Any, ClassVar, Dict, List, Type
+
+import attrs
+
 from data_diff.abcs.database_types import (
     ColType,
     DbPath,
@@ -36,11 +39,13 @@ def import_postgresql():
     return psycopg2
 
 
+@attrs.define(frozen=False)
 class Mixin_MD5(AbstractMixin_MD5):
     def md5_as_int(self, s: str) -> str:
         return f"('x' || substring(md5({s}), {1+MD5_HEXDIGITS-CHECKSUM_HEXDIGITS}))::bit({_CHECKSUM_BITSIZE})::bigint"
 
 
+@attrs.define(frozen=False)
 class Mixin_NormalizeValue(AbstractMixin_NormalizeValue):
     def normalize_timestamp(self, value: str, coltype: TemporalType) -> str:
         if coltype.rounds:
@@ -61,6 +66,7 @@ class Mixin_NormalizeValue(AbstractMixin_NormalizeValue):
         return f"{value}::text"
 
 
+@attrs.define(frozen=False)
 class PostgresqlDialect(
     BaseDialect, Mixin_Schema, Mixin_MD5, Mixin_NormalizeValue, AbstractMixin_MD5, AbstractMixin_NormalizeValue
 ):
@@ -120,6 +126,7 @@ class PostgresqlDialect(
         return super().type_repr(t)
 
 
+@attrs.define(frozen=False, init=False, kw_only=True)
 class PostgreSQL(ThreadedDatabase):
     dialect = PostgresqlDialect()
     SUPPORTS_UNIQUE_CONSTAINT = True
@@ -127,6 +134,7 @@ class PostgreSQL(ThreadedDatabase):
     CONNECT_URI_PARAMS = ["database?"]
 
     _args: Dict[str, Any]
+    _conn: Any
 
     def __init__(self, *, thread_count, **kw):
         super().__init__(thread_count=thread_count)
