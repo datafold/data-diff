@@ -139,7 +139,7 @@ class TestFormat(unittest.TestCase):
                 "removed": [],
                 "typeChanged": [],
             },
-            stats_only=True
+            stats_only=True,
         )
 
         self.assertEqual(

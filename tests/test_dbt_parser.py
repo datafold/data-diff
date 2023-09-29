@@ -128,7 +128,7 @@ class TestDbtParser(unittest.TestCase):
 
         with self.assertRaises(DataDiffDbtRunResultsVersionError) as ex:
             DbtParser.get_run_results_models(mock_self)
-        
+
         mock_open.assert_called_once_with(Path(RUN_RESULTS_PATH))
         mock_artifact_parser.assert_called_once_with({})
         self.assertIn("version to be", ex.exception.args[0])
@@ -145,10 +145,10 @@ class TestDbtParser(unittest.TestCase):
         mock_run_results.metadata.dbt_version = "1.0.0"
         mock_fail_result.unique_id = "fail_unique_id"
         mock_run_results.results = [mock_fail_result]
-        
+
         with self.assertRaises(DataDiffDbtNoSuccessfulModelsInRunError):
             DbtParser.get_run_results_models(mock_self)
-            
+
         mock_open.assert_any_call(Path(RUN_RESULTS_PATH))
         mock_artifact_parser.assert_called_once_with({})
 

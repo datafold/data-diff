@@ -1,5 +1,6 @@
 import json
 import logging
+import math
 import re
 import string
 from abc import abstractmethod
@@ -106,7 +107,6 @@ class CaseSensitiveDict(dict, CaseAwareMapping):
 
     def as_insensitive(self):
         return CaseInsensitiveDict(self)
-
 
 
 # -- Alphanumerics --
