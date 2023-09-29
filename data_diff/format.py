@@ -2,7 +2,7 @@ import collections
 from enum import Enum
 from typing import Any, Optional, List, Dict, Tuple, Type
 
-from runtype import dataclass
+import attrs
 from data_diff.diff_tables import DiffResultWrapper
 from data_diff.abcs.database_types import (
     JSON,
@@ -21,13 +21,15 @@ from data_diff.abcs.database_types import (
 
 
 def jsonify_error(table1: List[str], table2: List[str], dbt_model: str, error: str) -> "FailedDiff":
-    return FailedDiff(
-        status="failed",
-        model=dbt_model,
-        dataset1=table1,
-        dataset2=table2,
-        error=error,
-    ).json()
+    return attrs.asdict(
+        FailedDiff(
+            status="failed",
+            model=dbt_model,
+            dataset1=table1,
+            dataset2=table2,
+            error=error,
+        )
+    )
 
 
 Columns = List[Tuple[str, str, ColType]]
@@ -74,19 +76,21 @@ def jsonify(
         or diff_rows
         or (columns_diff["added"] or columns_diff["removed"] or columns_diff["changed"])
     )
-    return JsonDiff(
-        status="success",
-        result="different" if is_different else "identical",
-        model=dbt_model,
-        dataset1=list(table1.table_path),
-        dataset2=list(table2.table_path),
-        rows=rows,
-        summary=summary,
-        columns=columns,
-    ).json()
+    return attrs.asdict(
+        JsonDiff(
+            status="success",
+            result="different" if is_different else "identical",
+            model=dbt_model,
+            dataset1=list(table1.table_path),
+            dataset2=list(table2.table_path),
+            rows=rows,
+            summary=summary,
+            columns=columns,
+        )
+    )
 
 
-@dataclass
+@attrs.define(frozen=True)
 class JsonExclusiveRowValue:
     """
     Value of a single column in a row
@@ -96,7 +100,7 @@ class JsonExclusiveRowValue:
     value: Any
 
 
-@dataclass
+@attrs.define(frozen=True)
 class JsonDiffRowValue:
     """
     Pair of diffed values for 2 rows with equal PKs
@@ -108,19 +112,19 @@ class JsonDiffRowValue:
     isPK: bool
 
 
-@dataclass
+@attrs.define(frozen=True)
 class Total:
     dataset1: int
     dataset2: int
 
 
-@dataclass
+@attrs.define(frozen=True)
 class ExclusiveRows:
     dataset1: int
     dataset2: int
 
 
-@dataclass
+@attrs.define(frozen=True)
 class Rows:
     total: Total
     exclusive: ExclusiveRows
@@ -128,18 +132,18 @@ class Rows:
     unchanged: int
 
 
-@dataclass
+@attrs.define(frozen=True)
 class Stats:
     diffCounts: Dict[str, int]
 
 
-@dataclass
+@attrs.define(frozen=True)
 class JsonDiffSummary:
     rows: Rows
     stats: Stats
 
 
-@dataclass
+@attrs.define(frozen=True)
 class ExclusiveColumns:
     dataset1: List[str]
     dataset2: List[str]
@@ -172,14 +176,14 @@ KIND_MAPPING: List[Tuple[Type[ColType], ColumnKind]] = [
 ]
 
 
-@dataclass
+@attrs.define(frozen=True)
 class Column:
     name: str
     type: str
     kind: str
 
 
-@dataclass
+@attrs.define(frozen=True)
 class JsonColumnsSummary:
     dataset1: List[Column]
     dataset2: List[Column]
@@ -188,19 +192,19 @@ class JsonColumnsSummary:
     typeChanged: List[str]
 
 
-@dataclass
+@attrs.define(frozen=True)
 class ExclusiveDiff:
     dataset1: List[Dict[str, JsonExclusiveRowValue]]
     dataset2: List[Dict[str, JsonExclusiveRowValue]]
 
 
-@dataclass
+@attrs.define(frozen=True)
 class RowsDiff:
     exclusive: ExclusiveDiff
     diff: List[Dict[str, JsonDiffRowValue]]
 
 
-@dataclass
+@attrs.define(frozen=True)
 class FailedDiff:
     status: str  # Literal ["failed"]
     model: str
@@ -211,7 +215,7 @@ class FailedDiff:
     version: str = "1.0.0"
 
 
-@dataclass
+@attrs.define(frozen=True)
 class JsonDiff:
     status: str  # Literal ["success"]
     result: str  # Literal ["different", "identical"]

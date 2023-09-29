@@ -3,7 +3,7 @@ from abc import ABC, abstractmethod
 from typing import Tuple, Union
 from datetime import datetime
 
-from runtype import dataclass
+import attrs
 
 from data_diff.utils import ArithAlphanumeric, ArithUUID, Unknown
 
@@ -13,14 +13,14 @@ DbKey = Union[int, str, bytes, ArithUUID, ArithAlphanumeric]
 DbTime = datetime
 
 
-@dataclass
+@attrs.define(frozen=True)
 class ColType:
     @property
     def supported(self) -> bool:
         return True
 
 
-@dataclass
+@attrs.define(frozen=True)
 class PrecisionType(ColType):
     precision: int
     rounds: Union[bool, Unknown] = Unknown
@@ -50,7 +50,7 @@ class Date(TemporalType):
     pass
 
 
-@dataclass
+@attrs.define(frozen=True)
 class NumericType(ColType):
     # 'precision' signifies how many fractional digits (after the dot) we want to compare
     precision: int
@@ -84,7 +84,7 @@ class Decimal(FractionalType, IKey):  # Snowflake may use Decimal as a key
         return decimal.Decimal
 
 
-@dataclass
+@attrs.define(frozen=True)
 class StringType(ColType):
     python_type = str
 
@@ -122,7 +122,7 @@ class String_VaryingAlphanum(String_Alphanum):
     pass
 
 
-@dataclass
+@attrs.define(frozen=True)
 class String_FixedAlphanum(String_Alphanum):
     length: int
 
@@ -132,7 +132,7 @@ class String_FixedAlphanum(String_Alphanum):
         return self.python_type(value, max_len=self.length)
 
 
-@dataclass
+@attrs.define(frozen=True)
 class Text(StringType):
     @property
     def supported(self) -> bool:
@@ -140,12 +140,12 @@ class Text(StringType):
 
 
 # In majority of DBMSes, it is called JSON/JSONB. Only in Snowflake, it is OBJECT.
-@dataclass
+@attrs.define(frozen=True)
 class JSON(ColType):
     pass
 
 
-@dataclass
+@attrs.define(frozen=True)
 class Array(ColType):
     item_type: ColType
 
@@ -155,21 +155,21 @@ class Array(ColType):
 # For example, in BigQuery:
 # - https://cloud.google.com/bigquery/docs/reference/standard-sql/data-types#struct_type
 # - https://cloud.google.com/bigquery/docs/reference/standard-sql/lexical#struct_literals
-@dataclass
+@attrs.define(frozen=True)
 class Struct(ColType):
     pass
 
 
-@dataclass
+@attrs.define(frozen=True)
 class Integer(NumericType, IKey):
     precision: int = 0
     python_type: type = int
 
-    def __post_init__(self):
+    def __attrs_post_init__(self):
         assert self.precision == 0
 
 
-@dataclass
+@attrs.define(frozen=True)
 class UnknownColType(ColType):
     text: str
 
