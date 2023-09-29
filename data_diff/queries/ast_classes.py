@@ -28,7 +28,9 @@ class Root:
 class ExprNode(Compilable):
     "Base class for query expression nodes"
 
-    type: Any = None
+    @property
+    def type(self) -> Optional[type]:
+        return None
 
     def _dfs_values(self):
         yield self
@@ -216,7 +218,10 @@ class Concat(ExprNode):
 class Count(ExprNode):
     expr: Expr = None
     distinct: bool = False
-    type = int
+
+    @property
+    def type(self) -> Optional[type]:
+        return int
 
 
 class LazyOps:
@@ -337,7 +342,10 @@ class QB_When:
 class IsDistinctFrom(ExprNode, LazyOps):
     a: Expr
     b: Expr
-    type = bool
+
+    @property
+    def type(self) -> Optional[type]:
+        return bool
 
 
 @dataclass(eq=False, order=False)
@@ -361,7 +369,9 @@ class UnaryOp(ExprNode, LazyOps):
 
 
 class BinBoolOp(BinOp):
-    type = bool
+    @property
+    def type(self) -> Optional[type]:
+        return bool
 
 
 @dataclass(eq=False, order=False)
@@ -700,7 +710,10 @@ class This:
 class In(ExprNode):
     expr: Expr
     list: Sequence[Expr]
-    type = bool
+
+    @property
+    def type(self) -> Optional[type]:
+        return bool
 
 
 @dataclass
@@ -711,7 +724,9 @@ class Cast(ExprNode):
 
 @dataclass
 class Random(ExprNode, LazyOps):
-    type = float
+    @property
+    def type(self) -> Optional[type]:
+        return float
 
 
 @dataclass
@@ -722,11 +737,16 @@ class ConstantTable(ExprNode):
 @dataclass
 class Explain(ExprNode, Root):
     select: Select
-    type = str
+
+    @property
+    def type(self) -> Optional[type]:
+        return str
 
 
 class CurrentTimestamp(ExprNode):
-    type = datetime
+    @property
+    def type(self) -> Optional[type]:
+        return datetime
 
 
 @dataclass
@@ -742,7 +762,9 @@ class TimeTravel(ITable):
 
 
 class Statement(Compilable, Root):
-    type = None
+    @property
+    def type(self) -> Optional[type]:
+        return None
 
 
 @dataclass
