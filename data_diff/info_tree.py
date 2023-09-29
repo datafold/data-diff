@@ -1,12 +1,11 @@
-from dataclasses import field
 from typing import List, Dict, Optional, Any, Tuple, Union
 
-from runtype import dataclass
+import attrs
 
 from data_diff.table_segment import TableSegment
 
 
-@dataclass(frozen=False)
+@attrs.define(frozen=False)
 class SegmentInfo:
     tables: List[TableSegment]
 
@@ -15,7 +14,7 @@ class SegmentInfo:
     is_diff: Optional[bool] = None
     diff_count: Optional[int] = None
 
-    rowcounts: Dict[int, int] = field(default_factory=dict)
+    rowcounts: Dict[int, int] = attrs.field(factory=dict)
     max_rows: Optional[int] = None
 
     def set_diff(self, diff: List[Union[Tuple[Any, ...], List[Any]]], schema: Optional[Tuple[Tuple[str, type]]] = None):
@@ -40,10 +39,10 @@ class SegmentInfo:
         }
 
 
-@dataclass
+@attrs.define(frozen=True)
 class InfoTree:
     info: SegmentInfo
-    children: List["InfoTree"] = field(default_factory=list)
+    children: List["InfoTree"] = attrs.field(factory=list)
 
     def add_node(self, table1: TableSegment, table2: TableSegment, max_rows: int = None):
         node = InfoTree(SegmentInfo([table1, table2], max_rows=max_rows))

@@ -1,14 +1,13 @@
 """Provides classes for performing a table diff using JOIN
 
 """
-from dataclasses import field
 from decimal import Decimal
 from functools import partial
 import logging
-from typing import List
+from typing import List, Optional
 from itertools import chain
 
-from runtype import dataclass
+import attrs
 
 from data_diff.databases import Database, MsSQL, MySQL, BigQuery, Presto, Oracle, Snowflake
 from data_diff.abcs.database_types import NumericType, DbPath
@@ -58,7 +57,7 @@ def sample(table_expr):
 
 def create_temp_table(c: Compiler, path: TablePath, expr: Expr) -> str:
     db = c.database
-    c: Compiler = c.replace(root=False)  # we're compiling fragments, not full queries
+    c: Compiler = attrs.evolve(c, root=False)  # we're compiling fragments, not full queries
     if isinstance(db, BigQuery):
         return f"create table {c.dialect.compile(c, path)} OPTIONS(expiration_timestamp=TIMESTAMP_ADD(CURRENT_TIMESTAMP(), INTERVAL 1 DAY)) as {c.dialect.compile(c, expr)}"
     elif isinstance(db, Presto):
@@ -111,7 +110,7 @@ def json_friendly_value(v):
     return v
 
 
-@dataclass
+@attrs.define(frozen=True)
 class JoinDiffer(TableDiffer):
     """Finds the diff between two SQL tables in the same database, using JOINs.
 
@@ -143,7 +142,7 @@ class JoinDiffer(TableDiffer):
     table_write_limit: int = TABLE_WRITE_LIMIT
     skip_null_keys: bool = False
 
-    stats: dict = field(default_factory=dict)
+    stats: dict = attrs.field(factory=dict)
 
     def _diff_tables_root(self, table1: TableSegment, table2: TableSegment, info_tree: InfoTree) -> DiffResult:
         db = table1.database

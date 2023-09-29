@@ -1,6 +1,8 @@
 from typing import List
 from datetime import datetime
 
+import attrs
+
 from data_diff.queries.ast_classes import TablePath
 from data_diff.queries.api import table, commit
 from data_diff.table_segment import TableSegment
@@ -114,7 +116,7 @@ class TestJoindiff(DiffTestCase):
 
         # Test materialize
         materialize_path = self.connection.dialect.parse_table_name(f"test_mat_{random_table_suffix()}")
-        mdiffer = self.differ.replace(materialize_to_table=materialize_path)
+        mdiffer = attrs.evolve(self.differ, materialize_to_table=materialize_path)
         diff = list(mdiffer.diff_tables(self.table, self.table2))
         self.assertEqual(expected, diff)
 
@@ -126,7 +128,7 @@ class TestJoindiff(DiffTestCase):
         self.connection.query(t.drop())
 
         # Test materialize all rows
-        mdiffer = mdiffer.replace(materialize_all_rows=True)
+        mdiffer = attrs.evolve(mdiffer, materialize_all_rows=True)
         diff = list(mdiffer.diff_tables(self.table, self.table2))
         self.assertEqual(expected, diff)
         rows = self.connection.query(t.select(), List[tuple])

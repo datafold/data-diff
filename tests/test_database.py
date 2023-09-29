@@ -2,6 +2,7 @@ import unittest
 from datetime import datetime
 from typing import Callable, List, Tuple
 
+import attrs
 import pytz
 
 from data_diff import connect
@@ -130,8 +131,8 @@ class TestQueries(unittest.TestCase):
         raw_schema = db.query_table_schema(t.path)
         schema = db._process_table_schema(t.path, raw_schema)
         schema = create_schema(db.name, t, schema, case_sensitive=True)
-        t = t.replace(schema=schema)
-        t.schema["created_at"] = t.schema["created_at"].replace(precision=t.schema["created_at"].precision)
+        t = attrs.evolve(t, schema=schema)
+        t.schema["created_at"] = attrs.evolve(t.schema["created_at"], precision=t.schema["created_at"].precision)
 
         tbl = table(name, schema=t.schema)
 

@@ -3,10 +3,11 @@ from typing import Hashable, MutableMapping, Type, Optional, Union, Dict
 from itertools import zip_longest
 from contextlib import suppress
 import weakref
+
+import attrs
 import dsnparse
 import toml
 
-from runtype import dataclass
 from typing_extensions import Self
 
 from data_diff.databases.base import Database, ThreadedDatabase
@@ -25,7 +26,7 @@ from data_diff.databases.duckdb import DuckDB
 from data_diff.databases.mssql import MsSQL
 
 
-@dataclass
+@attrs.define(frozen=True)
 class MatchUriPath:
     database_cls: Type[Database]
 
