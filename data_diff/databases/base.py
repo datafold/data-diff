@@ -90,17 +90,11 @@ class CompileError(Exception):
     pass
 
 
-# TODO: LATER: Resolve the circular imports of databases-compiler-dialects:
-#   A database uses a compiler to render the SQL query.
-#   The compiler delegates to a dialect.
-#   The dialect renders the SQL.
-#   AS IS: The dialect requires the db to normalize table paths — leading to the back-dependency.
-#   TO BE: All the tables paths must be pre-normalized before SQL rendering.
-#   Also: c.database.is_autocommit in render_commit().
-#   After this, the Compiler can cease referring Database/Dialect at all,
-#   and be used only as a CompilingContext (a counter/data-bearing class).
-#   As a result, it becomes low-level util, and the circular dependency auto-resolves.
-#   Meanwhile, the easy fix is to simply move the Compiler here.
+# TODO: remove once switched to attrs, where ForwardRef[]/strings are resolved.
+class _RuntypeHackToFixCicularRefrencedDatabase:
+    dialect: "BaseDialect"
+
+
 @dataclass
 class Compiler(AbstractCompiler):
     """
@@ -113,7 +107,7 @@ class Compiler(AbstractCompiler):
     # Database is needed to normalize tables. Dialect is needed for recursive compilations.
     # In theory, it is many-to-many relations: e.g. a generic ODBC driver with multiple dialects.
     # In practice, we currently bind the dialects to the specific database classes.
-    database: "Database"
+    database: _RuntypeHackToFixCicularRefrencedDatabase
 
     in_select: bool = False  # Compilation runtime flag
     in_join: bool = False  # Compilation runtime flag
@@ -125,7 +119,7 @@ class Compiler(AbstractCompiler):
     _counter: List = field(default_factory=lambda: [0])
 
     @property
-    def dialect(self) -> "Dialect":
+    def dialect(self) -> "BaseDialect":
         return self.database.dialect
 
     # TODO: DEPRECATED: Remove once the dialect is used directly in all places.
@@ -844,7 +838,7 @@ class QueryResult:
         return self.rows[i]
 
 
-class Database(abc.ABC):
+class Database(abc.ABC, _RuntypeHackToFixCicularRefrencedDatabase):
     """Base abstract class for databases.
 
     Used for providing connection code and implementation specific SQL utilities.
