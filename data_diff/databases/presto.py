@@ -96,7 +96,6 @@ class Dialect(
         # Boolean
         "boolean": Boolean,
     }
-    MIXINS = {Mixin_Schema, Mixin_MD5, Mixin_NormalizeValue, Mixin_RandomSample}
 
     def explain_as_text(self, query: str) -> str:
         return f"EXPLAIN (FORMAT TEXT) {query}"

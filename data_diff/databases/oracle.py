@@ -104,7 +104,6 @@ class Dialect(
     }
     ROUNDS_ON_PREC_LOSS = True
     PLACEHOLDER_TABLE = "DUAL"
-    MIXINS = {Mixin_Schema, Mixin_MD5, Mixin_NormalizeValue, Mixin_RandomSample}
 
     def quote(self, s: str):
         return f'"{s}"'
