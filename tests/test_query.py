@@ -73,6 +73,8 @@ class MockDialect(BaseDialect):
 
 
 class MockDatabase(Database):
+    CONNECT_URI_HELP = "mock://"
+    CONNECT_URI_PARAMS = []
     dialect = MockDialect()
 
     _query = NotImplemented
