@@ -161,6 +161,7 @@ class Presto(Database):
     default_schema = "public"
 
     def __init__(self, **kw):
+        super().__init__()
         prestodb = import_presto()
 
         if kw.get("schema"):

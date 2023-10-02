@@ -98,6 +98,7 @@ class Connect:
     conn_cache: MutableMapping[Hashable, Database]
 
     def __init__(self, database_by_scheme: Dict[str, Database] = DATABASE_BY_SCHEME):
+        super().__init__()
         self.database_by_scheme = database_by_scheme
         self.match_uri_path = {name: MatchUriPath(cls) for name, cls in database_by_scheme.items()}
         self.conn_cache = weakref.WeakValueDictionary()

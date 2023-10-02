@@ -180,6 +180,7 @@ class ThreadLocalInterpreter:
     """
 
     def __init__(self, compiler: Compiler, gen: Generator):
+        super().__init__()
         self.gen = gen
         self.compiler = compiler
 
@@ -1109,6 +1110,7 @@ class ThreadedDatabase(Database):
     """
 
     def __init__(self, thread_count=1):
+        super().__init__()
         self._init_error = None
         self._queue = ThreadPoolExecutor(thread_count, initializer=self.set_conn)
         self.thread_local = threading.local()

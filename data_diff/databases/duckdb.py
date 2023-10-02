@@ -139,6 +139,7 @@ class DuckDB(Database):
     CONNECT_URI_PARAMS = ["database", "dbpath"]
 
     def __init__(self, **kw):
+        super().__init__()
         self._args = kw
         self._conn = self.create_connection()
 

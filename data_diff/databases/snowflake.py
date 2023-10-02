@@ -155,6 +155,7 @@ class Snowflake(Database):
     CONNECT_URI_KWPARAMS = ["warehouse"]
 
     def __init__(self, *, schema: str, **kw):
+        super().__init__()
         snowflake, serialization, default_backend = import_snowflake()
         logging.getLogger("snowflake.connector").setLevel(logging.WARNING)
 
