@@ -161,7 +161,6 @@ class Dialect(
     }
     TYPE_ARRAY_RE = re.compile(r"ARRAY<(.+)>")
     TYPE_STRUCT_RE = re.compile(r"STRUCT<(.+)>")
-    MIXINS = {Mixin_Schema, Mixin_MD5, Mixin_NormalizeValue, Mixin_TimeTravel, Mixin_RandomSample}
 
     def random(self) -> str:
         return "RAND()"

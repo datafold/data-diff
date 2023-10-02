@@ -106,8 +106,6 @@ class Dialect(
         "json": JSON,
     }
 
-    MIXINS = {Mixin_Schema, Mixin_NormalizeValue, Mixin_RandomSample}
-
     def quote(self, s: str):
         return f"[{s}]"
 

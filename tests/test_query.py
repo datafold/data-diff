@@ -66,9 +66,6 @@ class MockDialect(BaseDialect):
     def optimizer_hints(self, s: str):
         return f"/*+ {s} */ "
 
-    def load_mixins(self):
-        raise NotImplementedError()
-
     parse_type = NotImplemented
 
 

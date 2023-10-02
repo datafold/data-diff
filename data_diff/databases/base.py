@@ -240,7 +240,6 @@ class BaseDialect(abc.ABC):
     SUPPORTS_PRIMARY_KEY = False
     SUPPORTS_INDEXES = False
     TYPE_CLASSES: Dict[str, type] = {}
-    MIXINS = frozenset()
 
     PLACEHOLDER_TABLE = None  # Used for Oracle
 
@@ -784,17 +783,6 @@ class BaseDialect(abc.ABC):
         """Convert from binary precision, used by floats, to decimal precision."""
         # See: https://en.wikipedia.org/wiki/Single-precision_floating-point_format
         return math.floor(math.log(2**p, 10))
-
-    @classmethod
-    def load_mixins(cls, *abstract_mixins) -> Self:
-        "Load a list of mixins that implement the given abstract mixins"
-        mixins = {m for m in cls.MIXINS if issubclass(m, abstract_mixins)}
-
-        class _DialectWithMixins(cls, *mixins, *abstract_mixins):
-            pass
-
-        _DialectWithMixins.__name__ = cls.__name__
-        return _DialectWithMixins()
 
     @property
     @abstractmethod

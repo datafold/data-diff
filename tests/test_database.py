@@ -45,11 +45,7 @@ class TestDatabase(unittest.TestCase):
 
 class TestMD5(unittest.TestCase):
     def test_md5_as_int(self):
-        class MD5Dialect(dbs.mysql.Dialect, dbs.mysql.Mixin_MD5):
-            pass
-
         self.mysql = connect(TEST_MYSQL_CONN_STRING)
-        self.mysql.dialect = MD5Dialect()
 
         str = "hello world"
         query_fragment = self.mysql.dialect.md5_as_int("'{0}'".format(str))
