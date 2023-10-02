@@ -142,7 +142,7 @@ class TableSegment:
 
     def _with_raw_schema(self, raw_schema: dict) -> Self:
         schema = self.database._process_table_schema(self.table_path, raw_schema, self.relevant_columns, self._where())
-        return self.new(_schema=create_schema(self.database, self.table_path, schema, self.case_sensitive))
+        return self.new(_schema=create_schema(self.database.name, self.table_path, schema, self.case_sensitive))
 
     def with_schema(self) -> Self:
         "Queries the table schema from the database, and returns a new instance of TableSegment, with a schema."

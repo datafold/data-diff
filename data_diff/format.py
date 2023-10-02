@@ -253,7 +253,7 @@ def _make_rows_diff(
     t1_exclusive_rows: List[Dict[str, Any]],
     t2_exclusive_rows: List[Dict[str, Any]],
     diff_rows: List[Dict[str, Any]],
-    key_columns: List[str]
+    key_columns: List[str],
 ) -> RowsDiff:
     diff_rows_jsonified = []
     for row in diff_rows:
@@ -268,10 +268,7 @@ def _make_rows_diff(
         t2_exclusive_rows_jsonified.append(_jsonify_exclusive(row, key_columns))
 
     return RowsDiff(
-        exclusive=ExclusiveDiff(
-            dataset1=t1_exclusive_rows_jsonified,
-            dataset2=t2_exclusive_rows_jsonified
-        ),
+        exclusive=ExclusiveDiff(dataset1=t1_exclusive_rows_jsonified, dataset2=t2_exclusive_rows_jsonified),
         diff=diff_rows_jsonified,
     )
 

@@ -1,7 +1,7 @@
 from datetime import datetime
 from typing import List, Optional
 import unittest
-from data_diff.abcs.database_types import AbstractDatabase, AbstractDialect
+from data_diff.databases.base import Database, BaseDialect
 from data_diff.utils import CaseInsensitiveDict, CaseSensitiveDict
 
 from data_diff.databases.base import Compiler, CompileError
@@ -14,7 +14,7 @@ def normalize_spaces(s: str):
     return " ".join(s.split())
 
 
-class MockDialect(AbstractDialect):
+class MockDialect(BaseDialect):
     name = "MockDialect"
 
     PLACEHOLDER_TABLE = None
@@ -66,13 +66,12 @@ class MockDialect(AbstractDialect):
     def optimizer_hints(self, s: str):
         return f"/*+ {s} */ "
 
-    def load_mixins(self):
-        raise NotImplementedError()
-
     parse_type = NotImplemented
 
 
-class MockDatabase(AbstractDatabase):
+class MockDatabase(Database):
+    CONNECT_URI_HELP = "mock://"
+    CONNECT_URI_PARAMS = []
     dialect = MockDialect()
 
     _query = NotImplemented

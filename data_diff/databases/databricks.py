@@ -79,7 +79,6 @@ class Dialect(BaseDialect, Mixin_MD5, Mixin_NormalizeValue, AbstractMixin_MD5, A
         # Boolean
         "BOOLEAN": Boolean,
     }
-    MIXINS = {Mixin_MD5, Mixin_NormalizeValue, Mixin_RandomSample}
 
     def quote(self, s: str):
         return f"`{s}`"

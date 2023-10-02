@@ -149,8 +149,8 @@ class DiffTestCase(unittest.TestCase):
         self.table_src_name = f"src{table_suffix}"
         self.table_dst_name = f"dst{table_suffix}"
 
-        self.table_src_path = self.connection.parse_table_name(self.table_src_name)
-        self.table_dst_path = self.connection.parse_table_name(self.table_dst_name)
+        self.table_src_path = self.connection.dialect.parse_table_name(self.table_src_name)
+        self.table_dst_path = self.connection.dialect.parse_table_name(self.table_dst_name)
 
         drop_table(self.connection, self.table_src_path)
         drop_table(self.connection, self.table_dst_path)

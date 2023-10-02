@@ -78,7 +78,9 @@ class Mixin_Schema(AbstractMixin_Schema):
         )
 
 
-class Dialect(BaseDialect, Mixin_Schema, Mixin_MD5, Mixin_NormalizeValue, AbstractMixin_MD5, AbstractMixin_NormalizeValue):
+class Dialect(
+    BaseDialect, Mixin_Schema, Mixin_MD5, Mixin_NormalizeValue, AbstractMixin_MD5, AbstractMixin_NormalizeValue
+):
     name = "Vertica"
     ROUNDS_ON_PREC_LOSS = True
 
@@ -96,7 +98,6 @@ class Dialect(BaseDialect, Mixin_Schema, Mixin_MD5, Mixin_NormalizeValue, Abstra
         # Boolean
         "boolean": Boolean,
     }
-    MIXINS = {Mixin_Schema, Mixin_MD5, Mixin_NormalizeValue, Mixin_RandomSample}
 
     def quote(self, s: str):
         return f'"{s}"'

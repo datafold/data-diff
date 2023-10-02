@@ -796,6 +796,7 @@ class Commit(Statement):
 @dataclass
 class Param(ExprNode, ITable):
     """A value placeholder, to be specified at compilation time using the `cv_params` context variable."""
+
     name: str
 
     @property

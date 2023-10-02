@@ -60,7 +60,15 @@ class Mixin_NormalizeValue(AbstractMixin_NormalizeValue):
         return f"TRIM(CAST({value} AS char))"
 
 
-class Dialect(BaseDialect, Mixin_Schema, Mixin_OptimizerHints, Mixin_MD5, Mixin_NormalizeValue, AbstractMixin_MD5, AbstractMixin_NormalizeValue):
+class Dialect(
+    BaseDialect,
+    Mixin_Schema,
+    Mixin_OptimizerHints,
+    Mixin_MD5,
+    Mixin_NormalizeValue,
+    AbstractMixin_MD5,
+    AbstractMixin_NormalizeValue,
+):
     name = "MySQL"
     ROUNDS_ON_PREC_LOSS = True
     SUPPORTS_PRIMARY_KEY = True
@@ -91,7 +99,6 @@ class Dialect(BaseDialect, Mixin_Schema, Mixin_OptimizerHints, Mixin_MD5, Mixin_
         # Boolean
         "boolean": Boolean,
     }
-    MIXINS = {Mixin_Schema, Mixin_MD5, Mixin_NormalizeValue, Mixin_RandomSample}
 
     def quote(self, s: str):
         return f"`{s}`"

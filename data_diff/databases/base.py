@@ -21,16 +21,39 @@ from data_diff.abcs.compiler import AbstractCompiler
 from data_diff.queries.extras import ApplyFuncAndNormalizeAsString, Checksum, NormalizeAsString
 from data_diff.utils import ArithString, is_uuid, join_iter, safezip
 from data_diff.queries.api import Expr, table, Select, SKIP, Explain, Code, this
-from data_diff.queries.ast_classes import Alias, BinOp, CaseWhen, Cast, Column, Commit, Concat, ConstantTable, Count, \
-    CreateTable, Cte, \
-    CurrentTimestamp, DropTable, Func, \
-    GroupBy, \
-    ITable, In, InsertToTable, IsDistinctFrom, \
-    Join, \
-    Param, \
-    Random, \
-    Root, TableAlias, TableOp, TablePath, \
-    TimeTravel, TruncateTable, UnaryOp, WhenThen, _ResolveColumn
+from data_diff.queries.ast_classes import (
+    Alias,
+    BinOp,
+    CaseWhen,
+    Cast,
+    Column,
+    Commit,
+    Concat,
+    ConstantTable,
+    Count,
+    CreateTable,
+    Cte,
+    CurrentTimestamp,
+    DropTable,
+    Func,
+    GroupBy,
+    ITable,
+    In,
+    InsertToTable,
+    IsDistinctFrom,
+    Join,
+    Param,
+    Random,
+    Root,
+    TableAlias,
+    TableOp,
+    TablePath,
+    TimeTravel,
+    TruncateTable,
+    UnaryOp,
+    WhenThen,
+    _ResolveColumn,
+)
 from data_diff.abcs.database_types import (
     Array,
     Struct,
@@ -67,17 +90,11 @@ class CompileError(Exception):
     pass
 
 
-# TODO: LATER: Resolve the circular imports of databases-compiler-dialects:
-#   A database uses a compiler to render the SQL query.
-#   The compiler delegates to a dialect.
-#   The dialect renders the SQL.
-#   AS IS: The dialect requires the db to normalize table paths — leading to the back-dependency.
-#   TO BE: All the tables paths must be pre-normalized before SQL rendering.
-#   Also: c.database.is_autocommit in render_commit().
-#   After this, the Compiler can cease referring Database/Dialect at all,
-#   and be used only as a CompilingContext (a counter/data-bearing class).
-#   As a result, it becomes low-level util, and the circular dependency auto-resolves.
-#   Meanwhile, the easy fix is to simply move the Compiler here.
+# TODO: remove once switched to attrs, where ForwardRef[]/strings are resolved.
+class _RuntypeHackToFixCicularRefrencedDatabase:
+    dialect: "BaseDialect"
+
+
 @dataclass
 class Compiler(AbstractCompiler):
     """
@@ -90,7 +107,7 @@ class Compiler(AbstractCompiler):
     # Database is needed to normalize tables. Dialect is needed for recursive compilations.
     # In theory, it is many-to-many relations: e.g. a generic ODBC driver with multiple dialects.
     # In practice, we currently bind the dialects to the specific database classes.
-    database: "Database"
+    database: _RuntypeHackToFixCicularRefrencedDatabase
 
     in_select: bool = False  # Compilation runtime flag
     in_join: bool = False  # Compilation runtime flag
@@ -102,7 +119,7 @@ class Compiler(AbstractCompiler):
     _counter: List = field(default_factory=lambda: [0])
 
     @property
-    def dialect(self) -> "Dialect":
+    def dialect(self) -> "BaseDialect":
         return self.database.dialect
 
     # TODO: DEPRECATED: Remove once the dialect is used directly in all places.
@@ -223,7 +240,6 @@ class BaseDialect(abc.ABC):
     SUPPORTS_PRIMARY_KEY = False
     SUPPORTS_INDEXES = False
     TYPE_CLASSES: Dict[str, type] = {}
-    MIXINS = frozenset()
 
     PLACEHOLDER_TABLE = None  # Used for Oracle
 
@@ -414,7 +430,9 @@ class BaseDialect(abc.ABC):
 
     def render_concat(self, c: Compiler, elem: Concat) -> str:
         # We coalesce because on some DBs (e.g. MySQL) concat('a', NULL) is NULL
-        items = [f"coalesce({self.compile(c, Code(self.to_string(self.compile(c, expr))))}, '<null>')" for expr in elem.exprs]
+        items = [
+            f"coalesce({self.compile(c, Code(self.to_string(self.compile(c, expr))))}, '<null>')" for expr in elem.exprs
+        ]
         assert items
         if len(items) == 1:
             return items[0]
@@ -559,7 +577,7 @@ class BaseDialect(abc.ABC):
                     columns=columns,
                     group_by_exprs=[Code(k) for k in keys],
                     having_exprs=elem.having_exprs,
-                )
+                ),
             )
 
         keys_str = ", ".join(keys)
@@ -567,9 +585,7 @@ class BaseDialect(abc.ABC):
         having_str = (
             " HAVING " + " AND ".join(map(compile_fn, elem.having_exprs)) if elem.having_exprs is not None else ""
         )
-        select = (
-            f"SELECT {columns_str} FROM {self.compile(c.replace(in_select=True), elem.table)} GROUP BY {keys_str}{having_str}"
-        )
+        select = f"SELECT {columns_str} FROM {self.compile(c.replace(in_select=True), elem.table)} GROUP BY {keys_str}{having_str}"
 
         if c.in_select:
             select = f"({select}) {c.new_unique_name()}"
@@ -601,7 +617,7 @@ class BaseDialect(abc.ABC):
             # TODO: why is it c.? why not self? time-trvelling is the dialect's thing, isnt't it?
             c.time_travel(
                 elem.table, before=elem.before, timestamp=elem.timestamp, offset=elem.offset, statement=elem.statement
-            )
+            ),
         )
 
     def render_createtable(self, c: Compiler, elem: CreateTable) -> str:
@@ -768,18 +784,6 @@ class BaseDialect(abc.ABC):
         # See: https://en.wikipedia.org/wiki/Single-precision_floating-point_format
         return math.floor(math.log(2**p, 10))
 
-    @classmethod
-    def load_mixins(cls, *abstract_mixins) -> Self:
-        "Load a list of mixins that implement the given abstract mixins"
-        mixins = {m for m in cls.MIXINS if issubclass(m, abstract_mixins)}
-
-        class _DialectWithMixins(cls, *mixins, *abstract_mixins):
-            pass
-
-        _DialectWithMixins.__name__ = cls.__name__
-        return _DialectWithMixins()
-
-
     @property
     @abstractmethod
     def name(self) -> str:
@@ -822,7 +826,7 @@ class QueryResult:
         return self.rows[i]
 
 
-class Database(abc.ABC):
+class Database(abc.ABC, _RuntypeHackToFixCicularRefrencedDatabase):
     """Base abstract class for databases.
 
     Used for providing connection code and implementation specific SQL utilities.

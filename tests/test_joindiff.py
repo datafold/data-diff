@@ -113,7 +113,7 @@ class TestJoindiff(DiffTestCase):
         # self.assertEqual(1, self.differ.stats["table2_min_id"])
 
         # Test materialize
-        materialize_path = self.connection.parse_table_name(f"test_mat_{random_table_suffix()}")
+        materialize_path = self.connection.dialect.parse_table_name(f"test_mat_{random_table_suffix()}")
         mdiffer = self.differ.replace(materialize_to_table=materialize_path)
         diff = list(mdiffer.diff_tables(self.table, self.table2))
         self.assertEqual(expected, diff)

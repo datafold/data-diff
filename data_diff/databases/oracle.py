@@ -80,7 +80,15 @@ class Mixin_Schema(AbstractMixin_Schema):
         )
 
 
-class Dialect(BaseDialect, Mixin_Schema, Mixin_OptimizerHints, Mixin_MD5, Mixin_NormalizeValue, AbstractMixin_MD5, AbstractMixin_NormalizeValue):
+class Dialect(
+    BaseDialect,
+    Mixin_Schema,
+    Mixin_OptimizerHints,
+    Mixin_MD5,
+    Mixin_NormalizeValue,
+    AbstractMixin_MD5,
+    AbstractMixin_NormalizeValue,
+):
     name = "Oracle"
     SUPPORTS_PRIMARY_KEY = True
     SUPPORTS_INDEXES = True
@@ -96,7 +104,6 @@ class Dialect(BaseDialect, Mixin_Schema, Mixin_OptimizerHints, Mixin_MD5, Mixin_
     }
     ROUNDS_ON_PREC_LOSS = True
     PLACEHOLDER_TABLE = "DUAL"
-    MIXINS = {Mixin_Schema, Mixin_MD5, Mixin_NormalizeValue, Mixin_RandomSample}
 
     def quote(self, s: str):
         return f'"{s}"'

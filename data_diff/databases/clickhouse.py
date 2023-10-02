@@ -125,7 +125,6 @@ class Dialect(BaseDialect, Mixin_MD5, Mixin_NormalizeValue, AbstractMixin_MD5, A
         "DateTime64": Timestamp,
         "Bool": Boolean,
     }
-    MIXINS = {Mixin_MD5, Mixin_NormalizeValue, Mixin_RandomSample}
 
     def quote(self, s: str) -> str:
         return f'"{s}"'
