@@ -104,6 +104,7 @@ class Dialect(
         "nchar": Text,
         "binary": Text,
         "varbinary": Text,
+        "xml": Text,
         # UUID
         "uniqueidentifier": Native_UUID,
         # Bool
