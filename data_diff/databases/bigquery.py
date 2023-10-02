@@ -1,5 +1,8 @@
 import re
 from typing import Any, List, Union
+
+import attrs
+
 from data_diff.abcs.database_types import (
     ColType,
     Array,
@@ -50,11 +53,13 @@ def import_bigquery_service_account():
     return service_account
 
 
+@attrs.define(frozen=False)
 class Mixin_MD5(AbstractMixin_MD5):
     def md5_as_int(self, s: str) -> str:
         return f"cast(cast( ('0x' || substr(TO_HEX(md5({s})), 18)) as int64) as numeric)"
 
 
+@attrs.define(frozen=False)
 class Mixin_NormalizeValue(AbstractMixin_NormalizeValue):
     def normalize_timestamp(self, value: str, coltype: TemporalType) -> str:
         if coltype.rounds:
@@ -99,6 +104,7 @@ class Mixin_NormalizeValue(AbstractMixin_NormalizeValue):
         return f"to_json_string({value})"
 
 
+@attrs.define(frozen=False)
 class Mixin_Schema(AbstractMixin_Schema):
     def list_tables(self, table_schema: str, like: Compilable = None) -> Compilable:
         return (
@@ -112,6 +118,7 @@ class Mixin_Schema(AbstractMixin_Schema):
         )
 
 
+@attrs.define(frozen=False)
 class Mixin_TimeTravel(AbstractMixin_TimeTravel):
     def time_travel(
         self,
@@ -139,6 +146,7 @@ class Mixin_TimeTravel(AbstractMixin_TimeTravel):
         )
 
 
+@attrs.define(frozen=False)
 class Dialect(
     BaseDialect, Mixin_Schema, Mixin_MD5, Mixin_NormalizeValue, AbstractMixin_MD5, AbstractMixin_NormalizeValue
 ):
@@ -218,12 +226,18 @@ class Dialect(
         return tuple(i for i in path if i is not None)
 
 
+@attrs.define(frozen=False, init=False, kw_only=True)
 class BigQuery(Database):
     CONNECT_URI_HELP = "bigquery://<project>/<dataset>"
     CONNECT_URI_PARAMS = ["dataset"]
     dialect = Dialect()
 
+    project: str
+    dataset: str
+    _client: Any
+
     def __init__(self, project, *, dataset, bigquery_credentials=None, **kw):
+        super().__init__()
         credentials = bigquery_credentials
         bigquery = import_bigquery()
 

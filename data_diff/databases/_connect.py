@@ -3,10 +3,11 @@ from typing import Hashable, MutableMapping, Type, Optional, Union, Dict
 from itertools import zip_longest
 from contextlib import suppress
 import weakref
+
+import attrs
 import dsnparse
 import toml
 
-from runtype import dataclass
 from typing_extensions import Self
 
 from data_diff.databases.base import Database, ThreadedDatabase
@@ -25,7 +26,7 @@ from data_diff.databases.duckdb import DuckDB
 from data_diff.databases.mssql import MsSQL
 
 
-@dataclass
+@attrs.define(frozen=True)
 class MatchUriPath:
     database_cls: Type[Database]
 
@@ -92,12 +93,16 @@ DATABASE_BY_SCHEME = {
 }
 
 
+@attrs.define(frozen=False, init=False)
 class Connect:
     """Provides methods for connecting to a supported database using a URL or connection dict."""
 
+    database_by_scheme: Dict[str, Database]
+    match_uri_path: Dict[str, MatchUriPath]
     conn_cache: MutableMapping[Hashable, Database]
 
     def __init__(self, database_by_scheme: Dict[str, Database] = DATABASE_BY_SCHEME):
+        super().__init__()
         self.database_by_scheme = database_by_scheme
         self.match_uri_path = {name: MatchUriPath(cls) for name, cls in database_by_scheme.items()}
         self.conn_cache = weakref.WeakValueDictionary()
@@ -284,6 +289,7 @@ class Connect:
         return db_conf
 
 
+@attrs.define(frozen=False, init=False)
 class Connect_SetUTC(Connect):
     """Provides methods for connecting to a supported database using a URL or connection dict.
 

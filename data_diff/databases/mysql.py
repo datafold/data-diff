@@ -1,3 +1,7 @@
+from typing import Any, Dict
+
+import attrs
+
 from data_diff.abcs.database_types import (
     Datetime,
     Timestamp,
@@ -40,11 +44,13 @@ def import_mysql():
     return mysql.connector
 
 
+@attrs.define(frozen=False)
 class Mixin_MD5(AbstractMixin_MD5):
     def md5_as_int(self, s: str) -> str:
         return f"cast(conv(substring(md5({s}), {1+MD5_HEXDIGITS-CHECKSUM_HEXDIGITS}), 16, 10) as unsigned)"
 
 
+@attrs.define(frozen=False)
 class Mixin_NormalizeValue(AbstractMixin_NormalizeValue):
     def normalize_timestamp(self, value: str, coltype: TemporalType) -> str:
         if coltype.rounds:
@@ -60,6 +66,7 @@ class Mixin_NormalizeValue(AbstractMixin_NormalizeValue):
         return f"TRIM(CAST({value} AS char))"
 
 
+@attrs.define(frozen=False)
 class Dialect(
     BaseDialect,
     Mixin_Schema,
@@ -130,6 +137,7 @@ class Dialect(
         return "SET @@session.time_zone='+00:00'"
 
 
+@attrs.define(frozen=False, init=False, kw_only=True)
 class MySQL(ThreadedDatabase):
     dialect = Dialect()
     SUPPORTS_ALPHANUMS = False
@@ -137,10 +145,11 @@ class MySQL(ThreadedDatabase):
     CONNECT_URI_HELP = "mysql://<user>:<password>@<host>/<database>"
     CONNECT_URI_PARAMS = ["database?"]
 
-    def __init__(self, *, thread_count, **kw):
-        self._args = kw
+    _args: Dict[str, Any]
 
+    def __init__(self, *, thread_count, **kw):
         super().__init__(thread_count=thread_count)
+        self._args = kw
 
         # In MySQL schema and database are synonymous
         try:

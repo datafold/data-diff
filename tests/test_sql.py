@@ -1,5 +1,7 @@
 import unittest
 
+import attrs
+
 from tests.common import TEST_MYSQL_CONN_STRING
 
 from data_diff.databases import connect
@@ -19,9 +21,8 @@ class TestSQL(unittest.TestCase):
         self.assertEqual("1", self.compiler.compile(1))
 
     def test_compile_table_name(self):
-        self.assertEqual(
-            "`marine_mammals`.`walrus`", self.compiler.replace(root=False).compile(table("marine_mammals", "walrus"))
-        )
+        compiler = attrs.evolve(self.compiler, root=False)
+        self.assertEqual("`marine_mammals`.`walrus`", compiler.compile(table("marine_mammals", "walrus")))
 
     def test_compile_select(self):
         expected_sql = "SELECT name FROM `marine_mammals`.`walrus`"

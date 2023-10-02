@@ -20,6 +20,9 @@ keys are not evenly distributed.
 from random import randint, randrange
 
 from typing import Tuple
+
+import attrs
+
 from data_diff.utils import safezip
 
 Vector = Tuple[int]
@@ -56,6 +59,7 @@ def irandrange(start, stop):
     return randrange(start, stop)
 
 
+@attrs.define(frozen=True)
 class LexicographicSpace:
     """Lexicographic space of arbitrary dimensions.
 
@@ -63,6 +67,7 @@ class LexicographicSpace:
     """
 
     def __init__(self, dims: Vector):
+        super().__init__()
         self.dims = dims
 
     def __contains__(self, v: Vector):
@@ -120,6 +125,8 @@ class BoundedLexicographicSpace:
     """
 
     def __init__(self, min_bound: Vector, max_bound: Vector):
+        super().__init__()
+
         dims = tuple(mx - mn for mn, mx in safezip(min_bound, max_bound))
         if not all(d >= 0 for d in dims):
             raise ValueError("Error: Negative dimension!")

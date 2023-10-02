@@ -25,7 +25,6 @@ packages = [{ include = "data_diff" }]
 [tool.poetry.dependencies]
 pydantic = "1.10.12"
 python = "^3.7.2"
-runtype = "^0.2.6"
 dsnparse = "<0.2.0"
 click = "^8.1"
 rich = "*"
@@ -47,6 +46,7 @@ urllib3 = "<2"
 oracledb = {version = "*", optional=true}
 pyodbc = {version="^4.0.39", optional=true}
 typing-extensions = ">=4.0.1"
+attrs = "^23.1.0"
 
 [tool.poetry.dev-dependencies]
 parameterized = "*"
