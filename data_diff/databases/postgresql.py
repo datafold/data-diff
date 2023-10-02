@@ -128,9 +128,8 @@ class PostgreSQL(ThreadedDatabase):
     default_schema = "public"
 
     def __init__(self, *, thread_count, **kw):
-        self._args = kw
-
         super().__init__(thread_count=thread_count)
+        self._args = kw
 
     def create_connection(self):
         if not self._args:

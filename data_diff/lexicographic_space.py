@@ -63,6 +63,7 @@ class LexicographicSpace:
     """
 
     def __init__(self, dims: Vector):
+        super().__init__()
         self.dims = dims
 
     def __contains__(self, v: Vector):
@@ -120,6 +121,8 @@ class BoundedLexicographicSpace:
     """
 
     def __init__(self, min_bound: Vector, max_bound: Vector):
+        super().__init__()
+
         dims = tuple(mx - mn for mn, mx in safezip(min_bound, max_bound))
         if not all(d >= 0 for d in dims):
             raise ValueError("Error: Negative dimension!")

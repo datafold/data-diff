@@ -46,6 +46,7 @@ class ThreadedYielder(Iterable):
     """
 
     def __init__(self, max_workers: Optional[int] = None):
+        super().__init__()
         self._pool = PriorityThreadPoolExecutor(max_workers)
         self._futures = deque()
         self._yield = deque()

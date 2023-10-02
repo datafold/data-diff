@@ -159,10 +159,9 @@ class Vertica(ThreadedDatabase):
     default_schema = "public"
 
     def __init__(self, *, thread_count, **kw):
+        super().__init__(thread_count=thread_count)
         self._args = kw
         self._args["AUTOCOMMIT"] = False
-
-        super().__init__(thread_count=thread_count)
 
     def create_connection(self):
         vertica = import_vertica()

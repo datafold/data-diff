@@ -182,11 +182,9 @@ class Oracle(ThreadedDatabase):
     CONNECT_URI_PARAMS = ["database?"]
 
     def __init__(self, *, host, database, thread_count, **kw):
-        self.kwargs = dict(dsn=f"{host}/{database}" if database else host, **kw)
-
-        self.default_schema = kw.get("user").upper()
-
         super().__init__(thread_count=thread_count)
+        self.kwargs = dict(dsn=f"{host}/{database}" if database else host, **kw)
+        self.default_schema = kw.get("user").upper()
 
     def create_connection(self):
         self._oracle = import_oracle()

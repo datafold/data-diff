@@ -138,9 +138,8 @@ class MySQL(ThreadedDatabase):
     CONNECT_URI_PARAMS = ["database?"]
 
     def __init__(self, *, thread_count, **kw):
-        self._args = kw
-
         super().__init__(thread_count=thread_count)
+        self._args = kw
 
         # In MySQL schema and database are synonymous
         try:

@@ -224,6 +224,7 @@ class BigQuery(Database):
     dialect = Dialect()
 
     def __init__(self, project, *, dataset, bigquery_credentials=None, **kw):
+        super().__init__()
         credentials = bigquery_credentials
         bigquery = import_bigquery()
 

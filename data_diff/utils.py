@@ -73,6 +73,7 @@ class CaseAwareMapping(MutableMapping[str, V]):
 
 class CaseInsensitiveDict(CaseAwareMapping):
     def __init__(self, initial):
+        super().__init__()
         self._dict = {k.lower(): (k, v) for k, v in dict(initial).items()}
 
     def __getitem__(self, key: str) -> V:
@@ -175,6 +176,8 @@ def alphanums_to_numbers(s1: str, s2: str):
 
 class ArithAlphanumeric(ArithString):
     def __init__(self, s: str, max_len=None):
+        super().__init__()
+
         if s is None:
             raise ValueError("Alphanum string cannot be None")
         if max_len and len(s) > max_len:

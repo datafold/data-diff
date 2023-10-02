@@ -101,6 +101,8 @@ class DbtParser:
         project_dir_override: Optional[str] = None,
         state: Optional[str] = None,
     ) -> None:
+        super().__init__()
+
         try_set_dbt_flags()
         self.dbt_runner = try_get_dbt_runner()
         self.project_dir = Path(project_dir_override or default_project_dir())

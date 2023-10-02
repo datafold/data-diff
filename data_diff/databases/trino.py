@@ -40,6 +40,7 @@ class Trino(presto.Presto):
     CONNECT_URI_PARAMS = ["catalog", "schema"]
 
     def __init__(self, **kw):
+        super().__init__()
         trino = import_trino()
 
         if kw.get("schema"):
