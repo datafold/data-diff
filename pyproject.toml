@@ -11,7 +11,6 @@ classifiers = [
     "Intended Audience :: Developers",
     "Intended Audience :: Information Technology",
     "Intended Audience :: System Administrators",
-    "Programming Language :: Python :: 3.7",
     "Programming Language :: Python :: 3.8",
     "Programming Language :: Python :: 3.9",
     "Programming Language :: Python :: 3.10",
@@ -21,10 +20,9 @@ classifiers = [
     "Typing :: Typed"
 ]
 packages = [{ include = "data_diff" }]
-
 [tool.poetry.dependencies]
 pydantic = "1.10.12"
-python = "^3.7.2"
+python = "^3.8.0"
 dsnparse = "<0.2.0"
 click = "^8.1"
 rich = "*"
