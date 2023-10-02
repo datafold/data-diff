@@ -689,8 +689,8 @@ class TestDiffCrossDatabaseTables(unittest.TestCase):
         src_table_name = f"src_{self._testMethodName[11:]}{table_suffix}"
         dst_table_name = f"dst_{self._testMethodName[11:]}{table_suffix}"
 
-        self.src_table_path = src_table_path = src_conn.parse_table_name(src_table_name)
-        self.dst_table_path = dst_table_path = dst_conn.parse_table_name(dst_table_name)
+        self.src_table_path = src_table_path = src_conn.dialect.parse_table_name(src_table_name)
+        self.dst_table_path = dst_table_path = dst_conn.dialect.parse_table_name(dst_table_name)
 
         start = time.monotonic()
         if not BENCHMARK:

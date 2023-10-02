@@ -71,7 +71,7 @@ class TestSchema(unittest.TestCase):
     def test_table_list(self):
         name = "tbl_" + random_table_suffix()
         db = get_conn(self.db_cls)
-        tbl = table(db.parse_table_name(name), schema={"id": int})
+        tbl = table(db.dialect.parse_table_name(name), schema={"id": int})
         q = db.dialect.list_tables(db.default_schema, name)
         assert not db.query(q)
 
@@ -85,7 +85,7 @@ class TestSchema(unittest.TestCase):
         name = "tbl_" + random_table_suffix()
         db = get_conn(self.db_cls)
         tbl = table(
-            db.parse_table_name(name),
+            db.dialect.parse_table_name(name),
             schema={
                 "int": int,
                 "float": float,
