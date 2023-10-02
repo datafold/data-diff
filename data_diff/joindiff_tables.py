@@ -9,6 +9,7 @@ from itertools import chain
 
 import attrs
 
+
 from data_diff.databases import Database, MsSQL, MySQL, BigQuery, Presto, Oracle, Snowflake, DuckDB
 from data_diff.abcs.database_types import NumericType, DbPath
 from data_diff.databases.base import Compiler
