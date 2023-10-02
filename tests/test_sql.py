@@ -3,7 +3,8 @@ import unittest
 from tests.common import TEST_MYSQL_CONN_STRING
 
 from data_diff.databases import connect
-from data_diff.queries.api import Compiler, Count, Explain, Select, table, In, BinOp, Code
+from data_diff.databases.base import Compiler
+from data_diff.queries.api import Count, Explain, Select, table, In, BinOp, Code
 
 
 class TestSQL(unittest.TestCase):
