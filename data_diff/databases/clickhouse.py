@@ -1,4 +1,4 @@
-from typing import Optional, Type
+from typing import Any, Dict, Optional, Type
 
 from data_diff.databases.base import (
     MD5_HEXDIGITS,
@@ -166,6 +166,8 @@ class Clickhouse(ThreadedDatabase):
     dialect = Dialect()
     CONNECT_URI_HELP = "clickhouse://<user>:<password>@<host>/<database>"
     CONNECT_URI_PARAMS = ["database?"]
+
+    _args: Dict[str, Any]
 
     def __init__(self, *, thread_count: int, **kw):
         super().__init__(thread_count=thread_count)

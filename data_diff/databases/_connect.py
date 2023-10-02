@@ -95,6 +95,8 @@ DATABASE_BY_SCHEME = {
 class Connect:
     """Provides methods for connecting to a supported database using a URL or connection dict."""
 
+    database_by_scheme: Dict[str, Database]
+    match_uri_path: Dict[str, MatchUriPath]
     conn_cache: MutableMapping[Hashable, Database]
 
     def __init__(self, database_by_scheme: Dict[str, Database] = DATABASE_BY_SCHEME):

@@ -1,5 +1,6 @@
-from typing import List, Dict
+from typing import ClassVar, List, Dict, Type
 from data_diff.abcs.database_types import (
+    ColType,
     Float,
     JSON,
     TemporalType,
@@ -53,7 +54,7 @@ class Mixin_NormalizeValue(Mixin_NormalizeValue):
 
 class Dialect(PostgresqlDialect, Mixin_MD5, Mixin_NormalizeValue, AbstractMixin_MD5, AbstractMixin_NormalizeValue):
     name = "Redshift"
-    TYPE_CLASSES = {
+    TYPE_CLASSES: ClassVar[Dict[str, Type[ColType]]] = {
         **PostgresqlDialect.TYPE_CLASSES,
         "double": Float,
         "real": Float,

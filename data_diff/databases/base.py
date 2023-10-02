@@ -5,7 +5,7 @@ from datetime import datetime
 import math
 import sys
 import logging
-from typing import Any, Callable, Dict, Generator, Tuple, Optional, Sequence, Type, List, Union, TypeVar
+from typing import Any, Callable, ClassVar, Dict, Generator, Tuple, Optional, Sequence, Type, List, Union, TypeVar
 from functools import partial, wraps
 from concurrent.futures import ThreadPoolExecutor
 import threading
@@ -179,6 +179,9 @@ class ThreadLocalInterpreter:
     Useful for cursor-sensitive operations, such as creating a temporary table.
     """
 
+    compiler: Compiler
+    gen: Generator
+
     def __init__(self, compiler: Compiler, gen: Generator):
         super().__init__()
         self.gen = gen
@@ -238,9 +241,9 @@ class Mixin_OptimizerHints(AbstractMixin_OptimizerHints):
 
 
 class BaseDialect(abc.ABC):
-    SUPPORTS_PRIMARY_KEY = False
-    SUPPORTS_INDEXES = False
-    TYPE_CLASSES: Dict[str, type] = {}
+    SUPPORTS_PRIMARY_KEY: ClassVar[bool] = False
+    SUPPORTS_INDEXES: ClassVar[bool] = False
+    TYPE_CLASSES: ClassVar[Dict[str, type]] = {}
 
     PLACEHOLDER_TABLE = None  # Used for Oracle
 
@@ -835,14 +838,13 @@ class Database(abc.ABC, _RuntypeHackToFixCicularRefrencedDatabase):
     Instanciated using :meth:`~data_diff.connect`
     """
 
-    default_schema: str = None
-    SUPPORTS_ALPHANUMS = True
-    SUPPORTS_UNIQUE_CONSTAINT = False
+    SUPPORTS_ALPHANUMS: ClassVar[bool] = True
+    SUPPORTS_UNIQUE_CONSTAINT: ClassVar[bool] = False
+    CONNECT_URI_KWPARAMS: ClassVar[List[str]] = []
 
-    CONNECT_URI_KWPARAMS = []
-
-    _interactive = False
-    is_closed = False
+    default_schema: Optional[str] = None
+    _interactive: bool = False
+    is_closed: bool = False
 
     @property
     def name(self):
@@ -1108,6 +1110,10 @@ class ThreadedDatabase(Database):
 
     Used for database connectors that do not support sharing their connection between different threads.
     """
+
+    _init_error: Optional[Exception]
+    _queue: ThreadPoolExecutor
+    thread_local: threading.local
 
     def __init__(self, thread_count=1):
         super().__init__()

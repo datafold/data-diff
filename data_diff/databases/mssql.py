@@ -1,4 +1,4 @@
-from typing import Optional
+from typing import Any, Dict, Optional
 from data_diff.abcs.mixins import AbstractMixin_MD5, AbstractMixin_NormalizeValue
 from data_diff.databases.base import (
     CHECKSUM_HEXDIGITS,
@@ -160,9 +160,11 @@ class Dialect(
 
 class MsSQL(ThreadedDatabase):
     dialect = Dialect()
-    #
     CONNECT_URI_HELP = "mssql://<user>:<password>@<host>/<database>/<schema>"
     CONNECT_URI_PARAMS = ["database", "schema"]
+
+    default_database: str
+    _args: Dict[str, Any]
 
     def __init__(self, host, port, user, password, *, database, thread_count, **kw):
         args = dict(server=host, port=port, database=database, user=user, password=password, **kw)

@@ -1,3 +1,5 @@
+from typing import Any
+
 from data_diff.abcs.mixins import AbstractMixin_MD5, AbstractMixin_NormalizeValue
 from data_diff.abcs.database_types import TemporalType, ColType_UUID
 from data_diff.databases import presto
@@ -38,6 +40,8 @@ class Trino(presto.Presto):
     dialect = Dialect()
     CONNECT_URI_HELP = "trino://<user>@<host>/<catalog>/<schema>"
     CONNECT_URI_PARAMS = ["catalog", "schema"]
+
+    _conn: Any
 
     def __init__(self, **kw):
         super().__init__()

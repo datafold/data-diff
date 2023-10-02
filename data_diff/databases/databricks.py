@@ -1,5 +1,5 @@
 import math
-from typing import Dict, Sequence
+from typing import Any, Dict, Sequence
 import logging
 
 from data_diff.abcs.database_types import (
@@ -103,13 +103,16 @@ class Databricks(ThreadedDatabase):
     CONNECT_URI_HELP = "databricks://:<access_token>@<server_hostname>/<http_path>"
     CONNECT_URI_PARAMS = ["catalog", "schema"]
 
+    catalog: str
+    _args: Dict[str, Any]
+
     def __init__(self, *, thread_count, **kw):
         super().__init__(thread_count=thread_count)
         logging.getLogger("databricks.sql").setLevel(logging.WARNING)
 
         self._args = kw
         self.default_schema = kw.get("schema", "default")
-        self.catalog = self._args.get("catalog", "hive_metastore")
+        self.catalog = kw.get("catalog", "hive_metastore")
 
     def create_connection(self):
         databricks = import_databricks()

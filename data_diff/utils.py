@@ -4,7 +4,7 @@ import math
 import re
 import string
 from abc import abstractmethod
-from typing import Any, Dict, Iterable, Iterator, List, MutableMapping, Sequence, TypeVar, Union
+from typing import Any, Dict, Iterable, Iterator, List, MutableMapping, Optional, Sequence, TypeVar, Union
 from urllib.parse import urlparse
 import operator
 import threading
@@ -175,6 +175,9 @@ def alphanums_to_numbers(s1: str, s2: str):
 
 
 class ArithAlphanumeric(ArithString):
+    _str: str
+    _max_len: Optional[int]
+
     def __init__(self, s: str, max_len=None):
         super().__init__()
 

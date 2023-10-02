@@ -45,6 +45,11 @@ class ThreadedYielder(Iterable):
     Priority for the iterator can be provided via the keyword argument 'priority'. (higher runs first)
     """
 
+    _pool: ThreadPoolExecutor
+    _futures: deque
+    _yield: deque
+    _exception: Optional[None]
+
     def __init__(self, max_workers: Optional[int] = None):
         super().__init__()
         self._pool = PriorityThreadPoolExecutor(max_workers)

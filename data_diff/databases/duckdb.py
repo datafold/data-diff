@@ -1,4 +1,4 @@
-from typing import Union
+from typing import Any, Dict, Union
 
 from data_diff.utils import match_regexps
 from data_diff.abcs.database_types import (
@@ -134,14 +134,17 @@ class Dialect(
 class DuckDB(Database):
     dialect = Dialect()
     SUPPORTS_UNIQUE_CONSTAINT = False  # Temporary, until we implement it
-    default_schema = "main"
     CONNECT_URI_HELP = "duckdb://<dbname>@<filepath>"
     CONNECT_URI_PARAMS = ["database", "dbpath"]
+
+    _args: Dict[str, Any]
+    _conn: Any
 
     def __init__(self, **kw):
         super().__init__()
         self._args = kw
         self._conn = self.create_connection()
+        self.default_schema = "main"
 
     @property
     def is_autocommit(self) -> bool:

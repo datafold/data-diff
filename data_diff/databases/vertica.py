@@ -1,4 +1,4 @@
-from typing import List
+from typing import Any, Dict, List
 
 from data_diff.utils import match_regexps
 from data_diff.databases.base import (
@@ -156,12 +156,13 @@ class Vertica(ThreadedDatabase):
     CONNECT_URI_HELP = "vertica://<user>:<password>@<host>/<database>"
     CONNECT_URI_PARAMS = ["database?"]
 
-    default_schema = "public"
+    _args: Dict[str, Any]
 
     def __init__(self, *, thread_count, **kw):
         super().__init__(thread_count=thread_count)
         self._args = kw
         self._args["AUTOCOMMIT"] = False
+        self.default_schema = "public"
 
     def create_connection(self):
         vertica = import_vertica()
