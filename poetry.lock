@@ -37,7 +37,6 @@ files = [
 
 [package.dependencies]
 python-dateutil = ">=2.7.0"
-typing-extensions = {version = "*", markers = "python_version < \"3.8\""}
 
 [[package]]
 name = "asn1crypto"
@@ -60,9 +59,6 @@ files = [
     {file = "attrs-23.1.0-py3-none-any.whl", hash = "sha256:1f28b4522cdc2fb4256ac1a020c78acf9cba2c6b461ccd2c126f3aa8e8335d04"},
     {file = "attrs-23.1.0.tar.gz", hash = "sha256:6279836d581513a26f1bf235f9acd333bc9115683f14f7e8fae46c98fc50e015"},
 ]
-
-[package.dependencies]
-importlib-metadata = {version = "*", markers = "python_version < \"3.8\""}
 
 [package.extras]
 cov = ["attrs[tests]", "coverage[toml] (>=5.3)"]
@@ -227,7 +223,6 @@ files = [
 
 [package.dependencies]
 colorama = {version = "*", markers = "platform_system == \"Windows\""}
-importlib-metadata = {version = "*", markers = "python_version < \"3.8\""}
 
 [[package]]
 name = "clickhouse-driver"
@@ -493,10 +488,7 @@ logbook = ">=1.5,<1.6"
 MarkupSafe = ">=0.23,<2.1"
 mashumaro = "2.9"
 minimal-snowplow-tracker = "0.0.2"
-networkx = [
-    {version = ">=2.3,<2.8.1", markers = "python_version < \"3.8\""},
-    {version = ">=2.3,<3", markers = "python_version >= \"3.8\""},
-]
+networkx = {version = ">=2.3,<3", markers = "python_version >= \"3.8\""}
 packaging = ">=20.9,<22.0"
 pytz = ">=2015.7"
 requests = "<3.0.0"
@@ -658,7 +650,6 @@ files = [
 ]
 
 [package.dependencies]
-typing-extensions = {version = ">=3.6.4", markers = "python_version < \"3.8\""}
 zipp = ">=0.5"
 
 [package.extras]
@@ -1689,7 +1680,6 @@ files = [
 [package.dependencies]
 commonmark = ">=0.9.0,<0.10.0"
 pygments = ">=2.6.0,<3.0.0"
-typing-extensions = {version = ">=3.7.4,<5.0", markers = "python_version < \"3.8\""}
 
 [package.extras]
 jupyter = ["ipywidgets (>=7.5.1,<8.0.0)"]
@@ -1789,7 +1779,6 @@ charset-normalizer = ">=2,<4"
 cryptography = ">=3.1.0,<41.0.0"
 filelock = ">=3.5,<4"
 idna = ">=2.5,<4"
-importlib-metadata = {version = "*", markers = "python_version < \"3.8\""}
 oscrypto = "<2.0.0"
 packaging = "*"
 pycryptodomex = ">=3.2,<3.5.0 || >3.5.0,<4.0.0"
@@ -2029,5 +2018,5 @@ vertica = ["vertica-python"]
 
 [metadata]
 lock-version = "2.0"
-python-versions = "^3.7.2"
-content-hash = "c7da70c19432ca716980f3421182d54d7f5d2e0d8bbd7e20dbaf521c8ef7d0fb"
+python-versions = "^3.8.0"
+content-hash = "151a5693ddbec4d35d2ca1eec9be188dea0406618b4800df9149423eb9047ab4"
