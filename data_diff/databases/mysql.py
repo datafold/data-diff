@@ -1,3 +1,5 @@
+from typing import Any, Dict
+
 from data_diff.abcs.database_types import (
     Datetime,
     Timestamp,
@@ -136,6 +138,8 @@ class MySQL(ThreadedDatabase):
     SUPPORTS_UNIQUE_CONSTAINT = True
     CONNECT_URI_HELP = "mysql://<user>:<password>@<host>/<database>"
     CONNECT_URI_PARAMS = ["database?"]
+
+    _args: Dict[str, Any]
 
     def __init__(self, *, thread_count, **kw):
         super().__init__(thread_count=thread_count)

@@ -223,6 +223,10 @@ class BigQuery(Database):
     CONNECT_URI_PARAMS = ["dataset"]
     dialect = Dialect()
 
+    project: str
+    dataset: str
+    _client: Any
+
     def __init__(self, project, *, dataset, bigquery_credentials=None, **kw):
         super().__init__()
         credentials = bigquery_credentials

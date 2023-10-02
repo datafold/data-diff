@@ -1,4 +1,4 @@
-from typing import Dict, List, Optional
+from typing import Any, Dict, List, Optional
 
 from data_diff.utils import match_regexps
 from data_diff.abcs.database_types import (
@@ -180,6 +180,8 @@ class Oracle(ThreadedDatabase):
     dialect = Dialect()
     CONNECT_URI_HELP = "oracle://<user>:<password>@<host>/<database>"
     CONNECT_URI_PARAMS = ["database?"]
+
+    kwargs: Dict[str, Any]
 
     def __init__(self, *, host, database, thread_count, **kw):
         super().__init__(thread_count=thread_count)

@@ -1,5 +1,6 @@
-from typing import List
+from typing import Any, ClassVar, Dict, List, Type
 from data_diff.abcs.database_types import (
+    ColType,
     DbPath,
     JSON,
     Timestamp,
@@ -68,7 +69,7 @@ class PostgresqlDialect(
     SUPPORTS_PRIMARY_KEY = True
     SUPPORTS_INDEXES = True
 
-    TYPE_CLASSES = {
+    TYPE_CLASSES: ClassVar[Dict[str, Type[ColType]]] = {
         # Timestamps
         "timestamp with time zone": TimestampTZ,
         "timestamp without time zone": Timestamp,
@@ -125,11 +126,12 @@ class PostgreSQL(ThreadedDatabase):
     CONNECT_URI_HELP = "postgresql://<user>:<password>@<host>/<database>"
     CONNECT_URI_PARAMS = ["database?"]
 
-    default_schema = "public"
+    _args: Dict[str, Any]
 
     def __init__(self, *, thread_count, **kw):
         super().__init__(thread_count=thread_count)
         self._args = kw
+        self.default_schema = "public"
 
     def create_connection(self):
         if not self._args:

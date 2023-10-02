@@ -1,5 +1,6 @@
 from functools import partial
 import re
+from typing import Any
 
 from data_diff.utils import match_regexps
 
@@ -158,10 +159,11 @@ class Presto(Database):
     CONNECT_URI_HELP = "presto://<user>@<host>/<catalog>/<schema>"
     CONNECT_URI_PARAMS = ["catalog", "schema"]
 
-    default_schema = "public"
+    _conn: Any
 
     def __init__(self, **kw):
         super().__init__()
+        self.default_schema = "public"
         prestodb = import_presto()
 
         if kw.get("schema"):

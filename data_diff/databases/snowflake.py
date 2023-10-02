@@ -1,4 +1,4 @@
-from typing import Union, List
+from typing import Any, Union, List
 import logging
 
 from data_diff.abcs.database_types import (
@@ -153,6 +153,8 @@ class Snowflake(Database):
     CONNECT_URI_HELP = "snowflake://<user>:<password>@<account>/<database>/<SCHEMA>?warehouse=<WAREHOUSE>"
     CONNECT_URI_PARAMS = ["database", "schema"]
     CONNECT_URI_KWPARAMS = ["warehouse"]
+
+    _conn: Any
 
     def __init__(self, *, schema: str, **kw):
         super().__init__()
