@@ -147,10 +147,10 @@ class PostgreSQL(ThreadedDatabase):
 
         pg = import_postgresql()
         try:
-            c = pg.connect(**self._args)
+            self._conn = pg.connect(**self._args)
             if SESSION_TIME_ZONE:
-                c.cursor().execute(f"SET TIME ZONE '{SESSION_TIME_ZONE}'")
-            return c
+                self._conn.cursor().execute(f"SET TIME ZONE '{SESSION_TIME_ZONE}'")
+            return self._conn
         except pg.OperationalError as e:
             raise ConnectError(*e.args) from e
 

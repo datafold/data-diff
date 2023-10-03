@@ -11,12 +11,17 @@ from tests.test_diff_tables import test_each_database
 
 def run_datadiff_cli(*args):
     try:
-        stdout = subprocess.check_output(
-            [sys.executable, "-m", "data_diff", "--no-tracking"] + list(args), stderr=subprocess.PIPE
+        p = subprocess.Popen(
+            [sys.executable, "-m", "data_diff", "--no-tracking"] + list(args),
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE,
         )
+        stdout, stderr = p.communicate()
     except subprocess.CalledProcessError as e:
         logging.error(e.stderr)
         raise
+    if stderr:
+        raise Exception(stderr)
     return stdout.splitlines()
 
 
@@ -48,6 +53,7 @@ class TestCLI(DiffTestCase):
     def test_basic(self):
         conn_str = CONN_STRINGS[self.db_cls]
         diff = run_datadiff_cli(conn_str, self.table_src_name, conn_str, self.table_dst_name)
+
         assert len(diff) == 1
 
     def test_options(self):

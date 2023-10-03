@@ -327,8 +327,7 @@ def main(conf, run, **kw):
             )
     except Exception as e:
         logging.error(e)
-        if kw["debug"]:
-            raise
+        raise
 
 
 def _data_diff(
