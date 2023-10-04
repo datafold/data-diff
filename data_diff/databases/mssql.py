@@ -173,6 +173,7 @@ class MsSQL(ThreadedDatabase):
 
     default_database: str
     _args: Dict[str, Any]
+    _mssql: Any
 
     def __init__(self, host, port, user, password, *, database, thread_count, **kw):
         args = dict(server=host, port=port, database=database, user=user, password=password, **kw)
@@ -188,6 +189,7 @@ class MsSQL(ThreadedDatabase):
         except KeyError:
             raise ValueError("Specify a default database and schema.")
 
+        self._mssql = None
         super().__init__(thread_count=thread_count)
 
     def create_connection(self):
