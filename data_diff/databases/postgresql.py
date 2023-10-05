@@ -147,7 +147,9 @@ class PostgreSQL(ThreadedDatabase):
 
         pg = import_postgresql()
         try:
-            self._conn = pg.connect(**self._args)
+            self._conn = pg.connect(
+                **self._args, keepalives=1, keepalives_idle=5, keepalives_interval=2, keepalives_count=2
+            )
             if SESSION_TIME_ZONE:
                 self._conn.cursor().execute(f"SET TIME ZONE '{SESSION_TIME_ZONE}'")
             return self._conn
