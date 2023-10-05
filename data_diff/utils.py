@@ -177,7 +177,7 @@ def alphanums_to_numbers(s1: str, s2: str):
     return n1, n2
 
 
-@attrs.define(frozen=True)
+@attrs.define(frozen=True, eq=False, order=False, repr=False)
 class ArithAlphanumeric(ArithString):
     _str: str
     _max_len: Optional[int] = None

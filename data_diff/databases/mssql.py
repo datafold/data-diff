@@ -173,8 +173,11 @@ class MsSQL(ThreadedDatabase):
 
     default_database: str
     _args: Dict[str, Any]
+    _mssql: Any
 
     def __init__(self, host, port, user, password, *, database, thread_count, **kw):
+        super().__init__(thread_count=thread_count)
+
         args = dict(server=host, port=port, database=database, user=user, password=password, **kw)
         self._args = {k: v for k, v in args.items() if v is not None}
         self._args["driver"] = "{ODBC Driver 18 for SQL Server}"
@@ -188,7 +191,7 @@ class MsSQL(ThreadedDatabase):
         except KeyError:
             raise ValueError("Specify a default database and schema.")
 
-        super().__init__(thread_count=thread_count)
+        self._mssql = None
 
     def create_connection(self):
         self._mssql = import_mssql()
