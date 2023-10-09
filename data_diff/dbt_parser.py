@@ -376,8 +376,8 @@ class DbtParser:
 
             conn_info = {
                 "driver": conn_type,
-                "project": credentials.get("project"),
-                "dataset": credentials.get("dataset"),
+                "project": credentials.get("project") or credentials.get("database"),
+                "dataset": credentials.get("dataset") or credentials.get("schema"),
             }
 
             self.threads = credentials.get("threads")
@@ -402,13 +402,13 @@ class DbtParser:
                 "user": credentials.get("user"),
                 "password": credentials.get("password") or credentials.get("pass"),
                 "port": credentials.get("port"),
-                "dbname": credentials.get("dbname"),
+                "dbname": credentials.get("dbname") or credentials.get("database"),
             }
             self.threads = credentials.get("threads")
         elif conn_type == "databricks":
             conn_info = {
                 "driver": conn_type,
-                "catalog": credentials.get("catalog"),
+                "catalog": credentials.get("catalog") or credentials.get("database"),
                 "server_hostname": credentials.get("host"),
                 "http_path": credentials.get("http_path"),
                 "schema": credentials.get("schema"),
@@ -420,7 +420,7 @@ class DbtParser:
                 "driver": "postgresql",
                 "host": credentials.get("host"),
                 "user": credentials.get("user"),
-                "password": credentials.get("password"),
+                "password": credentials.get("password") or credentials.get("pass"),
                 "port": credentials.get("port"),
                 "dbname": credentials.get("dbname") or credentials.get("database"),
             }
