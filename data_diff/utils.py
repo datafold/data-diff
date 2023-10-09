@@ -270,6 +270,9 @@ def remove_passwords_in_dict(d: dict, replace_with: str = "***"):
     for k, v in d.items():
         if k == "password":
             d[k] = replace_with
+        elif k == "filepath":
+            if "motherduck_token=" in v:
+                d[k] = v.split("motherduck_token=")[0] + f"motherduck_token={replace_with}"
         elif isinstance(v, dict):
             remove_passwords_in_dict(v, replace_with)
         elif k.startswith("database"):
@@ -284,14 +287,18 @@ def _join_if_any(sym, args):
 
 
 def remove_password_from_url(url: str, replace_with: str = "***") -> str:
-    parsed = urlparse(url)
-    account = parsed.username or ""
-    if parsed.password:
-        account += ":" + replace_with
-    host = _join_if_any(":", filter(None, [parsed.hostname, parsed.port]))
-    netloc = _join_if_any("@", filter(None, [account, host]))
-    replaced = parsed._replace(netloc=netloc)
-    return replaced.geturl()
+    if "motherduck_token=" in url:
+        replace_token_url = url.split("motherduck_token=")[0] + f"motherduck_token={replace_with}"
+        return replace_token_url
+    else:
+        parsed = urlparse(url)
+        account = parsed.username or ""
+        if parsed.password:
+            account += ":" + replace_with
+        host = _join_if_any(":", filter(None, [parsed.hostname, parsed.port]))
+        netloc = _join_if_any("@", filter(None, [account, host]))
+        replaced = parsed._replace(netloc=netloc)
+        return replaced.geturl()
 
 
 def match_like(pattern: str, strs: Sequence[str]) -> Iterable[str]:
