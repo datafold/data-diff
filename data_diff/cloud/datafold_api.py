@@ -178,9 +178,10 @@ class TCloudApiDataSourceTestResult(pydantic.BaseModel):
     result: Optional[TCloudDataSourceTestResult]
 
 
-@attrs.define(frozen=True)
+@attrs.define(frozen=False)
 class DatafoldAPI:
     api_key: str
+    headers: str = ""
     host: str = "https://app.datafold.com"
     timeout: int = 30
 
