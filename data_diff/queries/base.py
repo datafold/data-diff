@@ -1,6 +1,9 @@
 from typing import Generator
 
+import attrs
 
+
+@attrs.define(frozen=True)
 class _SKIP:
     def __repr__(self):
         return "SKIP"

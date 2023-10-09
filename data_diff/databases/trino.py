@@ -1,3 +1,7 @@
+from typing import Any
+
+import attrs
+
 from data_diff.abcs.mixins import AbstractMixin_MD5, AbstractMixin_NormalizeValue
 from data_diff.abcs.database_types import TemporalType, ColType_UUID
 from data_diff.databases import presto
@@ -15,6 +19,7 @@ def import_trino():
 Mixin_MD5 = presto.Mixin_MD5
 
 
+@attrs.define(frozen=False)
 class Mixin_NormalizeValue(presto.Mixin_NormalizeValue):
     def normalize_timestamp(self, value: str, coltype: TemporalType) -> str:
         if coltype.rounds:
@@ -34,12 +39,16 @@ class Dialect(presto.Dialect, Mixin_MD5, Mixin_NormalizeValue, AbstractMixin_MD5
     name = "Trino"
 
 
+@attrs.define(frozen=False, init=False, kw_only=True)
 class Trino(presto.Presto):
     dialect = Dialect()
     CONNECT_URI_HELP = "trino://<user>@<host>/<catalog>/<schema>"
     CONNECT_URI_PARAMS = ["catalog", "schema"]
 
+    _conn: Any
+
     def __init__(self, **kw):
+        super().__init__()
         trino = import_trino()
 
         if kw.get("schema"):

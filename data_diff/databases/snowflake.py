@@ -1,5 +1,7 @@
-from typing import Union, List
+from typing import Any, Union, List
 import logging
+
+import attrs
 
 from data_diff.abcs.database_types import (
     Timestamp,
@@ -41,11 +43,13 @@ def import_snowflake():
     return snowflake, serialization, default_backend
 
 
+@attrs.define(frozen=False)
 class Mixin_MD5(AbstractMixin_MD5):
     def md5_as_int(self, s: str) -> str:
         return f"BITAND(md5_number_lower64({s}), {CHECKSUM_MASK})"
 
 
+@attrs.define(frozen=False)
 class Mixin_NormalizeValue(AbstractMixin_NormalizeValue):
     def normalize_timestamp(self, value: str, coltype: TemporalType) -> str:
         if coltype.rounds:
@@ -62,6 +66,7 @@ class Mixin_NormalizeValue(AbstractMixin_NormalizeValue):
         return self.to_string(f"{value}::int")
 
 
+@attrs.define(frozen=False)
 class Mixin_Schema(AbstractMixin_Schema):
     def table_information(self) -> Compilable:
         return table("INFORMATION_SCHEMA", "TABLES")
@@ -104,7 +109,9 @@ class Mixin_TimeTravel(AbstractMixin_TimeTravel):
         return code(f"{{table}} {at_or_before}({key} => {{value}})", table=table, value=value)
 
 
-class Dialect(BaseDialect, Mixin_Schema, Mixin_MD5, Mixin_NormalizeValue, AbstractMixin_MD5, AbstractMixin_NormalizeValue):
+class Dialect(
+    BaseDialect, Mixin_Schema, Mixin_MD5, Mixin_NormalizeValue, AbstractMixin_MD5, AbstractMixin_NormalizeValue
+):
     name = "Snowflake"
     ROUNDS_ON_PREC_LOSS = False
     TYPE_CLASSES = {
@@ -121,7 +128,6 @@ class Dialect(BaseDialect, Mixin_Schema, Mixin_MD5, Mixin_NormalizeValue, Abstra
         # Boolean
         "BOOLEAN": Boolean,
     }
-    MIXINS = {Mixin_Schema, Mixin_MD5, Mixin_NormalizeValue, Mixin_TimeTravel, Mixin_RandomSample}
 
     def explain_as_text(self, query: str) -> str:
         return f"EXPLAIN USING TEXT {query}"
@@ -147,13 +153,17 @@ class Dialect(BaseDialect, Mixin_Schema, Mixin_MD5, Mixin_NormalizeValue, Abstra
         return super().type_repr(t)
 
 
+@attrs.define(frozen=False, init=False, kw_only=True)
 class Snowflake(Database):
     dialect = Dialect()
     CONNECT_URI_HELP = "snowflake://<user>:<password>@<account>/<database>/<SCHEMA>?warehouse=<WAREHOUSE>"
     CONNECT_URI_PARAMS = ["database", "schema"]
     CONNECT_URI_KWPARAMS = ["warehouse"]
 
+    _conn: Any
+
     def __init__(self, *, schema: str, **kw):
+        super().__init__()
         snowflake, serialization, default_backend = import_snowflake()
         logging.getLogger("snowflake.connector").setLevel(logging.WARNING)
 

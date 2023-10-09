@@ -1,4 +1,6 @@
-from typing import Dict, List, Optional
+from typing import Any, Dict, List, Optional
+
+import attrs
 
 from data_diff.utils import match_regexps
 from data_diff.abcs.database_types import (
@@ -38,6 +40,7 @@ def import_oracle():
     return oracledb
 
 
+@attrs.define(frozen=False)
 class Mixin_MD5(AbstractMixin_MD5):
     def md5_as_int(self, s: str) -> str:
         # standard_hash is faster than DBMS_CRYPTO.Hash
@@ -45,6 +48,7 @@ class Mixin_MD5(AbstractMixin_MD5):
         return f"to_number(substr(standard_hash({s}, 'MD5'), 18), 'xxxxxxxxxxxxxxx')"
 
 
+@attrs.define(frozen=False)
 class Mixin_NormalizeValue(AbstractMixin_NormalizeValue):
     def normalize_uuid(self, value: str, coltype: ColType_UUID) -> str:
         # Cast is necessary for correct MD5 (trimming not enough)
@@ -68,6 +72,7 @@ class Mixin_NormalizeValue(AbstractMixin_NormalizeValue):
         return f"to_char({value}, '{format_str}')"
 
 
+@attrs.define(frozen=False)
 class Mixin_Schema(AbstractMixin_Schema):
     def list_tables(self, table_schema: str, like: Compilable = None) -> Compilable:
         return (
@@ -80,7 +85,16 @@ class Mixin_Schema(AbstractMixin_Schema):
         )
 
 
-class Dialect(BaseDialect, Mixin_Schema, Mixin_OptimizerHints, Mixin_MD5, Mixin_NormalizeValue, AbstractMixin_MD5, AbstractMixin_NormalizeValue):
+@attrs.define(frozen=False)
+class Dialect(
+    BaseDialect,
+    Mixin_Schema,
+    Mixin_OptimizerHints,
+    Mixin_MD5,
+    Mixin_NormalizeValue,
+    AbstractMixin_MD5,
+    AbstractMixin_NormalizeValue,
+):
     name = "Oracle"
     SUPPORTS_PRIMARY_KEY = True
     SUPPORTS_INDEXES = True
@@ -96,7 +110,6 @@ class Dialect(BaseDialect, Mixin_Schema, Mixin_OptimizerHints, Mixin_MD5, Mixin_
     }
     ROUNDS_ON_PREC_LOSS = True
     PLACEHOLDER_TABLE = "DUAL"
-    MIXINS = {Mixin_Schema, Mixin_MD5, Mixin_NormalizeValue, Mixin_RandomSample}
 
     def quote(self, s: str):
         return f'"{s}"'
@@ -169,17 +182,20 @@ class Dialect(BaseDialect, Mixin_Schema, Mixin_OptimizerHints, Mixin_MD5, Mixin_
         return "LOCALTIMESTAMP"
 
 
+@attrs.define(frozen=False, init=False, kw_only=True)
 class Oracle(ThreadedDatabase):
     dialect = Dialect()
     CONNECT_URI_HELP = "oracle://<user>:<password>@<host>/<database>"
     CONNECT_URI_PARAMS = ["database?"]
 
+    kwargs: Dict[str, Any]
+    _oracle: Any
+
     def __init__(self, *, host, database, thread_count, **kw):
-        self.kwargs = dict(dsn=f"{host}/{database}" if database else host, **kw)
-
-        self.default_schema = kw.get("user").upper()
-
         super().__init__(thread_count=thread_count)
+        self.kwargs = dict(dsn=f"{host}/{database}" if database else host, **kw)
+        self.default_schema = kw.get("user").upper()
+        self._oracle = None
 
     def create_connection(self):
         self._oracle = import_oracle()

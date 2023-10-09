@@ -1,4 +1,7 @@
 from abc import ABC, abstractmethod
+
+import attrs
+
 from data_diff.abcs.database_types import (
     Array,
     TemporalType,
@@ -13,10 +16,12 @@ from data_diff.abcs.database_types import (
 from data_diff.abcs.compiler import Compilable
 
 
+@attrs.define(frozen=False)
 class AbstractMixin(ABC):
     "A mixin for a database dialect"
 
 
+@attrs.define(frozen=False)
 class AbstractMixin_NormalizeValue(AbstractMixin):
     @abstractmethod
     def to_comparable(self, value: str, coltype: ColType) -> str:
@@ -108,6 +113,7 @@ class AbstractMixin_NormalizeValue(AbstractMixin):
         return self.to_string(value)
 
 
+@attrs.define(frozen=False)
 class AbstractMixin_MD5(AbstractMixin):
     """Methods for calculating an MD6 hash as an integer."""
 
@@ -116,6 +122,7 @@ class AbstractMixin_MD5(AbstractMixin):
         "Provide SQL for computing md5 and returning an int"
 
 
+@attrs.define(frozen=False)
 class AbstractMixin_Schema(AbstractMixin):
     """Methods for querying the database schema
 
@@ -134,6 +141,7 @@ class AbstractMixin_Schema(AbstractMixin):
         """
 
 
+@attrs.define(frozen=False)
 class AbstractMixin_RandomSample(AbstractMixin):
     @abstractmethod
     def random_sample_n(self, tbl: str, size: int) -> str:
@@ -151,6 +159,7 @@ class AbstractMixin_RandomSample(AbstractMixin):
     #     """
 
 
+@attrs.define(frozen=False)
 class AbstractMixin_TimeTravel(AbstractMixin):
     @abstractmethod
     def time_travel(
@@ -173,6 +182,7 @@ class AbstractMixin_TimeTravel(AbstractMixin):
         """
 
 
+@attrs.define(frozen=False)
 class AbstractMixin_OptimizerHints(AbstractMixin):
     @abstractmethod
     def optimizer_hints(self, optimizer_hints: str) -> str:

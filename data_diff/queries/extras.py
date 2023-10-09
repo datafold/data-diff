@@ -1,25 +1,28 @@
 "Useful AST classes that don't quite fall within the scope of regular SQL"
-from typing import Callable, Sequence
-from runtype import dataclass
+from typing import Callable, Optional, Sequence
+
+import attrs
 
 from data_diff.abcs.database_types import ColType
-
 from data_diff.queries.ast_classes import Expr, ExprNode
 
 
-@dataclass
+@attrs.define(frozen=True)
 class NormalizeAsString(ExprNode):
     expr: ExprNode
-    expr_type: ColType = None
-    type = str
+    expr_type: Optional[ColType] = None
+
+    @property
+    def type(self) -> Optional[type]:
+        return str
 
 
-@dataclass
+@attrs.define(frozen=True)
 class ApplyFuncAndNormalizeAsString(ExprNode):
     expr: ExprNode
-    apply_func: Callable = None
+    apply_func: Optional[Callable] = None
 
 
-@dataclass
+@attrs.define(frozen=True)
 class Checksum(ExprNode):
     exprs: Sequence[Expr]

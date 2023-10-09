@@ -327,8 +327,7 @@ def main(conf, run, **kw):
             )
     except Exception as e:
         logging.error(e)
-        if kw["debug"]:
-            raise
+        raise
 
 
 def _data_diff(
@@ -461,7 +460,7 @@ def _data_diff(
 
     schemas = list(differ._thread_map(_get_schema, safezip(dbs, table_paths)))
     schema1, schema2 = schemas = [
-        create_schema(db, table_path, schema, case_sensitive)
+        create_schema(db.name, table_path, schema, case_sensitive)
         for db, table_path, schema in safezip(dbs, table_paths, schemas)
     ]
 

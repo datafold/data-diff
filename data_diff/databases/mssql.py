@@ -1,4 +1,7 @@
-from typing import Optional
+from typing import Any, Dict, Optional
+
+import attrs
+
 from data_diff.abcs.mixins import AbstractMixin_MD5, AbstractMixin_NormalizeValue
 from data_diff.databases.base import (
     CHECKSUM_HEXDIGITS,
@@ -34,6 +37,7 @@ def import_mssql():
     return pyodbc
 
 
+@attrs.define(frozen=False)
 class Mixin_NormalizeValue(AbstractMixin_NormalizeValue):
     def normalize_timestamp(self, value: str, coltype: TemporalType) -> str:
         if coltype.precision > 0:
@@ -53,12 +57,22 @@ class Mixin_NormalizeValue(AbstractMixin_NormalizeValue):
         return f"FORMAT({value}, 'N{coltype.precision}')"
 
 
+@attrs.define(frozen=False)
 class Mixin_MD5(AbstractMixin_MD5):
     def md5_as_int(self, s: str) -> str:
         return f"convert(bigint, convert(varbinary, '0x' + RIGHT(CONVERT(NVARCHAR(32), HashBytes('MD5', {s}), 2), {CHECKSUM_HEXDIGITS}), 1))"
 
 
-class Dialect(BaseDialect, Mixin_Schema, Mixin_OptimizerHints, Mixin_MD5, Mixin_NormalizeValue, AbstractMixin_MD5, AbstractMixin_NormalizeValue):
+@attrs.define(frozen=False)
+class Dialect(
+    BaseDialect,
+    Mixin_Schema,
+    Mixin_OptimizerHints,
+    Mixin_MD5,
+    Mixin_NormalizeValue,
+    AbstractMixin_MD5,
+    AbstractMixin_NormalizeValue,
+):
     name = "MsSQL"
     ROUNDS_ON_PREC_LOSS = True
     SUPPORTS_PRIMARY_KEY = True
@@ -90,6 +104,7 @@ class Dialect(BaseDialect, Mixin_Schema, Mixin_OptimizerHints, Mixin_MD5, Mixin_
         "nchar": Text,
         "binary": Text,
         "varbinary": Text,
+        "xml": Text,
         # UUID
         "uniqueidentifier": Native_UUID,
         # Bool
@@ -97,8 +112,6 @@ class Dialect(BaseDialect, Mixin_Schema, Mixin_OptimizerHints, Mixin_MD5, Mixin_
         # JSON
         "json": JSON,
     }
-
-    MIXINS = {Mixin_Schema, Mixin_NormalizeValue, Mixin_RandomSample}
 
     def quote(self, s: str):
         return f"[{s}]"
@@ -152,13 +165,19 @@ class Dialect(BaseDialect, Mixin_Schema, Mixin_OptimizerHints, Mixin_MD5, Mixin_
         return f"VALUES {values}"
 
 
+@attrs.define(frozen=False, init=False, kw_only=True)
 class MsSQL(ThreadedDatabase):
     dialect = Dialect()
-    #
     CONNECT_URI_HELP = "mssql://<user>:<password>@<host>/<database>/<schema>"
     CONNECT_URI_PARAMS = ["database", "schema"]
 
+    default_database: str
+    _args: Dict[str, Any]
+    _mssql: Any
+
     def __init__(self, host, port, user, password, *, database, thread_count, **kw):
+        super().__init__(thread_count=thread_count)
+
         args = dict(server=host, port=port, database=database, user=user, password=password, **kw)
         self._args = {k: v for k, v in args.items() if v is not None}
         self._args["driver"] = "{ODBC Driver 18 for SQL Server}"
@@ -172,7 +191,7 @@ class MsSQL(ThreadedDatabase):
         except KeyError:
             raise ValueError("Specify a default database and schema.")
 
-        super().__init__(thread_count=thread_count)
+        self._mssql = None
 
     def create_connection(self):
         self._mssql = import_mssql()

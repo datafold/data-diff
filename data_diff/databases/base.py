@@ -1,11 +1,11 @@
 import abc
 import functools
-from dataclasses import field
+import random
 from datetime import datetime
 import math
 import sys
 import logging
-from typing import Any, Callable, Dict, Generator, Tuple, Optional, Sequence, Type, List, Union, TypeVar
+from typing import Any, Callable, ClassVar, Dict, Generator, Tuple, Optional, Sequence, Type, List, Union, TypeVar
 from functools import partial, wraps
 from concurrent.futures import ThreadPoolExecutor
 import threading
@@ -14,23 +14,46 @@ from uuid import UUID
 import decimal
 import contextvars
 
-from runtype import dataclass
+import attrs
 from typing_extensions import Self
 
 from data_diff.abcs.compiler import AbstractCompiler
 from data_diff.queries.extras import ApplyFuncAndNormalizeAsString, Checksum, NormalizeAsString
 from data_diff.utils import ArithString, is_uuid, join_iter, safezip
 from data_diff.queries.api import Expr, table, Select, SKIP, Explain, Code, this
-from data_diff.queries.ast_classes import Alias, BinOp, CaseWhen, Cast, Column, Commit, Concat, ConstantTable, Count, \
-    CreateTable, Cte, \
-    CurrentTimestamp, DropTable, Func, \
-    GroupBy, \
-    ITable, In, InsertToTable, IsDistinctFrom, \
-    Join, \
-    Param, \
-    Random, \
-    Root, TableAlias, TableOp, TablePath, \
-    TimeTravel, TruncateTable, UnaryOp, WhenThen, _ResolveColumn
+from data_diff.queries.ast_classes import (
+    Alias,
+    BinOp,
+    CaseWhen,
+    Cast,
+    Column,
+    Commit,
+    Concat,
+    ConstantTable,
+    Count,
+    CreateTable,
+    Cte,
+    CurrentTimestamp,
+    DropTable,
+    Func,
+    GroupBy,
+    ITable,
+    In,
+    InsertToTable,
+    IsDistinctFrom,
+    Join,
+    Param,
+    Random,
+    Root,
+    TableAlias,
+    TableOp,
+    TablePath,
+    TimeTravel,
+    TruncateTable,
+    UnaryOp,
+    WhenThen,
+    _ResolveColumn,
+)
 from data_diff.abcs.database_types import (
     Array,
     Struct,
@@ -67,18 +90,7 @@ class CompileError(Exception):
     pass
 
 
-# TODO: LATER: Resolve the circular imports of databases-compiler-dialects:
-#   A database uses a compiler to render the SQL query.
-#   The compiler delegates to a dialect.
-#   The dialect renders the SQL.
-#   AS IS: The dialect requires the db to normalize table paths — leading to the back-dependency.
-#   TO BE: All the tables paths must be pre-normalized before SQL rendering.
-#   Also: c.database.is_autocommit in render_commit().
-#   After this, the Compiler can cease referring Database/Dialect at all,
-#   and be used only as a CompilingContext (a counter/data-bearing class).
-#   As a result, it becomes low-level util, and the circular dependency auto-resolves.
-#   Meanwhile, the easy fix is to simply move the Compiler here.
-@dataclass
+@attrs.define(frozen=True)
 class Compiler(AbstractCompiler):
     """
     Compiler bears the context for a single compilation.
@@ -95,14 +107,14 @@ class Compiler(AbstractCompiler):
     in_select: bool = False  # Compilation runtime flag
     in_join: bool = False  # Compilation runtime flag
 
-    _table_context: List = field(default_factory=list)  # List[ITable]
-    _subqueries: Dict[str, Any] = field(default_factory=dict)  # XXX not thread-safe
+    _table_context: List = attrs.field(factory=list)  # List[ITable]
+    _subqueries: Dict[str, Any] = attrs.field(factory=dict)  # XXX not thread-safe
     root: bool = True
 
-    _counter: List = field(default_factory=lambda: [0])
+    _counter: List = attrs.field(factory=lambda: [0])
 
     @property
-    def dialect(self) -> "Dialect":
+    def dialect(self) -> "BaseDialect":
         return self.database.dialect
 
     # TODO: DEPRECATED: Remove once the dialect is used directly in all places.
@@ -119,7 +131,7 @@ class Compiler(AbstractCompiler):
         return self.database.dialect.parse_table_name(table_name)
 
     def add_table_context(self, *tables: Sequence, **kw) -> Self:
-        return self.replace(_table_context=self._table_context + list(tables), **kw)
+        return attrs.evolve(self, table_context=self._table_context + list(tables), **kw)
 
 
 def parse_table_name(t):
@@ -156,15 +168,15 @@ def _one(seq):
     return x
 
 
+@attrs.define(frozen=False)
 class ThreadLocalInterpreter:
     """An interpeter used to execute a sequence of queries within the same thread and cursor.
 
     Useful for cursor-sensitive operations, such as creating a temporary table.
     """
 
-    def __init__(self, compiler: Compiler, gen: Generator):
-        self.gen = gen
-        self.compiler = compiler
+    compiler: Compiler
+    gen: Generator
 
     def apply_queries(self, callback: Callable[[str], Any]):
         q: Expr = next(self.gen)
@@ -189,6 +201,7 @@ def apply_query(callback: Callable[[str], Any], sql_code: Union[str, ThreadLocal
         return callback(sql_code)
 
 
+@attrs.define(frozen=False)
 class Mixin_Schema(AbstractMixin_Schema):
     def table_information(self) -> Compilable:
         return table("information_schema", "tables")
@@ -205,6 +218,7 @@ class Mixin_Schema(AbstractMixin_Schema):
         )
 
 
+@attrs.define(frozen=False)
 class Mixin_RandomSample(AbstractMixin_RandomSample):
     def random_sample_n(self, tbl: ITable, size: int) -> ITable:
         # TODO use a more efficient algorithm, when the table count is known
@@ -214,16 +228,17 @@ class Mixin_RandomSample(AbstractMixin_RandomSample):
         return tbl.where(Random() < ratio)
 
 
+@attrs.define(frozen=False)
 class Mixin_OptimizerHints(AbstractMixin_OptimizerHints):
     def optimizer_hints(self, hints: str) -> str:
         return f"/*+ {hints} */ "
 
 
+@attrs.define(frozen=False)
 class BaseDialect(abc.ABC):
-    SUPPORTS_PRIMARY_KEY = False
-    SUPPORTS_INDEXES = False
-    TYPE_CLASSES: Dict[str, type] = {}
-    MIXINS = frozenset()
+    SUPPORTS_PRIMARY_KEY: ClassVar[bool] = False
+    SUPPORTS_INDEXES: ClassVar[bool] = False
+    TYPE_CLASSES: ClassVar[Dict[str, Type[ColType]]] = {}
 
     PLACEHOLDER_TABLE = None  # Used for Oracle
 
@@ -251,7 +266,7 @@ class BaseDialect(abc.ABC):
         if elem is None:
             return "NULL"
         elif isinstance(elem, Compilable):
-            return self.render_compilable(compiler.replace(root=False), elem)
+            return self.render_compilable(attrs.evolve(compiler, root=False), elem)
         elif isinstance(elem, str):
             return f"'{elem}'"
         elif isinstance(elem, (int, float)):
@@ -361,7 +376,7 @@ class BaseDialect(abc.ABC):
         return self.quote(elem.name)
 
     def render_cte(self, parent_c: Compiler, elem: Cte) -> str:
-        c: Compiler = parent_c.replace(_table_context=[], in_select=False)
+        c: Compiler = attrs.evolve(parent_c, table_context=[], in_select=False)
         compiled = self.compile(c, elem.source_table)
 
         name = elem.name or parent_c.new_unique_name()
@@ -414,7 +429,9 @@ class BaseDialect(abc.ABC):
 
     def render_concat(self, c: Compiler, elem: Concat) -> str:
         # We coalesce because on some DBs (e.g. MySQL) concat('a', NULL) is NULL
-        items = [f"coalesce({self.compile(c, Code(self.to_string(self.compile(c, expr))))}, '<null>')" for expr in elem.exprs]
+        items = [
+            f"coalesce({self.compile(c, Code(self.to_string(self.compile(c, expr))))}, '<null>')" for expr in elem.exprs
+        ]
         assert items
         if len(items) == 1:
             return items[0]
@@ -472,7 +489,7 @@ class BaseDialect(abc.ABC):
         return f"{self.compile(c, elem.source_table)} {self.quote(elem.name)}"
 
     def render_tableop(self, parent_c: Compiler, elem: TableOp) -> str:
-        c: Compiler = parent_c.replace(in_select=False)
+        c: Compiler = attrs.evolve(parent_c, in_select=False)
         table_expr = f"{self.compile(c, elem.table1)} {elem.op} {self.compile(c, elem.table2)}"
         if parent_c.in_select:
             table_expr = f"({table_expr}) {c.new_unique_name()}"
@@ -484,7 +501,7 @@ class BaseDialect(abc.ABC):
         return self.compile(c, elem._get_resolved())
 
     def render_select(self, parent_c: Compiler, elem: Select) -> str:
-        c: Compiler = parent_c.replace(in_select=True)  # .add_table_context(self.table)
+        c: Compiler = attrs.evolve(parent_c, in_select=True)  # .add_table_context(self.table)
         compile_fn = functools.partial(self.compile, c)
 
         columns = ", ".join(map(compile_fn, elem.columns)) if elem.columns else "*"
@@ -522,7 +539,8 @@ class BaseDialect(abc.ABC):
 
     def render_join(self, parent_c: Compiler, elem: Join) -> str:
         tables = [
-            t if isinstance(t, TableAlias) else TableAlias(t, parent_c.new_unique_name()) for t in elem.source_tables
+            t if isinstance(t, TableAlias) else TableAlias(t, name=parent_c.new_unique_name())
+            for t in elem.source_tables
         ]
         c = parent_c.add_table_context(*tables, in_join=True, in_select=False)
         op = " JOIN " if elem.op is None else f" {elem.op} JOIN "
@@ -555,11 +573,12 @@ class BaseDialect(abc.ABC):
         if isinstance(elem.table, Select) and elem.table.columns is None and elem.table.group_by_exprs is None:
             return self.compile(
                 c,
-                elem.table.replace(
+                attrs.evolve(
+                    elem.table,
                     columns=columns,
                     group_by_exprs=[Code(k) for k in keys],
                     having_exprs=elem.having_exprs,
-                )
+                ),
             )
 
         keys_str = ", ".join(keys)
@@ -567,9 +586,7 @@ class BaseDialect(abc.ABC):
         having_str = (
             " HAVING " + " AND ".join(map(compile_fn, elem.having_exprs)) if elem.having_exprs is not None else ""
         )
-        select = (
-            f"SELECT {columns_str} FROM {self.compile(c.replace(in_select=True), elem.table)} GROUP BY {keys_str}{having_str}"
-        )
+        select = f"SELECT {columns_str} FROM {self.compile(attrs.evolve(c, in_select=True), elem.table)} GROUP BY {keys_str}{having_str}"
 
         if c.in_select:
             select = f"({select}) {c.new_unique_name()}"
@@ -601,7 +618,7 @@ class BaseDialect(abc.ABC):
             # TODO: why is it c.? why not self? time-trvelling is the dialect's thing, isnt't it?
             c.time_travel(
                 elem.table, before=elem.before, timestamp=elem.timestamp, offset=elem.offset, statement=elem.statement
-            )
+            ),
         )
 
     def render_createtable(self, c: Compiler, elem: CreateTable) -> str:
@@ -768,18 +785,6 @@ class BaseDialect(abc.ABC):
         # See: https://en.wikipedia.org/wiki/Single-precision_floating-point_format
         return math.floor(math.log(2**p, 10))
 
-    @classmethod
-    def load_mixins(cls, *abstract_mixins) -> Self:
-        "Load a list of mixins that implement the given abstract mixins"
-        mixins = {m for m in cls.MIXINS if issubclass(m, abstract_mixins)}
-
-        class _DialectWithMixins(cls, *mixins, *abstract_mixins):
-            pass
-
-        _DialectWithMixins.__name__ = cls.__name__
-        return _DialectWithMixins()
-
-
     @property
     @abstractmethod
     def name(self) -> str:
@@ -807,10 +812,10 @@ class BaseDialect(abc.ABC):
 T = TypeVar("T", bound=BaseDialect)
 
 
-@dataclass
+@attrs.define(frozen=True)
 class QueryResult:
     rows: list
-    columns: list = None
+    columns: Optional[list] = None
 
     def __iter__(self):
         return iter(self.rows)
@@ -822,6 +827,7 @@ class QueryResult:
         return self.rows[i]
 
 
+@attrs.define(frozen=False, kw_only=True)
 class Database(abc.ABC):
     """Base abstract class for databases.
 
@@ -830,14 +836,13 @@ class Database(abc.ABC):
     Instanciated using :meth:`~data_diff.connect`
     """
 
-    default_schema: str = None
-    SUPPORTS_ALPHANUMS = True
-    SUPPORTS_UNIQUE_CONSTAINT = False
+    SUPPORTS_ALPHANUMS: ClassVar[bool] = True
+    SUPPORTS_UNIQUE_CONSTAINT: ClassVar[bool] = False
+    CONNECT_URI_KWPARAMS: ClassVar[List[str]] = []
 
-    CONNECT_URI_KWPARAMS = []
-
-    _interactive = False
-    is_closed = False
+    default_schema: Optional[str] = None
+    _interactive: bool = False
+    is_closed: bool = False
 
     @property
     def name(self):
@@ -1098,17 +1103,22 @@ class Database(abc.ABC):
         "Return whether the database autocommits changes. When false, COMMIT statements are skipped."
 
 
+@attrs.define(frozen=False)
 class ThreadedDatabase(Database):
     """Access the database through singleton threads.
 
     Used for database connectors that do not support sharing their connection between different threads.
     """
 
-    def __init__(self, thread_count=1):
-        self._init_error = None
-        self._queue = ThreadPoolExecutor(thread_count, initializer=self.set_conn)
-        self.thread_local = threading.local()
-        logger.info(f"[{self.name}] Starting a threadpool, size={thread_count}.")
+    thread_count: int = 1
+
+    _init_error: Optional[Exception] = None
+    _queue: Optional[ThreadPoolExecutor] = None
+    thread_local: threading.local = attrs.field(factory=threading.local)
+
+    def __attrs_post_init__(self):
+        self._queue = ThreadPoolExecutor(self.thread_count, initializer=self.set_conn)
+        logger.info(f"[{self.name}] Starting a threadpool, size={self.thread_count}.")
 
     def set_conn(self):
         assert not hasattr(self.thread_local, "conn")
@@ -1140,8 +1150,7 @@ class ThreadedDatabase(Database):
         return False
 
 
-# TODO FYI mssql md5_as_int currently requires this to be reduced
-CHECKSUM_HEXDIGITS = 14  # Must be 15 or lower, otherwise SUM() overflows
+CHECKSUM_HEXDIGITS = 12  # Must be 12 or lower, otherwise SUM() overflows
 MD5_HEXDIGITS = 32
 
 _CHECKSUM_BITSIZE = CHECKSUM_HEXDIGITS << 2

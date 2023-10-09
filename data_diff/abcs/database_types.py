@@ -3,7 +3,7 @@ from abc import ABC, abstractmethod
 from typing import Tuple, Union
 from datetime import datetime
 
-from runtype import dataclass
+import attrs
 
 from data_diff.utils import ArithAlphanumeric, ArithUUID, Unknown
 
@@ -13,55 +13,66 @@ DbKey = Union[int, str, bytes, ArithUUID, ArithAlphanumeric]
 DbTime = datetime
 
 
-@dataclass
+@attrs.define(frozen=True)
 class ColType:
-    supported = True
+    @property
+    def supported(self) -> bool:
+        return True
 
 
-@dataclass
+@attrs.define(frozen=True)
 class PrecisionType(ColType):
     precision: int
     rounds: Union[bool, Unknown] = Unknown
 
 
+@attrs.define(frozen=True)
 class Boolean(ColType):
     precision = 0
 
 
+@attrs.define(frozen=True)
 class TemporalType(PrecisionType):
     pass
 
 
+@attrs.define(frozen=True)
 class Timestamp(TemporalType):
     pass
 
 
+@attrs.define(frozen=True)
 class TimestampTZ(TemporalType):
     pass
 
 
+@attrs.define(frozen=True)
 class Datetime(TemporalType):
     pass
 
 
+@attrs.define(frozen=True)
 class Date(TemporalType):
     pass
 
 
-@dataclass
+@attrs.define(frozen=True)
 class NumericType(ColType):
     # 'precision' signifies how many fractional digits (after the dot) we want to compare
     precision: int
 
 
+@attrs.define(frozen=True)
 class FractionalType(NumericType):
     pass
 
 
+@attrs.define(frozen=True)
 class Float(FractionalType):
     python_type = float
 
 
+@attrs.define(frozen=True)
 class IKey(ABC):
     "Interface for ColType, for using a column as a key in table."
 
@@ -74,6 +85,7 @@ class IKey(ABC):
         return self.python_type(value)
 
 
+@attrs.define(frozen=True)
 class Decimal(FractionalType, IKey):  # Snowflake may use Decimal as a key
     @property
     def python_type(self) -> type:
@@ -82,27 +94,32 @@ class Decimal(FractionalType, IKey):  # Snowflake may use Decimal as a key
         return decimal.Decimal
 
 
-@dataclass
+@attrs.define(frozen=True)
 class StringType(ColType):
     python_type = str
 
 
+@attrs.define(frozen=True)
 class ColType_UUID(ColType, IKey):
     python_type = ArithUUID
 
 
+@attrs.define(frozen=True)
 class ColType_Alphanum(ColType, IKey):
     python_type = ArithAlphanumeric
 
 
+@attrs.define(frozen=True)
 class Native_UUID(ColType_UUID):
     pass
 
 
+@attrs.define(frozen=True)
 class String_UUID(ColType_UUID, StringType):
     pass
 
 
+@attrs.define(frozen=True)
 class String_Alphanum(ColType_Alphanum, StringType):
     @staticmethod
     def test_value(value: str) -> bool:
@@ -116,11 +133,12 @@ class String_Alphanum(ColType_Alphanum, StringType):
         return self.python_type(value)
 
 
+@attrs.define(frozen=True)
 class String_VaryingAlphanum(String_Alphanum):
     pass
 
 
-@dataclass
+@attrs.define(frozen=True)
 class String_FixedAlphanum(String_Alphanum):
     length: int
 
@@ -130,18 +148,20 @@ class String_FixedAlphanum(String_Alphanum):
         return self.python_type(value, max_len=self.length)
 
 
-@dataclass
+@attrs.define(frozen=True)
 class Text(StringType):
-    supported = False
+    @property
+    def supported(self) -> bool:
+        return False
 
 
 # In majority of DBMSes, it is called JSON/JSONB. Only in Snowflake, it is OBJECT.
-@dataclass
+@attrs.define(frozen=True)
 class JSON(ColType):
     pass
 
 
-@dataclass
+@attrs.define(frozen=True)
 class Array(ColType):
     item_type: ColType
 
@@ -151,22 +171,24 @@ class Array(ColType):
 # For example, in BigQuery:
 # - https://cloud.google.com/bigquery/docs/reference/standard-sql/data-types#struct_type
 # - https://cloud.google.com/bigquery/docs/reference/standard-sql/lexical#struct_literals
-@dataclass
+@attrs.define(frozen=True)
 class Struct(ColType):
     pass
 
 
-@dataclass
+@attrs.define(frozen=True)
 class Integer(NumericType, IKey):
     precision: int = 0
     python_type: type = int
 
-    def __post_init__(self):
+    def __attrs_post_init__(self):
         assert self.precision == 0
 
 
-@dataclass
+@attrs.define(frozen=True)
 class UnknownColType(ColType):
     text: str
 
-    supported = False
+    @property
+    def supported(self) -> bool:
+        return False

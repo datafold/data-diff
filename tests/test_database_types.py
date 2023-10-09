@@ -367,6 +367,7 @@ class PaginatedTable:
     RECORDS_PER_BATCH = 1000000
 
     def __init__(self, table_path, conn):
+        super().__init__()
         self.table_path = table_path
         self.conn = conn
 
@@ -398,6 +399,7 @@ class DateTimeFaker:
     ]
 
     def __init__(self, max):
+        super().__init__()
         self.max = max
 
     def __iter__(self):
@@ -413,6 +415,7 @@ class IntFaker:
     MANUAL_FAKES = [127, -3, -9, 37, 15, 0]
 
     def __init__(self, max):
+        super().__init__()
         self.max = max
 
     def __iter__(self):
@@ -428,6 +431,7 @@ class BooleanFaker:
     MANUAL_FAKES = [False, True, True, False]
 
     def __init__(self, max):
+        super().__init__()
         self.max = max
 
     def __iter__(self):
@@ -458,6 +462,7 @@ class FloatFaker:
     ]
 
     def __init__(self, max):
+        super().__init__()
         self.max = max
 
     def __iter__(self):
@@ -471,6 +476,7 @@ class FloatFaker:
 
 class UUID_Faker:
     def __init__(self, max):
+        super().__init__()
         self.max = max
 
     def __len__(self):
@@ -486,6 +492,7 @@ class JsonFaker:
     ]
 
     def __init__(self, max):
+        super().__init__()
         self.max = max
 
     def __iter__(self):
@@ -689,8 +696,8 @@ class TestDiffCrossDatabaseTables(unittest.TestCase):
         src_table_name = f"src_{self._testMethodName[11:]}{table_suffix}"
         dst_table_name = f"dst_{self._testMethodName[11:]}{table_suffix}"
 
-        self.src_table_path = src_table_path = src_conn.parse_table_name(src_table_name)
-        self.dst_table_path = dst_table_path = dst_conn.parse_table_name(dst_table_name)
+        self.src_table_path = src_table_path = src_conn.dialect.parse_table_name(src_table_name)
+        self.dst_table_path = dst_table_path = dst_conn.dialect.parse_table_name(dst_table_name)
 
         start = time.monotonic()
         if not BENCHMARK:
