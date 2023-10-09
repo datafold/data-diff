@@ -483,18 +483,19 @@ class DbtParser:
                     continue
 
                 model_node = manifest.nodes[uid]
-                if node.test_metadata.name == "unique":
-                    column_name: str = node.test_metadata.kwargs["column_name"]
-                    for col in self._parse_concat_pk_definition(column_name):
-                        if model_node is None or col in model_node.columns:
-                            # skip anything that is not a column.
-                            # for example, string literals used in concat
-                            # like "pk1 || '-' || pk2"
-                            cols_by_uid[uid].add(col)
+                if node.test_metadata:
+                    if node.test_metadata.name == "unique":
+                        column_name: str = node.test_metadata.kwargs["column_name"]
+                        for col in self._parse_concat_pk_definition(column_name):
+                            if model_node is None or col in model_node.columns:
+                                # skip anything that is not a column.
+                                # for example, string literals used in concat
+                                # like "pk1 || '-' || pk2"
+                                cols_by_uid[uid].add(col)
 
-                if node.test_metadata.name == "unique_combination_of_columns":
-                    for col in node.test_metadata.kwargs["combination_of_columns"]:
-                        cols_by_uid[uid].add(col)
+                    elif node.test_metadata.name == "unique_combination_of_columns":
+                        for col in node.test_metadata.kwargs["combination_of_columns"]:
+                            cols_by_uid[uid].add(col)
 
             except (KeyError, IndexError, TypeError) as e:
                 logger.warning("Failure while finding unique cols: %s", e)
