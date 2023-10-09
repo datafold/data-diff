@@ -22,6 +22,7 @@ TEST_DATABASES = {
     db.MySQL,
     db.Snowflake,
     db.BigQuery,
+    db.DuckDB,
     db.Oracle,
     db.Redshift,
     db.Presto,
@@ -32,7 +33,7 @@ TEST_DATABASES = {
 test_each_database = test_each_database_in_list(TEST_DATABASES)
 
 
-@test_each_database_in_list({db.Snowflake, db.BigQuery})
+@test_each_database_in_list({db.Snowflake, db.BigQuery, db.DuckDB})
 class TestCompositeKey(DiffTestCase):
     src_schema = {"id": int, "userid": int, "movieid": int, "rating": float, "timestamp": datetime}
     dst_schema = {"id": int, "userid": int, "movieid": int, "rating": float, "timestamp": datetime}
