@@ -30,7 +30,7 @@ class Algorithm(Enum):
 DiffResult = Iterator[Tuple[str, tuple]]  # Iterator[Tuple[Literal["+", "-"], tuple]]
 
 
-@attrs.define(frozen=True)
+@attrs.define(frozen=False)
 class ThreadBase:
     "Provides utility methods for optional threading"
 
@@ -179,7 +179,7 @@ class DiffResultWrapper:
         return json_output
 
 
-@attrs.define(frozen=True)
+@attrs.define(frozen=False)
 class TableDiffer(ThreadBase, ABC):
     bisection_factor = 32
     stats: dict = {}

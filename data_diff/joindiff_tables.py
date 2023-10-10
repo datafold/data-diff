@@ -110,7 +110,7 @@ def json_friendly_value(v):
     return v
 
 
-@attrs.define(frozen=True)
+@attrs.define(frozen=False)
 class JoinDiffer(TableDiffer):
     """Finds the diff between two SQL tables in the same database, using JOINs.
 
