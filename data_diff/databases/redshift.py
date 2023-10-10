@@ -19,11 +19,12 @@ from data_diff.databases.postgresql import (
     TIMESTAMP_PRECISION_POS,
     PostgresqlDialect,
     Mixin_NormalizeValue,
+    Mixin_MD5,
 )
 
 
 @attrs.define(frozen=False)
-class Mixin_MD5(AbstractMixin_MD5):
+class Mixin_MD5(Mixin_MD5):
     def md5_as_int(self, s: str) -> str:
         return f"strtol(substring(md5({s}), {1+MD5_HEXDIGITS-CHECKSUM_HEXDIGITS}), 16)::decimal(38)"
 
