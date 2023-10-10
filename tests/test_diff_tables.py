@@ -3,15 +3,17 @@ from typing import Callable
 import uuid
 import unittest
 
-from data_diff.sqeleton.queries import table, this, commit, code
-from data_diff.sqeleton.utils import ArithAlphanumeric, numberToAlphanum
+import attrs
+
+from data_diff.queries.api import table, this, commit, code
+from data_diff.utils import ArithAlphanumeric, numberToAlphanum
 
 from data_diff.hashdiff_tables import HashDiffer
 from data_diff.joindiff_tables import JoinDiffer
 from data_diff.table_segment import TableSegment, split_space, Vector
 from data_diff import databases as db
 
-from .common import str_to_checksum, test_each_database_in_list, DiffTestCase, table_segment
+from tests.common import str_to_checksum, test_each_database_in_list, DiffTestCase, table_segment
 
 
 TEST_DATABASES = {
@@ -382,13 +384,13 @@ class TestUUIDs(DiffTestCase):
         self.assertRaises(ValueError, list, differ.diff_tables(self.a, self.b))
 
     def test_where_sampling(self):
-        a = self.a.replace(where="1=1")
+        a = attrs.evolve(self.a, where="1=1")
 
         differ = HashDiffer(bisection_factor=2)
         diff = list(differ.diff_tables(a, self.b))
         self.assertEqual(diff, [("-", (str(self.new_uuid), "This one is different"))])
 
-        a_empty = self.a.replace(where="1=0")
+        a_empty = attrs.evolve(self.a, where="1=0")
         self.assertRaises(ValueError, list, differ.diff_tables(a_empty, self.b))
 
 
@@ -504,9 +506,9 @@ class TestTableSegment(DiffTestCase):
     def test_table_segment(self):
         early = datetime(2021, 1, 1, 0, 0)
         late = datetime(2022, 1, 1, 0, 0)
-        self.assertRaises(ValueError, self.table.replace, min_update=late, max_update=early)
+        self.assertRaises(ValueError, attrs.evolve, self.table, min_update=late, max_update=early)
 
-        self.assertRaises(ValueError, self.table.replace, min_key=Vector((10,)), max_key=Vector((0,)))
+        self.assertRaises(ValueError, attrs.evolve, self.table, min_key=Vector((10,)), max_key=Vector((0,)))
 
     def test_case_awareness(self):
         src_table = table(self.table_src_path, schema={"id": int, "userid": int, "timestamp": datetime})
@@ -519,11 +521,11 @@ class TestTableSegment(DiffTestCase):
             [src_table.create(), src_table.insert_rows([[1, 9, time_obj], [2, 2, time_obj]], columns=cols), commit]
         )
 
-        res = tuple(self.table.replace(key_columns=("Id",), case_sensitive=False).with_schema().query_key_range())
+        res = tuple(attrs.evolve(self.table, key_columns=("Id",), case_sensitive=False).with_schema().query_key_range())
         self.assertEqual(res, (("1",), ("2",)))
 
         self.assertRaises(
-            KeyError, self.table.replace(key_columns=("Id",), case_sensitive=True).with_schema().query_key_range
+            KeyError, attrs.evolve(self.table, key_columns=("Id",), case_sensitive=True).with_schema().query_key_range
         )
 
 

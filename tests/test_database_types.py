@@ -1,9 +1,7 @@
-from contextlib import suppress
 import unittest
 import time
 import json
 import re
-import rich.progress
 import math
 import uuid
 from datetime import datetime, timedelta, timezone
@@ -13,16 +11,16 @@ from itertools import islice, repeat, chain
 
 from parameterized import parameterized
 
-from data_diff.sqeleton.utils import number_to_human
-from data_diff.sqeleton.queries import table, commit, this, Code
-from data_diff.sqeleton.queries.api import insert_rows_in_batches
+from data_diff.utils import number_to_human
+from data_diff.queries.api import table, commit, this, Code
+from data_diff.queries.api import insert_rows_in_batches
 
 from data_diff import databases as db
 from data_diff.query_utils import drop_table
 from data_diff.utils import accumulate
 from data_diff.hashdiff_tables import HashDiffer, DEFAULT_BISECTION_THRESHOLD
 from data_diff.table_segment import TableSegment
-from .common import (
+from tests.common import (
     CONN_STRINGS,
     N_SAMPLES,
     N_THREADS,
@@ -351,7 +349,7 @@ DATABASE_TYPES = {
             "boolean",
         ],
     },
-    db.MsSql: {
+    db.MsSQL: {
         "int": ["INT", "BIGINT"],
         "datetime": ["datetime2(6)"],
         "float": ["DECIMAL(6, 2)", "FLOAT", "REAL"],
@@ -369,6 +367,7 @@ class PaginatedTable:
     RECORDS_PER_BATCH = 1000000
 
     def __init__(self, table_path, conn):
+        super().__init__()
         self.table_path = table_path
         self.conn = conn
 
@@ -400,6 +399,7 @@ class DateTimeFaker:
     ]
 
     def __init__(self, max):
+        super().__init__()
         self.max = max
 
     def __iter__(self):
@@ -415,6 +415,7 @@ class IntFaker:
     MANUAL_FAKES = [127, -3, -9, 37, 15, 0]
 
     def __init__(self, max):
+        super().__init__()
         self.max = max
 
     def __iter__(self):
@@ -430,6 +431,7 @@ class BooleanFaker:
     MANUAL_FAKES = [False, True, True, False]
 
     def __init__(self, max):
+        super().__init__()
         self.max = max
 
     def __iter__(self):
@@ -460,6 +462,7 @@ class FloatFaker:
     ]
 
     def __init__(self, max):
+        super().__init__()
         self.max = max
 
     def __iter__(self):
@@ -473,6 +476,7 @@ class FloatFaker:
 
 class UUID_Faker:
     def __init__(self, max):
+        super().__init__()
         self.max = max
 
     def __len__(self):
@@ -488,6 +492,7 @@ class JsonFaker:
     ]
 
     def __init__(self, max):
+        super().__init__()
         self.max = max
 
     def __iter__(self):
@@ -625,7 +630,7 @@ def _insert_to_table(conn, table_path, values, coltype):
             for i, sample in values
         ]
     # mssql represents with int
-    elif isinstance(conn, db.MsSql) and coltype in ("BIT"):
+    elif isinstance(conn, db.MsSQL) and coltype in ("BIT"):
         values = [(i, int(sample)) for i, sample in values]
 
     insert_rows_in_batches(conn, tbl, values, columns=["id", "col"])
@@ -691,8 +696,8 @@ class TestDiffCrossDatabaseTables(unittest.TestCase):
         src_table_name = f"src_{self._testMethodName[11:]}{table_suffix}"
         dst_table_name = f"dst_{self._testMethodName[11:]}{table_suffix}"
 
-        self.src_table_path = src_table_path = src_conn.parse_table_name(src_table_name)
-        self.dst_table_path = dst_table_path = dst_conn.parse_table_name(dst_table_name)
+        self.src_table_path = src_table_path = src_conn.dialect.parse_table_name(src_table_name)
+        self.dst_table_path = dst_table_path = dst_conn.dialect.parse_table_name(dst_table_name)
 
         start = time.monotonic()
         if not BENCHMARK:

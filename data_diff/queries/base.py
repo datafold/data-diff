@@ -1,9 +1,9 @@
 from typing import Generator
 
-from ..abcs import DbPath, DbKey
-from ..schema import Schema
+import attrs
 
 
+@attrs.define(frozen=True)
 class _SKIP:
     def __repr__(self):
         return "SKIP"

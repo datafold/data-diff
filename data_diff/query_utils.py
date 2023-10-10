@@ -2,8 +2,10 @@
 
 from contextlib import suppress
 
-from data_diff.sqeleton.databases import DbPath, QueryError, Oracle
-from data_diff.sqeleton.queries import table, commit, Expr
+from data_diff.abcs.database_types import DbPath
+from data_diff.databases.base import QueryError
+from data_diff.databases.oracle import Oracle
+from data_diff.queries.api import table, commit, Expr
 
 
 def _drop_table_oracle(name: DbPath):

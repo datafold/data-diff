@@ -9,8 +9,8 @@ import subprocess
 
 from parameterized import parameterized_class
 
-from data_diff.sqeleton.queries import table
-from data_diff.sqeleton.databases import Database
+from data_diff.queries.api import table
+from data_diff.databases.base import Database
 
 from data_diff import databases as db
 from data_diff import tracking
@@ -63,7 +63,7 @@ logging.getLogger("table_segment").setLevel(level)
 logging.getLogger("database").setLevel(level)
 
 try:
-    from .local_settings import *
+    from tests.local_settings import *
 except ImportError:
     pass  # No local settings
 
@@ -81,7 +81,7 @@ CONN_STRINGS = {
     db.Clickhouse: TEST_CLICKHOUSE_CONN_STRING,
     db.Vertica: TEST_VERTICA_CONN_STRING,
     db.DuckDB: TEST_DUCKDB_CONN_STRING,
-    db.MsSql: TEST_MSSQL_CONN_STRING,
+    db.MsSQL: TEST_MSSQL_CONN_STRING,
 }
 
 _database_instances = {}
@@ -149,8 +149,8 @@ class DiffTestCase(unittest.TestCase):
         self.table_src_name = f"src{table_suffix}"
         self.table_dst_name = f"dst{table_suffix}"
 
-        self.table_src_path = self.connection.parse_table_name(self.table_src_name)
-        self.table_dst_path = self.connection.parse_table_name(self.table_dst_name)
+        self.table_src_path = self.connection.dialect.parse_table_name(self.table_src_name)
+        self.table_dst_path = self.connection.dialect.parse_table_name(self.table_dst_name)
 
         drop_table(self.connection, self.table_src_path)
         drop_table(self.connection, self.table_dst_path)

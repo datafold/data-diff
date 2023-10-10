@@ -6,26 +6,27 @@ import time
 import json
 import logging
 from itertools import islice
-from typing import Dict, Optional
+from typing import Dict, Optional, Tuple
 
 import rich
 from rich.logging import RichHandler
 import click
 
-from data_diff.sqeleton.schema import create_schema
-from data_diff.sqeleton.queries.api import current_timestamp
+from data_diff import Database
+from data_diff.schema import create_schema
+from data_diff.queries.api import current_timestamp
 
-from .dbt import dbt_diff
-from .utils import eval_name_template, remove_password_from_url, safezip, match_like, LogStatusHandler
-from .diff_tables import Algorithm
-from .hashdiff_tables import HashDiffer, DEFAULT_BISECTION_THRESHOLD, DEFAULT_BISECTION_FACTOR
-from .joindiff_tables import TABLE_WRITE_LIMIT, JoinDiffer
-from .table_segment import TableSegment
-from .databases import connect
-from .parse_time import parse_time_before, UNITS_STR, ParseError
-from .config import apply_config_from_file
-from .tracking import disable_tracking, set_entrypoint_name
-from .version import __version__
+from data_diff.dbt import dbt_diff
+from data_diff.utils import eval_name_template, remove_password_from_url, safezip, match_like, LogStatusHandler
+from data_diff.diff_tables import Algorithm
+from data_diff.hashdiff_tables import HashDiffer, DEFAULT_BISECTION_THRESHOLD, DEFAULT_BISECTION_FACTOR
+from data_diff.joindiff_tables import TABLE_WRITE_LIMIT, JoinDiffer
+from data_diff.table_segment import TableSegment
+from data_diff.databases._connect import connect
+from data_diff.parse_time import parse_time_before, UNITS_STR, ParseError
+from data_diff.config import apply_config_from_file
+from data_diff.tracking import disable_tracking, set_entrypoint_name
+from data_diff.version import __version__
 
 
 COLOR_SCHEME = {
@@ -326,8 +327,7 @@ def main(conf, run, **kw):
             )
     except Exception as e:
         logging.error(e)
-        if kw["debug"]:
-            raise
+        raise
 
 
 def _data_diff(
@@ -425,7 +425,7 @@ def _data_diff(
             logging.error(f"Error while parsing age expression: {e}")
             return
 
-    dbs = db1, db2
+    dbs: Tuple[Database, Database] = db1, db2
 
     if interactive:
         for db in dbs:
@@ -444,7 +444,7 @@ def _data_diff(
             materialize_all_rows=materialize_all_rows,
             table_write_limit=table_write_limit,
             materialize_to_table=materialize_to_table
-            and db1.parse_table_name(eval_name_template(materialize_to_table)),
+            and db1.dialect.parse_table_name(eval_name_template(materialize_to_table)),
         )
     else:
         assert algorithm == Algorithm.HASHDIFF
@@ -456,11 +456,11 @@ def _data_diff(
         )
 
     table_names = table1, table2
-    table_paths = [db.parse_table_name(t) for db, t in safezip(dbs, table_names)]
+    table_paths = [db.dialect.parse_table_name(t) for db, t in safezip(dbs, table_names)]
 
     schemas = list(differ._thread_map(_get_schema, safezip(dbs, table_paths)))
     schema1, schema2 = schemas = [
-        create_schema(db, table_path, schema, case_sensitive)
+        create_schema(db.name, table_path, schema, case_sensitive)
         for db, table_path, schema in safezip(dbs, table_paths, schemas)
     ]
 

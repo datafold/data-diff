@@ -1,15 +1,16 @@
+import json
 from argparse import Namespace
 from collections import defaultdict
-import json
 from pathlib import Path
-from typing import List, Dict, Tuple, Set, Optional
+from typing import Any, Dict, List, Optional, Set, Tuple
+
+import attrs
 import yaml
+from dbt.config.renderer import ProfileRenderer
+from packaging.version import parse as parse_version
 from pydantic import BaseModel
 
-from packaging.version import parse as parse_version
-from dbt.config.renderer import ProfileRenderer
-from .dbt_config_validators import ManifestJsonConfig, RunResultsJsonConfig
-
+from data_diff.dbt_config_validators import ManifestJsonConfig, RunResultsJsonConfig
 from data_diff.errors import (
     DataDiffDbtBigQueryUnsupportedMethodError,
     DataDiffDbtConnectionNotImplementedError,
@@ -23,9 +24,7 @@ from data_diff.errors import (
     DataDiffDbtSnowflakeSetConnectionError,
     DataDiffSimpleSelectNotFound,
 )
-
-from .utils import getLogger, get_from_dict_with_raise
-
+from data_diff.utils import get_from_dict_with_raise, getLogger
 
 logger = getLogger(__name__)
 
@@ -94,13 +93,30 @@ class TDatadiffConfig(BaseModel):
     datasource_id: Optional[int] = None
 
 
+@attrs.define(frozen=False, init=False)
 class DbtParser:
+    dbt_runner: Optional[Any]  # dbt.cli.main.dbtRunner if installed
+    project_dir: Path
+    connection: Dict[str, Any]
+    project_dict: Dict[str, Any]
+    dev_manifest_obj: ManifestJsonConfig
+    prod_manifest_obj: Optional[ManifestJsonConfig]
+    dbt_user_id: str
+    dbt_version: str
+    dbt_project_id: str
+    requires_upper: bool
+    threads: Optional[int]
+    unique_columns: Dict[str, Set[str]]
+    profiles_dir: Path
+
     def __init__(
         self,
         profiles_dir_override: Optional[str] = None,
         project_dir_override: Optional[str] = None,
         state: Optional[str] = None,
     ) -> None:
+        super().__init__()
+
         try_set_dbt_flags()
         self.dbt_runner = try_get_dbt_runner()
         self.project_dir = Path(project_dir_override or default_project_dir())
@@ -384,13 +400,13 @@ class DbtParser:
                 "user": credentials.get("user"),
                 "password": credentials.get("password") or credentials.get("pass"),
                 "port": credentials.get("port"),
-                "dbname": credentials.get("dbname"),
+                "dbname": credentials.get("dbname") or credentials.get("database"),
             }
             self.threads = credentials.get("threads")
         elif conn_type == "databricks":
             conn_info = {
                 "driver": conn_type,
-                "catalog": credentials.get("catalog"),
+                "catalog": credentials.get("catalog") or credentials.get("database"),
                 "server_hostname": credentials.get("host"),
                 "http_path": credentials.get("http_path"),
                 "schema": credentials.get("schema"),
@@ -402,7 +418,7 @@ class DbtParser:
                 "driver": "postgresql",
                 "host": credentials.get("host"),
                 "user": credentials.get("user"),
-                "password": credentials.get("password"),
+                "password": credentials.get("password") or credentials.get("pass"),
                 "port": credentials.get("port"),
                 "dbname": credentials.get("dbname") or credentials.get("database"),
             }
@@ -465,18 +481,19 @@ class DbtParser:
                     continue
 
                 model_node = manifest.nodes[uid]
-                if node.test_metadata.name == "unique":
-                    column_name: str = node.test_metadata.kwargs["column_name"]
-                    for col in self._parse_concat_pk_definition(column_name):
-                        if model_node is None or col in model_node.columns:
-                            # skip anything that is not a column.
-                            # for example, string literals used in concat
-                            # like "pk1 || '-' || pk2"
-                            cols_by_uid[uid].add(col)
+                if node.test_metadata:
+                    if node.test_metadata.name == "unique":
+                        column_name: str = node.test_metadata.kwargs["column_name"]
+                        for col in self._parse_concat_pk_definition(column_name):
+                            if model_node is None or col in model_node.columns:
+                                # skip anything that is not a column.
+                                # for example, string literals used in concat
+                                # like "pk1 || '-' || pk2"
+                                cols_by_uid[uid].add(col)
 
-                if node.test_metadata.name == "unique_combination_of_columns":
-                    for col in node.test_metadata.kwargs["combination_of_columns"]:
-                        cols_by_uid[uid].add(col)
+                    elif node.test_metadata.name == "unique_combination_of_columns":
+                        for col in node.test_metadata.kwargs["combination_of_columns"]:
+                            cols_by_uid[uid].add(col)
 
             except (KeyError, IndexError, TypeError) as e:
                 logger.warning("Failure while finding unique cols: %s", e)

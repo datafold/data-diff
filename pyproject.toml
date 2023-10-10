@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "data-diff"
-version = "0.8.5rc1"
+version = "0.9.3"
 description = "Command-line tool and Python library to efficiently diff rows across two different databases."
 authors = ["Datafold <data-diff@datafold.com>"]
 license = "MIT"
@@ -11,21 +11,19 @@ classifiers = [
     "Intended Audience :: Developers",
     "Intended Audience :: Information Technology",
     "Intended Audience :: System Administrators",
-    "Programming Language :: Python :: 3.7",
     "Programming Language :: Python :: 3.8",
     "Programming Language :: Python :: 3.9",
     "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
     "Development Status :: 2 - Pre-Alpha",
     "Environment :: Console",
     "Topic :: Database :: Database Engines/Servers",
     "Typing :: Typed"
 ]
 packages = [{ include = "data_diff" }]
-
 [tool.poetry.dependencies]
 pydantic = "1.10.12"
-python = "^3.7.2"
-runtype = "^0.2.6"
+python = "^3.8.0"
 dsnparse = "<0.2.0"
 click = "^8.1"
 rich = "*"
@@ -47,6 +45,8 @@ urllib3 = "<2"
 oracledb = {version = "*", optional=true}
 pyodbc = {version="^4.0.39", optional=true}
 typing-extensions = ">=4.0.1"
+attrs = "^23.1.0"
+mashumaro = {version = ">=3.8.1,<3.9.0", extras = ["msgpack"]}
 
 [tool.poetry.dev-dependencies]
 parameterized = "*"
@@ -87,7 +87,6 @@ build-backend = "poetry.core.masonry.api"
 
 [tool.poetry.scripts]
 data-diff = 'data_diff.__main__:main'
-sqeleton = 'data_diff.sqeleton.__main__:main'
 
 [tool.black]
 line-length = 120

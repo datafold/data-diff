@@ -1,25 +1,22 @@
 """Provides classes for performing a table diff
 """
 
-import re
 import time
 from abc import ABC, abstractmethod
-from dataclasses import field
 from enum import Enum
 from contextlib import contextmanager
 from operator import methodcaller
 from typing import Dict, Tuple, Iterator, Optional
 from concurrent.futures import ThreadPoolExecutor, as_completed
 
-from runtype import dataclass
+import attrs
 
 from data_diff.info_tree import InfoTree, SegmentInfo
-
-from .utils import dbt_diff_string_template, run_as_daemon, safezip, getLogger, truncate_error, Vector
-from .thread_utils import ThreadedYielder
-from .table_segment import TableSegment, create_mesh_from_points
-from .tracking import create_end_event_json, create_start_event_json, send_event_json, is_tracking_enabled
-from data_diff.sqeleton.abcs import IKey
+from data_diff.utils import dbt_diff_string_template, run_as_daemon, safezip, getLogger, truncate_error, Vector
+from data_diff.thread_utils import ThreadedYielder
+from data_diff.table_segment import TableSegment, create_mesh_from_points
+from data_diff.tracking import create_end_event_json, create_start_event_json, send_event_json, is_tracking_enabled
+from data_diff.abcs.database_types import IKey
 
 logger = getLogger(__name__)
 
@@ -33,7 +30,7 @@ class Algorithm(Enum):
 DiffResult = Iterator[Tuple[str, tuple]]  # Iterator[Tuple[Literal["+", "-"], tuple]]
 
 
-@dataclass
+@attrs.define(frozen=True)
 class ThreadBase:
     "Provides utility methods for optional threading"
 
@@ -74,7 +71,7 @@ class ThreadBase:
                 f.result()
 
 
-@dataclass
+@attrs.define(frozen=True)
 class DiffStats:
     diff_by_sign: Dict[str, int]
     table1_count: int
@@ -84,12 +81,12 @@ class DiffStats:
     extra_column_diffs: Optional[Dict[str, int]]
 
 
-@dataclass
+@attrs.define(frozen=True)
 class DiffResultWrapper:
     diff: iter  # DiffResult
     info_tree: InfoTree
     stats: dict
-    result_list: list = field(default_factory=list)
+    result_list: list = attrs.field(factory=list)
 
     def __iter__(self):
         yield from self.result_list
@@ -182,6 +179,7 @@ class DiffResultWrapper:
         return json_output
 
 
+@attrs.define(frozen=True)
 class TableDiffer(ThreadBase, ABC):
     bisection_factor = 32
     stats: dict = {}
@@ -205,7 +203,7 @@ class TableDiffer(ThreadBase, ABC):
 
     def _diff_tables_wrapper(self, table1: TableSegment, table2: TableSegment, info_tree: InfoTree) -> DiffResult:
         if is_tracking_enabled():
-            options = dict(self)
+            options = attrs.asdict(self, recurse=False)
             options["differ_name"] = type(self).__name__
             event_json = create_start_event_json(options)
             run_as_daemon(send_event_json, event_json)

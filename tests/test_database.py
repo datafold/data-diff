@@ -2,14 +2,22 @@ import unittest
 from datetime import datetime
 from typing import Callable, List, Tuple
 
+import attrs
 import pytz
 
-from data_diff.sqeleton import connect
-from data_diff.sqeleton import databases as dbs
-from data_diff.sqeleton.queries import table, current_timestamp, NormalizeAsString
-from tests.common import TEST_MYSQL_CONN_STRING
-from tests.sqeleton.common import str_to_checksum, test_each_database_in_list, get_conn, random_table_suffix
-from data_diff.sqeleton.abcs.database_types import TimestampTZ
+from data_diff import connect
+from data_diff import databases as dbs
+from data_diff.queries.api import table, current_timestamp
+from data_diff.queries.extras import NormalizeAsString
+from data_diff.schema import create_schema
+from tests.common import (
+    TEST_MYSQL_CONN_STRING,
+    test_each_database_in_list,
+    get_conn,
+    str_to_checksum,
+    random_table_suffix,
+)
+from data_diff.abcs.database_types import TimestampTZ
 
 TEST_DATABASES = {
     dbs.MySQL,
@@ -38,11 +46,7 @@ class TestDatabase(unittest.TestCase):
 
 class TestMD5(unittest.TestCase):
     def test_md5_as_int(self):
-        class MD5Dialect(dbs.mysql.Dialect, dbs.mysql.Mixin_MD5):
-            pass
-
         self.mysql = connect(TEST_MYSQL_CONN_STRING)
-        self.mysql.dialect = MD5Dialect()
 
         str = "hello world"
         query_fragment = self.mysql.dialect.md5_as_int("'{0}'".format(str))
@@ -64,7 +68,7 @@ class TestSchema(unittest.TestCase):
     def test_table_list(self):
         name = "tbl_" + random_table_suffix()
         db = get_conn(self.db_cls)
-        tbl = table(db.parse_table_name(name), schema={"id": int})
+        tbl = table(db.dialect.parse_table_name(name), schema={"id": int})
         q = db.dialect.list_tables(db.default_schema, name)
         assert not db.query(q)
 
@@ -78,7 +82,7 @@ class TestSchema(unittest.TestCase):
         name = "tbl_" + random_table_suffix()
         db = get_conn(self.db_cls)
         tbl = table(
-            db.parse_table_name(name),
+            db.dialect.parse_table_name(name),
             schema={
                 "int": int,
                 "float": float,
@@ -123,8 +127,12 @@ class TestQueries(unittest.TestCase):
         db.query(table(name).insert_row(1, now, now))
         db.query(db.dialect.set_timezone_to_utc())
 
-        t = db.table(name).query_schema()
-        t.schema["created_at"] = t.schema["created_at"].replace(precision=t.schema["created_at"].precision)
+        t = table(name)
+        raw_schema = db.query_table_schema(t.path)
+        schema = db._process_table_schema(t.path, raw_schema)
+        schema = create_schema(db.name, t, schema, case_sensitive=True)
+        t = attrs.evolve(t, schema=schema)
+        t.schema["created_at"] = attrs.evolve(t.schema["created_at"], precision=t.schema["created_at"].precision)
 
         tbl = table(name, schema=t.schema)
 

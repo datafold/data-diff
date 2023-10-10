@@ -1,5 +1,8 @@
 from abc import ABC, abstractmethod
-from .database_types import (
+
+import attrs
+
+from data_diff.abcs.database_types import (
     Array,
     TemporalType,
     FractionalType,
@@ -10,13 +13,15 @@ from .database_types import (
     JSON,
     Struct,
 )
-from .compiler import Compilable
+from data_diff.abcs.compiler import Compilable
 
 
+@attrs.define(frozen=False)
 class AbstractMixin(ABC):
     "A mixin for a database dialect"
 
 
+@attrs.define(frozen=False)
 class AbstractMixin_NormalizeValue(AbstractMixin):
     @abstractmethod
     def to_comparable(self, value: str, coltype: ColType) -> str:
@@ -108,6 +113,7 @@ class AbstractMixin_NormalizeValue(AbstractMixin):
         return self.to_string(value)
 
 
+@attrs.define(frozen=False)
 class AbstractMixin_MD5(AbstractMixin):
     """Methods for calculating an MD6 hash as an integer."""
 
@@ -116,6 +122,7 @@ class AbstractMixin_MD5(AbstractMixin):
         "Provide SQL for computing md5 and returning an int"
 
 
+@attrs.define(frozen=False)
 class AbstractMixin_Schema(AbstractMixin):
     """Methods for querying the database schema
 
@@ -134,12 +141,7 @@ class AbstractMixin_Schema(AbstractMixin):
         """
 
 
-class AbstractMixin_Regex(AbstractMixin):
-    @abstractmethod
-    def test_regex(self, string: Compilable, pattern: Compilable) -> Compilable:
-        """Tests whether the regex pattern matches the string. Returns a bool expression."""
-
-
+@attrs.define(frozen=False)
 class AbstractMixin_RandomSample(AbstractMixin):
     @abstractmethod
     def random_sample_n(self, tbl: str, size: int) -> str:
@@ -152,11 +154,12 @@ class AbstractMixin_RandomSample(AbstractMixin):
         i.e. the actual mount of rows returned may vary by standard deviation.
         """
 
-    # def random_sample_ratio(self, table: AbstractTable, ratio: float):
+    # def random_sample_ratio(self, table: ITable, ratio: float):
     #     """Take a random sample of the size determined by the ratio (0..1), where 0 means no rows, and 1 means all rows
     #     """
 
 
+@attrs.define(frozen=False)
 class AbstractMixin_TimeTravel(AbstractMixin):
     @abstractmethod
     def time_travel(
@@ -179,6 +182,7 @@ class AbstractMixin_TimeTravel(AbstractMixin):
         """
 
 
+@attrs.define(frozen=False)
 class AbstractMixin_OptimizerHints(AbstractMixin):
     @abstractmethod
     def optimizer_hints(self, optimizer_hints: str) -> str:

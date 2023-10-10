@@ -1,17 +1,19 @@
 import time
-from typing import List, Tuple
+from typing import List, Optional, Tuple
 import logging
 from itertools import product
 
-from runtype import dataclass
+import attrs
 from typing_extensions import Self
 
-from .utils import safezip, Vector
-from data_diff.sqeleton.utils import ArithString, split_space
-from data_diff.sqeleton.databases import Database, DbPath, DbKey, DbTime
-from data_diff.sqeleton.schema import Schema, create_schema
-from data_diff.sqeleton.queries import Count, Checksum, SKIP, table, this, Expr, min_, max_, Code
-from data_diff.sqeleton.queries.extras import ApplyFuncAndNormalizeAsString, NormalizeAsString
+from data_diff.utils import safezip, Vector
+from data_diff.utils import ArithString, split_space
+from data_diff.databases.base import Database
+from data_diff.abcs.database_types import DbPath, DbKey, DbTime
+from data_diff.schema import Schema, create_schema
+from data_diff.queries.extras import Checksum
+from data_diff.queries.api import Count, SKIP, table, this, Expr, min_, max_, Code
+from data_diff.queries.extras import ApplyFuncAndNormalizeAsString, NormalizeAsString
 
 logger = logging.getLogger("table_segment")
 
@@ -83,7 +85,7 @@ def create_mesh_from_points(*values_per_dim: list) -> List[Tuple[Vector, Vector]
     return res
 
 
-@dataclass
+@attrs.define(frozen=True)
 class TableSegment:
     """Signifies a segment of rows (and selected columns) within a table
 
@@ -110,20 +112,20 @@ class TableSegment:
 
     # Columns
     key_columns: Tuple[str, ...]
-    update_column: str = None
+    update_column: Optional[str] = None
     extra_columns: Tuple[str, ...] = ()
 
     # Restrict the segment
-    min_key: Vector = None
-    max_key: Vector = None
-    min_update: DbTime = None
-    max_update: DbTime = None
-    where: str = None
+    min_key: Optional[Vector] = None
+    max_key: Optional[Vector] = None
+    min_update: Optional[DbTime] = None
+    max_update: Optional[DbTime] = None
+    where: Optional[str] = None
 
-    case_sensitive: bool = True
-    _schema: Schema = None
+    case_sensitive: Optional[bool] = True
+    _schema: Optional[Schema] = None
 
-    def __post_init__(self):
+    def __attrs_post_init__(self):
         if not self.update_column and (self.min_update or self.max_update):
             raise ValueError("Error: the min_update/max_update feature requires 'update_column' to be set.")
 
@@ -140,7 +142,7 @@ class TableSegment:
 
     def _with_raw_schema(self, raw_schema: dict) -> Self:
         schema = self.database._process_table_schema(self.table_path, raw_schema, self.relevant_columns, self._where())
-        return self.new(_schema=create_schema(self.database, self.table_path, schema, self.case_sensitive))
+        return self.new(schema=create_schema(self.database.name, self.table_path, schema, self.case_sensitive))
 
     def with_schema(self) -> Self:
         "Queries the table schema from the database, and returns a new instance of TableSegment, with a schema."
@@ -197,7 +199,7 @@ class TableSegment:
 
     def new(self, **kwargs) -> Self:
         """Creates a copy of the instance using 'replace()'"""
-        return self.replace(**kwargs)
+        return attrs.evolve(self, **kwargs)
 
     def new_key_bounds(self, min_key: Vector, max_key: Vector) -> Self:
         if self.min_key is not None:
@@ -208,7 +210,7 @@ class TableSegment:
             assert min_key < self.max_key
             assert max_key <= self.max_key
 
-        return self.replace(min_key=min_key, max_key=max_key)
+        return attrs.evolve(self, min_key=min_key, max_key=max_key)
 
     @property
     def relevant_columns(self) -> List[str]:

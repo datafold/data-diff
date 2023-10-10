@@ -1,8 +1,8 @@
 import unittest
 from data_diff.diff_tables import DiffResultWrapper, InfoTree, SegmentInfo, TableSegment
 from data_diff.format import jsonify
-from data_diff.sqeleton.abcs.database_types import Integer
-from data_diff.sqeleton.databases import Database
+from data_diff.abcs.database_types import Integer
+from tests.test_query import MockDatabase
 
 
 class TestFormat(unittest.TestCase):
@@ -13,8 +13,12 @@ class TestFormat(unittest.TestCase):
             info_tree=InfoTree(
                 info=SegmentInfo(
                     tables=[
-                        TableSegment(table_path=("db", "schema", "table1"), key_columns=("id",), database=Database()),
-                        TableSegment(table_path=("db", "schema", "table2"), key_columns=("id",), database=Database()),
+                        TableSegment(
+                            table_path=("db", "schema", "table1"), key_columns=("id",), database=MockDatabase()
+                        ),
+                        TableSegment(
+                            table_path=("db", "schema", "table2"), key_columns=("id",), database=MockDatabase()
+                        ),
                     ],
                     diff_schema=(
                         ("is_exclusive_a", bool),
@@ -100,8 +104,12 @@ class TestFormat(unittest.TestCase):
             info_tree=InfoTree(
                 info=SegmentInfo(
                     tables=[
-                        TableSegment(table_path=("db", "schema", "table1"), key_columns=("id",), database=Database()),
-                        TableSegment(table_path=("db", "schema", "table2"), key_columns=("id",), database=Database()),
+                        TableSegment(
+                            table_path=("db", "schema", "table1"), key_columns=("id",), database=MockDatabase()
+                        ),
+                        TableSegment(
+                            table_path=("db", "schema", "table2"), key_columns=("id",), database=MockDatabase()
+                        ),
                     ],
                     diff_schema=(
                         ("is_exclusive_a", bool),
@@ -139,7 +147,7 @@ class TestFormat(unittest.TestCase):
                 "removed": [],
                 "typeChanged": [],
             },
-            stats_only=True
+            stats_only=True,
         )
 
         self.assertEqual(
@@ -177,8 +185,12 @@ class TestFormat(unittest.TestCase):
             info_tree=InfoTree(
                 info=SegmentInfo(
                     tables=[
-                        TableSegment(table_path=("db", "schema", "table1"), key_columns=("id",), database=Database()),
-                        TableSegment(table_path=("db", "schema", "table2"), key_columns=("id",), database=Database()),
+                        TableSegment(
+                            table_path=("db", "schema", "table1"), key_columns=("id",), database=MockDatabase()
+                        ),
+                        TableSegment(
+                            table_path=("db", "schema", "table2"), key_columns=("id",), database=MockDatabase()
+                        ),
                     ],
                     diff_schema=(
                         ("is_exclusive_a", bool),
@@ -251,8 +263,12 @@ class TestFormat(unittest.TestCase):
             info_tree=InfoTree(
                 info=SegmentInfo(
                     tables=[
-                        TableSegment(table_path=("db", "schema", "table1"), key_columns=("id_a",), database=Database()),
-                        TableSegment(table_path=("db", "schema", "table2"), key_columns=("id_a",), database=Database()),
+                        TableSegment(
+                            table_path=("db", "schema", "table1"), key_columns=("id_a",), database=MockDatabase()
+                        ),
+                        TableSegment(
+                            table_path=("db", "schema", "table2"), key_columns=("id_a",), database=MockDatabase()
+                        ),
                     ],
                     diff_schema=(
                         ("is_exclusive_a", bool),

@@ -22,7 +22,7 @@ from data_diff.dbt import (
 from data_diff.dbt_parser import (
     TDatadiffConfig,
 )
-from .test_cli import run_datadiff_cli
+from tests.test_cli import run_datadiff_cli
 
 
 class TestDbtDiffer(unittest.TestCase):
