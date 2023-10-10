@@ -1,16 +1,17 @@
-import json
 from argparse import Namespace
 from collections import defaultdict
+import json
 from pathlib import Path
-from typing import Any, Dict, List, Optional, Set, Tuple
+from typing import Any, List, Dict, Tuple, Set, Optional
 
 import attrs
 import yaml
-from dbt.config.renderer import ProfileRenderer
-from packaging.version import parse as parse_version
 from pydantic import BaseModel
 
+from packaging.version import parse as parse_version
+from dbt.config.renderer import ProfileRenderer
 from data_diff.dbt_config_validators import ManifestJsonConfig, RunResultsJsonConfig
+
 from data_diff.errors import (
     DataDiffDbtBigQueryUnsupportedMethodError,
     DataDiffDbtConnectionNotImplementedError,
@@ -24,7 +25,9 @@ from data_diff.errors import (
     DataDiffDbtSnowflakeSetConnectionError,
     DataDiffSimpleSelectNotFound,
 )
-from data_diff.utils import get_from_dict_with_raise, getLogger
+
+from data_diff.utils import getLogger, get_from_dict_with_raise
+
 
 logger = getLogger(__name__)
 
