@@ -59,10 +59,13 @@ def _get_log_handlers(is_dbt: Optional[bool] = False) -> Dict[str, logging.Handl
     return handlers
 
 
-def _remove_passwords_in_dict(d: dict):
+def _remove_passwords_in_dict(d: dict) -> None:
     for k, v in d.items():
         if k == "password":
             d[k] = "*" * len(v)
+        elif k == "filepath":
+            if "motherduck_token=" in v:
+                d[k] = v.split("motherduck_token=")[0] + "motherduck_token=**********"
         elif isinstance(v, dict):
             _remove_passwords_in_dict(v)
         elif k.startswith("database"):

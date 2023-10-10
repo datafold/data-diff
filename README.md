@@ -81,16 +81,71 @@ More information about the algorithm and performance considerations can be found
 pip install data-diff 'data-diff[postgresql,snowflake]' -U
 ```
 
-Run `data-diff` with connection URIs. In the following example, we compare tables between PostgreSQL and Snowflake using hashdiff algorithm:
-```
+Run `data-diff` with connection URIs. In the following example, we compare tables between PostgreSQL and Snowflake using the hashdiff algorithm:
+
+```bash
 data-diff \
   postgresql://<username>:'<password>'@localhost:5432/<database> \
   <table> \
-  "snowflake://<username>:<password>@<password>/<DATABASE>/<SCHEMA>?warehouse=<WAREHOUSE>&role=<ROLE>" \
+  "snowflake://<username>:<password>@<account>/<DATABASE>/<SCHEMA>?warehouse=<WAREHOUSE>&role=<ROLE>" \
   <TABLE> \
   -k <primary key column> \
   -c <columns to compare> \
   -w <filter condition>
+```
+
+Run `data-diff` with a `toml` configuration file. In the following example, we compare tables between MotherDuck(hosted DuckDB) and Snowflake using the hashdiff algorithm:
+
+```toml
+## DATABASE CONNECTION ##
+[database.duckdb_connection] 
+  driver = "duckdb"
+  # filepath = "datafold_demo.duckdb" # local duckdb file example
+  # filepath = "md:" # default motherduck connection example
+  filepath = "md:datafold_demo?motherduck_token=${motherduck_token}" # API token recommended for motherduck connection
+  database = "datafold_demo"
+
+[database.snowflake_connection]
+  driver = "snowflake"
+  database = "DEV"
+  user = "sung"
+  password = "${SNOWFLAKE_PASSWORD}" # or "<PASSWORD_STRING>"
+  # the info below is only required for snowflake
+  account = "${ACCOUNT}" # by33919
+  schema = "DEVELOPMENT"
+  warehouse = "DEMO"
+  role = "DEMO_ROLE"
+
+## RUN PARAMETERS ##
+[run.default]
+  verbose = true
+
+## EXAMPLE DATA DIFF JOB ##
+[run.demo_xdb_diff]
+  # Source 1 ("left")
+  1.database = "duckdb_connection"
+  1.table = "development.raw_orders"
+
+  # Source 2 ("right")
+  2.database = "snowflake_connection"
+  2.table = "RAW_ORDERS" # note that snowflake table names are case-sensitive
+
+  verbose = false
+```
+
+```bash
+# export relevant environment variables, example below
+export motherduck_token=<MOTHERDUCK_TOKEN>
+
+# run the configured data-diff job
+data-diff --conf datadiff.toml \
+  --run demo_xdb_diff \
+  -k "id" \
+  -c status
+
+# output example
+- 1, completed
++ 1, returned
 ```
 
 Check out [documentation](https://docs.datafold.com/reference/open_source/cli) for the full command reference.
@@ -106,13 +161,14 @@ Check out [documentation](https://docs.datafold.com/reference/open_source/cli) f
 | Snowflake     |  🟢     | `"snowflake://<user>[:<password>]@<account>/<database>/<SCHEMA>?warehouse=<WAREHOUSE>&role=<role>[&authenticator=externalbrowser]"` |
 | BigQuery      |  🟢     | `bigquery://<project>/<dataset>`                                                                                                    |
 | Redshift      |  🟢     | `redshift://<username>:<password>@<hostname>:5439/<database>`                                                                       |
+| DuckDB        |  🟢   | `duckdb://<dbname>@<filepath>`                                                                                          |
+| MotherDuck        |  🟢   | `duckdb://<dbname>@<filepath>`                                                                                                   |
 | Oracle        |  🟡   | `oracle://<username>:<password>@<hostname>/servive_or_sid`                                                                          |
 | Presto        |  🟡   | `presto://<username>:<password>@<hostname>:8080/<database>`                                                                         |
 | Databricks    |  🟡   | `databricks://<http_path>:<access_token>@<server_hostname>/<catalog>/<schema>`                                                      |
 | Trino         |  🟡   | `trino://<username>:<password>@<hostname>:8080/<database>`                                                                          |
 | Clickhouse    |  🟡   | `clickhouse://<username>:<password>@<hostname>:9000/<database>`                                                                     |
 | Vertica       |  🟡   | `vertica://<username>:<password>@<hostname>:5433/<database>`                                                                        |
-| DuckDB        |  🟡   |                                                                                                                                     |
 | ElasticSearch |  📝    |                                                                                                                                     |
 | Planetscale   |  📝    |                                                                                                                                     |
 | Pinot         |  📝    |                                                                                                                                     |
