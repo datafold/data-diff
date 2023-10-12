@@ -5,6 +5,7 @@ from datetime import datetime
 import math
 import sys
 import logging
+import time
 from typing import Any, Callable, ClassVar, Dict, Generator, Tuple, Optional, Sequence, Type, List, Union, TypeVar
 from functools import partial, wraps
 from concurrent.futures import ThreadPoolExecutor
@@ -1186,6 +1187,66 @@ class ThreadedDatabase(Database):
     @property
     def is_autocommit(self) -> bool:
         return False
+
+
+@attrs.define(frozen=False, kw_only=True)
+class ThreadedDatabaseWithRetry(ThreadedDatabase):
+    """Extends ThreadedDatabase with retry behaviors for configured exceptions
+    in order to recover from temporary networking errors.
+    """
+
+    retriable_exceptions: Dict[Exception, Optional[List[str]]]
+    retry_wait_sec: int
+    max_retries_per_thread: int
+
+    def set_conn(self, is_retry: bool = False) -> None:
+        if not is_retry:
+            assert not hasattr(self.thread_local, "conn")
+
+        try:
+            self.thread_local.conn = self.create_connection()
+        except Exception as e:
+            self._init_error = e
+
+    def _query_in_worker(self, sql_code: Union[str, ThreadLocalInterpreter]) -> QueryResult:
+        # retries are per-thread
+        if not hasattr(self.thread_local, "retries"):
+            self.thread_local.retries = 0
+
+        try:
+            query_result = super()._query_in_worker(sql_code=sql_code)
+
+        except tuple(self.retriable_exceptions.keys()) as e:
+            # optionally filter retriable_exceptions values
+            if self.retriable_exceptions[type(e)]:
+                if any(ex_str in str(e) for ex_str in self.retriable_exceptions[type(e)]):
+                    query_result = self._maybe_retry_query_in_worker(sql_code=sql_code)
+                else:
+                    logger.debug(f"Not retrying {type(e).__name__}: {str(e)} due to string filters.")
+                    raise
+            else:
+                query_result = self._retry_query_in_worker(sql_code=sql_code)
+        except Exception as e:
+            logger.debug(f"Uncaught exception of type {type(e).__name__}: {str(e)}")
+            raise
+
+        return query_result
+
+    def _maybe_retry_query_in_worker(self, sql_code: Union[str, ThreadLocalInterpreter]) -> QueryResult:
+        self.thread_local.retries += 1
+
+        if self.thread_local.retries <= self.max_retries_per_thread:
+            logger.warn(
+                f"Query timed out. Retrying in {self.retry_wait_sec} sec.\nRetry: {self.thread_local.retries} Max retries: {self.max_retries_per_thread}"
+            )
+            time.sleep(self.retry_wait_sec)
+            self.set_conn(is_retry=True)
+            query_result = self._query_in_worker(sql_code=sql_code)
+            logger.debug("Retry successful")
+            return query_result
+        else:
+            logger.error("Reached maximium number of retries.")
+            raise
 
 
 CHECKSUM_HEXDIGITS = 12  # Must be 12 or lower, otherwise SUM() overflows

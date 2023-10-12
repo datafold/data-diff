@@ -1,6 +1,7 @@
 from typing import Any, ClassVar, Dict, List, Type
 
 import attrs
+from psycopg2 import OperationalError
 
 from data_diff.abcs.database_types import (
     ColType,
@@ -18,7 +19,7 @@ from data_diff.abcs.database_types import (
     Boolean,
     Date,
 )
-from data_diff.databases.base import BaseDialect, ThreadedDatabase, import_helper, ConnectError
+from data_diff.databases.base import BaseDialect, import_helper, ConnectError, ThreadedDatabaseWithRetry
 from data_diff.databases.base import (
     MD5_HEXDIGITS,
     CHECKSUM_HEXDIGITS,
@@ -118,7 +119,7 @@ class PostgresqlDialect(BaseDialect):
 
 
 @attrs.define(frozen=False, init=False, kw_only=True)
-class PostgreSQL(ThreadedDatabase):
+class PostgreSQL(ThreadedDatabaseWithRetry):
     dialect = PostgresqlDialect()
     SUPPORTS_UNIQUE_CONSTAINT = True
     CONNECT_URI_HELP = "postgresql://<user>:<password>@<host>/<database>"
@@ -128,7 +129,20 @@ class PostgreSQL(ThreadedDatabase):
     _conn: Any
 
     def __init__(self, *, thread_count, **kw):
-        super().__init__(thread_count=thread_count)
+        retriable_exceptions = {
+            OperationalError: [
+                "could not receive data from server: Operation timed out",
+                "could not receive data from server: Can't assign requested address",
+            ]
+        }
+        retry_wait_sec = 10
+        max_retries_per_thread = 5
+        super().__init__(
+            thread_count=thread_count,
+            retriable_exceptions=retriable_exceptions,
+            retry_wait_sec=retry_wait_sec,
+            max_retries_per_thread=max_retries_per_thread,
+        )
         self._args = kw
         self.default_schema = "public"
 
