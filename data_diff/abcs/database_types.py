@@ -1,6 +1,6 @@
 import decimal
 from abc import ABC, abstractmethod
-from typing import Tuple, Union
+from typing import List, Optional, Tuple, Type, TypeVar, Union
 from datetime import datetime
 
 import attrs
@@ -12,9 +12,24 @@ DbPath = Tuple[str, ...]
 DbKey = Union[int, str, bytes, ArithUUID, ArithAlphanumeric]
 DbTime = datetime
 
+N = TypeVar("N")
 
-@attrs.define(frozen=True)
+
+@attrs.define(frozen=True, kw_only=True)
 class ColType:
+    # Arbitrary metadata added and fetched at runtime.
+    _notes: List[N] = attrs.field(factory=list, init=False, hash=False, eq=False)
+
+    def add_note(self, note: N) -> None:
+        self._notes.append(note)
+
+    def get_note(self, cls: Type[N]) -> Optional[N]:
+        """Get the latest added note of type ``cls`` or its descendants."""
+        for note in reversed(self._notes):
+            if isinstance(note, cls):
+                return note
+        return None
+
     @property
     def supported(self) -> bool:
         return True
