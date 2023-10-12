@@ -302,7 +302,7 @@ class CaseWhen(ExprNode):
     def type(self):
         then_types = {_expr_type(case.then) for case in self.cases}
         if self.else_expr:
-            then_types |= _expr_type(self.else_expr)
+            then_types |= {_expr_type(self.else_expr)}
         if len(then_types) > 1:
             raise QB_TypeError(f"Non-matching types in when: {then_types}")
         (t,) = then_types
