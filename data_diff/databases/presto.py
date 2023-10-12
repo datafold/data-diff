@@ -175,7 +175,7 @@ class Presto(Database):
             self.default_schema = kw.get("schema")
 
         if kw.get("auth") == "basic":  # if auth=basic, add basic authenticator for Presto
-            kw["auth"] = prestodb.auth.BasicAuthentication(kw.pop("user"), kw.pop("password"))
+            kw["auth"] = prestodb.auth.BasicAuthentication(kw["user"], kw.pop("password"))
 
         if "cert" in kw:  # if a certificate was specified in URI, verify session with cert
             cert = kw.pop("cert")
