@@ -267,6 +267,8 @@ class BaseDialect(abc.ABC):
             return "NULL"
         elif isinstance(elem, Compilable):
             return self.render_compilable(attrs.evolve(compiler, root=False), elem)
+        elif isinstance(elem, ColType):
+            return self.render_coltype(attrs.evolve(compiler, root=False), elem)
         elif isinstance(elem, str):
             return f"'{elem}'"
         elif isinstance(elem, (int, float)):
@@ -358,6 +360,9 @@ class BaseDialect(abc.ABC):
         else:
             raise RuntimeError(f"Cannot render AST of type {elem.__class__}")
         # return elem.compile(compiler.replace(root=False))
+
+    def render_coltype(self, c: Compiler, elem: ColType) -> str:
+        return self.type_repr(elem)
 
     def render_column(self, c: Compiler, elem: Column) -> str:
         if c._table_context:
