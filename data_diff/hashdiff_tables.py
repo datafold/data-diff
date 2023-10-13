@@ -52,7 +52,7 @@ def diff_sets(a: list, b: list, json_cols: dict = None) -> Iterator:
         yield from v
 
 
-@attrs.define(frozen=True)
+@attrs.define(frozen=False)
 class HashDiffer(TableDiffer):
     """Finds the diff between two SQL tables
 

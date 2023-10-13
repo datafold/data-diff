@@ -1,6 +1,7 @@
 import unittest
 
 from data_diff.utils import remove_passwords_in_dict, match_regexps, match_like, number_to_human
+from data_diff.__main__ import _remove_passwords_in_dict
 
 
 class TestUtils(unittest.TestCase):
@@ -15,10 +16,47 @@ class TestUtils(unittest.TestCase):
         remove_passwords_in_dict(d, "$$$$")
         assert d["database_url"] == "mysql://user:$$$$@localhost/db"
 
+        # Test replacing motherduck token in database URL
+        d = {"database_url": "md:datafold_demo?motherduck_token=jaiwefjoaisdk"}
+        remove_passwords_in_dict(d, "$$$$")
+        assert d["database_url"] == "md:datafold_demo?motherduck_token=$$$$"
+
         # Test replacing password in nested dictionary
         d = {"info": {"password": "mypassword"}}
         remove_passwords_in_dict(d, "%%")
         assert d["info"]["password"] == "%%"
+
+        # Test replacing a motherduck token in nested dictionary
+        d = {'database1': {'driver': 'duckdb', 'filepath':'md:datafold_demo?motherduck_token=awieojfaowiejacijobhiwaef'}}
+        remove_passwords_in_dict(d, "%%")
+        assert d["database1"]["filepath"] == "md:datafold_demo?motherduck_token=%%"
+
+    # Test __main__ utility version of this function
+    def test__main__remove_passwords_in_dict(self):
+        # Test replacing password value
+        d = {"password": "mypassword"}
+        _remove_passwords_in_dict(d)
+        assert d["password"] == "**********"
+
+        # Test replacing password in database URL
+        d = {"database_url": "mysql://user:mypassword@localhost/db"}
+        _remove_passwords_in_dict(d)
+        assert d["database_url"] == "mysql://user:***@localhost/db"
+
+        # Test replacing motherduck token in database URL
+        d = {"database_url": "md:datafold_demo?motherduck_token=jaiwefjoaisdk"}
+        _remove_passwords_in_dict(d)
+        assert d["database_url"] == "md:datafold_demo?motherduck_token=***"
+
+        # Test replacing password in nested dictionary
+        d = {"info": {"password": "mypassword"}}
+        _remove_passwords_in_dict(d)
+        assert d["info"]["password"] == "**********"
+
+        # Test replacing a motherduck token in nested dictionary
+        d = {'database1': {'driver': 'duckdb', 'filepath':'md:datafold_demo?motherduck_token=awieojfaowiejacijobhiwaef'}}
+        _remove_passwords_in_dict(d)
+        assert d["database1"]["filepath"] == "md:datafold_demo?motherduck_token=**********"
 
     def test_match_regexps(self):
         def only_results(x):

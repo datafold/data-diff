@@ -9,7 +9,7 @@ from itertools import chain
 
 import attrs
 
-from data_diff.databases import Database, MsSQL, MySQL, BigQuery, Presto, Oracle, Snowflake
+from data_diff.databases import Database, MsSQL, MySQL, BigQuery, Presto, Oracle, Snowflake, DuckDB
 from data_diff.abcs.database_types import NumericType, DbPath
 from data_diff.databases.base import Compiler
 from data_diff.queries.api import (
@@ -110,7 +110,7 @@ def json_friendly_value(v):
     return v
 
 
-@attrs.define(frozen=True)
+@attrs.define(frozen=False)
 class JoinDiffer(TableDiffer):
     """Finds the diff between two SQL tables in the same database, using JOINs.
 
@@ -157,7 +157,7 @@ class JoinDiffer(TableDiffer):
             drop_table(db, self.materialize_to_table)
 
         with self._run_in_background(*bg_funcs):
-            if isinstance(db, (Snowflake, BigQuery)):
+            if isinstance(db, (Snowflake, BigQuery, DuckDB)):
                 # Don't segment the table; let the database handling parallelization
                 yield from self._diff_segments(None, table1, table2, info_tree, None)
             else:
