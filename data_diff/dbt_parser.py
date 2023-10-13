@@ -376,8 +376,8 @@ class DbtParser:
 
             conn_info = {
                 "driver": conn_type,
-                "project": credentials.get("project"),
-                "dataset": credentials.get("dataset"),
+                "project": credentials.get("project") or credentials.get("database"),
+                "dataset": credentials.get("dataset") or credentials.get("schema"),
                 "impersonate_service_account": credentials.get("impersonate_service_account"),
             }
 
