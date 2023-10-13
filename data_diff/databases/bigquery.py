@@ -53,6 +53,12 @@ def import_bigquery_service_account():
     return service_account
 
 
+def import_bigquery_service_account_impersonation():
+    from google.auth import impersonated_credentials
+
+    return impersonated_credentials
+
+
 @attrs.define(frozen=False)
 class Mixin_MD5(AbstractMixin_MD5):
     def md5_as_int(self, s: str) -> str:
@@ -247,6 +253,13 @@ class BigQuery(Database):
             credentials = bigquery_service_account.Credentials.from_service_account_file(
                 keyfile,
                 scopes=["https://www.googleapis.com/auth/cloud-platform"],
+            )
+        elif kw.get("impersonate_service_account"):
+            bigquery_service_account_impersonation = import_bigquery_service_account_impersonation()
+            credentials = bigquery_service_account_impersonation.Credentials(
+                source_credentials=credentials,
+                target_principal=kw["impersonate_service_account"],
+                target_scopes=["https://www.googleapis.com/auth/cloud-platform"],
             )
 
         self._client = bigquery.Client(project=project, credentials=credentials, **kw)

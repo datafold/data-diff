@@ -378,6 +378,7 @@ class DbtParser:
                 "driver": conn_type,
                 "project": credentials.get("project") or credentials.get("database"),
                 "dataset": credentials.get("dataset") or credentials.get("schema"),
+                "impersonate_service_account": credentials.get("impersonate_service_account"),
             }
 
             self.threads = credentials.get("threads")
