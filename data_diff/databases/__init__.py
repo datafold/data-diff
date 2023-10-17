@@ -1,4 +1,5 @@
 from data_diff.databases.base import MD5_HEXDIGITS, CHECKSUM_HEXDIGITS, QueryError, ConnectError, BaseDialect, Database
+from data_diff.databases.base import CHECKSUM_OFFSET
 from data_diff.databases._connect import connect as connect
 from data_diff.databases._connect import Connect as Connect
 from data_diff.databases.postgresql import PostgreSQL as PostgreSQL
