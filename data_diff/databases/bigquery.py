@@ -37,7 +37,7 @@ from data_diff.databases.base import (
     apply_query,
     QueryResult,
     CHECKSUM_OFFSET,
-    CHECKSUM_HEXDIGITS
+    CHECKSUM_HEXDIGITS, MD5_HEXDIGITS
 )
 from data_diff.databases.base import TIMESTAMP_PRECISION_POS, ThreadLocalInterpreter, Mixin_RandomSample
 
@@ -64,7 +64,7 @@ def import_bigquery_service_account_impersonation():
 @attrs.define(frozen=False)
 class Mixin_MD5(AbstractMixin_MD5):
     def md5_as_int(self, s: str) -> str:
-        return f"cast(cast( ('0x' || substr(TO_HEX(md5({s})), {CHECKSUM_HEXDIGITS})) as int64) as numeric) - {CHECKSUM_OFFSET}"
+        return f"cast(cast( ('0x' || substr(TO_HEX(md5({s})), {1+MD5_HEXDIGITS-CHECKSUM_HEXDIGITS})) as int64) as numeric) - {CHECKSUM_OFFSET}"
 
 
 @attrs.define(frozen=False)
