@@ -46,7 +46,8 @@ def import_snowflake():
 @attrs.define(frozen=False)
 class Mixin_MD5(AbstractMixin_MD5):
     def md5_as_int(self, s: str) -> str:
-        return f"BITAND(md5_number_lower64({s}), {CHECKSUM_MASK})"
+        offset = 549755813887
+        return f"BITAND(md5_number_lower64({s}), {CHECKSUM_MASK}) - {offset}"
 
 
 @attrs.define(frozen=False)

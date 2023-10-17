@@ -33,6 +33,7 @@ from data_diff.databases.base import (
 from data_diff.databases.base import (
     MD5_HEXDIGITS,
     CHECKSUM_HEXDIGITS,
+    CHECKSUM_OFFSET,
     TIMESTAMP_PRECISION_POS,
 )
 
@@ -56,7 +57,7 @@ def import_presto():
 @attrs.define(frozen=False)
 class Mixin_MD5(AbstractMixin_MD5):
     def md5_as_int(self, s: str) -> str:
-        return f"cast(from_base(substr(to_hex(md5(to_utf8({s}))), {1+MD5_HEXDIGITS-CHECKSUM_HEXDIGITS}), 16) as decimal(38, 0))"
+        return f"cast(from_base(substr(to_hex(md5(to_utf8({s}))), {1+MD5_HEXDIGITS-CHECKSUM_HEXDIGITS}), 16) as decimal(38, 0)) - {CHECKSUM_OFFSET}"
 
 
 @attrs.define(frozen=False)

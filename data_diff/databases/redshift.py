@@ -16,6 +16,7 @@ from data_diff.databases.postgresql import (
     PostgreSQL,
     MD5_HEXDIGITS,
     CHECKSUM_HEXDIGITS,
+    CHECKSUM_OFFSET,
     TIMESTAMP_PRECISION_POS,
     PostgresqlDialect,
     Mixin_NormalizeValue,
@@ -26,7 +27,7 @@ from data_diff.databases.postgresql import (
 @attrs.define(frozen=False)
 class Mixin_MD5(Mixin_MD5):
     def md5_as_int(self, s: str) -> str:
-        return f"strtol(substring(md5({s}), {1+MD5_HEXDIGITS-CHECKSUM_HEXDIGITS}), 16)::decimal(38)"
+        return f"strtol(substring(md5({s}), {1+MD5_HEXDIGITS-CHECKSUM_HEXDIGITS}), 16)::decimal(38) - {CHECKSUM_OFFSET}"
 
 
 @attrs.define(frozen=False)
