@@ -29,7 +29,7 @@ from data_diff.databases.base import (
     ConnectError,
     ThreadLocalInterpreter,
     TIMESTAMP_PRECISION_POS,
-    CHECKSUM_OFFSET
+    CHECKSUM_OFFSET,
 )
 from data_diff.databases.base import MD5_HEXDIGITS, CHECKSUM_HEXDIGITS, Mixin_Schema
 from data_diff.queries.ast_classes import Func, Compilable, ITable

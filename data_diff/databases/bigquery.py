@@ -37,7 +37,8 @@ from data_diff.databases.base import (
     apply_query,
     QueryResult,
     CHECKSUM_OFFSET,
-    CHECKSUM_HEXDIGITS, MD5_HEXDIGITS
+    CHECKSUM_HEXDIGITS,
+    MD5_HEXDIGITS,
 )
 from data_diff.databases.base import TIMESTAMP_PRECISION_POS, ThreadLocalInterpreter, Mixin_RandomSample
 

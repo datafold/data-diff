@@ -42,7 +42,9 @@ def import_clickhouse():
 class Mixin_MD5(AbstractMixin_MD5):
     def md5_as_int(self, s: str) -> str:
         substr_idx = 1 + MD5_HEXDIGITS - CHECKSUM_HEXDIGITS
-        return f"reinterpretAsUInt128(reverse(unhex(lowerUTF8(substr(hex(MD5({s})), {substr_idx}))))) - {CHECKSUM_OFFSET}"
+        return (
+            f"reinterpretAsUInt128(reverse(unhex(lowerUTF8(substr(hex(MD5({s})), {substr_idx}))))) - {CHECKSUM_OFFSET}"
+        )
 
 
 @attrs.define(frozen=False)
