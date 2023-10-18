@@ -1156,6 +1156,17 @@ MD5_HEXDIGITS = 32
 _CHECKSUM_BITSIZE = CHECKSUM_HEXDIGITS << 2
 CHECKSUM_MASK = (2**_CHECKSUM_BITSIZE) - 1
 
+# bigint is typically 8 bytes
+# if checksum is shorter, most databases will pad it with zeros
+# 0xFF → 0x00000000000000FF;
+# because of that, the numeric representation is always positive,
+# which limits the number of checksums that we can add together before overflowing.
+# we can fix that by adding a negative offset of half the max value,
+# so that the distribution is from -0.5*max to +0.5*max.
+# then negative numbers can compensate for the positive ones allowing to add more checksums together
+# without overflowing.
+CHECKSUM_OFFSET = CHECKSUM_MASK // 2
+
 DEFAULT_DATETIME_PRECISION = 6
 DEFAULT_NUMERIC_PRECISION = 24
 

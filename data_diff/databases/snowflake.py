@@ -30,6 +30,7 @@ from data_diff.databases.base import (
     import_helper,
     CHECKSUM_MASK,
     ThreadLocalInterpreter,
+    CHECKSUM_OFFSET,
     Mixin_RandomSample,
 )
 
@@ -46,7 +47,7 @@ def import_snowflake():
 @attrs.define(frozen=False)
 class Mixin_MD5(AbstractMixin_MD5):
     def md5_as_int(self, s: str) -> str:
-        return f"BITAND(md5_number_lower64({s}), {CHECKSUM_MASK})"
+        return f"BITAND(md5_number_lower64({s}), {CHECKSUM_MASK}) - {CHECKSUM_OFFSET}"
 
 
 @attrs.define(frozen=False)

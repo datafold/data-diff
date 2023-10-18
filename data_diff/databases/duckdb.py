@@ -29,6 +29,7 @@ from data_diff.databases.base import (
     ConnectError,
     ThreadLocalInterpreter,
     TIMESTAMP_PRECISION_POS,
+    CHECKSUM_OFFSET,
 )
 from data_diff.databases.base import MD5_HEXDIGITS, CHECKSUM_HEXDIGITS, Mixin_Schema
 from data_diff.queries.ast_classes import Func, Compilable, ITable
@@ -45,7 +46,7 @@ def import_duckdb():
 @attrs.define(frozen=False)
 class Mixin_MD5(AbstractMixin_MD5):
     def md5_as_int(self, s: str) -> str:
-        return f"('0x' || SUBSTRING(md5({s}), {1+MD5_HEXDIGITS-CHECKSUM_HEXDIGITS},{CHECKSUM_HEXDIGITS}))::BIGINT"
+        return f"('0x' || SUBSTRING(md5({s}), {1+MD5_HEXDIGITS-CHECKSUM_HEXDIGITS},{CHECKSUM_HEXDIGITS}))::BIGINT - {CHECKSUM_OFFSET}"
 
 
 @attrs.define(frozen=False)
