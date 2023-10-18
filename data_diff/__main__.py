@@ -519,7 +519,7 @@ def _data_diff(
 
     else:
         for op, values in diff_iter:
-            color = COLOR_SCHEME[op]
+            color = COLOR_SCHEME.get(op, "grey62")
 
             if json_output:
                 jsonl = json.dumps([op, list(values)])
