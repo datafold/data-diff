@@ -16,6 +16,7 @@ from data_diff.databases.base import (
 from data_diff.databases.base import Mixin_Schema
 from data_diff.abcs.database_types import (
     JSON,
+    NumericType,
     Timestamp,
     TimestampTZ,
     DbPath,
@@ -50,7 +51,7 @@ class Mixin_NormalizeValue(AbstractMixin_NormalizeValue):
 
         return formatted_value
 
-    def normalize_number(self, value: str, coltype: FractionalType) -> str:
+    def normalize_number(self, value: str, coltype: NumericType) -> str:
         if coltype.precision == 0:
             return f"CAST(FLOOR({value}) AS VARCHAR)"
 
