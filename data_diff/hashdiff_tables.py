@@ -71,7 +71,8 @@ class HashDiffer(TableDiffer):
     """
 
     bisection_factor: int = DEFAULT_BISECTION_FACTOR
-    bisection_threshold: Number = DEFAULT_BISECTION_THRESHOLD  # Accepts inf for tests
+    bisection_threshold: int = DEFAULT_BISECTION_THRESHOLD
+    bisection_disabled: bool = False  # i.e. always download the rows (used in tests)
 
     stats: dict = attrs.field(factory=dict)
 
@@ -157,7 +158,7 @@ class HashDiffer(TableDiffer):
         # default, data-diff will checksum the section first (when it's below
         # the threshold) and _then_ download it.
         if BENCHMARK:
-            if max_rows < self.bisection_threshold:
+            if self.bisection_disabled or max_rows < self.bisection_threshold:
                 return self._bisect_and_diff_segments(ti, table1, table2, info_tree, level=level, max_rows=max_rows)
 
         (count1, checksum1), (count2, checksum2) = self._threaded_call("count_and_checksum", [table1, table2])
@@ -202,7 +203,7 @@ class HashDiffer(TableDiffer):
 
         # If count is below the threshold, just download and compare the columns locally
         # This saves time, as bisection speed is limited by ping and query performance.
-        if max_rows < self.bisection_threshold or max_space_size < self.bisection_factor * 2:
+        if self.bisection_disabled or max_rows < self.bisection_threshold or max_space_size < self.bisection_factor * 2:
             rows1, rows2 = self._threaded_call("get_values", [table1, table2])
             json_cols = {
                 i: colname
