@@ -38,6 +38,9 @@ class Mixin_NormalizeValue(presto.Mixin_NormalizeValue):
 class Dialect(presto.Dialect, Mixin_MD5, Mixin_NormalizeValue, AbstractMixin_MD5, AbstractMixin_NormalizeValue):
     name = "Trino"
 
+    def set_timezone_to_utc(self) -> str:
+        return "SET TIME ZONE '+00:00'"
+
 
 @attrs.define(frozen=False, init=False, kw_only=True)
 class Trino(presto.Presto):
