@@ -182,7 +182,7 @@ class ThreadLocalInterpreter:
         q: Expr = next(self.gen)
         while True:
             sql = self.compiler.database.dialect.compile(self.compiler, q)
-            logger.debug("Running SQL (%s-TL): %s", self.compiler.database.name, sql)
+            logger.debug("Running SQL (%s-TL):\n%s", self.compiler.database.name, sql)
             try:
                 try:
                     res = callback(sql) if sql is not SKIP else SKIP
@@ -267,6 +267,8 @@ class BaseDialect(abc.ABC):
             return "NULL"
         elif isinstance(elem, Compilable):
             return self.render_compilable(attrs.evolve(compiler, root=False), elem)
+        elif isinstance(elem, ColType):
+            return self.render_coltype(attrs.evolve(compiler, root=False), elem)
         elif isinstance(elem, str):
             return f"'{elem}'"
         elif isinstance(elem, (int, float)):
@@ -358,6 +360,9 @@ class BaseDialect(abc.ABC):
         else:
             raise RuntimeError(f"Cannot render AST of type {elem.__class__}")
         # return elem.compile(compiler.replace(root=False))
+
+    def render_coltype(self, c: Compiler, elem: ColType) -> str:
+        return self.type_repr(elem)
 
     def render_column(self, c: Compiler, elem: Column) -> str:
         if c._table_context:
@@ -876,7 +881,7 @@ class Database(abc.ABC):
                 if sql_code is SKIP:
                     return SKIP
 
-            logger.debug("Running SQL (%s): %s", self.name, sql_code)
+            logger.debug("Running SQL (%s):\n%s", self.name, sql_code)
 
         if self._interactive and isinstance(sql_ast, Select):
             explained_sql = self.compile(Explain(sql_ast))
@@ -1155,6 +1160,17 @@ MD5_HEXDIGITS = 32
 
 _CHECKSUM_BITSIZE = CHECKSUM_HEXDIGITS << 2
 CHECKSUM_MASK = (2**_CHECKSUM_BITSIZE) - 1
+
+# bigint is typically 8 bytes
+# if checksum is shorter, most databases will pad it with zeros
+# 0xFF → 0x00000000000000FF;
+# because of that, the numeric representation is always positive,
+# which limits the number of checksums that we can add together before overflowing.
+# we can fix that by adding a negative offset of half the max value,
+# so that the distribution is from -0.5*max to +0.5*max.
+# then negative numbers can compensate for the positive ones allowing to add more checksums together
+# without overflowing.
+CHECKSUM_OFFSET = CHECKSUM_MASK // 2
 
 DEFAULT_DATETIME_PRECISION = 6
 DEFAULT_NUMERIC_PRECISION = 24

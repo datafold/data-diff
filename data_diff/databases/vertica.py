@@ -5,6 +5,7 @@ import attrs
 from data_diff.utils import match_regexps
 from data_diff.databases.base import (
     CHECKSUM_HEXDIGITS,
+    CHECKSUM_OFFSET,
     MD5_HEXDIGITS,
     TIMESTAMP_PRECISION_POS,
     BaseDialect,
@@ -42,7 +43,7 @@ def import_vertica():
 @attrs.define(frozen=False)
 class Mixin_MD5(AbstractMixin_MD5):
     def md5_as_int(self, s: str) -> str:
-        return f"CAST(HEX_TO_INTEGER(SUBSTRING(MD5({s}), {1 + MD5_HEXDIGITS - CHECKSUM_HEXDIGITS})) AS NUMERIC(38, 0))"
+        return f"CAST(HEX_TO_INTEGER(SUBSTRING(MD5({s}), {1 + MD5_HEXDIGITS - CHECKSUM_HEXDIGITS})) AS NUMERIC(38, 0)) - {CHECKSUM_OFFSET}"
 
 
 @attrs.define(frozen=False)

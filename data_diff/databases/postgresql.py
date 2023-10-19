@@ -25,6 +25,7 @@ from data_diff.databases.base import (
     CHECKSUM_HEXDIGITS,
     _CHECKSUM_BITSIZE,
     TIMESTAMP_PRECISION_POS,
+    CHECKSUM_OFFSET,
     Mixin_RandomSample,
 )
 
@@ -42,7 +43,7 @@ def import_postgresql():
 @attrs.define(frozen=False)
 class Mixin_MD5(AbstractMixin_MD5):
     def md5_as_int(self, s: str) -> str:
-        return f"('x' || substring(md5({s}), {1+MD5_HEXDIGITS-CHECKSUM_HEXDIGITS}))::bit({_CHECKSUM_BITSIZE})::bigint"
+        return f"('x' || substring(md5({s}), {1+MD5_HEXDIGITS-CHECKSUM_HEXDIGITS}))::bit({_CHECKSUM_BITSIZE})::bigint - {CHECKSUM_OFFSET}"
 
 
 @attrs.define(frozen=False)

@@ -27,6 +27,9 @@ from data_diff.databases.base import (
     ConnectError,
     QueryError,
     Mixin_RandomSample,
+    CHECKSUM_OFFSET,
+    CHECKSUM_HEXDIGITS,
+    MD5_HEXDIGITS,
 )
 from data_diff.databases.base import TIMESTAMP_PRECISION_POS
 
@@ -45,7 +48,7 @@ class Mixin_MD5(AbstractMixin_MD5):
     def md5_as_int(self, s: str) -> str:
         # standard_hash is faster than DBMS_CRYPTO.Hash
         # TODO: Find a way to use UTL_RAW.CAST_TO_BINARY_INTEGER ?
-        return f"to_number(substr(standard_hash({s}, 'MD5'), 18), 'xxxxxxxxxxxxxxx')"
+        return f"to_number(substr(standard_hash({s}, 'MD5'), {1+MD5_HEXDIGITS-CHECKSUM_HEXDIGITS}), 'xxxxxxxxxxxxxxx') - {CHECKSUM_OFFSET}"
 
 
 @attrs.define(frozen=False)

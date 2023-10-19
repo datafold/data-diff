@@ -21,6 +21,7 @@ from data_diff.abcs.mixins import AbstractMixin_MD5, AbstractMixin_NormalizeValu
 from data_diff.databases.base import (
     MD5_HEXDIGITS,
     CHECKSUM_HEXDIGITS,
+    CHECKSUM_OFFSET,
     BaseDialect,
     ThreadedDatabase,
     import_helper,
@@ -39,7 +40,7 @@ def import_databricks():
 @attrs.define(frozen=False)
 class Mixin_MD5(AbstractMixin_MD5):
     def md5_as_int(self, s: str) -> str:
-        return f"cast(conv(substr(md5({s}), {1+MD5_HEXDIGITS-CHECKSUM_HEXDIGITS}), 16, 10) as decimal(38, 0))"
+        return f"cast(conv(substr(md5({s}), {1+MD5_HEXDIGITS-CHECKSUM_HEXDIGITS}), 16, 10) as decimal(38, 0)) - {CHECKSUM_OFFSET}"
 
 
 @attrs.define(frozen=False)

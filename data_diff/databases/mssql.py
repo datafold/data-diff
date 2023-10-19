@@ -7,6 +7,7 @@ from data_diff.databases.base import (
     CHECKSUM_HEXDIGITS,
     Mixin_OptimizerHints,
     Mixin_RandomSample,
+    CHECKSUM_OFFSET,
     QueryError,
     ThreadedDatabase,
     import_helper,
@@ -16,6 +17,7 @@ from data_diff.databases.base import (
 from data_diff.databases.base import Mixin_Schema
 from data_diff.abcs.database_types import (
     JSON,
+    NumericType,
     Timestamp,
     TimestampTZ,
     DbPath,
@@ -50,7 +52,7 @@ class Mixin_NormalizeValue(AbstractMixin_NormalizeValue):
 
         return formatted_value
 
-    def normalize_number(self, value: str, coltype: FractionalType) -> str:
+    def normalize_number(self, value: str, coltype: NumericType) -> str:
         if coltype.precision == 0:
             return f"CAST(FLOOR({value}) AS VARCHAR)"
 
@@ -60,7 +62,7 @@ class Mixin_NormalizeValue(AbstractMixin_NormalizeValue):
 @attrs.define(frozen=False)
 class Mixin_MD5(AbstractMixin_MD5):
     def md5_as_int(self, s: str) -> str:
-        return f"convert(bigint, convert(varbinary, '0x' + RIGHT(CONVERT(NVARCHAR(32), HashBytes('MD5', {s}), 2), {CHECKSUM_HEXDIGITS}), 1))"
+        return f"convert(bigint, convert(varbinary, '0x' + RIGHT(CONVERT(NVARCHAR(32), HashBytes('MD5', {s}), 2), {CHECKSUM_HEXDIGITS}), 1)) - {CHECKSUM_OFFSET}"
 
 
 @attrs.define(frozen=False)
