@@ -58,7 +58,8 @@ class Mixin_NormalizeValue(AbstractMixin_NormalizeValue):
         else:
             timestamp = f"cast(convert_timezone('UTC', {value}) as timestamp({coltype.precision}))"
 
-        return f"to_char({timestamp}, 'YYYY-MM-DD HH24:MI:SS.FF6')"
+        scale = min(6, coltype.precision)
+        return f"to_char({timestamp}, 'YYYY-MM-DD HH24:MI:SS.FF{scale}')"
 
     def normalize_number(self, value: str, coltype: FractionalType) -> str:
         return self.to_string(f"cast({value} as decimal(38, {coltype.precision}))")
