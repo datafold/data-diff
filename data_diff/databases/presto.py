@@ -28,7 +28,6 @@ from data_diff.databases.base import (
     import_helper,
     ThreadLocalInterpreter,
     Mixin_Schema,
-    Mixin_RandomSample,
 )
 from data_diff.databases.base import (
     MD5_HEXDIGITS,
@@ -54,37 +53,7 @@ def import_presto():
     return prestodb
 
 
-@attrs.define(frozen=False)
-class Mixin_MD5(AbstractMixin_MD5):
-    def md5_as_int(self, s: str) -> str:
-        return f"cast(from_base(substr(to_hex(md5(to_utf8({s}))), {1+MD5_HEXDIGITS-CHECKSUM_HEXDIGITS}), 16) as decimal(38, 0)) - {CHECKSUM_OFFSET}"
-
-
-@attrs.define(frozen=False)
-class Mixin_NormalizeValue(AbstractMixin_NormalizeValue):
-    def normalize_uuid(self, value: str, coltype: ColType_UUID) -> str:
-        # Trim doesn't work on CHAR type
-        return f"TRIM(CAST({value} AS VARCHAR))"
-
-    def normalize_timestamp(self, value: str, coltype: TemporalType) -> str:
-        # TODO rounds
-        if coltype.rounds:
-            s = f"date_format(cast({value} as timestamp(6)), '%Y-%m-%d %H:%i:%S.%f')"
-        else:
-            s = f"date_format(cast({value} as timestamp(6)), '%Y-%m-%d %H:%i:%S.%f')"
-
-        return f"RPAD(RPAD({s}, {TIMESTAMP_PRECISION_POS+coltype.precision}, '.'), {TIMESTAMP_PRECISION_POS+6}, '0')"
-
-    def normalize_number(self, value: str, coltype: FractionalType) -> str:
-        return self.to_string(f"cast({value} as decimal(38,{coltype.precision}))")
-
-    def normalize_boolean(self, value: str, _coltype: Boolean) -> str:
-        return self.to_string(f"cast ({value} as int)")
-
-
-class Dialect(
-    BaseDialect, Mixin_Schema, Mixin_MD5, Mixin_NormalizeValue, AbstractMixin_MD5, AbstractMixin_NormalizeValue
-):
+class Dialect(BaseDialect, Mixin_Schema, AbstractMixin_MD5, AbstractMixin_NormalizeValue):
     name = "Presto"
     ROUNDS_ON_PREC_LOSS = True
     TYPE_CLASSES = {
@@ -157,6 +126,28 @@ class Dialect(
 
     def current_timestamp(self) -> str:
         return "current_timestamp"
+
+    def md5_as_int(self, s: str) -> str:
+        return f"cast(from_base(substr(to_hex(md5(to_utf8({s}))), {1+MD5_HEXDIGITS-CHECKSUM_HEXDIGITS}), 16) as decimal(38, 0)) - {CHECKSUM_OFFSET}"
+
+    def normalize_uuid(self, value: str, coltype: ColType_UUID) -> str:
+        # Trim doesn't work on CHAR type
+        return f"TRIM(CAST({value} AS VARCHAR))"
+
+    def normalize_timestamp(self, value: str, coltype: TemporalType) -> str:
+        # TODO rounds
+        if coltype.rounds:
+            s = f"date_format(cast({value} as timestamp(6)), '%Y-%m-%d %H:%i:%S.%f')"
+        else:
+            s = f"date_format(cast({value} as timestamp(6)), '%Y-%m-%d %H:%i:%S.%f')"
+
+        return f"RPAD(RPAD({s}, {TIMESTAMP_PRECISION_POS+coltype.precision}, '.'), {TIMESTAMP_PRECISION_POS+6}, '0')"
+
+    def normalize_number(self, value: str, coltype: FractionalType) -> str:
+        return self.to_string(f"cast({value} as decimal(38,{coltype.precision}))")
+
+    def normalize_boolean(self, value: str, _coltype: Boolean) -> str:
+        return self.to_string(f"cast ({value} as int)")
 
 
 @attrs.define(frozen=False, init=False, kw_only=True)

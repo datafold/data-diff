@@ -26,7 +26,6 @@ from data_diff.databases.base import (
     _CHECKSUM_BITSIZE,
     TIMESTAMP_PRECISION_POS,
     CHECKSUM_OFFSET,
-    Mixin_RandomSample,
 )
 
 SESSION_TIME_ZONE = None  # Changed by the tests
@@ -41,36 +40,7 @@ def import_postgresql():
 
 
 @attrs.define(frozen=False)
-class Mixin_MD5(AbstractMixin_MD5):
-    def md5_as_int(self, s: str) -> str:
-        return f"('x' || substring(md5({s}), {1+MD5_HEXDIGITS-CHECKSUM_HEXDIGITS}))::bit({_CHECKSUM_BITSIZE})::bigint - {CHECKSUM_OFFSET}"
-
-
-@attrs.define(frozen=False)
-class Mixin_NormalizeValue(AbstractMixin_NormalizeValue):
-    def normalize_timestamp(self, value: str, coltype: TemporalType) -> str:
-        if coltype.rounds:
-            return f"to_char({value}::timestamp({coltype.precision}), 'YYYY-mm-dd HH24:MI:SS.US')"
-
-        timestamp6 = f"to_char({value}::timestamp(6), 'YYYY-mm-dd HH24:MI:SS.US')"
-        return (
-            f"RPAD(LEFT({timestamp6}, {TIMESTAMP_PRECISION_POS+coltype.precision}), {TIMESTAMP_PRECISION_POS+6}, '0')"
-        )
-
-    def normalize_number(self, value: str, coltype: FractionalType) -> str:
-        return self.to_string(f"{value}::decimal(38, {coltype.precision})")
-
-    def normalize_boolean(self, value: str, _coltype: Boolean) -> str:
-        return self.to_string(f"{value}::int")
-
-    def normalize_json(self, value: str, _coltype: JSON) -> str:
-        return f"{value}::text"
-
-
-@attrs.define(frozen=False)
-class PostgresqlDialect(
-    BaseDialect, Mixin_Schema, Mixin_MD5, Mixin_NormalizeValue, AbstractMixin_MD5, AbstractMixin_NormalizeValue
-):
+class PostgresqlDialect(BaseDialect, Mixin_Schema, AbstractMixin_MD5, AbstractMixin_NormalizeValue):
     name = "PostgreSQL"
     ROUNDS_ON_PREC_LOSS = True
     SUPPORTS_PRIMARY_KEY = True
@@ -125,6 +95,27 @@ class PostgresqlDialect(
         if isinstance(t, TimestampTZ):
             return f"timestamp ({t.precision}) with time zone"
         return super().type_repr(t)
+
+    def md5_as_int(self, s: str) -> str:
+        return f"('x' || substring(md5({s}), {1+MD5_HEXDIGITS-CHECKSUM_HEXDIGITS}))::bit({_CHECKSUM_BITSIZE})::bigint - {CHECKSUM_OFFSET}"
+
+    def normalize_timestamp(self, value: str, coltype: TemporalType) -> str:
+        if coltype.rounds:
+            return f"to_char({value}::timestamp({coltype.precision}), 'YYYY-mm-dd HH24:MI:SS.US')"
+
+        timestamp6 = f"to_char({value}::timestamp(6), 'YYYY-mm-dd HH24:MI:SS.US')"
+        return (
+            f"RPAD(LEFT({timestamp6}, {TIMESTAMP_PRECISION_POS+coltype.precision}), {TIMESTAMP_PRECISION_POS+6}, '0')"
+        )
+
+    def normalize_number(self, value: str, coltype: FractionalType) -> str:
+        return self.to_string(f"{value}::decimal(38, {coltype.precision})")
+
+    def normalize_boolean(self, value: str, _coltype: Boolean) -> str:
+        return self.to_string(f"{value}::int")
+
+    def normalize_json(self, value: str, _coltype: JSON) -> str:
+        return f"{value}::text"
 
 
 @attrs.define(frozen=False, init=False, kw_only=True)
