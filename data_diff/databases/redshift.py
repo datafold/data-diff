@@ -11,7 +11,6 @@ from data_diff.abcs.database_types import (
     DbPath,
     TimestampTZ,
 )
-from data_diff.abcs.mixins import AbstractMixin_MD5, AbstractMixin_NormalizeValue
 from data_diff.databases.postgresql import (
     PostgreSQL,
     MD5_HEXDIGITS,
@@ -19,19 +18,35 @@ from data_diff.databases.postgresql import (
     CHECKSUM_OFFSET,
     TIMESTAMP_PRECISION_POS,
     PostgresqlDialect,
-    Mixin_NormalizeValue,
-    Mixin_MD5,
 )
 
 
 @attrs.define(frozen=False)
-class Mixin_MD5(Mixin_MD5):
+class Dialect(PostgresqlDialect):
+    name = "Redshift"
+    TYPE_CLASSES: ClassVar[Dict[str, Type[ColType]]] = {
+        **PostgresqlDialect.TYPE_CLASSES,
+        "double": Float,
+        "real": Float,
+        "super": JSON,
+    }
+    SUPPORTS_INDEXES = False
+
+    def concat(self, items: List[str]) -> str:
+        joined_exprs = " || ".join(items)
+        return f"({joined_exprs})"
+
+    def is_distinct_from(self, a: str, b: str) -> str:
+        return f"({a} IS NULL != {b} IS NULL) OR ({a}!={b})"
+
+    def type_repr(self, t) -> str:
+        if isinstance(t, TimestampTZ):
+            return f"timestamptz"
+        return super().type_repr(t)
+
     def md5_as_int(self, s: str) -> str:
         return f"strtol(substring(md5({s}), {1+MD5_HEXDIGITS-CHECKSUM_HEXDIGITS}), 16)::decimal(38) - {CHECKSUM_OFFSET}"
 
-
-@attrs.define(frozen=False)
-class Mixin_NormalizeValue(Mixin_NormalizeValue):
     def normalize_timestamp(self, value: str, coltype: TemporalType) -> str:
         if coltype.rounds:
             timestamp = f"{value}::timestamp(6)"
@@ -57,30 +72,6 @@ class Mixin_NormalizeValue(Mixin_NormalizeValue):
 
     def normalize_json(self, value: str, _coltype: JSON) -> str:
         return f"nvl2({value}, json_serialize({value}), NULL)"
-
-
-@attrs.define(frozen=False)
-class Dialect(PostgresqlDialect, Mixin_MD5, Mixin_NormalizeValue, AbstractMixin_MD5, AbstractMixin_NormalizeValue):
-    name = "Redshift"
-    TYPE_CLASSES: ClassVar[Dict[str, Type[ColType]]] = {
-        **PostgresqlDialect.TYPE_CLASSES,
-        "double": Float,
-        "real": Float,
-        "super": JSON,
-    }
-    SUPPORTS_INDEXES = False
-
-    def concat(self, items: List[str]) -> str:
-        joined_exprs = " || ".join(items)
-        return f"({joined_exprs})"
-
-    def is_distinct_from(self, a: str, b: str) -> str:
-        return f"({a} IS NULL != {b} IS NULL) OR ({a}!={b})"
-
-    def type_repr(self, t) -> str:
-        if isinstance(t, TimestampTZ):
-            return f"timestamptz"
-        return super().type_repr(t)
 
 
 @attrs.define(frozen=False, init=False, kw_only=True)
