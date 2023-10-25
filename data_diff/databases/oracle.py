@@ -26,7 +26,6 @@ from data_diff.databases.base import (
     import_helper,
     ConnectError,
     QueryError,
-    Mixin_RandomSample,
     CHECKSUM_OFFSET,
     CHECKSUM_HEXDIGITS,
     MD5_HEXDIGITS,
@@ -44,57 +43,10 @@ def import_oracle():
 
 
 @attrs.define(frozen=False)
-class Mixin_MD5(AbstractMixin_MD5):
-    def md5_as_int(self, s: str) -> str:
-        # standard_hash is faster than DBMS_CRYPTO.Hash
-        # TODO: Find a way to use UTL_RAW.CAST_TO_BINARY_INTEGER ?
-        return f"to_number(substr(standard_hash({s}, 'MD5'), {1+MD5_HEXDIGITS-CHECKSUM_HEXDIGITS}), 'xxxxxxxxxxxxxxx') - {CHECKSUM_OFFSET}"
-
-
-@attrs.define(frozen=False)
-class Mixin_NormalizeValue(AbstractMixin_NormalizeValue):
-    def normalize_uuid(self, value: str, coltype: ColType_UUID) -> str:
-        # Cast is necessary for correct MD5 (trimming not enough)
-        return f"CAST(TRIM({value}) AS VARCHAR(36))"
-
-    def normalize_timestamp(self, value: str, coltype: TemporalType) -> str:
-        if coltype.rounds:
-            return f"to_char(cast({value} as timestamp({coltype.precision})), 'YYYY-MM-DD HH24:MI:SS.FF6')"
-
-        if coltype.precision > 0:
-            truncated = f"to_char({value}, 'YYYY-MM-DD HH24:MI:SS.FF{coltype.precision}')"
-        else:
-            truncated = f"to_char({value}, 'YYYY-MM-DD HH24:MI:SS.')"
-        return f"RPAD({truncated}, {TIMESTAMP_PRECISION_POS+6}, '0')"
-
-    def normalize_number(self, value: str, coltype: FractionalType) -> str:
-        # FM999.9990
-        format_str = "FM" + "9" * (38 - coltype.precision)
-        if coltype.precision:
-            format_str += "0." + "9" * (coltype.precision - 1) + "0"
-        return f"to_char({value}, '{format_str}')"
-
-
-@attrs.define(frozen=False)
-class Mixin_Schema(AbstractMixin_Schema):
-    def list_tables(self, table_schema: str, like: Compilable = None) -> Compilable:
-        return (
-            table("ALL_TABLES")
-            .where(
-                this.OWNER == table_schema,
-                this.TABLE_NAME.like(like) if like is not None else SKIP,
-            )
-            .select(table_name=this.TABLE_NAME)
-        )
-
-
-@attrs.define(frozen=False)
 class Dialect(
     BaseDialect,
-    Mixin_Schema,
     Mixin_OptimizerHints,
-    Mixin_MD5,
-    Mixin_NormalizeValue,
+    AbstractMixin_Schema,
     AbstractMixin_MD5,
     AbstractMixin_NormalizeValue,
 ):
@@ -183,6 +135,42 @@ class Dialect(
 
     def current_timestamp(self) -> str:
         return "LOCALTIMESTAMP"
+
+    def md5_as_int(self, s: str) -> str:
+        # standard_hash is faster than DBMS_CRYPTO.Hash
+        # TODO: Find a way to use UTL_RAW.CAST_TO_BINARY_INTEGER ?
+        return f"to_number(substr(standard_hash({s}, 'MD5'), {1+MD5_HEXDIGITS-CHECKSUM_HEXDIGITS}), 'xxxxxxxxxxxxxxx') - {CHECKSUM_OFFSET}"
+
+    def normalize_uuid(self, value: str, coltype: ColType_UUID) -> str:
+        # Cast is necessary for correct MD5 (trimming not enough)
+        return f"CAST(TRIM({value}) AS VARCHAR(36))"
+
+    def normalize_timestamp(self, value: str, coltype: TemporalType) -> str:
+        if coltype.rounds:
+            return f"to_char(cast({value} as timestamp({coltype.precision})), 'YYYY-MM-DD HH24:MI:SS.FF6')"
+
+        if coltype.precision > 0:
+            truncated = f"to_char({value}, 'YYYY-MM-DD HH24:MI:SS.FF{coltype.precision}')"
+        else:
+            truncated = f"to_char({value}, 'YYYY-MM-DD HH24:MI:SS.')"
+        return f"RPAD({truncated}, {TIMESTAMP_PRECISION_POS+6}, '0')"
+
+    def normalize_number(self, value: str, coltype: FractionalType) -> str:
+        # FM999.9990
+        format_str = "FM" + "9" * (38 - coltype.precision)
+        if coltype.precision:
+            format_str += "0." + "9" * (coltype.precision - 1) + "0"
+        return f"to_char({value}, '{format_str}')"
+
+    def list_tables(self, table_schema: str, like: Compilable = None) -> Compilable:
+        return (
+            table("ALL_TABLES")
+            .where(
+                this.OWNER == table_schema,
+                this.TABLE_NAME.like(like) if like is not None else SKIP,
+            )
+            .select(table_name=this.TABLE_NAME)
+        )
 
 
 @attrs.define(frozen=False, init=False, kw_only=True)

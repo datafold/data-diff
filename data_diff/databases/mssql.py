@@ -6,7 +6,6 @@ from data_diff.abcs.mixins import AbstractMixin_MD5, AbstractMixin_NormalizeValu
 from data_diff.databases.base import (
     CHECKSUM_HEXDIGITS,
     Mixin_OptimizerHints,
-    Mixin_RandomSample,
     CHECKSUM_OFFSET,
     QueryError,
     ThreadedDatabase,
@@ -27,7 +26,6 @@ from data_diff.abcs.database_types import (
     TemporalType,
     Native_UUID,
     Text,
-    FractionalType,
     Boolean,
 )
 
@@ -40,38 +38,10 @@ def import_mssql():
 
 
 @attrs.define(frozen=False)
-class Mixin_NormalizeValue(AbstractMixin_NormalizeValue):
-    def normalize_timestamp(self, value: str, coltype: TemporalType) -> str:
-        if coltype.precision > 0:
-            formatted_value = (
-                f"FORMAT({value}, 'yyyy-MM-dd HH:mm:ss') + '.' + "
-                f"SUBSTRING(FORMAT({value}, 'fffffff'), 1, {coltype.precision})"
-            )
-        else:
-            formatted_value = f"FORMAT({value}, 'yyyy-MM-dd HH:mm:ss')"
-
-        return formatted_value
-
-    def normalize_number(self, value: str, coltype: NumericType) -> str:
-        if coltype.precision == 0:
-            return f"CAST(FLOOR({value}) AS VARCHAR)"
-
-        return f"FORMAT({value}, 'N{coltype.precision}')"
-
-
-@attrs.define(frozen=False)
-class Mixin_MD5(AbstractMixin_MD5):
-    def md5_as_int(self, s: str) -> str:
-        return f"convert(bigint, convert(varbinary, '0x' + RIGHT(CONVERT(NVARCHAR(32), HashBytes('MD5', {s}), 2), {CHECKSUM_HEXDIGITS}), 1)) - {CHECKSUM_OFFSET}"
-
-
-@attrs.define(frozen=False)
 class Dialect(
     BaseDialect,
     Mixin_Schema,
     Mixin_OptimizerHints,
-    Mixin_MD5,
-    Mixin_NormalizeValue,
     AbstractMixin_MD5,
     AbstractMixin_NormalizeValue,
 ):
@@ -165,6 +135,26 @@ class Dialect(
     def constant_values(self, rows) -> str:
         values = ", ".join("(%s)" % ", ".join(self._constant_value(v) for v in row) for row in rows)
         return f"VALUES {values}"
+
+    def normalize_timestamp(self, value: str, coltype: TemporalType) -> str:
+        if coltype.precision > 0:
+            formatted_value = (
+                f"FORMAT({value}, 'yyyy-MM-dd HH:mm:ss') + '.' + "
+                f"SUBSTRING(FORMAT({value}, 'fffffff'), 1, {coltype.precision})"
+            )
+        else:
+            formatted_value = f"FORMAT({value}, 'yyyy-MM-dd HH:mm:ss')"
+
+        return formatted_value
+
+    def normalize_number(self, value: str, coltype: NumericType) -> str:
+        if coltype.precision == 0:
+            return f"CAST(FLOOR({value}) AS VARCHAR)"
+
+        return f"FORMAT({value}, 'N{coltype.precision}')"
+
+    def md5_as_int(self, s: str) -> str:
+        return f"convert(bigint, convert(varbinary, '0x' + RIGHT(CONVERT(NVARCHAR(32), HashBytes('MD5', {s}), 2), {CHECKSUM_HEXDIGITS}), 1)) - {CHECKSUM_OFFSET}"
 
 
 @attrs.define(frozen=False, init=False, kw_only=True)
