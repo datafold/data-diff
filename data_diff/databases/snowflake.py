@@ -18,8 +18,6 @@ from data_diff.abcs.database_types import (
 from data_diff.abcs.mixins import (
     AbstractMixin_MD5,
     AbstractMixin_NormalizeValue,
-    AbstractMixin_Schema,
-    AbstractMixin_TimeTravel,
 )
 from data_diff.abcs.compiler import Compilable
 from data_diff.queries.api import table, this, SKIP, code
@@ -43,9 +41,7 @@ def import_snowflake():
     return snowflake, serialization, default_backend
 
 
-class Dialect(
-    BaseDialect, AbstractMixin_Schema, AbstractMixin_MD5, AbstractMixin_NormalizeValue, AbstractMixin_TimeTravel
-):
+class Dialect(BaseDialect, AbstractMixin_MD5, AbstractMixin_NormalizeValue):
     name = "Snowflake"
     ROUNDS_ON_PREC_LOSS = False
     TYPE_CLASSES = {
@@ -71,9 +67,6 @@ class Dialect(
 
     def to_string(self, s: str):
         return f"cast({s} as string)"
-
-    def table_information(self) -> Compilable:
-        return table("INFORMATION_SCHEMA", "TABLES")
 
     def set_timezone_to_utc(self) -> str:
         return "ALTER SESSION SET TIMEZONE = 'UTC'"
@@ -102,44 +95,6 @@ class Dialect(
 
     def normalize_boolean(self, value: str, _coltype: Boolean) -> str:
         return self.to_string(f"{value}::int")
-
-    def table_information(self) -> Compilable:
-        return table("INFORMATION_SCHEMA", "TABLES")
-
-    def list_tables(self, table_schema: str, like: Compilable = None) -> Compilable:
-        return (
-            self.table_information()
-            .where(
-                this.TABLE_SCHEMA == table_schema,
-                this.TABLE_NAME.like(like) if like is not None else SKIP,
-                this.TABLE_TYPE == "BASE TABLE",
-            )
-            .select(table_name=this.TABLE_NAME)
-        )
-
-    def time_travel(
-        self,
-        table: Compilable,
-        before: bool = False,
-        timestamp: Compilable = None,
-        offset: Compilable = None,
-        statement: Compilable = None,
-    ) -> Compilable:
-        at_or_before = "AT" if before else "BEFORE"
-        if timestamp is not None:
-            assert offset is None and statement is None
-            key = "timestamp"
-            value = timestamp
-        elif offset is not None:
-            assert statement is None
-            key = "offset"
-            value = offset
-        else:
-            assert statement is not None
-            key = "statement"
-            value = statement
-
-        return code(f"{{table}} {at_or_before}({key} => {{value}})", table=table, value=value)
 
 
 @attrs.define(frozen=False, init=False, kw_only=True)

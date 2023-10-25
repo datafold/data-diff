@@ -31,7 +31,6 @@ from data_diff.databases.base import (
     CHECKSUM_HEXDIGITS,
     TIMESTAMP_PRECISION_POS,
     CHECKSUM_OFFSET,
-    Mixin_Schema,
 )
 
 
@@ -45,7 +44,6 @@ def import_mysql():
 @attrs.define(frozen=False)
 class Dialect(
     BaseDialect,
-    Mixin_Schema,
     Mixin_OptimizerHints,
     AbstractMixin_MD5,
     AbstractMixin_NormalizeValue,

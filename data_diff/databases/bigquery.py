@@ -23,8 +23,6 @@ from data_diff.abcs.database_types import (
 from data_diff.abcs.mixins import (
     AbstractMixin_MD5,
     AbstractMixin_NormalizeValue,
-    AbstractMixin_Schema,
-    AbstractMixin_TimeTravel,
 )
 from data_diff.abcs.compiler import Compilable
 from data_diff.queries.api import this, table, SKIP, code
@@ -63,9 +61,7 @@ def import_bigquery_service_account_impersonation():
 
 
 @attrs.define(frozen=False)
-class Dialect(
-    BaseDialect, AbstractMixin_Schema, AbstractMixin_MD5, AbstractMixin_NormalizeValue, AbstractMixin_TimeTravel
-):
+class Dialect(BaseDialect, AbstractMixin_MD5, AbstractMixin_NormalizeValue):
     name = "BigQuery"
     ROUNDS_ON_PREC_LOSS = False  # Technically BigQuery doesn't allow implicit rounding or truncation
     TYPE_CLASSES = {
@@ -185,42 +181,6 @@ class Dialect(
         # So we do the best effort and compare it as strings, hoping that the JSON forms
         # match on both sides: i.e. have properly ordered keys, same spacing, same quotes, etc.
         return f"to_json_string({value})"
-
-    def list_tables(self, table_schema: str, like: Compilable = None) -> Compilable:
-        return (
-            table(table_schema, "INFORMATION_SCHEMA", "TABLES")
-            .where(
-                this.table_schema == table_schema,
-                this.table_name.like(like) if like is not None else SKIP,
-                this.table_type == "BASE TABLE",
-            )
-            .select(this.table_name)
-        )
-
-    def time_travel(
-        self,
-        table: Compilable,
-        before: bool = False,
-        timestamp: Compilable = None,
-        offset: Compilable = None,
-        statement: Compilable = None,
-    ) -> Compilable:
-        if before:
-            raise NotImplementedError("before=True not supported for BigQuery time-travel")
-
-        if statement is not None:
-            raise NotImplementedError("BigQuery time-travel doesn't support querying by statement id")
-
-        if timestamp is not None:
-            assert offset is None
-            return code("{table} FOR SYSTEM_TIME AS OF {timestamp}", table=table, timestamp=timestamp)
-
-        assert offset is not None
-        return code(
-            "{table} FOR SYSTEM_TIME AS OF TIMESTAMP_SUB(CURRENT_TIMESTAMP(), INTERVAL {offset} HOUR);",
-            table=table,
-            offset=offset,
-        )
 
 
 @attrs.define(frozen=False, init=False, kw_only=True)

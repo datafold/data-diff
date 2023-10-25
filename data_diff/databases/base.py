@@ -48,7 +48,6 @@ from data_diff.queries.ast_classes import (
     TableAlias,
     TableOp,
     TablePath,
-    TimeTravel,
     TruncateTable,
     UnaryOp,
     WhenThen,
@@ -74,10 +73,8 @@ from data_diff.abcs.database_types import (
     Boolean,
     JSON,
 )
-from data_diff.abcs.mixins import AbstractMixin_TimeTravel, Compilable
+from data_diff.abcs.mixins import Compilable
 from data_diff.abcs.mixins import (
-    AbstractMixin_Schema,
-    AbstractMixin_RandomSample,
     AbstractMixin_NormalizeValue,
     AbstractMixin_OptimizerHints,
 )
@@ -202,33 +199,6 @@ def apply_query(callback: Callable[[str], Any], sql_code: Union[str, ThreadLocal
 
 
 @attrs.define(frozen=False)
-class Mixin_Schema(AbstractMixin_Schema):
-    def table_information(self) -> Compilable:
-        return table("information_schema", "tables")
-
-    def list_tables(self, table_schema: str, like: Compilable = None) -> Compilable:
-        return (
-            self.table_information()
-            .where(
-                this.table_schema == table_schema,
-                this.table_name.like(like) if like is not None else SKIP,
-                this.table_type == "BASE TABLE",
-            )
-            .select(this.table_name)
-        )
-
-
-@attrs.define(frozen=False)
-class Mixin_RandomSample(AbstractMixin_RandomSample):
-    def random_sample_n(self, tbl: ITable, size: int) -> ITable:
-        # TODO use a more efficient algorithm, when the table count is known
-        return tbl.order_by(Random()).limit(size)
-
-    def random_sample_ratio_approx(self, tbl: ITable, ratio: float) -> ITable:
-        return tbl.where(Random() < ratio)
-
-
-@attrs.define(frozen=False)
 class Mixin_OptimizerHints(AbstractMixin_OptimizerHints):
     def optimizer_hints(self, hints: str) -> str:
         return f"/*+ {hints} */ "
@@ -338,8 +308,6 @@ class BaseDialect(abc.ABC):
             return self.render_explain(c, elem)
         elif isinstance(elem, CurrentTimestamp):
             return self.render_currenttimestamp(c, elem)
-        elif isinstance(elem, TimeTravel):
-            return self.render_timetravel(c, elem)
         elif isinstance(elem, CreateTable):
             return self.render_createtable(c, elem)
         elif isinstance(elem, DropTable):
@@ -615,16 +583,6 @@ class BaseDialect(abc.ABC):
 
     def render_currenttimestamp(self, c: Compiler, elem: CurrentTimestamp) -> str:
         return self.current_timestamp()
-
-    def render_timetravel(self, c: Compiler, elem: TimeTravel) -> str:
-        assert isinstance(c, AbstractMixin_TimeTravel)
-        return self.compile(
-            c,
-            # TODO: why is it c.? why not self? time-trvelling is the dialect's thing, isnt't it?
-            c.time_travel(
-                elem.table, before=elem.before, timestamp=elem.timestamp, offset=elem.offset, statement=elem.statement
-            ),
-        )
 
     def render_createtable(self, c: Compiler, elem: CreateTable) -> str:
         ne = "IF NOT EXISTS " if elem.if_not_exists else ""
@@ -1045,10 +1003,6 @@ class Database(abc.ABC):
                         assert col_name in col_dict
                         col_dict[col_name] = String_VaryingAlphanum()
 
-    # @lru_cache()
-    # def get_table_schema(self, path: DbPath) -> Dict[str, ColType]:
-    #     return self.query_table_schema(path)
-
     def _normalize_table_path(self, path: DbPath) -> DbPath:
         if len(path) == 1:
             return self.default_schema, path[0]
@@ -1081,9 +1035,6 @@ class Database(abc.ABC):
         "Close connection(s) to the database instance. Querying will stop functioning."
         self.is_closed = True
         return super().close()
-
-    def list_tables(self, tables_like, schema=None):
-        return self.query(self.dialect.list_tables(schema or self.default_schema, tables_like))
 
     @property
     @abstractmethod

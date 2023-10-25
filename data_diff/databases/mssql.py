@@ -13,7 +13,6 @@ from data_diff.databases.base import (
     ConnectError,
     BaseDialect,
 )
-from data_diff.databases.base import Mixin_Schema
 from data_diff.abcs.database_types import (
     JSON,
     NumericType,
@@ -40,7 +39,6 @@ def import_mssql():
 @attrs.define(frozen=False)
 class Dialect(
     BaseDialect,
-    Mixin_Schema,
     Mixin_OptimizerHints,
     AbstractMixin_MD5,
     AbstractMixin_NormalizeValue,
