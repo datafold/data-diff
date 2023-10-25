@@ -17,7 +17,7 @@ import contextvars
 import attrs
 from typing_extensions import Self
 
-from data_diff.abcs.compiler import AbstractCompiler
+from data_diff.abcs.compiler import AbstractCompiler, Compilable
 from data_diff.queries.extras import ApplyFuncAndNormalizeAsString, Checksum, NormalizeAsString
 from data_diff.utils import ArithString, is_uuid, join_iter, safezip
 from data_diff.queries.api import Expr, table, Select, SKIP, Explain, Code, this
@@ -75,7 +75,6 @@ from data_diff.abcs.database_types import (
     Boolean,
     JSON,
 )
-from data_diff.abcs.mixins import Compilable
 
 logger = logging.getLogger("database")
 cv_params = contextvars.ContextVar("params")
