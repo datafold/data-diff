@@ -82,7 +82,7 @@ class HashDiffer(TableDiffer):
         if self.bisection_factor < 2:
             raise ValueError("Must have at least two segments per iteration (i.e. bisection_factor >= 2)")
 
-    def _validate_and_adjust_columns(self, table1, table2, *, strict: bool = True):
+    def _validate_and_adjust_columns(self, table1: TableSegment, table2: TableSegment, *, strict: bool = True) -> None:
         for c1, c2 in safezip(table1.relevant_columns, table2.relevant_columns):
             if c1 not in table1._schema:
                 raise ValueError(f"Column '{c1}' not found in schema for table {table1}")

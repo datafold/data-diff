@@ -244,7 +244,7 @@ class TableDiffer(ThreadBase, ABC):
             if error:
                 raise error
 
-    def _validate_and_adjust_columns(self, table1: TableSegment, table2: TableSegment) -> DiffResult:
+    def _validate_and_adjust_columns(self, table1: TableSegment, table2: TableSegment) -> None:
         pass
 
     def _diff_tables_root(self, table1: TableSegment, table2: TableSegment, info_tree: InfoTree) -> DiffResult:

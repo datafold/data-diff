@@ -27,7 +27,9 @@ class TestUtils(unittest.TestCase):
         assert d["info"]["password"] == "%%"
 
         # Test replacing a motherduck token in nested dictionary
-        d = {'database1': {'driver': 'duckdb', 'filepath':'md:datafold_demo?motherduck_token=awieojfaowiejacijobhiwaef'}}
+        d = {
+            "database1": {"driver": "duckdb", "filepath": "md:datafold_demo?motherduck_token=awieojfaowiejacijobhiwaef"}
+        }
         remove_passwords_in_dict(d, "%%")
         assert d["database1"]["filepath"] == "md:datafold_demo?motherduck_token=%%"
 
@@ -54,7 +56,9 @@ class TestUtils(unittest.TestCase):
         assert d["info"]["password"] == "**********"
 
         # Test replacing a motherduck token in nested dictionary
-        d = {'database1': {'driver': 'duckdb', 'filepath':'md:datafold_demo?motherduck_token=awieojfaowiejacijobhiwaef'}}
+        d = {
+            "database1": {"driver": "duckdb", "filepath": "md:datafold_demo?motherduck_token=awieojfaowiejacijobhiwaef"}
+        }
         _remove_passwords_in_dict(d)
         assert d["database1"]["filepath"] == "md:datafold_demo?motherduck_token=**********"
 
