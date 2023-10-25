@@ -48,7 +48,6 @@ from data_diff.queries.ast_classes import (
     TableAlias,
     TableOp,
     TablePath,
-    TimeTravel,
     TruncateTable,
     UnaryOp,
     WhenThen,
@@ -74,7 +73,7 @@ from data_diff.abcs.database_types import (
     Boolean,
     JSON,
 )
-from data_diff.abcs.mixins import AbstractMixin_TimeTravel, Compilable
+from data_diff.abcs.mixins import Compilable
 from data_diff.abcs.mixins import (
     AbstractMixin_Schema,
     AbstractMixin_NormalizeValue,
@@ -327,8 +326,6 @@ class BaseDialect(abc.ABC):
             return self.render_explain(c, elem)
         elif isinstance(elem, CurrentTimestamp):
             return self.render_currenttimestamp(c, elem)
-        elif isinstance(elem, TimeTravel):
-            return self.render_timetravel(c, elem)
         elif isinstance(elem, CreateTable):
             return self.render_createtable(c, elem)
         elif isinstance(elem, DropTable):
@@ -604,16 +601,6 @@ class BaseDialect(abc.ABC):
 
     def render_currenttimestamp(self, c: Compiler, elem: CurrentTimestamp) -> str:
         return self.current_timestamp()
-
-    def render_timetravel(self, c: Compiler, elem: TimeTravel) -> str:
-        assert isinstance(c, AbstractMixin_TimeTravel)
-        return self.compile(
-            c,
-            # TODO: why is it c.? why not self? time-trvelling is the dialect's thing, isnt't it?
-            c.time_travel(
-                elem.table, before=elem.before, timestamp=elem.timestamp, offset=elem.offset, statement=elem.statement
-            ),
-        )
 
     def render_createtable(self, c: Compiler, elem: CreateTable) -> str:
         ne = "IF NOT EXISTS " if elem.if_not_exists else ""

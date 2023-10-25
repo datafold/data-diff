@@ -142,29 +142,6 @@ class AbstractMixin_Schema(AbstractMixin):
 
 
 @attrs.define(frozen=False)
-class AbstractMixin_TimeTravel(AbstractMixin):
-    @abstractmethod
-    def time_travel(
-        self,
-        table: Compilable,
-        before: bool = False,
-        timestamp: Compilable = None,
-        offset: Compilable = None,
-        statement: Compilable = None,
-    ) -> Compilable:
-        """Selects historical data from a table
-
-        Parameters:
-            table - The name of the table whose history we're querying
-            timestamp - A constant timestamp
-            offset - the time 'offset' seconds before now
-            statement - identifier for statement, e.g. query ID
-
-        Must specify exactly one of `timestamp`, `offset` or `statement`.
-        """
-
-
-@attrs.define(frozen=False)
 class AbstractMixin_OptimizerHints(AbstractMixin):
     @abstractmethod
     def optimizer_hints(self, optimizer_hints: str) -> str:

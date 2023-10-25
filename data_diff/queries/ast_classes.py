@@ -457,26 +457,6 @@ class TablePath(ExprNode, ITable):
             expr = expr.select()
         return InsertToTable(self, expr)
 
-    def time_travel(
-        self, *, before: bool = False, timestamp: datetime = None, offset: int = None, statement: str = None
-    ) -> Compilable:
-        """Selects historical data from the table
-
-        Parameters:
-            before: If false, inclusive of the specified point in time.
-                     If True, only return the time before it. (at/before)
-            timestamp: A constant timestamp
-            offset: the time 'offset' seconds before now
-            statement: identifier for statement, e.g. query ID
-
-        Must specify exactly one of `timestamp`, `offset` or `statement`.
-        """
-        if sum(int(i is not None) for i in (timestamp, offset, statement)) != 1:
-            raise ValueError("Must specify exactly one of `timestamp`, `offset` or `statement`.")
-
-        if timestamp is not None:
-            assert offset is None and statement is None
-
 
 @attrs.define(frozen=True, eq=False)
 class TableAlias(ExprNode, ITable):
@@ -750,15 +730,6 @@ class CurrentTimestamp(ExprNode):
     @property
     def type(self) -> Optional[type]:
         return datetime
-
-
-@attrs.define(frozen=True, eq=False)
-class TimeTravel(ITable):  # TODO: Unused?
-    table: TablePath
-    before: bool = False
-    timestamp: Optional[datetime] = None
-    offset: Optional[int] = None
-    statement: Optional[str] = None
 
 
 # DDL
