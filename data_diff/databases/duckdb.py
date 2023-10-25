@@ -20,7 +20,6 @@ from data_diff.abcs.database_types import (
 from data_diff.abcs.mixins import (
     AbstractMixin_MD5,
     AbstractMixin_NormalizeValue,
-    AbstractMixin_RandomSample,
 )
 from data_diff.databases.base import (
     Database,
@@ -44,7 +43,7 @@ def import_duckdb():
 
 
 @attrs.define(frozen=False)
-class Dialect(BaseDialect, Mixin_Schema, AbstractMixin_MD5, AbstractMixin_NormalizeValue, AbstractMixin_RandomSample):
+class Dialect(BaseDialect, Mixin_Schema, AbstractMixin_MD5, AbstractMixin_NormalizeValue):
     name = "DuckDB"
     ROUNDS_ON_PREC_LOSS = False
     SUPPORTS_PRIMARY_KEY = True
@@ -119,12 +118,6 @@ class Dialect(BaseDialect, Mixin_Schema, AbstractMixin_MD5, AbstractMixin_Normal
 
     def normalize_boolean(self, value: str, _coltype: Boolean) -> str:
         return self.to_string(f"{value}::INTEGER")
-
-    def random_sample_n(self, tbl: ITable, size: int) -> ITable:
-        return code("SELECT * FROM ({tbl}) USING SAMPLE {size};", tbl=tbl, size=size)
-
-    def random_sample_ratio_approx(self, tbl: ITable, ratio: float) -> ITable:
-        return code("SELECT * FROM ({tbl}) USING SAMPLE {percent}%;", tbl=tbl, percent=int(100 * ratio))
 
 
 @attrs.define(frozen=False, init=False, kw_only=True)

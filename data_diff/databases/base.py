@@ -77,7 +77,6 @@ from data_diff.abcs.database_types import (
 from data_diff.abcs.mixins import AbstractMixin_TimeTravel, Compilable
 from data_diff.abcs.mixins import (
     AbstractMixin_Schema,
-    AbstractMixin_RandomSample,
     AbstractMixin_NormalizeValue,
     AbstractMixin_OptimizerHints,
 )
@@ -216,16 +215,6 @@ class Mixin_Schema(AbstractMixin_Schema):
             )
             .select(this.table_name)
         )
-
-
-@attrs.define(frozen=False)
-class Mixin_RandomSample(AbstractMixin_RandomSample):
-    def random_sample_n(self, tbl: ITable, size: int) -> ITable:
-        # TODO use a more efficient algorithm, when the table count is known
-        return tbl.order_by(Random()).limit(size)
-
-    def random_sample_ratio_approx(self, tbl: ITable, ratio: float) -> ITable:
-        return tbl.where(Random() < ratio)
 
 
 @attrs.define(frozen=False)
