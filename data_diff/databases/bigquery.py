@@ -20,12 +20,6 @@ from data_diff.abcs.database_types import (
     Boolean,
     UnknownColType,
 )
-from data_diff.abcs.mixins import (
-    AbstractMixin_MD5,
-    AbstractMixin_NormalizeValue,
-)
-from data_diff.abcs.compiler import Compilable
-from data_diff.queries.api import this, table, SKIP, code
 from data_diff.databases.base import (
     BaseDialect,
     Database,
@@ -61,7 +55,7 @@ def import_bigquery_service_account_impersonation():
 
 
 @attrs.define(frozen=False)
-class Dialect(BaseDialect, AbstractMixin_MD5, AbstractMixin_NormalizeValue):
+class Dialect(BaseDialect):
     name = "BigQuery"
     ROUNDS_ON_PREC_LOSS = False  # Technically BigQuery doesn't allow implicit rounding or truncation
     TYPE_CLASSES = {

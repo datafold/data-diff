@@ -24,7 +24,6 @@ from data_diff.abcs.database_types import (
     Timestamp,
     Boolean,
 )
-from data_diff.abcs.mixins import AbstractMixin_MD5, AbstractMixin_NormalizeValue
 
 # https://clickhouse.com/docs/en/operations/server-configuration-parameters/settings/#default-database
 DEFAULT_DATABASE = "default"
@@ -38,7 +37,7 @@ def import_clickhouse():
 
 
 @attrs.define(frozen=False)
-class Dialect(BaseDialect, AbstractMixin_MD5, AbstractMixin_NormalizeValue):
+class Dialect(BaseDialect):
     name = "Clickhouse"
     ROUNDS_ON_PREC_LOSS = False
     TYPE_CLASSES = {

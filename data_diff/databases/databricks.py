@@ -17,7 +17,6 @@ from data_diff.abcs.database_types import (
     UnknownColType,
     Boolean,
 )
-from data_diff.abcs.mixins import AbstractMixin_MD5, AbstractMixin_NormalizeValue
 from data_diff.databases.base import (
     MD5_HEXDIGITS,
     CHECKSUM_HEXDIGITS,
@@ -37,7 +36,7 @@ def import_databricks():
 
 
 @attrs.define(frozen=False)
-class Dialect(BaseDialect, AbstractMixin_MD5, AbstractMixin_NormalizeValue):
+class Dialect(BaseDialect):
     name = "Databricks"
     ROUNDS_ON_PREC_LOSS = True
     TYPE_CLASSES = {

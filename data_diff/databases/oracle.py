@@ -16,7 +16,6 @@ from data_diff.abcs.database_types import (
     TimestampTZ,
     FractionalType,
 )
-from data_diff.abcs.mixins import AbstractMixin_MD5, AbstractMixin_NormalizeValue
 from data_diff.databases.base import (
     BaseDialect,
     ThreadedDatabase,
@@ -42,8 +41,6 @@ def import_oracle():
 @attrs.define(frozen=False)
 class Dialect(
     BaseDialect,
-    AbstractMixin_MD5,
-    AbstractMixin_NormalizeValue,
 ):
     name = "Oracle"
     SUPPORTS_PRIMARY_KEY = True

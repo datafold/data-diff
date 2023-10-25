@@ -15,10 +15,6 @@ from data_diff.abcs.database_types import (
     Boolean,
     Date,
 )
-from data_diff.abcs.mixins import (
-    AbstractMixin_MD5,
-    AbstractMixin_NormalizeValue,
-)
 from data_diff.databases.base import (
     ThreadedDatabase,
     import_helper,
@@ -41,11 +37,7 @@ def import_mysql():
 
 
 @attrs.define(frozen=False)
-class Dialect(
-    BaseDialect,
-    AbstractMixin_MD5,
-    AbstractMixin_NormalizeValue,
-):
+class Dialect(BaseDialect):
     name = "MySQL"
     ROUNDS_ON_PREC_LOSS = True
     SUPPORTS_PRIMARY_KEY = True

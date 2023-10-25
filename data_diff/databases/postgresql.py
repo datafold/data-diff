@@ -18,7 +18,6 @@ from data_diff.abcs.database_types import (
     Boolean,
     Date,
 )
-from data_diff.abcs.mixins import AbstractMixin_MD5, AbstractMixin_NormalizeValue
 from data_diff.databases.base import BaseDialect, ThreadedDatabase, import_helper, ConnectError
 from data_diff.databases.base import (
     MD5_HEXDIGITS,
@@ -40,7 +39,7 @@ def import_postgresql():
 
 
 @attrs.define(frozen=False)
-class PostgresqlDialect(BaseDialect, AbstractMixin_MD5, AbstractMixin_NormalizeValue):
+class PostgresqlDialect(BaseDialect):
     name = "PostgreSQL"
     ROUNDS_ON_PREC_LOSS = True
     SUPPORTS_PRIMARY_KEY = True
