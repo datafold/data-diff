@@ -27,9 +27,7 @@ from data_diff.abcs.database_types import (
     Boolean,
     ColType_UUID,
 )
-from data_diff.abcs.mixins import AbstractMixin_MD5, AbstractMixin_NormalizeValue, AbstractMixin_Schema
-from data_diff.abcs.compiler import Compilable
-from data_diff.queries.api import table, this, SKIP
+from data_diff.abcs.mixins import AbstractMixin_MD5, AbstractMixin_NormalizeValue
 
 
 @import_helper("vertica")
@@ -39,7 +37,7 @@ def import_vertica():
     return vertica_python
 
 
-class Dialect(BaseDialect, AbstractMixin_MD5, AbstractMixin_NormalizeValue, AbstractMixin_Schema):
+class Dialect(BaseDialect, AbstractMixin_MD5, AbstractMixin_NormalizeValue):
     name = "Vertica"
     ROUNDS_ON_PREC_LOSS = True
 
@@ -130,19 +128,6 @@ class Dialect(BaseDialect, AbstractMixin_MD5, AbstractMixin_NormalizeValue, Abst
 
     def normalize_boolean(self, value: str, _coltype: Boolean) -> str:
         return self.to_string(f"cast ({value} as int)")
-
-    def table_information(self) -> Compilable:
-        return table("v_catalog", "tables")
-
-    def list_tables(self, table_schema: str, like: Compilable = None) -> Compilable:
-        return (
-            self.table_information()
-            .where(
-                this.table_schema == table_schema,
-                this.table_name.like(like) if like is not None else SKIP,
-            )
-            .select(this.table_name)
-        )
 
 
 @attrs.define(frozen=False, init=False, kw_only=True)

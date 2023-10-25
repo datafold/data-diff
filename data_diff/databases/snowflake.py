@@ -18,7 +18,6 @@ from data_diff.abcs.database_types import (
 from data_diff.abcs.mixins import (
     AbstractMixin_MD5,
     AbstractMixin_NormalizeValue,
-    AbstractMixin_Schema,
 )
 from data_diff.abcs.compiler import Compilable
 from data_diff.queries.api import table, this, SKIP, code
@@ -42,7 +41,7 @@ def import_snowflake():
     return snowflake, serialization, default_backend
 
 
-class Dialect(BaseDialect, AbstractMixin_Schema, AbstractMixin_MD5, AbstractMixin_NormalizeValue):
+class Dialect(BaseDialect, AbstractMixin_MD5, AbstractMixin_NormalizeValue):
     name = "Snowflake"
     ROUNDS_ON_PREC_LOSS = False
     TYPE_CLASSES = {
@@ -68,9 +67,6 @@ class Dialect(BaseDialect, AbstractMixin_Schema, AbstractMixin_MD5, AbstractMixi
 
     def to_string(self, s: str):
         return f"cast({s} as string)"
-
-    def table_information(self) -> Compilable:
-        return table("INFORMATION_SCHEMA", "TABLES")
 
     def set_timezone_to_utc(self) -> str:
         return "ALTER SESSION SET TIMEZONE = 'UTC'"
@@ -99,20 +95,6 @@ class Dialect(BaseDialect, AbstractMixin_Schema, AbstractMixin_MD5, AbstractMixi
 
     def normalize_boolean(self, value: str, _coltype: Boolean) -> str:
         return self.to_string(f"{value}::int")
-
-    def table_information(self) -> Compilable:
-        return table("INFORMATION_SCHEMA", "TABLES")
-
-    def list_tables(self, table_schema: str, like: Compilable = None) -> Compilable:
-        return (
-            self.table_information()
-            .where(
-                this.TABLE_SCHEMA == table_schema,
-                this.TABLE_NAME.like(like) if like is not None else SKIP,
-                this.TABLE_TYPE == "BASE TABLE",
-            )
-            .select(table_name=this.TABLE_NAME)
-        )
 
 
 @attrs.define(frozen=False, init=False, kw_only=True)

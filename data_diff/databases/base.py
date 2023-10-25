@@ -75,7 +75,6 @@ from data_diff.abcs.database_types import (
 )
 from data_diff.abcs.mixins import Compilable
 from data_diff.abcs.mixins import (
-    AbstractMixin_Schema,
     AbstractMixin_NormalizeValue,
     AbstractMixin_OptimizerHints,
 )
@@ -197,23 +196,6 @@ def apply_query(callback: Callable[[str], Any], sql_code: Union[str, ThreadLocal
         return sql_code.apply_queries(callback)
     else:
         return callback(sql_code)
-
-
-@attrs.define(frozen=False)
-class Mixin_Schema(AbstractMixin_Schema):
-    def table_information(self) -> Compilable:
-        return table("information_schema", "tables")
-
-    def list_tables(self, table_schema: str, like: Compilable = None) -> Compilable:
-        return (
-            self.table_information()
-            .where(
-                this.table_schema == table_schema,
-                this.table_name.like(like) if like is not None else SKIP,
-                this.table_type == "BASE TABLE",
-            )
-            .select(this.table_name)
-        )
 
 
 @attrs.define(frozen=False)
@@ -1019,10 +1001,6 @@ class Database(abc.ABC):
                         assert col_name in col_dict
                         col_dict[col_name] = String_VaryingAlphanum()
 
-    # @lru_cache()
-    # def get_table_schema(self, path: DbPath) -> Dict[str, ColType]:
-    #     return self.query_table_schema(path)
-
     def _normalize_table_path(self, path: DbPath) -> DbPath:
         if len(path) == 1:
             return self.default_schema, path[0]
@@ -1055,9 +1033,6 @@ class Database(abc.ABC):
         "Close connection(s) to the database instance. Querying will stop functioning."
         self.is_closed = True
         return super().close()
-
-    def list_tables(self, tables_like, schema=None):
-        return self.query(self.dialect.list_tables(schema or self.default_schema, tables_like))
 
     @property
     @abstractmethod

@@ -23,7 +23,6 @@ from data_diff.abcs.database_types import (
 from data_diff.abcs.mixins import (
     AbstractMixin_MD5,
     AbstractMixin_NormalizeValue,
-    AbstractMixin_Schema,
 )
 from data_diff.abcs.compiler import Compilable
 from data_diff.queries.api import this, table, SKIP, code
@@ -62,7 +61,7 @@ def import_bigquery_service_account_impersonation():
 
 
 @attrs.define(frozen=False)
-class Dialect(BaseDialect, AbstractMixin_Schema, AbstractMixin_MD5, AbstractMixin_NormalizeValue):
+class Dialect(BaseDialect, AbstractMixin_MD5, AbstractMixin_NormalizeValue):
     name = "BigQuery"
     ROUNDS_ON_PREC_LOSS = False  # Technically BigQuery doesn't allow implicit rounding or truncation
     TYPE_CLASSES = {
@@ -182,17 +181,6 @@ class Dialect(BaseDialect, AbstractMixin_Schema, AbstractMixin_MD5, AbstractMixi
         # So we do the best effort and compare it as strings, hoping that the JSON forms
         # match on both sides: i.e. have properly ordered keys, same spacing, same quotes, etc.
         return f"to_json_string({value})"
-
-    def list_tables(self, table_schema: str, like: Compilable = None) -> Compilable:
-        return (
-            table(table_schema, "INFORMATION_SCHEMA", "TABLES")
-            .where(
-                this.table_schema == table_schema,
-                this.table_name.like(like) if like is not None else SKIP,
-                this.table_type == "BASE TABLE",
-            )
-            .select(this.table_name)
-        )
 
 
 @attrs.define(frozen=False, init=False, kw_only=True)

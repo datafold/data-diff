@@ -30,9 +30,7 @@ from data_diff.databases.base import (
     TIMESTAMP_PRECISION_POS,
     CHECKSUM_OFFSET,
 )
-from data_diff.databases.base import MD5_HEXDIGITS, CHECKSUM_HEXDIGITS, Mixin_Schema
-from data_diff.queries.ast_classes import ITable
-from data_diff.queries.api import code
+from data_diff.databases.base import MD5_HEXDIGITS, CHECKSUM_HEXDIGITS
 
 
 @import_helper("duckdb")
@@ -43,7 +41,7 @@ def import_duckdb():
 
 
 @attrs.define(frozen=False)
-class Dialect(BaseDialect, Mixin_Schema, AbstractMixin_MD5, AbstractMixin_NormalizeValue):
+class Dialect(BaseDialect, AbstractMixin_MD5, AbstractMixin_NormalizeValue):
     name = "DuckDB"
     ROUNDS_ON_PREC_LOSS = False
     SUPPORTS_PRIMARY_KEY = True

@@ -16,9 +16,7 @@ from data_diff.abcs.database_types import (
     TimestampTZ,
     FractionalType,
 )
-from data_diff.abcs.mixins import AbstractMixin_MD5, AbstractMixin_NormalizeValue, AbstractMixin_Schema
-from data_diff.abcs.compiler import Compilable
-from data_diff.queries.api import this, table, SKIP
+from data_diff.abcs.mixins import AbstractMixin_MD5, AbstractMixin_NormalizeValue
 from data_diff.databases.base import (
     BaseDialect,
     Mixin_OptimizerHints,
@@ -46,7 +44,6 @@ def import_oracle():
 class Dialect(
     BaseDialect,
     Mixin_OptimizerHints,
-    AbstractMixin_Schema,
     AbstractMixin_MD5,
     AbstractMixin_NormalizeValue,
 ):
@@ -161,16 +158,6 @@ class Dialect(
         if coltype.precision:
             format_str += "0." + "9" * (coltype.precision - 1) + "0"
         return f"to_char({value}, '{format_str}')"
-
-    def list_tables(self, table_schema: str, like: Compilable = None) -> Compilable:
-        return (
-            table("ALL_TABLES")
-            .where(
-                this.OWNER == table_schema,
-                this.TABLE_NAME.like(like) if like is not None else SKIP,
-            )
-            .select(table_name=this.TABLE_NAME)
-        )
 
 
 @attrs.define(frozen=False, init=False, kw_only=True)

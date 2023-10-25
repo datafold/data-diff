@@ -27,7 +27,6 @@ from data_diff.databases.base import (
     Database,
     import_helper,
     ThreadLocalInterpreter,
-    Mixin_Schema,
 )
 from data_diff.databases.base import (
     MD5_HEXDIGITS,
@@ -53,7 +52,7 @@ def import_presto():
     return prestodb
 
 
-class Dialect(BaseDialect, Mixin_Schema, AbstractMixin_MD5, AbstractMixin_NormalizeValue):
+class Dialect(BaseDialect, AbstractMixin_MD5, AbstractMixin_NormalizeValue):
     name = "Presto"
     ROUNDS_ON_PREC_LOSS = True
     TYPE_CLASSES = {

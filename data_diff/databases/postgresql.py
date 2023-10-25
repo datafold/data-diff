@@ -19,7 +19,7 @@ from data_diff.abcs.database_types import (
     Date,
 )
 from data_diff.abcs.mixins import AbstractMixin_MD5, AbstractMixin_NormalizeValue
-from data_diff.databases.base import BaseDialect, ThreadedDatabase, import_helper, ConnectError, Mixin_Schema
+from data_diff.databases.base import BaseDialect, ThreadedDatabase, import_helper, ConnectError
 from data_diff.databases.base import (
     MD5_HEXDIGITS,
     CHECKSUM_HEXDIGITS,
@@ -40,7 +40,7 @@ def import_postgresql():
 
 
 @attrs.define(frozen=False)
-class PostgresqlDialect(BaseDialect, Mixin_Schema, AbstractMixin_MD5, AbstractMixin_NormalizeValue):
+class PostgresqlDialect(BaseDialect, AbstractMixin_MD5, AbstractMixin_NormalizeValue):
     name = "PostgreSQL"
     ROUNDS_ON_PREC_LOSS = True
     SUPPORTS_PRIMARY_KEY = True
