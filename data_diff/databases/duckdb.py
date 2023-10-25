@@ -17,10 +17,6 @@ from data_diff.abcs.database_types import (
     FractionalType,
     Boolean,
 )
-from data_diff.abcs.mixins import (
-    AbstractMixin_MD5,
-    AbstractMixin_NormalizeValue,
-)
 from data_diff.databases.base import (
     Database,
     BaseDialect,
@@ -41,7 +37,7 @@ def import_duckdb():
 
 
 @attrs.define(frozen=False)
-class Dialect(BaseDialect, AbstractMixin_MD5, AbstractMixin_NormalizeValue):
+class Dialect(BaseDialect):
     name = "DuckDB"
     ROUNDS_ON_PREC_LOSS = False
     SUPPORTS_PRIMARY_KEY = True

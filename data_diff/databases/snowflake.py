@@ -15,12 +15,6 @@ from data_diff.abcs.database_types import (
     Boolean,
     Date,
 )
-from data_diff.abcs.mixins import (
-    AbstractMixin_MD5,
-    AbstractMixin_NormalizeValue,
-)
-from data_diff.abcs.compiler import Compilable
-from data_diff.queries.api import table, this, SKIP, code
 from data_diff.databases.base import (
     BaseDialect,
     ConnectError,
@@ -41,7 +35,7 @@ def import_snowflake():
     return snowflake, serialization, default_backend
 
 
-class Dialect(BaseDialect, AbstractMixin_MD5, AbstractMixin_NormalizeValue):
+class Dialect(BaseDialect):
     name = "Snowflake"
     ROUNDS_ON_PREC_LOSS = False
     TYPE_CLASSES = {

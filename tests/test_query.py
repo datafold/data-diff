@@ -1,6 +1,8 @@
 from datetime import datetime
 from typing import List, Optional
 import unittest
+
+from data_diff.abcs.database_types import FractionalType, TemporalType
 from data_diff.databases.base import Database, BaseDialect
 from data_diff.utils import CaseInsensitiveDict, CaseSensitiveDict
 
@@ -65,6 +67,15 @@ class MockDialect(BaseDialect):
 
     def optimizer_hints(self, s: str):
         return f"/*+ {s} */ "
+
+    def md5_as_int(self, s: str) -> str:
+        raise NotImplementedError
+
+    def normalize_number(self, value: str, coltype: FractionalType) -> str:
+        raise NotImplementedError
+
+    def normalize_timestamp(self, value: str, coltype: TemporalType) -> str:
+        raise NotImplementedError
 
     parse_type = NotImplemented
 

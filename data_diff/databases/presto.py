@@ -21,7 +21,6 @@ from data_diff.abcs.database_types import (
     TemporalType,
     Boolean,
 )
-from data_diff.abcs.mixins import AbstractMixin_MD5, AbstractMixin_NormalizeValue
 from data_diff.databases.base import (
     BaseDialect,
     Database,
@@ -52,7 +51,7 @@ def import_presto():
     return prestodb
 
 
-class Dialect(BaseDialect, AbstractMixin_MD5, AbstractMixin_NormalizeValue):
+class Dialect(BaseDialect):
     name = "Presto"
     ROUNDS_ON_PREC_LOSS = True
     TYPE_CLASSES = {

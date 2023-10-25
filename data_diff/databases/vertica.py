@@ -27,7 +27,6 @@ from data_diff.abcs.database_types import (
     Boolean,
     ColType_UUID,
 )
-from data_diff.abcs.mixins import AbstractMixin_MD5, AbstractMixin_NormalizeValue
 
 
 @import_helper("vertica")
@@ -37,7 +36,7 @@ def import_vertica():
     return vertica_python
 
 
-class Dialect(BaseDialect, AbstractMixin_MD5, AbstractMixin_NormalizeValue):
+class Dialect(BaseDialect):
     name = "Vertica"
     ROUNDS_ON_PREC_LOSS = True
 
