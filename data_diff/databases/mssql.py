@@ -5,7 +5,6 @@ import attrs
 from data_diff.abcs.mixins import AbstractMixin_MD5, AbstractMixin_NormalizeValue
 from data_diff.databases.base import (
     CHECKSUM_HEXDIGITS,
-    Mixin_OptimizerHints,
     CHECKSUM_OFFSET,
     QueryError,
     ThreadedDatabase,
@@ -39,7 +38,6 @@ def import_mssql():
 @attrs.define(frozen=False)
 class Dialect(
     BaseDialect,
-    Mixin_OptimizerHints,
     AbstractMixin_MD5,
     AbstractMixin_NormalizeValue,
 ):

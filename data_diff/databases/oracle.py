@@ -19,7 +19,6 @@ from data_diff.abcs.database_types import (
 from data_diff.abcs.mixins import AbstractMixin_MD5, AbstractMixin_NormalizeValue
 from data_diff.databases.base import (
     BaseDialect,
-    Mixin_OptimizerHints,
     ThreadedDatabase,
     import_helper,
     ConnectError,
@@ -43,7 +42,6 @@ def import_oracle():
 @attrs.define(frozen=False)
 class Dialect(
     BaseDialect,
-    Mixin_OptimizerHints,
     AbstractMixin_MD5,
     AbstractMixin_NormalizeValue,
 ):

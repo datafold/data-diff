@@ -20,7 +20,6 @@ from data_diff.abcs.mixins import (
     AbstractMixin_NormalizeValue,
 )
 from data_diff.databases.base import (
-    Mixin_OptimizerHints,
     ThreadedDatabase,
     import_helper,
     ConnectError,
@@ -44,7 +43,6 @@ def import_mysql():
 @attrs.define(frozen=False)
 class Dialect(
     BaseDialect,
-    Mixin_OptimizerHints,
     AbstractMixin_MD5,
     AbstractMixin_NormalizeValue,
 ):

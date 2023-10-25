@@ -74,10 +74,7 @@ from data_diff.abcs.database_types import (
     JSON,
 )
 from data_diff.abcs.mixins import Compilable
-from data_diff.abcs.mixins import (
-    AbstractMixin_NormalizeValue,
-    AbstractMixin_OptimizerHints,
-)
+from data_diff.abcs.mixins import AbstractMixin_NormalizeValue
 
 logger = logging.getLogger("database")
 cv_params = contextvars.ContextVar("params")
@@ -196,12 +193,6 @@ def apply_query(callback: Callable[[str], Any], sql_code: Union[str, ThreadLocal
         return sql_code.apply_queries(callback)
     else:
         return callback(sql_code)
-
-
-@attrs.define(frozen=False)
-class Mixin_OptimizerHints(AbstractMixin_OptimizerHints):
-    def optimizer_hints(self, hints: str) -> str:
-        return f"/*+ {hints} */ "
 
 
 @attrs.define(frozen=False)
@@ -770,6 +761,9 @@ class BaseDialect(abc.ABC):
     @abstractmethod
     def set_timezone_to_utc(self) -> str:
         "Provide SQL for setting the session timezone to UTC"
+
+    def optimizer_hints(self, hints: str) -> str:
+        return f"/*+ {hints} */ "
 
 
 T = TypeVar("T", bound=BaseDialect)

@@ -120,14 +120,3 @@ class AbstractMixin_MD5(AbstractMixin):
     @abstractmethod
     def md5_as_int(self, s: str) -> str:
         "Provide SQL for computing md5 and returning an int"
-
-
-@attrs.define(frozen=False)
-class AbstractMixin_OptimizerHints(AbstractMixin):
-    @abstractmethod
-    def optimizer_hints(self, optimizer_hints: str) -> str:
-        """Creates a compatible optimizer_hints string
-
-        Parameters:
-            optimizer_hints - string of optimizer hints
-        """
