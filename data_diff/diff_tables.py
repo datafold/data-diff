@@ -271,9 +271,6 @@ class TableDiffer(ThreadBase, ABC):
         key_types1 = [table1._schema[i] for i in table1.key_columns]
         key_types2 = [table2._schema[i] for i in table2.key_columns]
 
-        raise Exception(key_types1 + key_types2)
-        logger.info(type(kt))
-
         for kt in key_types1 + key_types2:
             if not isinstance(kt, IKey):
                 raise NotImplementedError(f"Cannot use a column of type {kt} as a key")
