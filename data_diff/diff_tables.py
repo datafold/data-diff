@@ -208,6 +208,10 @@ class TableDiffer(ThreadBase, ABC):
             event_json = create_start_event_json(options)
             run_as_daemon(send_event_json, event_json)
 
+        if table1.database.dialect.PREVENT_OVERFLOW_WHEN_CONCAT or table2.database.dialect.PREVENT_OVERFLOW_WHEN_CONCAT:
+            table1.database.dialect.enable_preventing_type_overflow()
+            table2.database.dialect.enable_preventing_type_overflow()
+
         start = time.monotonic()
         error = None
         try:

@@ -101,6 +101,9 @@ class Dialect(BaseDialect):
     def md5_as_int(self, s: str) -> str:
         return f"conv(substring(md5({s}), {1+MD5_HEXDIGITS-CHECKSUM_HEXDIGITS}), 16, 10) - {CHECKSUM_OFFSET}"
 
+    def to_md5(self, s: str) -> str:
+        return f"md5({s})"
+
     def normalize_timestamp(self, value: str, coltype: TemporalType) -> str:
         if coltype.rounds:
             return self.to_string(f"cast( cast({value} as datetime({coltype.precision})) as datetime(6))")

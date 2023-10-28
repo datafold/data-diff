@@ -203,6 +203,15 @@ class BaseDialect(abc.ABC):
 
     PLACEHOLDER_TABLE = None  # Used for Oracle
 
+    # Some database do not support long string so concatenation might lead to type overflow
+    PREVENT_OVERFLOW_WHEN_CONCAT: bool = False
+
+    _prevent_overflow_when_concat: bool = False
+
+    def enable_preventing_type_overflow(self) -> None:
+        logger.info("Preventing type overflow when concatenation is enabled")
+        self._prevent_overflow_when_concat = True
+
     def parse_table_name(self, name: str) -> DbPath:
         "Parse the given table name into a DbPath"
         return parse_table_name(name)
@@ -392,10 +401,18 @@ class BaseDialect(abc.ABC):
         return f"sum({md5})"
 
     def render_concat(self, c: Compiler, elem: Concat) -> str:
+        if self._prevent_overflow_when_concat:
+            items = [
+                f"{self.compile(c, Code(self.to_md5(self.to_string(self.compile(c, expr)))))}" for expr in elem.exprs
+            ]
+
         # We coalesce because on some DBs (e.g. MySQL) concat('a', NULL) is NULL
-        items = [
-            f"coalesce({self.compile(c, Code(self.to_string(self.compile(c, expr))))}, '<null>')" for expr in elem.exprs
-        ]
+        else:
+            items = [
+                f"coalesce({self.compile(c, Code(self.to_string(self.compile(c, expr))))}, '<null>')"
+                for expr in elem.exprs
+            ]
+
         assert items
         if len(items) == 1:
             return items[0]
@@ -768,6 +785,10 @@ class BaseDialect(abc.ABC):
     @abstractmethod
     def md5_as_int(self, s: str) -> str:
         "Provide SQL for computing md5 and returning an int"
+
+    @abstractmethod
+    def to_md5(self, s: str) -> str:
+        """Method to calculate MD5"""
 
     @abstractmethod
     def normalize_timestamp(self, value: str, coltype: TemporalType) -> str:

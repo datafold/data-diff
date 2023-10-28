@@ -151,6 +151,9 @@ class Dialect(BaseDialect):
     def md5_as_int(self, s: str) -> str:
         return f"convert(bigint, convert(varbinary, '0x' + RIGHT(CONVERT(NVARCHAR(32), HashBytes('MD5', {s}), 2), {CHECKSUM_HEXDIGITS}), 1)) - {CHECKSUM_OFFSET}"
 
+    def to_md5(self, s: str) -> str:
+        return f"HashBytes('MD5', {s})"
+
 
 @attrs.define(frozen=False, init=False, kw_only=True)
 class MsSQL(ThreadedDatabase):

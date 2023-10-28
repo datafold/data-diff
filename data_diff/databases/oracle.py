@@ -137,6 +137,9 @@ class Dialect(
         # TODO: Find a way to use UTL_RAW.CAST_TO_BINARY_INTEGER ?
         return f"to_number(substr(standard_hash({s}, 'MD5'), {1+MD5_HEXDIGITS-CHECKSUM_HEXDIGITS}), 'xxxxxxxxxxxxxxx') - {CHECKSUM_OFFSET}"
 
+    def to_md5(self, s: str) -> str:
+        return f"standard_hash({s}, 'MD5'"
+
     def normalize_uuid(self, value: str, coltype: ColType_UUID) -> str:
         # Cast is necessary for correct MD5 (trimming not enough)
         return f"CAST(TRIM({value}) AS VARCHAR(36))"

@@ -105,6 +105,9 @@ class Dialect(BaseDialect):
             f"reinterpretAsUInt128(reverse(unhex(lowerUTF8(substr(hex(MD5({s})), {substr_idx}))))) - {CHECKSUM_OFFSET}"
         )
 
+    def to_md5(self, s: str) -> str:
+        return f"hex(MD5({s}))"
+
     def normalize_number(self, value: str, coltype: FractionalType) -> str:
         # If a decimal value has trailing zeros in a fractional part, when casting to string they are dropped.
         # For example:
