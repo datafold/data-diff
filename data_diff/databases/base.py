@@ -202,6 +202,7 @@ class BaseDialect(abc.ABC):
     TYPE_CLASSES: ClassVar[Dict[str, Type[ColType]]] = {}
 
     PLACEHOLDER_TABLE = None  # Used for Oracle
+    USE_TOP_INSTEAD_LIMIT: bool = False  # True for MsSQL or Teradata
 
     def parse_table_name(self, name: str) -> DbPath:
         "Parse the given table name into a DbPath"
@@ -471,7 +472,10 @@ class BaseDialect(abc.ABC):
         columns = ", ".join(map(compile_fn, elem.columns)) if elem.columns else "*"
         distinct = "DISTINCT " if elem.distinct else ""
         optimizer_hints = self.optimizer_hints(elem.optimizer_hints) if elem.optimizer_hints else ""
-        select = f"SELECT {optimizer_hints}{distinct}{columns}"
+        if elem.limit_expr is not None and self.USE_TOP_INSTEAD_LIMIT:
+            select = f"SELECT TOP {elem.limit_expr} {optimizer_hints}{distinct}{columns}"
+        else:
+            select = f"SELECT {optimizer_hints}{distinct}{columns}"
 
         if elem.table:
             select += " FROM " + self.compile(c, elem.table)
@@ -491,7 +495,7 @@ class BaseDialect(abc.ABC):
         if elem.order_by_exprs:
             select += " ORDER BY " + ", ".join(map(compile_fn, elem.order_by_exprs))
 
-        if elem.limit_expr is not None:
+        if elem.limit_expr is not None and not self.USE_TOP_INSTEAD_LIMIT:
             has_order_by = bool(elem.order_by_exprs)
             select += " " + self.offset_limit(0, elem.limit_expr, has_order_by=has_order_by)
 
