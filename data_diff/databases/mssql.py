@@ -98,7 +98,7 @@ class Dialect(BaseDialect):
 
     def type_repr(self, t) -> str:
         try:
-            return {bool: "bit"}[t]
+            return {bool: "bit", str: "text"}[t]
         except KeyError:
             return super().type_repr(t)
 
