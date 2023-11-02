@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "data-diff"
-version = "0.9.9"
+version = "0.9.10"
 description = "Command-line tool and Python library to efficiently diff rows across two different databases."
 authors = ["Datafold <data-diff@datafold.com>"]
 license = "MIT"
