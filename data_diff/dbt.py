@@ -186,6 +186,10 @@ def _get_diff_vars(
     else:
         prod_database, prod_schema = _get_prod_path_from_config(config, model, dev_database, dev_schema)
 
+    # cli flags take precedence over any project level config
+    prod_database = production_database_flag or prod_database
+    prod_schema = production_schema_flag or prod_schema
+
     if dbt_parser.requires_upper:
         dev_qualified_list = [x.upper() for x in [dev_database, dev_schema, dev_alias] if x]
         prod_qualified_list = [x.upper() for x in [prod_database, prod_schema, prod_alias] if x]
@@ -193,14 +197,6 @@ def _get_diff_vars(
     else:
         dev_qualified_list = [x for x in [dev_database, dev_schema, dev_alias] if x]
         prod_qualified_list = [x for x in [prod_database, prod_schema, prod_alias] if x]
-
-    # TODO: figure out how to inject requires upper logic into the below
-    if production_database_flag and production_schema_flag:
-        prod_qualified_list = [production_database_flag, production_schema_flag, prod_alias]
-    elif production_database_flag:
-        prod_qualified_list = [production_database_flag, prod_schema, prod_alias]
-    elif production_schema_flag:
-        prod_qualified_list = [prod_database, production_schema_flag, prod_alias]
 
     datadiff_model_config = dbt_parser.get_datadiff_model_config(model.meta)
 
