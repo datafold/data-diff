@@ -113,7 +113,7 @@ class CaseSensitiveDict(dict, CaseAwareMapping):
 
 # -- Alphanumerics --
 
-alphanums = string.digits + string.ascii_lowercase
+alphanums = string.digits + string.ascii_lowercase + string.ascii_uppercase
 
 
 @attrs.define(frozen=True)
