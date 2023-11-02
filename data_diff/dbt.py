@@ -76,6 +76,8 @@ def dbt_diff(
     where_flag: Optional[str] = None,
     stats_flag: bool = False,
     columns_flag: Optional[Tuple[str]] = None,
+    production_database_flag: Optional[str] = None,
+    production_schema_flag: Optional[str] = None,
 ) -> None:
     print_version_info()
     diff_threads = []
@@ -115,7 +117,7 @@ def dbt_diff(
             if log_status_handler:
                 log_status_handler.set_prefix(f"Diffing {model.alias} \n")
 
-            diff_vars = _get_diff_vars(dbt_parser, config, model, where_flag, stats_flag, columns_flag)
+            diff_vars = _get_diff_vars(dbt_parser, config, model, where_flag, stats_flag, columns_flag, production_database_flag, production_schema_flag)
 
             # we won't always have a prod path when using state
             # when the model DNE in prod manifest, skip the model diff
@@ -169,6 +171,8 @@ def _get_diff_vars(
     where_flag: Optional[str] = None,
     stats_flag: bool = False,
     columns_flag: Optional[Tuple[str]] = None,
+    production_database_flag: Optional[str] = None,
+    production_schema_flag: Optional[str] = None,
 ) -> TDiffVars:
     cli_columns = list(columns_flag) if columns_flag else []
     dev_database = model.database
@@ -189,6 +193,14 @@ def _get_diff_vars(
     else:
         dev_qualified_list = [x for x in [dev_database, dev_schema, dev_alias] if x]
         prod_qualified_list = [x for x in [prod_database, prod_schema, prod_alias] if x]
+
+    # TODO: figure out how to inject requires upper logic into the below
+    if production_database_flag and production_schema_flag:
+        prod_qualified_list = [production_database_flag, production_schema_flag, prod_alias]
+    elif production_database_flag:
+        prod_qualified_list = [production_database_flag, prod_schema, prod_alias]
+    elif production_schema_flag:
+        prod_qualified_list = [prod_database, production_schema_flag, prod_alias]
 
     datadiff_model_config = dbt_parser.get_datadiff_model_config(model.meta)
 
