@@ -1069,7 +1069,7 @@ class Database(abc.ABC):
                     )
                 else:
                     assert col_name in col_dict
-                    col_dict[col_name] = String_UUID()
+                    col_dict[col_name] = String_VaryingAlphanum()
                     continue
 
             if self.SUPPORTS_ALPHANUMS:  # Anything but MySQL (so far)
