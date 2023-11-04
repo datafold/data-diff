@@ -117,7 +117,16 @@ def dbt_diff(
             if log_status_handler:
                 log_status_handler.set_prefix(f"Diffing {model.alias} \n")
 
-            diff_vars = _get_diff_vars(dbt_parser, config, model, where_flag, stats_flag, columns_flag, production_database_flag, production_schema_flag)
+            diff_vars = _get_diff_vars(
+                dbt_parser,
+                config,
+                model,
+                where_flag,
+                stats_flag,
+                columns_flag,
+                production_database_flag,
+                production_schema_flag,
+            )
 
             # we won't always have a prod path when using state
             # when the model DNE in prod manifest, skip the model diff

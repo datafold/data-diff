@@ -967,7 +967,15 @@ class TestDbtDiffer(unittest.TestCase):
         production_database_flag_override = "prod_db_override"
         production_schema_flag_override = "prod_schema_override"
 
-        diff_vars = _get_diff_vars(mock_dbt_parser, config, mock_model, where_flag=None, columns_flag=cli_columns, production_database_flag=production_database_flag_override, production_schema_flag=production_schema_flag_override)
+        diff_vars = _get_diff_vars(
+            mock_dbt_parser,
+            config,
+            mock_model,
+            where_flag=None,
+            columns_flag=cli_columns,
+            production_database_flag=production_database_flag_override,
+            production_schema_flag=production_schema_flag_override,
+        )
 
         mock_dbt_parser.get_pk_from_model.assert_called_once()
         mock_prod_path_from_config.assert_called_once_with(config, mock_model, mock_model.database, mock_model.schema_)
