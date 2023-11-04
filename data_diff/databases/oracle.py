@@ -138,7 +138,7 @@ class Dialect(
         return f"to_number(substr(standard_hash({s}, 'MD5'), {1+MD5_HEXDIGITS-CHECKSUM_HEXDIGITS}), 'xxxxxxxxxxxxxxx') - {CHECKSUM_OFFSET}"
 
     def md5_as_hex(self, s: str) -> str:
-        return f"standard_hash({s}, 'MD5'"
+        return f"standard_hash({s}, 'MD5')"
 
     def normalize_uuid(self, value: str, coltype: ColType_UUID) -> str:
         # Cast is necessary for correct MD5 (trimming not enough)
