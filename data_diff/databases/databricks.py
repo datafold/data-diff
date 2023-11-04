@@ -82,7 +82,7 @@ class Dialect(BaseDialect):
     def md5_as_int(self, s: str) -> str:
         return f"cast(conv(substr(md5({s}), {1+MD5_HEXDIGITS-CHECKSUM_HEXDIGITS}), 16, 10) as decimal(38, 0)) - {CHECKSUM_OFFSET}"
 
-    def to_md5(self, s: str) -> str:
+    def md5_as_hex(self, s: str) -> str:
         return f"md5({s})"
 
     def normalize_timestamp(self, value: str, coltype: TemporalType) -> str:

@@ -403,7 +403,7 @@ class BaseDialect(abc.ABC):
     def render_concat(self, c: Compiler, elem: Concat) -> str:
         if self._prevent_overflow_when_concat:
             items = [
-                f"{self.compile(c, Code(self.to_md5(self.to_string(self.compile(c, expr)))))}" for expr in elem.exprs
+                f"{self.compile(c, Code(self.md5_as_hex(self.to_string(self.compile(c, expr)))))}" for expr in elem.exprs
             ]
 
         # We coalesce because on some DBs (e.g. MySQL) concat('a', NULL) is NULL
@@ -787,7 +787,7 @@ class BaseDialect(abc.ABC):
         "Provide SQL for computing md5 and returning an int"
 
     @abstractmethod
-    def to_md5(self, s: str) -> str:
+    def md5_as_hex(self, s: str) -> str:
         """Method to calculate MD5"""
 
     @abstractmethod

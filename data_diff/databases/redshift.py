@@ -48,7 +48,7 @@ class Dialect(PostgresqlDialect):
     def md5_as_int(self, s: str) -> str:
         return f"strtol(substring(md5({s}), {1+MD5_HEXDIGITS-CHECKSUM_HEXDIGITS}), 16)::decimal(38) - {CHECKSUM_OFFSET}"
 
-    def to_md5(self, s: str) -> str:
+    def md5_as_hex(self, s: str) -> str:
         return f"md5({s})"
 
     def normalize_timestamp(self, value: str, coltype: TemporalType) -> str:

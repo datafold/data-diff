@@ -100,7 +100,7 @@ class Dialect(BaseDialect):
     def md5_as_int(self, s: str) -> str:
         return f"('0x' || SUBSTRING(md5({s}), {1+MD5_HEXDIGITS-CHECKSUM_HEXDIGITS},{CHECKSUM_HEXDIGITS}))::BIGINT - {CHECKSUM_OFFSET}"
 
-    def to_md5(self, s: str) -> str:
+    def md5_as_hex(self, s: str) -> str:
         return f"md5({s})"
 
     def normalize_timestamp(self, value: str, coltype: TemporalType) -> str:

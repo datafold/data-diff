@@ -128,7 +128,7 @@ class Dialect(BaseDialect):
     def md5_as_int(self, s: str) -> str:
         return f"cast(from_base(substr(to_hex(md5(to_utf8({s}))), {1+MD5_HEXDIGITS-CHECKSUM_HEXDIGITS}), 16) as decimal(38, 0)) - {CHECKSUM_OFFSET}"
 
-    def to_md5(self, s: str) -> str:
+    def md5_as_hex(self, s: str) -> str:
         return f"to_hex(md5(to_utf8({s})))"
 
     def normalize_uuid(self, value: str, coltype: ColType_UUID) -> str:

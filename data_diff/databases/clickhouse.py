@@ -105,7 +105,7 @@ class Dialect(BaseDialect):
             f"reinterpretAsUInt128(reverse(unhex(lowerUTF8(substr(hex(MD5({s})), {substr_idx}))))) - {CHECKSUM_OFFSET}"
         )
 
-    def to_md5(self, s: str) -> str:
+    def md5_as_hex(self, s: str) -> str:
         return f"hex(MD5({s}))"
 
     def normalize_number(self, value: str, coltype: FractionalType) -> str:
