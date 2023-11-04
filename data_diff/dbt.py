@@ -76,6 +76,8 @@ def dbt_diff(
     where_flag: Optional[str] = None,
     stats_flag: bool = False,
     columns_flag: Optional[Tuple[str]] = None,
+    production_database_flag: Optional[str] = None,
+    production_schema_flag: Optional[str] = None,
 ) -> None:
     print_version_info()
     diff_threads = []
@@ -115,7 +117,16 @@ def dbt_diff(
             if log_status_handler:
                 log_status_handler.set_prefix(f"Diffing {model.alias} \n")
 
-            diff_vars = _get_diff_vars(dbt_parser, config, model, where_flag, stats_flag, columns_flag)
+            diff_vars = _get_diff_vars(
+                dbt_parser,
+                config,
+                model,
+                where_flag,
+                stats_flag,
+                columns_flag,
+                production_database_flag,
+                production_schema_flag,
+            )
 
             # we won't always have a prod path when using state
             # when the model DNE in prod manifest, skip the model diff
@@ -169,6 +180,8 @@ def _get_diff_vars(
     where_flag: Optional[str] = None,
     stats_flag: bool = False,
     columns_flag: Optional[Tuple[str]] = None,
+    production_database_flag: Optional[str] = None,
+    production_schema_flag: Optional[str] = None,
 ) -> TDiffVars:
     cli_columns = list(columns_flag) if columns_flag else []
     dev_database = model.database
@@ -181,6 +194,10 @@ def _get_diff_vars(
         prod_database, prod_schema, prod_alias = _get_prod_path_from_manifest(model, dbt_parser.prod_manifest_obj)
     else:
         prod_database, prod_schema = _get_prod_path_from_config(config, model, dev_database, dev_schema)
+
+    # cli flags take precedence over any project level config
+    prod_database = production_database_flag or prod_database
+    prod_schema = production_schema_flag or prod_schema
 
     if dbt_parser.requires_upper:
         dev_qualified_list = [x.upper() for x in [dev_database, dev_schema, dev_alias] if x]
