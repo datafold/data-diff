@@ -45,7 +45,7 @@ oracledb = {version = "*", optional=true}
 pyodbc = {version="^4.0.39", optional=true}
 typing-extensions = ">=4.0.1"
 attrs = "^23.1.0"
-mashumaro = {version = ">=3.8.1,<3.9.0", extras = ["msgpack"]}
+mashumaro = {version = ">=3.8.1,<3.11.0", extras = ["msgpack"]}
 
 [tool.poetry.dev-dependencies]
 parameterized = "*"
