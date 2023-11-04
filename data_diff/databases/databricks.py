@@ -1,5 +1,5 @@
 import math
-from typing import Any, Dict, Sequence
+from typing import Any, ClassVar, Dict, Sequence, Type
 import logging
 
 import attrs
@@ -107,7 +107,7 @@ class Dialect(BaseDialect):
 
 @attrs.define(frozen=False, init=False, kw_only=True)
 class Databricks(ThreadedDatabase):
-    dialect = Dialect()
+    DIALECT_CLASS: ClassVar[Type[BaseDialect]] = Dialect
     CONNECT_URI_HELP = "databricks://:<access_token>@<server_hostname>/<http_path>"
     CONNECT_URI_PARAMS = ["catalog", "schema"]
 

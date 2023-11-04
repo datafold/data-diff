@@ -122,7 +122,7 @@ class PostgresqlDialect(BaseDialect):
 
 @attrs.define(frozen=False, init=False, kw_only=True)
 class PostgreSQL(ThreadedDatabase):
-    dialect = PostgresqlDialect()
+    DIALECT_CLASS: ClassVar[Type[BaseDialect]] = PostgresqlDialect
     SUPPORTS_UNIQUE_CONSTAINT = True
     CONNECT_URI_HELP = "postgresql://<user>:<password>@<host>/<database>"
     CONNECT_URI_PARAMS = ["database?"]

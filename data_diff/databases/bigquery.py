@@ -1,5 +1,5 @@
 import re
-from typing import Any, List, Union
+from typing import Any, ClassVar, List, Union, Type
 
 import attrs
 
@@ -182,9 +182,9 @@ class Dialect(BaseDialect):
 
 @attrs.define(frozen=False, init=False, kw_only=True)
 class BigQuery(Database):
+    DIALECT_CLASS: ClassVar[Type[BaseDialect]] = Dialect
     CONNECT_URI_HELP = "bigquery://<project>/<dataset>"
     CONNECT_URI_PARAMS = ["dataset"]
-    dialect = Dialect()
 
     project: str
     dataset: str

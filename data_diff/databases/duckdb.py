@@ -1,4 +1,4 @@
-from typing import Any, Dict, Union
+from typing import Any, ClassVar, Dict, Union, Type
 
 import attrs
 
@@ -119,7 +119,7 @@ class Dialect(BaseDialect):
 
 @attrs.define(frozen=False, init=False, kw_only=True)
 class DuckDB(Database):
-    dialect = Dialect()
+    DIALECT_CLASS: ClassVar[Type[BaseDialect]] = Dialect
     SUPPORTS_UNIQUE_CONSTAINT = False  # Temporary, until we implement it
     CONNECT_URI_HELP = "duckdb://<dbname>@<filepath>"
     CONNECT_URI_PARAMS = ["database", "dbpath"]

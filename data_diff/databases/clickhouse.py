@@ -1,4 +1,4 @@
-from typing import Any, Dict, Optional, Type
+from typing import Any, ClassVar, Dict, Optional, Type
 
 import attrs
 
@@ -167,7 +167,7 @@ class Dialect(BaseDialect):
 
 @attrs.define(frozen=False, init=False, kw_only=True)
 class Clickhouse(ThreadedDatabase):
-    dialect = Dialect()
+    DIALECT_CLASS: ClassVar[Type[BaseDialect]] = Dialect
     CONNECT_URI_HELP = "clickhouse://<user>:<password>@<host>/<database>"
     CONNECT_URI_PARAMS = ["database?"]
 

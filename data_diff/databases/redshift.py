@@ -12,6 +12,7 @@ from data_diff.abcs.database_types import (
     TimestampTZ,
 )
 from data_diff.databases.postgresql import (
+    BaseDialect,
     PostgreSQL,
     MD5_HEXDIGITS,
     CHECKSUM_HEXDIGITS,
@@ -79,7 +80,7 @@ class Dialect(PostgresqlDialect):
 
 @attrs.define(frozen=False, init=False, kw_only=True)
 class Redshift(PostgreSQL):
-    dialect = Dialect()
+    DIALECT_CLASS: ClassVar[Type[BaseDialect]] = Dialect
     CONNECT_URI_HELP = "redshift://<user>:<password>@<host>/<database>"
     CONNECT_URI_PARAMS = ["database?"]
 

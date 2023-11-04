@@ -1,4 +1,4 @@
-from typing import Any, Union, List
+from typing import Any, ClassVar, Union, List, Type
 import logging
 
 import attrs
@@ -96,7 +96,7 @@ class Dialect(BaseDialect):
 
 @attrs.define(frozen=False, init=False, kw_only=True)
 class Snowflake(Database):
-    dialect = Dialect()
+    DIALECT_CLASS: ClassVar[Type[BaseDialect]] = Dialect
     CONNECT_URI_HELP = "snowflake://<user>:<password>@<account>/<database>/<SCHEMA>?warehouse=<WAREHOUSE>"
     CONNECT_URI_PARAMS = ["database", "schema"]
     CONNECT_URI_KWPARAMS = ["warehouse"]

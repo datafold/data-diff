@@ -1,4 +1,4 @@
-from typing import Any, Dict
+from typing import Any, ClassVar, Dict, Type
 
 import attrs
 
@@ -120,7 +120,7 @@ class Dialect(BaseDialect):
 
 @attrs.define(frozen=False, init=False, kw_only=True)
 class MySQL(ThreadedDatabase):
-    dialect = Dialect()
+    DIALECT_CLASS: ClassVar[Type[BaseDialect]] = Dialect
     SUPPORTS_ALPHANUMS = False
     SUPPORTS_UNIQUE_CONSTAINT = True
     CONNECT_URI_HELP = "mysql://<user>:<password>@<host>/<database>"

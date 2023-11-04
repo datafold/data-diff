@@ -906,6 +906,8 @@ class Database(abc.ABC):
     Instanciated using :meth:`~data_diff.connect`
     """
 
+    DIALECT_CLASS: ClassVar[Type[BaseDialect]] = BaseDialect
+
     SUPPORTS_ALPHANUMS: ClassVar[bool] = True
     SUPPORTS_UNIQUE_CONSTAINT: ClassVar[bool] = False
     CONNECT_URI_KWPARAMS: ClassVar[List[str]] = []
@@ -913,6 +915,7 @@ class Database(abc.ABC):
     default_schema: Optional[str] = None
     _interactive: bool = False
     is_closed: bool = False
+    _dialect: BaseDialect = None
 
     @property
     def name(self):
@@ -1141,9 +1144,12 @@ class Database(abc.ABC):
         return super().close()
 
     @property
-    @abstractmethod
     def dialect(self) -> BaseDialect:
         "The dialect of the database. Used internally by Database, and also available publicly."
+
+        if not self._dialect:
+            self._dialect = self.DIALECT_CLASS()
+        return self._dialect
 
     @property
     @abstractmethod

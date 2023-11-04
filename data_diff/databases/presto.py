@@ -1,6 +1,6 @@
 from functools import partial
 import re
-from typing import Any
+from typing import Any, ClassVar, Type
 
 import attrs
 
@@ -153,7 +153,7 @@ class Dialect(BaseDialect):
 
 @attrs.define(frozen=False, init=False, kw_only=True)
 class Presto(Database):
-    dialect = Dialect()
+    DIALECT_CLASS: ClassVar[Type[BaseDialect]] = Dialect
     CONNECT_URI_HELP = "presto://<user>@<host>/<catalog>/<schema>"
     CONNECT_URI_PARAMS = ["catalog", "schema"]
 

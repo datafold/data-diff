@@ -1,4 +1,4 @@
-from typing import Any, Dict, List
+from typing import Any, ClassVar, Dict, List, Type
 
 import attrs
 
@@ -135,7 +135,7 @@ class Dialect(BaseDialect):
 
 @attrs.define(frozen=False, init=False, kw_only=True)
 class Vertica(ThreadedDatabase):
-    dialect = Dialect()
+    DIALECT_CLASS: ClassVar[Type[BaseDialect]] = Dialect
     CONNECT_URI_HELP = "vertica://<user>:<password>@<host>/<database>"
     CONNECT_URI_PARAMS = ["database?"]
 

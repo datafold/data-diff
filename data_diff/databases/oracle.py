@@ -1,4 +1,4 @@
-from typing import Any, Dict, List, Optional
+from typing import Any, ClassVar, Dict, List, Optional, Type
 
 import attrs
 
@@ -164,7 +164,7 @@ class Dialect(
 
 @attrs.define(frozen=False, init=False, kw_only=True)
 class Oracle(ThreadedDatabase):
-    dialect = Dialect()
+    DIALECT_CLASS: ClassVar[Type[BaseDialect]] = Dialect
     CONNECT_URI_HELP = "oracle://<user>:<password>@<host>/<database>"
     CONNECT_URI_PARAMS = ["database?"]
 
