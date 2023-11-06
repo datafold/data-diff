@@ -1,5 +1,6 @@
 from contextlib import nullcontext
 import json
+import time
 import os
 import re
 import time
@@ -114,6 +115,7 @@ def dbt_diff(
 
     with log_status_handler.status if log_status_handler else nullcontext():
         for model in models:
+            start_time = time.monotonic()
             if log_status_handler:
                 log_status_handler.set_prefix(f"Diffing {model.alias} \n")
 
@@ -164,12 +166,12 @@ def dbt_diff(
                         _diff_output_base(".".join(diff_vars.dev_path), ".".join(diff_vars.prod_path))
                         + "Skipped due to unknown primary key. Add uniqueness tests, meta, or tags.\n"
                     )
+            log_status_handler.stop_counter(model_name=model.alias, start_time=start_time)
 
         # wait for all threads
         if diff_threads:
             for thread in diff_threads:
                 thread.join()
-
     _extension_notification()
 
 
@@ -508,7 +510,7 @@ def _cloud_diff(
                 diff_url = f"{api.host}/datadiffs/{diff_id}/overview"
                 rich.print(f"{diff_url} \n")
             logger.error(error)
-
+        log_status_handler.stop_counter(model_name=model.alias, start_time=start_time)
 
 def _diff_output_base(dev_path: str, prod_path: str) -> str:
     return f"\n[green]{prod_path} <> {dev_path}[/] \n"

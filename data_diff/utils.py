@@ -1,4 +1,5 @@
 import json
+import time
 import logging
 import math
 import re
@@ -485,6 +486,7 @@ class LogStatusHandler(logging.Handler):
         super().__init__()
         self.status = Status("")
         self.prefix = ""
+        self.diff_time = ""
         self.cloud_diff_status = {}
 
     def emit(self, record):
@@ -496,6 +498,12 @@ class LogStatusHandler(logging.Handler):
 
     def set_prefix(self, prefix_string):
         self.prefix = prefix_string
+
+    def stop_counter(self, model_name, start_time):
+        end_time = time.monotonic()
+        duration = end_time - start_time
+        self.diff_time = f"[{model_name}] diff time: {duration:.2f}s"
+        print(self.diff_time)
 
     def cloud_diff_started(self, model_name):
         self.cloud_diff_status[model_name] = "[yellow]In Progress[/]"
