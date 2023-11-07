@@ -513,6 +513,7 @@ def _cloud_diff(
             logger.error(error)
     log_status_handler.stop_counter(model_name=diff_vars.dev_path[-1], start_time=start)
 
+
 def _diff_output_base(dev_path: str, prod_path: str) -> str:
     return f"\n[green]{prod_path} <> {dev_path}[/] \n"
 
