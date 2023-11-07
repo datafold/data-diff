@@ -166,7 +166,8 @@ def dbt_diff(
                         _diff_output_base(".".join(diff_vars.dev_path), ".".join(diff_vars.prod_path))
                         + "Skipped due to unknown primary key. Add uniqueness tests, meta, or tags.\n"
                     )
-            log_status_handler.stop_counter(model_name=model.alias, start_time=start_time)
+            if not is_cloud:
+                log_status_handler.stop_counter(model_name=model.alias, start_time=start_time)
 
         # wait for all threads
         if diff_threads:
@@ -510,7 +511,7 @@ def _cloud_diff(
                 diff_url = f"{api.host}/datadiffs/{diff_id}/overview"
                 rich.print(f"{diff_url} \n")
             logger.error(error)
-        log_status_handler.stop_counter(model_name=model.alias, start_time=start_time)
+    log_status_handler.stop_counter(model_name=diff_vars.dev_path[-1], start_time=start)
 
 def _diff_output_base(dev_path: str, prod_path: str) -> str:
     return f"\n[green]{prod_path} <> {dev_path}[/] \n"
