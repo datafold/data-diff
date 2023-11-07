@@ -337,6 +337,7 @@ class CaseWhen(ExprNode):
 @attrs.define(frozen=True, eq=False)
 class QB_When:
     "Partial case-when, used for query-building"
+
     casewhen: CaseWhen
     when: Expr
 

@@ -61,6 +61,7 @@ clickhouse-driver = "*"
 vertica-python = "*"
 duckdb = "^0.7.0"
 dbt-core = "^1.0.0"
+ruff = "^0.1.4"
 # google-cloud-bigquery = "*"
 # databricks-sql-connector = "*"
 
@@ -79,6 +80,9 @@ trino = ["trino"]
 clickhouse = ["clickhouse-driver"]
 vertica = ["vertica-python"]
 duckdb = ["duckdb"]
+
+[tool.poetry.group.dev.dependencies]
+pre-commit = "^3.5.0"
 
 [build-system]
 requires = ["poetry-core>=1.0.0"]

@@ -135,6 +135,7 @@ def str_to_checksum(str: str):
 
 class DiffTestCase(unittest.TestCase):
     "Sets up two tables for diffing"
+
     db_cls = None
     src_schema = None
     dst_schema = None
