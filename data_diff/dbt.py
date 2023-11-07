@@ -148,6 +148,8 @@ def dbt_diff(
                     diff_threads.append(diff_thread)
                 else:
                     _local_diff(diff_vars, json_output)
+                if not is_cloud:
+                    log_status_handler.stop_counter(model_name=model.alias, start_time=start_time)
             else:
                 if json_output:
                     print(
@@ -166,8 +168,6 @@ def dbt_diff(
                         _diff_output_base(".".join(diff_vars.dev_path), ".".join(diff_vars.prod_path))
                         + "Skipped due to unknown primary key. Add uniqueness tests, meta, or tags.\n"
                     )
-            if not is_cloud:
-                log_status_handler.stop_counter(model_name=model.alias, start_time=start_time)
 
         # wait for all threads
         if diff_threads:
