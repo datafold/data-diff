@@ -114,6 +114,7 @@ def dbt_diff(
         dbt_parser.set_connection()
 
     with log_status_handler.status if log_status_handler else nullcontext():
+        total_start_time = time.monotonic()
         for model in models:
             start_time = time.monotonic()
             if log_status_handler:
@@ -173,6 +174,10 @@ def dbt_diff(
         if diff_threads:
             for thread in diff_threads:
                 thread.join()
+        # TODO: update this to be a function instead
+        total_end_time = time.monotonic()
+        total_duration = total_end_time - total_start_time
+        rich.print(f"[blue][bold]total diff time: {total_duration:.2f}s")
     _extension_notification()
 
 
