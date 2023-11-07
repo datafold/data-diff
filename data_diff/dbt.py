@@ -149,7 +149,7 @@ def dbt_diff(
                 else:
                     _local_diff(diff_vars, json_output)
                 if not is_cloud:
-                    log_status_handler.stop_counter(model_name=model.alias, start_time=start_time)
+                    log_status_handler.stop_counter(start_time=start_time)
             else:
                 if json_output:
                     print(
@@ -472,11 +472,15 @@ def _cloud_diff(
                 diff_percent_list,
                 "Value Match Percent:",
             )
-            diff_output_str += f"\n{diff_url}\n {diff_output} \n"
+            diff_output_str += f"\n{diff_url}\n {diff_output}"
             rich.print(diff_output_str)
+            if log_status_handler:
+                log_status_handler.stop_counter(start_time=start)
         else:
-            diff_output_str += f"\n{diff_url}\n{no_differences_template()}\n"
+            diff_output_str += f"\n{diff_url}\n{no_differences_template()}"
             rich.print(diff_output_str)
+            if log_status_handler:
+                log_status_handler.stop_counter(start_time=start)
 
         if log_status_handler:
             log_status_handler.cloud_diff_finished(diff_vars.dev_path[-1])
@@ -511,7 +515,6 @@ def _cloud_diff(
                 diff_url = f"{api.host}/datadiffs/{diff_id}/overview"
                 rich.print(f"{diff_url} \n")
             logger.error(error)
-    log_status_handler.stop_counter(model_name=diff_vars.dev_path[-1], start_time=start)
 
 
 def _diff_output_base(dev_path: str, prod_path: str) -> str:

@@ -456,7 +456,7 @@ def columns_type_changed_template(columns_type_changed) -> str:
 
 
 def no_differences_template() -> str:
-    return "[bold][green]No row differences[/][/]\n"
+    return "[bold][green]No row differences[/][/]"
 
 
 def print_version_info() -> None:
@@ -499,10 +499,10 @@ class LogStatusHandler(logging.Handler):
     def set_prefix(self, prefix_string):
         self.prefix = prefix_string
 
-    def stop_counter(self, model_name, start_time):
+    def stop_counter(self, start_time):
         end_time = time.monotonic()
         duration = end_time - start_time
-        self.diff_time = f"[{model_name}] diff time: {duration:.2f}s"
+        self.diff_time = f"diff time: {duration:.2f}s"
         print(self.diff_time)
 
     def cloud_diff_started(self, model_name):
