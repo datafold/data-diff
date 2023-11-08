@@ -43,7 +43,7 @@ class Dialect(
     BaseDialect,
 ):
     name = "Oracle"
-    SUPPORTS_PRIMARY_KEY = True
+    SUPPORTS_PRIMARY_KEY: ClassVar[bool] = True
     SUPPORTS_INDEXES = True
     TYPE_CLASSES: Dict[str, type] = {
         "NUMBER": Decimal,

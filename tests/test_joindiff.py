@@ -270,7 +270,9 @@ class TestJoindiff(DiffTestCase):
         self.assertRaises(ValueError, list, x)
 
 
-@test_each_database_in_list(d for d in TEST_DATABASES if d.dialect.SUPPORTS_PRIMARY_KEY and d.SUPPORTS_UNIQUE_CONSTAINT)
+@test_each_database_in_list(
+    d for d in TEST_DATABASES if d.DIALECT_CLASS.SUPPORTS_PRIMARY_KEY and d.SUPPORTS_UNIQUE_CONSTAINT
+)
 class TestUniqueConstraint(DiffTestCase):
     def setUp(self):
         super().setUp()

@@ -38,7 +38,7 @@ def import_mssql():
 class Dialect(BaseDialect):
     name = "MsSQL"
     ROUNDS_ON_PREC_LOSS = True
-    SUPPORTS_PRIMARY_KEY = True
+    SUPPORTS_PRIMARY_KEY: ClassVar[bool] = True
     SUPPORTS_INDEXES = True
     TYPE_CLASSES = {
         # Timestamps

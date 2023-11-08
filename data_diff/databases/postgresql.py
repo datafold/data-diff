@@ -42,7 +42,7 @@ def import_postgresql():
 class PostgresqlDialect(BaseDialect):
     name = "PostgreSQL"
     ROUNDS_ON_PREC_LOSS = True
-    SUPPORTS_PRIMARY_KEY = True
+    SUPPORTS_PRIMARY_KEY: ClassVar[bool] = True
     SUPPORTS_INDEXES = True
 
     TYPE_CLASSES: ClassVar[Dict[str, Type[ColType]]] = {
