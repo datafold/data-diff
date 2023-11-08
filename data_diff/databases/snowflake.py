@@ -77,7 +77,7 @@ class Dialect(BaseDialect):
         return f"BITAND(md5_number_lower64({s}), {CHECKSUM_MASK}) - {CHECKSUM_OFFSET}"
 
     def md5_as_hex(self, s: str) -> str:
-        return f"md5_number_lower64({s})"
+        return f"md5({s})"
 
     def normalize_timestamp(self, value: str, coltype: TemporalType) -> str:
         if coltype.rounds:
