@@ -403,7 +403,8 @@ class BaseDialect(abc.ABC):
     def render_concat(self, c: Compiler, elem: Concat) -> str:
         if self._prevent_overflow_when_concat:
             items = [
-                f"{self.compile(c, Code(self.md5_as_hex(self.to_string(self.compile(c, expr)))))}" for expr in elem.exprs
+                f"{self.compile(c, Code(self.md5_as_hex(self.to_string(self.compile(c, expr)))))}"
+                for expr in elem.exprs
             ]
 
         # We coalesce because on some DBs (e.g. MySQL) concat('a', NULL) is NULL
