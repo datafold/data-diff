@@ -199,12 +199,12 @@ def apply_query(callback: Callable[[str], Any], sql_code: Union[str, ThreadLocal
 class BaseDialect(abc.ABC):
     SUPPORTS_PRIMARY_KEY: ClassVar[bool] = False
     SUPPORTS_INDEXES: ClassVar[bool] = False
+    PREVENT_OVERFLOW_WHEN_CONCAT: ClassVar[bool] = False
     TYPE_CLASSES: ClassVar[Dict[str, Type[ColType]]] = {}
 
     PLACEHOLDER_TABLE = None  # Used for Oracle
 
     # Some database do not support long string so concatenation might lead to type overflow
-    PREVENT_OVERFLOW_WHEN_CONCAT: bool = False
 
     _prevent_overflow_when_concat: bool = False
 
