@@ -197,7 +197,7 @@ class TestQuery(unittest.TestCase):
         t = table("a")
 
         q = c.compile(t.order_by(Random()).limit(10))
-        self.assertEqual(q, "SELECT * FROM a ORDER BY random() LIMIT 10")
+        self.assertEqual(q, "SELECT * FROM (SELECT * FROM a ORDER BY random()) AS LIMITED_SELECT LIMIT 10")
 
         q = c.compile(t.select(coalesce(this.a, this.b)))
         self.assertEqual(q, "SELECT COALESCE(a, b) FROM a")
@@ -215,7 +215,7 @@ class TestQuery(unittest.TestCase):
 
         # selects stay apart
         q = c.compile(t.limit(10).select(this.b, distinct=True))
-        self.assertEqual(q, "SELECT DISTINCT b FROM (SELECT * FROM a LIMIT 10) tmp1")
+        self.assertEqual(q, "SELECT DISTINCT b FROM (SELECT * FROM (SELECT * FROM a) AS LIMITED_SELECT LIMIT 10) tmp1")
 
         q = c.compile(t.select(this.b, distinct=True).select(distinct=False))
         self.assertEqual(q, "SELECT * FROM (SELECT DISTINCT b FROM a) tmp2")
@@ -231,7 +231,9 @@ class TestQuery(unittest.TestCase):
         self.assertEqual(q, "SELECT /*+ PARALLEL(a 16) */ b FROM a WHERE (b > 10)")
 
         q = c.compile(t.limit(10).select(this.b, optimizer_hints="PARALLEL(a 16)"))
-        self.assertEqual(q, "SELECT /*+ PARALLEL(a 16) */ b FROM (SELECT * FROM a LIMIT 10) tmp1")
+        self.assertEqual(
+            q, "SELECT /*+ PARALLEL(a 16) */ b FROM (SELECT * FROM (SELECT * FROM a) AS LIMITED_SELECT LIMIT 10) tmp1"
+        )
 
         q = c.compile(t.select(this.a).group_by(this.b).agg(this.c).select(optimizer_hints="PARALLEL(a 16)"))
         self.assertEqual(
