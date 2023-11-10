@@ -177,7 +177,7 @@ def dbt_diff(
         # TODO: update this to be a function instead
         total_end_time = time.monotonic()
         total_duration = total_end_time - total_start_time
-        rich.print(f"[blue][bold]total diff time: {total_duration:.2f}s")
+        rich.print(f"[blue][bold]Total Diff Time: {total_duration:.2f}s")
     _extension_notification()
 
 
