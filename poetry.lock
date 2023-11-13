@@ -2174,4 +2174,4 @@ vertica = ["vertica-python"]
 [metadata]
 lock-version = "2.0"
 python-versions = "^3.8.0"
-content-hash = "258814a22a666525b85e9bfbad1f467e67d4560500590e2ce521c5780b7db068"
+content-hash = "925ab3b5dc0ef5a9ddb125e7a3bcf4800bee5d5d3ef67d73a48cfae587fa4505"
