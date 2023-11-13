@@ -145,7 +145,8 @@ def dbt_diff(
                     )
                     diff_threads.append(diff_thread)
                 else:
-                    _local_diff(diff_vars, json_output)
+                    diff_thread = run_as_daemon(_local_diff, diff_vars, json_output, log_status_handler)
+                    diff_threads.append(diff_thread)
             else:
                 if json_output:
                     print(
@@ -265,7 +266,11 @@ def _get_prod_path_from_manifest(model, prod_manifest) -> Union[Tuple[str, str, 
     return prod_database, prod_schema, prod_alias
 
 
-def _local_diff(diff_vars: TDiffVars, json_output: bool = False) -> None:
+def _local_diff(
+    diff_vars: TDiffVars, json_output: bool = False, log_status_handler: Optional[LogStatusHandler] = None
+) -> None:
+    if log_status_handler:
+        log_status_handler.diff_started(diff_vars.dev_path[-1])
     dev_qualified_str = ".".join(diff_vars.dev_path)
     prod_qualified_str = ".".join(diff_vars.prod_path)
     diff_output_str = _diff_output_base(dev_qualified_str, prod_qualified_str)
@@ -373,6 +378,9 @@ def _local_diff(diff_vars: TDiffVars, json_output: bool = False) -> None:
         diff_output_str += no_differences_template()
         rich.print(diff_output_str)
 
+    if log_status_handler:
+        log_status_handler.diff_finished(diff_vars.dev_path[-1])
+
 
 def _initialize_api() -> Optional[DatafoldAPI]:
     datafold_host = os.environ.get("DATAFOLD_HOST")
@@ -406,7 +414,7 @@ def _cloud_diff(
     log_status_handler: Optional[LogStatusHandler] = None,
 ) -> None:
     if log_status_handler:
-        log_status_handler.cloud_diff_started(diff_vars.dev_path[-1])
+        log_status_handler.diff_started(diff_vars.dev_path[-1])
     diff_output_str = _diff_output_base(".".join(diff_vars.dev_path), ".".join(diff_vars.prod_path))
     payload = TCloudApiDataDiff(
         data_source1_id=datasource_id,
@@ -476,7 +484,7 @@ def _cloud_diff(
             rich.print(diff_output_str)
 
         if log_status_handler:
-            log_status_handler.cloud_diff_finished(diff_vars.dev_path[-1])
+            log_status_handler.diff_finished(diff_vars.dev_path[-1])
     except BaseException as ex:  # Catch KeyboardInterrupt too
         error = ex
     finally:
