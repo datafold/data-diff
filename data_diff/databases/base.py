@@ -493,7 +493,7 @@ class BaseDialect(abc.ABC):
 
         if elem.limit_expr is not None:
             has_order_by = bool(elem.order_by_exprs)
-            select += " " + self.offset_limit(0, elem.limit_expr, has_order_by=has_order_by)
+            select = self.limit_select(select_query=select, offset=0, limit=elem.limit_expr, has_order_by=has_order_by)
 
         if parent_c.in_select:
             select = f"({select}) {c.new_unique_name()}"
@@ -605,14 +605,17 @@ class BaseDialect(abc.ABC):
 
         return f"INSERT INTO {self.compile(c, elem.path)}{columns} {expr}"
 
-    def offset_limit(
-        self, offset: Optional[int] = None, limit: Optional[int] = None, has_order_by: Optional[bool] = None
+    def limit_select(
+        self,
+        select_query: str,
+        offset: Optional[int] = None,
+        limit: Optional[int] = None,
+        has_order_by: Optional[bool] = None,
     ) -> str:
-        "Provide SQL fragment for limit and offset inside a select"
         if offset:
             raise NotImplementedError("No support for OFFSET in query")
 
-        return f"LIMIT {limit}"
+        return f"SELECT * FROM ({select_query}) AS LIMITED_SELECT LIMIT {limit}"
 
     def concat(self, items: List[str]) -> str:
         "Provide SQL for concatenating a bunch of columns into a string"
@@ -1103,7 +1106,7 @@ class Database(abc.ABC):
                 return result
         except Exception as _e:
             # logger.exception(e)
-            # logger.error(f'Caused by SQL: {sql_code}')
+            # logger.error(f"Caused by SQL: {sql_code}")
             raise
 
     def _query_conn(self, conn, sql_code: Union[str, ThreadLocalInterpreter]) -> QueryResult:

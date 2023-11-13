@@ -110,8 +110,12 @@ class Dialect(BaseDialect):
         # See: https://stackoverflow.com/a/18684859/857383
         return f"(({a}<>{b} OR {a} IS NULL OR {b} IS NULL) AND NOT({a} IS NULL AND {b} IS NULL))"
 
-    def offset_limit(
-        self, offset: Optional[int] = None, limit: Optional[int] = None, has_order_by: Optional[bool] = None
+    def limit_select(
+        self,
+        select_query: str,
+        offset: Optional[int] = None,
+        limit: Optional[int] = None,
+        has_order_by: Optional[bool] = None,
     ) -> str:
         if offset:
             raise NotImplementedError("No support for OFFSET in query")
@@ -121,7 +125,7 @@ class Dialect(BaseDialect):
             result += "ORDER BY 1"
 
         result += f" OFFSET 0 ROWS FETCH NEXT {limit} ROWS ONLY"
-        return result
+        return f"SELECT * FROM ({select_query}) AS LIMITED_SELECT {result}"
 
     def constant_values(self, rows) -> str:
         values = ", ".join("(%s)" % ", ".join(self._constant_value(v) for v in row) for row in rows)

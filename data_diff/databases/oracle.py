@@ -64,13 +64,17 @@ class Dialect(
     def to_string(self, s: str):
         return f"cast({s} as varchar(1024))"
 
-    def offset_limit(
-        self, offset: Optional[int] = None, limit: Optional[int] = None, has_order_by: Optional[bool] = None
+    def limit_select(
+        self,
+        select_query: str,
+        offset: Optional[int] = None,
+        limit: Optional[int] = None,
+        has_order_by: Optional[bool] = None,
     ) -> str:
         if offset:
             raise NotImplementedError("No support for OFFSET in query")
 
-        return f"FETCH NEXT {limit} ROWS ONLY"
+        return f"SELECT * FROM ({select_query}) FETCH NEXT {limit} ROWS ONLY"
 
     def concat(self, items: List[str]) -> str:
         joined_exprs = " || ".join(items)
