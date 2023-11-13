@@ -299,7 +299,8 @@ class Connect_SetUTC(Connect):
     def _connection_created(self, db):
         db = super()._connection_created(db)
         try:
-            db.query(db.dialect.set_timezone_to_utc())
+            # TODO: this is the correct place to show those logs
+            db.query(db.dialect.set_timezone_to_utc(), diff_output_str="hello set utc")
         except NotImplementedError:
             logging.debug(
                 f"Database '{db}' does not allow setting timezone. We recommend making sure it's set to 'UTC'."
@@ -307,4 +308,5 @@ class Connect_SetUTC(Connect):
         return db
 
 
+# TODO: maybe change args here
 connect = Connect_SetUTC(DATABASE_BY_SCHEME)

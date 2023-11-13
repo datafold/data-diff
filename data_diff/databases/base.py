@@ -900,7 +900,7 @@ class Database(abc.ABC):
     def compile(self, sql_ast):
         return self.dialect.compile(Compiler(self), sql_ast)
 
-    def query(self, sql_ast: Union[Expr, Generator], res_type: type = None):
+    def query(self, sql_ast: Union[Expr, Generator], res_type: type = None, diff_output_str: str = None):
         """Query the given SQL code/AST, and attempt to convert the result to type 'res_type'
 
         If given a generator, it will execute all the yielded sql queries with the same thread and cursor.
@@ -925,7 +925,10 @@ class Database(abc.ABC):
                 if sql_code is SKIP:
                     return SKIP
 
-            logger.debug("Running SQL (%s):\n%s", self.name, sql_code)
+            if diff_output_str:
+                logger.debug("Running SQL (%s): %s \n%s", self.name, diff_output_str, sql_code)
+            else:
+                logger.debug("Running SQL (%s):\n%s", self.name, sql_code)
 
         if self._interactive and isinstance(sql_ast, Select):
             explained_sql = self.compile(Explain(sql_ast))
@@ -991,7 +994,7 @@ class Database(abc.ABC):
         Note: This method exists instead of select_table_schema(), just because not all databases support
               accessing the schema using a SQL query.
         """
-        rows = self.query(self.select_table_schema(path), list)
+        rows = self.query(self.select_table_schema(path), list, path)
         if not rows:
             raise RuntimeError(f"{self.name}: Table '{'.'.join(path)}' does not exist, or has no columns")
 

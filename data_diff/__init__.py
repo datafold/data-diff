@@ -32,6 +32,7 @@ def connect_to_table(
     if isinstance(key_columns, str):
         key_columns = (key_columns,)
 
+    # TODO: maybe change args here
     db: Database = connect(db_info, thread_count=thread_count)
 
     if isinstance(table_name, str):

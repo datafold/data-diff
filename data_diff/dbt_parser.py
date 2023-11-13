@@ -456,7 +456,7 @@ class DbtParser:
             if node.unique_id in unique_columns:
                 from_uniq = unique_columns.get(node.unique_id)
                 if from_uniq is not None:
-                    logger.debug("Found PKs via Uniqueness tests: " + str(from_uniq))
+                    logger.debug(f"Found PKs via Uniqueness tests [{node.name}]: {str(from_uniq)}")
                     return list(from_uniq)
 
         except (KeyError, IndexError, TypeError) as e:
