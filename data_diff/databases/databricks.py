@@ -56,6 +56,12 @@ class Dialect(BaseDialect):
         "BOOLEAN": Boolean,
     }
 
+    def type_repr(self, t) -> str:
+        try:
+            return {str: "STRING"}[t]
+        except KeyError:
+            return super().type_repr(t)
+
     def quote(self, s: str):
         return f"`{s}`"
 

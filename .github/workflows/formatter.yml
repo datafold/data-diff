@@ -21,3 +21,6 @@ jobs:
         uses: reviewdog/action-suggester@v1
         with:
           tool_name: blackfmt
+      - name: Fail if there are formatting suggestions
+        if: steps.black_formatter.outputs.is_formatted == 'true'
+        run: exit 1

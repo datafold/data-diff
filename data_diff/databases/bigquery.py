@@ -193,17 +193,18 @@ class BigQuery(Database):
         bigquery = import_bigquery()
 
         keyfile = kw.pop("keyfile", None)
+        impersonate_service_account = kw.pop("impersonate_service_account", None)
         if keyfile:
             bigquery_service_account = import_bigquery_service_account()
             credentials = bigquery_service_account.Credentials.from_service_account_file(
                 keyfile,
                 scopes=["https://www.googleapis.com/auth/cloud-platform"],
             )
-        elif kw.get("impersonate_service_account"):
+        elif impersonate_service_account:
             bigquery_service_account_impersonation = import_bigquery_service_account_impersonation()
             credentials = bigquery_service_account_impersonation.Credentials(
                 source_credentials=credentials,
-                target_principal=kw["impersonate_service_account"],
+                target_principal=impersonate_service_account,
                 target_scopes=["https://www.googleapis.com/auth/cloud-platform"],
             )
 
