@@ -1,4 +1,4 @@
-from typing import Any, Dict, List, Optional
+from typing import Any, ClassVar, Dict, List, Optional, Type
 
 import attrs
 
@@ -43,7 +43,7 @@ class Dialect(
     BaseDialect,
 ):
     name = "Oracle"
-    SUPPORTS_PRIMARY_KEY = True
+    SUPPORTS_PRIMARY_KEY: ClassVar[bool] = True
     SUPPORTS_INDEXES = True
     TYPE_CLASSES: Dict[str, type] = {
         "NUMBER": Decimal,
@@ -137,6 +137,9 @@ class Dialect(
         # TODO: Find a way to use UTL_RAW.CAST_TO_BINARY_INTEGER ?
         return f"to_number(substr(standard_hash({s}, 'MD5'), {1+MD5_HEXDIGITS-CHECKSUM_HEXDIGITS}), 'xxxxxxxxxxxxxxx') - {CHECKSUM_OFFSET}"
 
+    def md5_as_hex(self, s: str) -> str:
+        return f"standard_hash({s}, 'MD5')"
+
     def normalize_uuid(self, value: str, coltype: ColType_UUID) -> str:
         # Cast is necessary for correct MD5 (trimming not enough)
         return f"CAST(TRIM({value}) AS VARCHAR(36))"
@@ -161,7 +164,7 @@ class Dialect(
 
 @attrs.define(frozen=False, init=False, kw_only=True)
 class Oracle(ThreadedDatabase):
-    dialect = Dialect()
+    DIALECT_CLASS: ClassVar[Type[BaseDialect]] = Dialect
     CONNECT_URI_HELP = "oracle://<user>:<password>@<host>/<database>"
     CONNECT_URI_PARAMS = ["database?"]
 

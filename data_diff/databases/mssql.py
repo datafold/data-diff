@@ -1,4 +1,4 @@
-from typing import Any, Dict, Optional
+from typing import Any, ClassVar, Dict, Optional, Type
 
 import attrs
 
@@ -38,7 +38,7 @@ def import_mssql():
 class Dialect(BaseDialect):
     name = "MsSQL"
     ROUNDS_ON_PREC_LOSS = True
-    SUPPORTS_PRIMARY_KEY = True
+    SUPPORTS_PRIMARY_KEY: ClassVar[bool] = True
     SUPPORTS_INDEXES = True
     TYPE_CLASSES = {
         # Timestamps
@@ -151,10 +151,13 @@ class Dialect(BaseDialect):
     def md5_as_int(self, s: str) -> str:
         return f"convert(bigint, convert(varbinary, '0x' + RIGHT(CONVERT(NVARCHAR(32), HashBytes('MD5', {s}), 2), {CHECKSUM_HEXDIGITS}), 1)) - {CHECKSUM_OFFSET}"
 
+    def md5_as_hex(self, s: str) -> str:
+        return f"HashBytes('MD5', {s})"
+
 
 @attrs.define(frozen=False, init=False, kw_only=True)
 class MsSQL(ThreadedDatabase):
-    dialect = Dialect()
+    DIALECT_CLASS: ClassVar[Type[BaseDialect]] = Dialect
     CONNECT_URI_HELP = "mssql://<user>:<password>@<host>/<database>/<schema>"
     CONNECT_URI_PARAMS = ["database", "schema"]
 

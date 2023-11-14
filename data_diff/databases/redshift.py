@@ -12,6 +12,7 @@ from data_diff.abcs.database_types import (
     TimestampTZ,
 )
 from data_diff.databases.postgresql import (
+    BaseDialect,
     PostgreSQL,
     MD5_HEXDIGITS,
     CHECKSUM_HEXDIGITS,
@@ -47,6 +48,9 @@ class Dialect(PostgresqlDialect):
     def md5_as_int(self, s: str) -> str:
         return f"strtol(substring(md5({s}), {1+MD5_HEXDIGITS-CHECKSUM_HEXDIGITS}), 16)::decimal(38) - {CHECKSUM_OFFSET}"
 
+    def md5_as_hex(self, s: str) -> str:
+        return f"md5({s})"
+
     def normalize_timestamp(self, value: str, coltype: TemporalType) -> str:
         if coltype.rounds:
             timestamp = f"{value}::timestamp(6)"
@@ -76,7 +80,7 @@ class Dialect(PostgresqlDialect):
 
 @attrs.define(frozen=False, init=False, kw_only=True)
 class Redshift(PostgreSQL):
-    dialect = Dialect()
+    DIALECT_CLASS: ClassVar[Type[BaseDialect]] = Dialect
     CONNECT_URI_HELP = "redshift://<user>:<password>@<host>/<database>"
     CONNECT_URI_PARAMS = ["database?"]
 
