@@ -1,6 +1,6 @@
 from functools import partial
 import re
-from typing import Any
+from typing import Any, ClassVar, Type
 
 import attrs
 
@@ -128,6 +128,9 @@ class Dialect(BaseDialect):
     def md5_as_int(self, s: str) -> str:
         return f"cast(from_base(substr(to_hex(md5(to_utf8({s}))), {1+MD5_HEXDIGITS-CHECKSUM_HEXDIGITS}), 16) as decimal(38, 0)) - {CHECKSUM_OFFSET}"
 
+    def md5_as_hex(self, s: str) -> str:
+        return f"to_hex(md5(to_utf8({s})))"
+
     def normalize_uuid(self, value: str, coltype: ColType_UUID) -> str:
         # Trim doesn't work on CHAR type
         return f"TRIM(CAST({value} AS VARCHAR))"
@@ -150,7 +153,7 @@ class Dialect(BaseDialect):
 
 @attrs.define(frozen=False, init=False, kw_only=True)
 class Presto(Database):
-    dialect = Dialect()
+    DIALECT_CLASS: ClassVar[Type[BaseDialect]] = Dialect
     CONNECT_URI_HELP = "presto://<user>@<host>/<catalog>/<schema>"
     CONNECT_URI_PARAMS = ["catalog", "schema"]
 

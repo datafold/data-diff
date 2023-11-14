@@ -1,5 +1,5 @@
 import re
-from typing import Any, List, Union
+from typing import Any, ClassVar, List, Union, Type
 
 import attrs
 
@@ -134,6 +134,9 @@ class Dialect(BaseDialect):
     def md5_as_int(self, s: str) -> str:
         return f"cast(cast( ('0x' || substr(TO_HEX(md5({s})), {1+MD5_HEXDIGITS-CHECKSUM_HEXDIGITS})) as int64) as numeric) - {CHECKSUM_OFFSET}"
 
+    def md5_as_hex(self, s: str) -> str:
+        return f"md5({s})"
+
     def normalize_timestamp(self, value: str, coltype: TemporalType) -> str:
         if coltype.rounds:
             timestamp = f"timestamp_micros(cast(round(unix_micros(cast({value} as timestamp))/1000000, {coltype.precision})*1000000 as int))"
@@ -179,9 +182,9 @@ class Dialect(BaseDialect):
 
 @attrs.define(frozen=False, init=False, kw_only=True)
 class BigQuery(Database):
+    DIALECT_CLASS: ClassVar[Type[BaseDialect]] = Dialect
     CONNECT_URI_HELP = "bigquery://<project>/<dataset>"
     CONNECT_URI_PARAMS = ["dataset"]
-    dialect = Dialect()
 
     project: str
     dataset: str

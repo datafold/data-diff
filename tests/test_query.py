@@ -76,6 +76,9 @@ class MockDialect(BaseDialect):
     def md5_as_int(self, s: str) -> str:
         raise NotImplementedError
 
+    def md5_as_hex(self, s: str) -> str:
+        raise NotImplementedError
+
     def normalize_number(self, value: str, coltype: FractionalType) -> str:
         raise NotImplementedError
 

@@ -1,4 +1,4 @@
-from typing import Any, Union, List
+from typing import Any, ClassVar, Union, List, Type
 import logging
 
 import attrs
@@ -76,6 +76,9 @@ class Dialect(BaseDialect):
     def md5_as_int(self, s: str) -> str:
         return f"BITAND(md5_number_lower64({s}), {CHECKSUM_MASK}) - {CHECKSUM_OFFSET}"
 
+    def md5_as_hex(self, s: str) -> str:
+        return f"md5({s})"
+
     def normalize_timestamp(self, value: str, coltype: TemporalType) -> str:
         if coltype.rounds:
             timestamp = f"to_timestamp(round(date_part(epoch_nanosecond, convert_timezone('UTC', {value})::timestamp(9))/1000000000, {coltype.precision}))"
@@ -93,7 +96,7 @@ class Dialect(BaseDialect):
 
 @attrs.define(frozen=False, init=False, kw_only=True)
 class Snowflake(Database):
-    dialect = Dialect()
+    DIALECT_CLASS: ClassVar[Type[BaseDialect]] = Dialect
     CONNECT_URI_HELP = "snowflake://<user>:<password>@<account>/<database>/<SCHEMA>?warehouse=<WAREHOUSE>"
     CONNECT_URI_PARAMS = ["database", "schema"]
     CONNECT_URI_KWPARAMS = ["warehouse"]

@@ -42,7 +42,7 @@ def import_postgresql():
 class PostgresqlDialect(BaseDialect):
     name = "PostgreSQL"
     ROUNDS_ON_PREC_LOSS = True
-    SUPPORTS_PRIMARY_KEY = True
+    SUPPORTS_PRIMARY_KEY: ClassVar[bool] = True
     SUPPORTS_INDEXES = True
 
     TYPE_CLASSES: ClassVar[Dict[str, Type[ColType]]] = {
@@ -98,6 +98,9 @@ class PostgresqlDialect(BaseDialect):
     def md5_as_int(self, s: str) -> str:
         return f"('x' || substring(md5({s}), {1+MD5_HEXDIGITS-CHECKSUM_HEXDIGITS}))::bit({_CHECKSUM_BITSIZE})::bigint - {CHECKSUM_OFFSET}"
 
+    def md5_as_hex(self, s: str) -> str:
+        return f"md5({s})"
+
     def normalize_timestamp(self, value: str, coltype: TemporalType) -> str:
         if coltype.rounds:
             return f"to_char({value}::timestamp({coltype.precision}), 'YYYY-mm-dd HH24:MI:SS.US')"
@@ -119,7 +122,7 @@ class PostgresqlDialect(BaseDialect):
 
 @attrs.define(frozen=False, init=False, kw_only=True)
 class PostgreSQL(ThreadedDatabase):
-    dialect = PostgresqlDialect()
+    DIALECT_CLASS: ClassVar[Type[BaseDialect]] = PostgresqlDialect
     SUPPORTS_UNIQUE_CONSTAINT = True
     CONNECT_URI_HELP = "postgresql://<user>:<password>@<host>/<database>"
     CONNECT_URI_PARAMS = ["database?"]

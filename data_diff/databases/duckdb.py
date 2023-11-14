@@ -1,4 +1,4 @@
-from typing import Any, Dict, Union
+from typing import Any, ClassVar, Dict, Union, Type
 
 import attrs
 
@@ -100,6 +100,9 @@ class Dialect(BaseDialect):
     def md5_as_int(self, s: str) -> str:
         return f"('0x' || SUBSTRING(md5({s}), {1+MD5_HEXDIGITS-CHECKSUM_HEXDIGITS},{CHECKSUM_HEXDIGITS}))::BIGINT - {CHECKSUM_OFFSET}"
 
+    def md5_as_hex(self, s: str) -> str:
+        return f"md5({s})"
+
     def normalize_timestamp(self, value: str, coltype: TemporalType) -> str:
         # It's precision 6 by default. If precision is less than 6 -> we remove the trailing numbers.
         if coltype.rounds and coltype.precision > 0:
@@ -116,7 +119,7 @@ class Dialect(BaseDialect):
 
 @attrs.define(frozen=False, init=False, kw_only=True)
 class DuckDB(Database):
-    dialect = Dialect()
+    DIALECT_CLASS: ClassVar[Type[BaseDialect]] = Dialect
     SUPPORTS_UNIQUE_CONSTAINT = False  # Temporary, until we implement it
     CONNECT_URI_HELP = "duckdb://<dbname>@<filepath>"
     CONNECT_URI_PARAMS = ["database", "dbpath"]

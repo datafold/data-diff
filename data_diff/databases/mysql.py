@@ -1,4 +1,4 @@
-from typing import Any, Dict
+from typing import Any, ClassVar, Dict, Type
 
 import attrs
 
@@ -40,7 +40,7 @@ def import_mysql():
 class Dialect(BaseDialect):
     name = "MySQL"
     ROUNDS_ON_PREC_LOSS = True
-    SUPPORTS_PRIMARY_KEY = True
+    SUPPORTS_PRIMARY_KEY: ClassVar[bool] = True
     SUPPORTS_INDEXES = True
     TYPE_CLASSES = {
         # Dates
@@ -101,6 +101,9 @@ class Dialect(BaseDialect):
     def md5_as_int(self, s: str) -> str:
         return f"conv(substring(md5({s}), {1+MD5_HEXDIGITS-CHECKSUM_HEXDIGITS}), 16, 10) - {CHECKSUM_OFFSET}"
 
+    def md5_as_hex(self, s: str) -> str:
+        return f"md5({s})"
+
     def normalize_timestamp(self, value: str, coltype: TemporalType) -> str:
         if coltype.rounds:
             return self.to_string(f"cast( cast({value} as datetime({coltype.precision})) as datetime(6))")
@@ -117,7 +120,7 @@ class Dialect(BaseDialect):
 
 @attrs.define(frozen=False, init=False, kw_only=True)
 class MySQL(ThreadedDatabase):
-    dialect = Dialect()
+    DIALECT_CLASS: ClassVar[Type[BaseDialect]] = Dialect
     SUPPORTS_ALPHANUMS = False
     SUPPORTS_UNIQUE_CONSTAINT = True
     CONNECT_URI_HELP = "mysql://<user>:<password>@<host>/<database>"
