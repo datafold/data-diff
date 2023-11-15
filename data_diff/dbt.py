@@ -275,7 +275,6 @@ def _local_diff(
     prod_qualified_str = ".".join(diff_vars.prod_path)
     diff_output_str = _diff_output_base(dev_qualified_str, prod_qualified_str)
 
-    # TODO: figure out how to get the dbt model name in the diff output for "running sql logs"
     table1 = connect_to_table(
         diff_vars.connection, prod_qualified_str, tuple(diff_vars.primary_keys), diff_vars.threads
     )
