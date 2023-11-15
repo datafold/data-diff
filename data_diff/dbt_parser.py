@@ -446,12 +446,12 @@ class DbtParser:
 
             from_meta = [name for name, params in node.columns.items() if pk_tag in params.meta] or None
             if from_meta:
-                logger.debug("Found PKs via META: " + str(from_meta))
+                logger.debug("Found PKs via META [{node.name}]: " + str(from_meta))
                 return from_meta
 
             from_tags = [name for name, params in node.columns.items() if pk_tag in params.tags] or None
             if from_tags:
-                logger.debug("Found PKs via Tags: " + str(from_tags))
+                logger.debug("Found PKs via Tags [{node.name}]: " + str(from_tags))
                 return from_tags
             if node.unique_id in unique_columns:
                 from_uniq = unique_columns.get(node.unique_id)
