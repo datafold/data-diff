@@ -307,5 +307,4 @@ class Connect_SetUTC(Connect):
         return db
 
 
-# TODO: maybe change args here
 connect = Connect_SetUTC(DATABASE_BY_SCHEME)
