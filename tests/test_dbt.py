@@ -407,7 +407,7 @@ class TestDbtDiffer(unittest.TestCase):
         mock_dbt_parser_inst.get_models.assert_called_once()
         mock_dbt_parser_inst.set_connection.assert_called_once()
         mock_cloud_diff.assert_not_called()
-        mock_local_diff.assert_called_once_with(diff_vars, False)
+        mock_local_diff.assert_called_once_with(diff_vars, False, None)
         mock_print.assert_not_called()
 
     @patch("data_diff.dbt._get_diff_vars")
@@ -481,7 +481,7 @@ class TestDbtDiffer(unittest.TestCase):
         mock_dbt_parser_inst.get_models.assert_called_once()
         mock_dbt_parser_inst.set_connection.assert_called_once()
         mock_cloud_diff.assert_not_called()
-        mock_local_diff.assert_called_once_with(diff_vars, False)
+        mock_local_diff.assert_called_once_with(diff_vars, False, None)
         mock_print.assert_not_called()
 
     @patch("data_diff.dbt._get_diff_vars")
@@ -518,7 +518,7 @@ class TestDbtDiffer(unittest.TestCase):
         mock_dbt_parser_inst.get_models.assert_called_once()
         mock_dbt_parser_inst.set_connection.assert_called_once()
         mock_cloud_diff.assert_not_called()
-        mock_local_diff.assert_called_once_with(diff_vars, False)
+        mock_local_diff.assert_called_once_with(diff_vars, False, None)
         mock_print.assert_not_called()
 
     @patch("data_diff.dbt._initialize_api")
