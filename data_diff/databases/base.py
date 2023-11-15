@@ -925,7 +925,7 @@ class Database(abc.ABC):
     def compile(self, sql_ast):
         return self.dialect.compile(Compiler(self), sql_ast)
 
-    def query(self, sql_ast: Union[Expr, Generator], res_type: type = None, diff_output_str: str = None):
+    def query(self, sql_ast: Union[Expr, Generator], res_type: type = None, log_message: str = None):
         """Query the given SQL code/AST, and attempt to convert the result to type 'res_type'
 
         If given a generator, it will execute all the yielded sql queries with the same thread and cursor.
@@ -950,8 +950,8 @@ class Database(abc.ABC):
                 if sql_code is SKIP:
                     return SKIP
 
-            if diff_output_str:
-                logger.debug("Running SQL (%s): %s \n%s", self.name, diff_output_str, sql_code)
+            if log_message:
+                logger.debug("Running SQL (%s): %s \n%s", self.name, log_message, sql_code)
             else:
                 logger.debug("Running SQL (%s):\n%s", self.name, sql_code)
 
