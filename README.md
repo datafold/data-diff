@@ -2,14 +2,9 @@
     <a href="https://datafold.com/"><img alt="Datafold" src="https://user-images.githubusercontent.com/1799931/196497110-d3de1113-a97f-4322-b531-026d859b867a.png" width="30%" /></a>
 </p>
 
-<h2 align="center">
-data-diff: Compare datasets fast, within or across SQL databases
-
 ![data-diff-logo](docs/data-diff-logo.png)
-</h2>
-<br>
 
-# Use Cases
+# data-diff: Compare datasets fast, within or across SQL databases
 
 ## Data Migration & Replication Testing
 Compare source to target and check for discrepancies when moving data between systems:
