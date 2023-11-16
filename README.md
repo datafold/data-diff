@@ -4,7 +4,7 @@
 
 ![data-diff-logo](docs/data-diff-logo.png)
 
-## data-diff: Compare datasets fast, within/across SQL databases
+# data-diff: Compare datasets fast, within/across SQL databases
 
 ## Data Migration & Replication Testing
 Compare source to target and check for discrepancies when moving data between systems:
