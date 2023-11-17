@@ -275,10 +275,8 @@ def _local_diff(
     prod_qualified_str = ".".join(diff_vars.prod_path)
     diff_output_str = _diff_output_base(dev_qualified_str, prod_qualified_str)
 
-    table1 = connect_to_table(
-        diff_vars.connection, prod_qualified_str, tuple(diff_vars.primary_keys), diff_vars.threads
-    )
-    table2 = connect_to_table(diff_vars.connection, dev_qualified_str, tuple(diff_vars.primary_keys), diff_vars.threads)
+    table1 = connect_to_table(diff_vars.connection, prod_qualified_str, tuple(diff_vars.primary_keys))
+    table2 = connect_to_table(diff_vars.connection, dev_qualified_str, tuple(diff_vars.primary_keys))
 
     try:
         table1_columns = table1.get_schema()
