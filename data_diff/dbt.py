@@ -8,6 +8,7 @@ import keyring
 import pydantic
 import rich
 from rich.prompt import Prompt
+from concurrent.futures import ThreadPoolExecutor
 
 from data_diff.errors import (
     DataDiffCustomSchemaNoConfigError,
@@ -80,7 +81,6 @@ def dbt_diff(
     production_schema_flag: Optional[str] = None,
 ) -> None:
     print_version_info()
-    diff_threads = []
     set_entrypoint_name(os.getenv("DATAFOLD_TRIGGERED_BY", "CLI-dbt"))
     dbt_parser = DbtParser(profiles_dir_override, project_dir_override, state)
     models = dbt_parser.get_models(dbt_selection)
@@ -112,7 +112,9 @@ def dbt_diff(
     else:
         dbt_parser.set_connection()
 
-    with log_status_handler.status if log_status_handler else nullcontext():
+    with log_status_handler.status if log_status_handler else nullcontext(), ThreadPoolExecutor(
+        max_workers=dbt_parser.threads
+    ) as executor:
         for model in models:
             if log_status_handler:
                 log_status_handler.set_prefix(f"Diffing {model.alias} \n")
@@ -140,13 +142,9 @@ def dbt_diff(
 
             if diff_vars.primary_keys:
                 if is_cloud:
-                    diff_thread = run_as_daemon(
-                        _cloud_diff, diff_vars, config.datasource_id, api, org_meta, log_status_handler
-                    )
-                    diff_threads.append(diff_thread)
+                    executor.submit(_cloud_diff, diff_vars, config.datasource_id, api, org_meta, log_status_handler)
                 else:
-                    diff_thread = run_as_daemon(_local_diff, diff_vars, json_output, log_status_handler)
-                    diff_threads.append(diff_thread)
+                    executor.submit(_local_diff, diff_vars, json_output, log_status_handler)
             else:
                 if json_output:
                     print(
@@ -165,11 +163,6 @@ def dbt_diff(
                         _diff_output_base(".".join(diff_vars.dev_path), ".".join(diff_vars.prod_path))
                         + "Skipped due to unknown primary key. Add uniqueness tests, meta, or tags.\n"
                     )
-
-        # wait for all threads
-        if diff_threads:
-            for thread in diff_threads:
-                thread.join()
 
     _extension_notification()
 
