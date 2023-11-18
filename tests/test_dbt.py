@@ -93,8 +93,8 @@ class TestDbtDiffer(unittest.TestCase):
         )
         self.assertEqual(len(mock_diff_tables.call_args[1]["extra_columns"]), 2)
         self.assertEqual(mock_connect.call_count, 2)
-        mock_connect.assert_any_call(connection, ".".join(dev_qualified_list), tuple(expected_primary_keys), threads)
-        mock_connect.assert_any_call(connection, ".".join(prod_qualified_list), tuple(expected_primary_keys), threads)
+        mock_connect.assert_any_call(connection, ".".join(dev_qualified_list), tuple(expected_primary_keys))
+        mock_connect.assert_any_call(connection, ".".join(prod_qualified_list), tuple(expected_primary_keys))
         mock_diff.get_stats_string.assert_called_once()
 
     @patch("data_diff.dbt.diff_tables")
@@ -180,8 +180,8 @@ class TestDbtDiffer(unittest.TestCase):
         )
         self.assertEqual(len(mock_diff_tables.call_args[1]["extra_columns"]), 2)
         self.assertEqual(mock_connect.call_count, 2)
-        mock_connect.assert_any_call(connection, ".".join(dev_qualified_list), tuple(expected_primary_keys), None)
-        mock_connect.assert_any_call(connection, ".".join(prod_qualified_list), tuple(expected_primary_keys), None)
+        mock_connect.assert_any_call(connection, ".".join(dev_qualified_list), tuple(expected_primary_keys))
+        mock_connect.assert_any_call(connection, ".".join(prod_qualified_list), tuple(expected_primary_keys))
         mock_diff.get_stats_string.assert_not_called()
 
     @patch("data_diff.dbt.rich.print")
