@@ -8,7 +8,7 @@ import keyring
 import pydantic
 import rich
 from rich.prompt import Prompt
-from concurrent.futures import ThreadPoolExecutor
+from concurrent.futures import ThreadPoolExecutor, as_completed
 
 from data_diff.errors import (
     DataDiffCustomSchemaNoConfigError,
@@ -112,6 +112,8 @@ def dbt_diff(
     else:
         dbt_parser.set_connection()
 
+    futures = []
+
     with log_status_handler.status if log_status_handler else nullcontext(), ThreadPoolExecutor(
         max_workers=dbt_parser.threads
     ) as executor:
@@ -142,9 +144,12 @@ def dbt_diff(
 
             if diff_vars.primary_keys:
                 if is_cloud:
-                    executor.submit(_cloud_diff, diff_vars, config.datasource_id, api, org_meta, log_status_handler)
+                    future = executor.submit(
+                        _cloud_diff, diff_vars, config.datasource_id, api, org_meta, log_status_handler
+                    )
                 else:
-                    executor.submit(_local_diff, diff_vars, json_output, log_status_handler)
+                    future = executor.submit(_local_diff, diff_vars, json_output, log_status_handler)
+                futures.append(future)
             else:
                 if json_output:
                     print(
@@ -163,6 +168,12 @@ def dbt_diff(
                         _diff_output_base(".".join(diff_vars.dev_path), ".".join(diff_vars.prod_path))
                         + "Skipped due to unknown primary key. Add uniqueness tests, meta, or tags.\n"
                     )
+
+    for future in as_completed(futures):
+        try:
+            future.result()  # if error occurred, it will be raised here
+        except Exception as e:
+            logger.error(f"An error occurred during the execution of a diff task: {model.unique_id} - {e}")
 
     _extension_notification()
 
