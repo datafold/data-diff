@@ -206,7 +206,7 @@ class JoinDiffer(TableDiffer):
         ):
             assert len(a_cols) == len(b_cols)
             logger.debug(f"Querying for different rows: {table1.table_path}")
-            diff = db.query(diff_rows, list, table1.table_path)
+            diff = db.query(diff_rows, list, log_message=table1.table_path)
             info_tree.info.set_diff(diff, schema=tuple(diff_rows.schema.items()))
             for is_xa, is_xb, *x in diff:
                 if is_xa and is_xb:
@@ -244,7 +244,7 @@ class JoinDiffer(TableDiffer):
                 # Validate that there are no duplicate keys
                 self.stats["validated_unique_keys"] = self.stats.get("validated_unique_keys", []) + [unvalidated]
                 q = t.select(total=Count(), total_distinct=Count(Concat(this[unvalidated]), distinct=True))
-                total, total_distinct = ts.database.query(q, tuple, ts.table_path)
+                total, total_distinct = ts.database.query(q, tuple, log_message=ts.table_path)
                 if total != total_distinct:
                     raise ValueError("Duplicate primary keys")
 
@@ -257,7 +257,7 @@ class JoinDiffer(TableDiffer):
             key_columns = ts.key_columns
 
             q = t.select(*this[key_columns]).where(or_(this[k] == None for k in key_columns))
-            nulls = ts.database.query(q, list, ts.table_path)
+            nulls = ts.database.query(q, list, log_message=ts.table_path)
             if nulls:
                 if self.skip_null_keys:
                     logger.warning(
@@ -288,7 +288,7 @@ class JoinDiffer(TableDiffer):
         )
         col_exprs["count"] = Count()
 
-        res = db.query(table_seg.make_select().select(**col_exprs), tuple, table_seg.table_path)
+        res = db.query(table_seg.make_select().select(**col_exprs), tuple, log_message=table_seg.table_path)
 
         for col_name, value in safezip(col_exprs, res):
             if value is not None:
@@ -337,7 +337,9 @@ class JoinDiffer(TableDiffer):
     def _count_diff_per_column(self, db, diff_rows, cols, is_diff_cols, table1=None, table2=None):
         logger.debug(f"Counting differences per column: {table1.table_path} <> {table2.table_path}")
         is_diff_cols_counts = db.query(
-            diff_rows.select(sum_(this[c]) for c in is_diff_cols), tuple, f"{table1.table_path} <> {table2.table_path}"
+            diff_rows.select(sum_(this[c]) for c in is_diff_cols),
+            tuple,
+            log_message=f"{table1.table_path} <> {table2.table_path}",
         )
         diff_counts = {}
         for name, count in safezip(cols, is_diff_cols_counts):
@@ -353,7 +355,7 @@ class JoinDiffer(TableDiffer):
         if not self.sample_exclusive_rows:
             logger.debug(f"Counting exclusive rows: {table1.table_path} <> {table2.table_path}")
             self.stats["exclusive_count"] = db.query(
-                exclusive_rows_query.count(), int, f"{table1.table_path} <> {table2.table_path}"
+                exclusive_rows_query.count(), int, log_message=f"{table1.table_path} <> {table2.table_path}"
             )
             return
 
