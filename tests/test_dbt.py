@@ -248,6 +248,7 @@ class TestDbtDiffer(unittest.TestCase):
         where = "a_string"
         config = TDatadiffConfig(prod_database="prod_db", prod_schema="prod_schema", datasource_id=1)
         mock_dbt_parser_inst = Mock()
+        mock_dbt_parser_inst.threads = threads
         mock_model = Mock()
         mock_api.get_data_source.return_value = TCloudApiDataSource(id=1, type="snowflake", name="snowflake")
         mock_initialize_api.return_value = mock_api
@@ -386,6 +387,7 @@ class TestDbtDiffer(unittest.TestCase):
         threads = None
         where = "a_string"
         mock_dbt_parser_inst = Mock()
+        mock_dbt_parser_inst.threads = threads
         mock_dbt_parser.return_value = mock_dbt_parser_inst
         mock_model = Mock()
         mock_dbt_parser_inst.get_models.return_value = [mock_model]
@@ -423,6 +425,7 @@ class TestDbtDiffer(unittest.TestCase):
         threads = None
         where = "a_string"
         mock_dbt_parser_inst = Mock()
+        mock_dbt_parser_inst.threads = threads
         mock_dbt_parser.return_value = mock_dbt_parser_inst
         mock_model = Mock()
         mock_dbt_parser_inst.get_models.return_value = [mock_model]
@@ -460,6 +463,7 @@ class TestDbtDiffer(unittest.TestCase):
         threads = None
         where = "a_string"
         mock_dbt_parser_inst = Mock()
+        mock_dbt_parser_inst.threads = threads
         mock_dbt_parser.return_value = mock_dbt_parser_inst
         mock_model = Mock()
         mock_dbt_parser_inst.get_models.return_value = [mock_model]
@@ -497,6 +501,7 @@ class TestDbtDiffer(unittest.TestCase):
         threads = None
         where = "a_string"
         mock_dbt_parser_inst = Mock()
+        mock_dbt_parser_inst.threads = threads
         mock_dbt_parser.return_value = mock_dbt_parser_inst
         mock_model = Mock()
         mock_dbt_parser_inst.get_models.return_value = [mock_model]
@@ -543,6 +548,7 @@ class TestDbtDiffer(unittest.TestCase):
         mock_model = Mock()
         connection = {}
         threads = None
+        mock_dbt_parser_inst.threads = threads
         where = "a_string"
         config = TDatadiffConfig(prod_database="prod_db", prod_schema="prod_schema", datasource_id=1)
         mock_api = Mock()
@@ -584,6 +590,7 @@ class TestDbtDiffer(unittest.TestCase):
         threads = None
         where = "a_string"
         mock_dbt_parser_inst = Mock()
+        mock_dbt_parser_inst.threads = threads
         mock_dbt_parser.return_value = mock_dbt_parser_inst
         mock_model = Mock()
         mock_dbt_parser_inst.get_models.return_value = [mock_model]
