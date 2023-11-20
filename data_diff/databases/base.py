@@ -1019,7 +1019,7 @@ class Database(abc.ABC):
         Note: This method exists instead of select_table_schema(), just because not all databases support
               accessing the schema using a SQL query.
         """
-        rows = self.query(self.select_table_schema(path), list, path)
+        rows = self.query(self.select_table_schema(path), list, log_message=path)
         if not rows:
             raise RuntimeError(f"{self.name}: Table '{'.'.join(path)}' does not exist, or has no columns")
 
@@ -1041,7 +1041,7 @@ class Database(abc.ABC):
         """Query the table for its unique columns for table in 'path', and return {column}"""
         if not self.SUPPORTS_UNIQUE_CONSTAINT:
             raise NotImplementedError("This database doesn't support 'unique' constraints")
-        res = self.query(self.select_table_unique_columns(path), List[str])
+        res = self.query(self.select_table_unique_columns(path), List[str], log_message=path)
         return list(res)
 
     def _process_table_schema(
@@ -1083,7 +1083,9 @@ class Database(abc.ABC):
         fields = [Code(self.dialect.normalize_uuid(self.dialect.quote(c), String_UUID())) for c in text_columns]
 
         samples_by_row = self.query(
-            table(*table_path).select(*fields).where(Code(where) if where else SKIP).limit(sample_size), list
+            table(*table_path).select(*fields).where(Code(where) if where else SKIP).limit(sample_size),
+            list,
+            log_message=table_path,
         )
         if not samples_by_row:
             raise ValueError(f"Table {table_path} is empty.")
