@@ -147,7 +147,11 @@ def diff_tables(
         if v is not None
     }
 
-    segments = [t.new(**override_attrs) for t in tables] if override_attrs else tables
+    segments = [
+        t.new(**({key: [item.upper() for item in value] for key, value in override_attrs.items()} 
+        if t.database_type == "Oracle" else override_attrs))
+        for t in tables
+    ]
 
     algorithm = Algorithm(algorithm)
     if algorithm == Algorithm.AUTO:

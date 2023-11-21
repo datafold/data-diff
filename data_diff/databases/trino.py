@@ -41,10 +41,15 @@ class Trino(presto.Presto):
     _conn: Any
 
     def __init__(self, **kw):
-        super().__init__()
+        super().__init__(**kw)
         trino = import_trino()
 
         if kw.get("schema"):
             self.default_schema = kw.get("schema")
+
+        if kw.get("auth") == "basic":
+            kw["auth"] = trino.auth.BasicAuthentication(kw["user"], kw.pop("password"))
+            kw["http_scheme"] = "https"
+            kw["verify"] = False
 
         self._conn = trino.dbapi.connect(**kw)

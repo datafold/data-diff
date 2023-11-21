@@ -183,7 +183,7 @@ class Presto(Database):
 
         if isinstance(sql_code, ThreadLocalInterpreter):
             return sql_code.apply_queries(partial(query_cursor, c))
-
+        sql_code = sql_code.lower()
         return query_cursor(c, sql_code)
 
     def close(self):

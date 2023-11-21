@@ -12,7 +12,7 @@ from data_diff.databases.base import Database
 from data_diff.abcs.database_types import DbPath, DbKey, DbTime
 from data_diff.schema import Schema, create_schema
 from data_diff.queries.extras import Checksum
-from data_diff.queries.api import Count, SKIP, table, this, Expr, min_, max_, Code
+from data_diff.queries.api import Count, SKIP, table, this, Expr, min_, max_, Code, sum_
 from data_diff.queries.extras import ApplyFuncAndNormalizeAsString, NormalizeAsString
 
 logger = logging.getLogger("table_segment")
@@ -140,6 +140,10 @@ class TableSegment:
     def _where(self):
         return f"({self.where})" if self.where else None
 
+    @property
+    def database_type(self):
+        return self.database.name
+
     def _with_raw_schema(self, raw_schema: dict) -> Self:
         schema = self.database._process_table_schema(self.table_path, raw_schema, self.relevant_columns, self._where())
         return self.new(schema=create_schema(self.database.name, self.table_path, schema, self.case_sensitive))
@@ -176,6 +180,14 @@ class TableSegment:
         return self.source_table.where(
             *self._make_key_range(), *self._make_update_range(), Code(self._where()) if self.where else SKIP
         )
+
+    def sum_column(self, column: str):
+        """sum of a column in the segment, in one pass."""
+        return self.database.query(self.make_select().select(sum_(column)), float)
+
+    def sum_column_with_condition(self, column: str, condition: str):
+        """sum of a column in the segment, in one pass."""
+        return self.database.query(self.make_select().select(sum_(column)).where(condition), float)
 
     def get_values(self) -> list:
         "Download all the relevant values of the segment from the database"

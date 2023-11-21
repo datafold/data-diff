@@ -240,7 +240,7 @@ class BaseDialect(abc.ABC):
         elif isinstance(elem, ColType):
             return self.render_coltype(attrs.evolve(compiler, root=False), elem)
         elif isinstance(elem, str):
-            return f"'{elem}'"
+            return f"{elem}"
         elif isinstance(elem, (int, float)):
             return str(elem)
         elif isinstance(elem, datetime):
@@ -967,7 +967,7 @@ class Database(abc.ABC):
         res = self._query(sql_code)
         if res_type is list:
             return list(res)
-        elif res_type is int:
+        elif res_type is int or res_type is float:
             if not res:
                 raise ValueError("Query returned 0 rows, expected 1")
             row = _one(res)
@@ -976,7 +976,7 @@ class Database(abc.ABC):
             res = _one(row)
             if res is None:  # May happen due to sum() of 0 items
                 return None
-            return int(res)
+            return int(res) if res_type is int else float(res)
         elif res_type is datetime:
             res = _one(_one(res))
             if isinstance(res, str):
