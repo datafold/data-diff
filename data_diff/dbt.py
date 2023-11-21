@@ -176,7 +176,7 @@ def dbt_diff(
         except Exception as e:
             tb_str = traceback.format_exception(etype=type(e), value=e, tb=e.__traceback__)
             tb_str = "".join(tb_str)  # Format traceback string from list
-            logger.error(f"{tb_str}\n An error occurred during the execution of a diff task: {model.unique_id} - {e}")
+            logger.error(f"{tb_str}\nAn error occurred during the execution of a diff task: {model.unique_id} - {e}")
 
     _extension_notification()
 
