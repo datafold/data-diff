@@ -50,6 +50,7 @@ class Dialect(BaseDialect):
         "DECIMAL": Decimal,
         # Timestamps
         "TIMESTAMP": Timestamp,
+        "TIMESTAMP_NTZ": Timestamp,
         # Text
         "STRING": Text,
         # Boolean
@@ -89,7 +90,8 @@ class Dialect(BaseDialect):
         """Databricks timestamp contains no more than 6 digits in precision"""
 
         if coltype.rounds:
-            timestamp = f"cast(round(unix_micros({value}) / 1000000, {coltype.precision}) * 1000000 as bigint)"
+            # cast to timestamp due to unix_micros() requiring timestamp
+            timestamp = f"cast(round(unix_micros(cast({value} as timestamp)) / 1000000, {coltype.precision}) * 1000000 as bigint)"
             return f"date_format(timestamp_micros({timestamp}), 'yyyy-MM-dd HH:mm:ss.SSSSSS')"
 
         precision_format = "S" * coltype.precision + "0" * (6 - coltype.precision)
