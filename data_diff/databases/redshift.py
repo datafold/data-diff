@@ -121,15 +121,15 @@ class Redshift(PostgreSQL):
         if not rows:
             raise RuntimeError(f"{self.name}: Table '{'.'.join(path)}' does not exist, or has no columns")
 
-        d = {r[0]: r for r in rows}
-        assert len(d) == len(rows)
-        return d
+        schema_dict = self._normalize_schema_info(rows)
+
+        return schema_dict
 
     def select_view_columns(self, path: DbPath) -> str:
         _, schema, table = self._normalize_table_path(path)
 
         return """select * from pg_get_cols('{}.{}')
-                cols(view_schema name, view_name name, col_name name, col_type varchar, col_num int)
+                cols(col_name name, col_type varchar)
             """.format(schema, table)
 
     def query_pg_get_cols(self, path: DbPath) -> Dict[str, tuple]:
@@ -138,10 +138,17 @@ class Redshift(PostgreSQL):
         if not rows:
             raise RuntimeError(f"{self.name}: View '{'.'.join(path)}' does not exist, or has no columns")
 
-        output = {}
+        schema_dict = self._normalize_schema_info(rows)
+
+        return schema_dict
+
+    # when using a non-information_schema source, strip (N) from type(N) etc. to match
+    # typical information_schema output
+    def _normalize_schema_info(self, rows) -> Dict[str, tuple]:
+        schema_dict = {}
         for r in rows:
-            col_name = r[2]
-            type_info = r[3].split("(")
+            col_name = r[0]
+            type_info = r[1].split("(")
             base_type = type_info[0]
             precision = None
             scale = None
@@ -153,9 +160,8 @@ class Redshift(PostgreSQL):
                     scale = int(scale)
 
             out = [col_name, base_type, None, precision, scale]
-            output[col_name] = tuple(out)
-
-        return output
+            schema_dict[col_name] = tuple(out)
+        return schema_dict
 
     def query_table_schema(self, path: DbPath) -> Dict[str, tuple]:
         try:
