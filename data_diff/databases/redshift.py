@@ -130,9 +130,7 @@ class Redshift(PostgreSQL):
 
         return """select * from pg_get_cols('{}.{}')
                 cols(col_name name, col_type varchar)
-            """.format(
-            schema, table
-        )
+            """.format(schema, table)
 
     def query_pg_get_cols(self, path: DbPath) -> Dict[str, tuple]:
         rows = self.query(self.select_view_columns(path), list)
