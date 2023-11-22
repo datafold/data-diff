@@ -148,6 +148,10 @@ class Databricks(ThreadedDatabase):
             logging.warning("Failed to get schema from information_schema, falling back to legacy approach.")
 
         if not table_schema:
+            # This legacy approach can cause bugs. e.g. VARCHAR(255) -> VARCHAR(255)
+            # and not the expected VARCHAR
+
+            # I don't think we'll fall back to this approach, but if so, see above
             catalog, schema, table = self._normalize_table_path(path)
             with conn.cursor() as cursor:
                 cursor.columns(catalog_name=catalog, schema_name=schema, table_name=table)
