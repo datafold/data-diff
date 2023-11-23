@@ -147,3 +147,6 @@ benchmark_*.png
 
 # VSCode
 .vscode
+
+# History
+.history
