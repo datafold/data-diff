@@ -550,6 +550,9 @@ def _data_diff(
 
     end = time.monotonic()
 
+    db1.clsoe()
+    db2.close()
+
     logging.info(f"Duration: {end-start:.2f} seconds.")
 
 

@@ -186,3 +186,8 @@ class PostgreSQL(ThreadedDatabase):
         raise ValueError(
             f"{self.name}: Bad table path for {self}: '{'.'.join(path)}'. Expected format: table, schema.table, or database.schema.table"
         )
+
+    def close(self):
+        super().close()
+        if self._conn is not None:
+            self._conn.close()
