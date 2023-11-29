@@ -525,7 +525,8 @@ def _data_diff(
         )
         return
 
-    with _get_dbs(threads, database1, threads1, database2, threads2, interactive) as (db1, db2):
+    db1, db2 = _get_dbs(threads, database1, threads1, database2, threads2, interactive)
+    with db1, db2:
         options = dict(
             case_sensitive=case_sensitive,
             where=where,
