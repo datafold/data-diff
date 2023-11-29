@@ -429,129 +429,127 @@ def _data_diff(
     else:
         db2 = connect(database2, threads2 or threads)
 
-    options = dict(
-        case_sensitive=case_sensitive,
-        where=where,
-    )
-
-    if min_age or max_age:
-        now: datetime = db1.query(current_timestamp(), datetime)
-        now = now.replace(tzinfo=None)
-        try:
-            if max_age:
-                options["min_update"] = parse_time_before(now, max_age)
-            if min_age:
-                options["max_update"] = parse_time_before(now, min_age)
-        except ParseError as e:
-            logging.error(f"Error while parsing age expression: {e}")
-            return
-
-    dbs: Tuple[Database, Database] = db1, db2
-
-    if interactive:
-        for db in dbs:
-            db.enable_interactive()
-
-    algorithm = Algorithm(algorithm)
-    if algorithm == Algorithm.AUTO:
-        algorithm = Algorithm.JOINDIFF if db1 == db2 else Algorithm.HASHDIFF
-
-    if algorithm == Algorithm.JOINDIFF:
-        differ = JoinDiffer(
-            threaded=threaded,
-            max_threadpool_size=threads and threads * 2,
-            validate_unique_key=not assume_unique_key,
-            sample_exclusive_rows=sample_exclusive_rows,
-            materialize_all_rows=materialize_all_rows,
-            table_write_limit=table_write_limit,
-            materialize_to_table=materialize_to_table
-            and db1.dialect.parse_table_name(eval_name_template(materialize_to_table)),
-        )
-    else:
-        assert algorithm == Algorithm.HASHDIFF
-        differ = HashDiffer(
-            bisection_factor=bisection_factor,
-            bisection_threshold=bisection_threshold,
-            threaded=threaded,
-            max_threadpool_size=threads and threads * 2,
+    with db1, db2:
+        options = dict(
+            case_sensitive=case_sensitive,
+            where=where,
         )
 
-    table_names = table1, table2
-    table_paths = [db.dialect.parse_table_name(t) for db, t in safezip(dbs, table_names)]
+        if min_age or max_age:
+            now: datetime = db1.query(current_timestamp(), datetime)
+            now = now.replace(tzinfo=None)
+            try:
+                if max_age:
+                    options["min_update"] = parse_time_before(now, max_age)
+                if min_age:
+                    options["max_update"] = parse_time_before(now, min_age)
+            except ParseError as e:
+                logging.error(f"Error while parsing age expression: {e}")
+                return
 
-    schemas = list(differ._thread_map(_get_schema, safezip(dbs, table_paths)))
-    schema1, schema2 = schemas = [
-        create_schema(db.name, table_path, schema, case_sensitive)
-        for db, table_path, schema in safezip(dbs, table_paths, schemas)
-    ]
+        dbs: Tuple[Database, Database] = db1, db2
 
-    mutual = schema1.keys() & schema2.keys()  # Case-aware, according to case_sensitive
-    logging.debug(f"Available mutual columns: {mutual}")
+        if interactive:
+            for db in dbs:
+                db.enable_interactive()
 
-    expanded_columns = set()
-    for c in columns:
-        cc = c if case_sensitive else c.lower()
-        match = set(match_like(cc, mutual))
-        if not match:
-            m1 = None if any(match_like(cc, schema1.keys())) else f"{db1}/{table1}"
-            m2 = None if any(match_like(cc, schema2.keys())) else f"{db2}/{table2}"
-            not_matched = ", ".join(m for m in [m1, m2] if m)
-            raise ValueError(f"Column '{c}' not found in: {not_matched}")
+        algorithm = Algorithm(algorithm)
+        if algorithm == Algorithm.AUTO:
+            algorithm = Algorithm.JOINDIFF if db1 == db2 else Algorithm.HASHDIFF
 
-        expanded_columns |= match
-
-    columns = tuple(expanded_columns - {*key_columns, update_column})
-
-    if db1 == db2:
-        diff_schemas(
-            table_names[0],
-            table_names[1],
-            schema1,
-            schema2,
-            (
-                *key_columns,
-                update_column,
-                *columns,
-            ),
-        )
-
-    logging.info(f"Diffing using columns: key={key_columns} update={update_column} extra={columns}.")
-    logging.info(f"Using algorithm '{algorithm.name.lower()}'.")
-
-    segments = [
-        TableSegment(db, table_path, key_columns, update_column, columns, **options)._with_raw_schema(raw_schema)
-        for db, table_path, raw_schema in safezip(dbs, table_paths, schemas)
-    ]
-
-    diff_iter = differ.diff_tables(*segments)
-
-    if limit:
-        assert not stats
-        diff_iter = islice(diff_iter, int(limit))
-
-    if stats:
-        if json_output:
-            rich.print(json.dumps(diff_iter.get_stats_dict()))
+        if algorithm == Algorithm.JOINDIFF:
+            differ = JoinDiffer(
+                threaded=threaded,
+                max_threadpool_size=threads and threads * 2,
+                validate_unique_key=not assume_unique_key,
+                sample_exclusive_rows=sample_exclusive_rows,
+                materialize_all_rows=materialize_all_rows,
+                table_write_limit=table_write_limit,
+                materialize_to_table=materialize_to_table
+                and db1.dialect.parse_table_name(eval_name_template(materialize_to_table)),
+            )
         else:
-            rich.print(diff_iter.get_stats_string())
+            assert algorithm == Algorithm.HASHDIFF
+            differ = HashDiffer(
+                bisection_factor=bisection_factor,
+                bisection_threshold=bisection_threshold,
+                threaded=threaded,
+                max_threadpool_size=threads and threads * 2,
+            )
 
-    else:
-        for op, values in diff_iter:
-            color = COLOR_SCHEME.get(op, "grey62")
+        table_names = table1, table2
+        table_paths = [db.dialect.parse_table_name(t) for db, t in safezip(dbs, table_names)]
 
+        schemas = list(differ._thread_map(_get_schema, safezip(dbs, table_paths)))
+        schema1, schema2 = schemas = [
+            create_schema(db.name, table_path, schema, case_sensitive)
+            for db, table_path, schema in safezip(dbs, table_paths, schemas)
+        ]
+
+        mutual = schema1.keys() & schema2.keys()  # Case-aware, according to case_sensitive
+        logging.debug(f"Available mutual columns: {mutual}")
+
+        expanded_columns = set()
+        for c in columns:
+            cc = c if case_sensitive else c.lower()
+            match = set(match_like(cc, mutual))
+            if not match:
+                m1 = None if any(match_like(cc, schema1.keys())) else f"{db1}/{table1}"
+                m2 = None if any(match_like(cc, schema2.keys())) else f"{db2}/{table2}"
+                not_matched = ", ".join(m for m in [m1, m2] if m)
+                raise ValueError(f"Column '{c}' not found in: {not_matched}")
+
+            expanded_columns |= match
+
+        columns = tuple(expanded_columns - {*key_columns, update_column})
+
+        if db1 == db2:
+            diff_schemas(
+                table_names[0],
+                table_names[1],
+                schema1,
+                schema2,
+                (
+                    *key_columns,
+                    update_column,
+                    *columns,
+                ),
+            )
+
+        logging.info(f"Diffing using columns: key={key_columns} update={update_column} extra={columns}.")
+        logging.info(f"Using algorithm '{algorithm.name.lower()}'.")
+
+        segments = [
+            TableSegment(db, table_path, key_columns, update_column, columns, **options)._with_raw_schema(raw_schema)
+            for db, table_path, raw_schema in safezip(dbs, table_paths, schemas)
+        ]
+
+        diff_iter = differ.diff_tables(*segments)
+
+        if limit:
+            assert not stats
+            diff_iter = islice(diff_iter, int(limit))
+
+        if stats:
             if json_output:
-                jsonl = json.dumps([op, list(values)])
-                rich.print(f"[{color}]{jsonl}[/{color}]")
+                rich.print(json.dumps(diff_iter.get_stats_dict()))
             else:
-                text = f"{op} {', '.join(map(str, values))}"
-                rich.print(f"[{color}]{text}[/{color}]")
+                rich.print(diff_iter.get_stats_string())
 
-            sys.stdout.flush()
+        else:
+            for op, values in diff_iter:
+                color = COLOR_SCHEME.get(op, "grey62")
 
-    end = time.monotonic()
+                if json_output:
+                    jsonl = json.dumps([op, list(values)])
+                    rich.print(f"[{color}]{jsonl}[/{color}]")
+                else:
+                    text = f"{op} {', '.join(map(str, values))}"
+                    rich.print(f"[{color}]{text}[/{color}]")
 
-    db1.close()
-    db2.close()
+                sys.stdout.flush()
+
+        end = time.monotonic()
 
     logging.info(f"Duration: {end-start:.2f} seconds.")
 
