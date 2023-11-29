@@ -379,8 +379,18 @@ def _set_age(options, min_age, max_age, db1):
 
 
 def _get_table_differ(
-    algorithm, db1, db2, threaded, threads, assume_unique_key, sample_exclusive_rows, materialize_all_rows,
-    table_write_limit, materialize_to_table, bisection_factor, bisection_threshold
+    algorithm,
+    db1,
+    db2,
+    threaded,
+    threads,
+    assume_unique_key,
+    sample_exclusive_rows,
+    materialize_all_rows,
+    table_write_limit,
+    materialize_to_table,
+    bisection_factor,
+    bisection_threshold,
 ):
     algorithm = Algorithm(algorithm)
     if algorithm == Algorithm.AUTO:
@@ -537,8 +547,18 @@ def _data_diff(
         dbs: Tuple[Database, Database] = db1, db2
 
         differ = _get_table_differ(
-            algorithm, db1, db2, threaded, threads, assume_unique_key, sample_exclusive_rows, materialize_all_rows,
-            table_write_limit, materialize_to_table, bisection_factor, bisection_threshold
+            algorithm,
+            db1,
+            db2,
+            threaded,
+            threads,
+            assume_unique_key,
+            sample_exclusive_rows,
+            materialize_all_rows,
+            table_write_limit,
+            materialize_to_table,
+            bisection_factor,
+            bisection_threshold,
         )
 
         table_names = table1, table2
