@@ -351,7 +351,7 @@ def main(conf, run, **kw):
 
 def _get_dbs(
     threads: int, database1: str, threads1: int, database2: str, threads2: int, interactive: bool
-) -> tuple[Database, Database]:
+) -> Tuple[Database, Database]:
     db1 = connect(database1, threads1 or threads)
     if database1 == database2:
         db2 = db1
@@ -446,7 +446,7 @@ def _get_expanded_columns(columns, case_sensitive, mutual, db1, schema1, table1,
     return expanded_columns
 
 
-def _get_threads(threads, threads1, threads2) -> tuple[bool, int]:
+def _get_threads(threads, threads1, threads2) -> Tuple[bool, int]:
     threaded = True
     if threads is None:
         threads = 1
