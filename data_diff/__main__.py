@@ -431,7 +431,7 @@ def _print_result(stats, json_output, diff_iter):
             sys.stdout.flush()
 
 
-def _get_expanded_columns(columns, case_sensitive, mutual, db1, schema1, table1, db2, schema2, table2):
+def _get_expanded_columns(columns, case_sensitive, mutual, db1, schema1, table1, db2, schema2, table2) -> set:
     expanded_columns = set()
     for c in columns:
         cc = c if case_sensitive else c.lower()
@@ -443,6 +443,7 @@ def _get_expanded_columns(columns, case_sensitive, mutual, db1, schema1, table1,
             raise ValueError(f"Column '{c}' not found in: {not_matched}")
 
         expanded_columns |= match
+    return expanded_columns
 
 
 def _get_threads(threads, threads1, threads2) -> tuple[bool, int]:
