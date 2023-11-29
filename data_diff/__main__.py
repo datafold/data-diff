@@ -349,6 +349,124 @@ def main(conf, run, **kw):
         raise
 
 
+def _get_dbs(
+    threads: int, database1: str, threads1: int, database2: str, threads2: int, interactive: bool
+) -> tuple[Database, Database]:
+    db1 = connect(database1, threads1 or threads)
+    if database1 == database2:
+        db2 = db1
+    else:
+        db2 = connect(database2, threads2 or threads)
+
+    if interactive:
+        db1.enable_interactive()
+        db2.enable_interactive()
+
+    return db1, db2
+
+
+def _set_age(options, min_age, max_age, db1):
+    if min_age or max_age:
+        now: datetime = db1.query(current_timestamp(), datetime)
+        now = now.replace(tzinfo=None)
+        try:
+            if max_age:
+                options["min_update"] = parse_time_before(now, max_age)
+            if min_age:
+                options["max_update"] = parse_time_before(now, min_age)
+        except ParseError as e:
+            logging.error(f"Error while parsing age expression: {e}")
+
+
+def _get_table_differ(
+    algorithm, db1, db2, threaded, threads, assume_unique_key, sample_exclusive_rows, materialize_all_rows,
+    table_write_limit, materialize_to_table, bisection_factor, bisection_threshold
+):
+    algorithm = Algorithm(algorithm)
+    if algorithm == Algorithm.AUTO:
+        algorithm = Algorithm.JOINDIFF if db1 == db2 else Algorithm.HASHDIFF
+
+    logging.info(f"Using algorithm '{algorithm.name.lower()}'.")
+
+    if algorithm == Algorithm.JOINDIFF:
+        return JoinDiffer(
+            threaded=threaded,
+            max_threadpool_size=threads and threads * 2,
+            validate_unique_key=not assume_unique_key,
+            sample_exclusive_rows=sample_exclusive_rows,
+            materialize_all_rows=materialize_all_rows,
+            table_write_limit=table_write_limit,
+            materialize_to_table=(
+                materialize_to_table and db1.dialect.parse_table_name(eval_name_template(materialize_to_table))
+            ),
+        )
+    else:
+        assert algorithm == Algorithm.HASHDIFF
+        return HashDiffer(
+            bisection_factor=bisection_factor,
+            bisection_threshold=bisection_threshold,
+            threaded=threaded,
+            max_threadpool_size=threads and threads * 2,
+        )
+
+
+def _print_result(stats, json_output, diff_iter):
+    if stats:
+        if json_output:
+            rich.print(json.dumps(diff_iter.get_stats_dict()))
+        else:
+            rich.print(diff_iter.get_stats_string())
+
+    else:
+        for op, values in diff_iter:
+            color = COLOR_SCHEME.get(op, "grey62")
+
+            if json_output:
+                jsonl = json.dumps([op, list(values)])
+                rich.print(f"[{color}]{jsonl}[/{color}]")
+            else:
+                text = f"{op} {', '.join(map(str, values))}"
+                rich.print(f"[{color}]{text}[/{color}]")
+
+            sys.stdout.flush()
+
+
+def _get_expanded_columns(columns, case_sensitive, mutual, db1, schema1, table1, db2, schema2, table2):
+    expanded_columns = set()
+    for c in columns:
+        cc = c if case_sensitive else c.lower()
+        match = set(match_like(cc, mutual))
+        if not match:
+            m1 = None if any(match_like(cc, schema1.keys())) else f"{db1}/{table1}"
+            m2 = None if any(match_like(cc, schema2.keys())) else f"{db2}/{table2}"
+            not_matched = ", ".join(m for m in [m1, m2] if m)
+            raise ValueError(f"Column '{c}' not found in: {not_matched}")
+
+        expanded_columns |= match
+
+
+def _get_threads(threads, threads1, threads2) -> tuple[bool, int]:
+    threaded = True
+    if threads is None:
+        threads = 1
+    elif isinstance(threads, str) and threads.lower() == "serial":
+        assert not (threads1 or threads2)
+        threaded = False
+        threads = 1
+    else:
+        try:
+            threads = int(threads)
+        except ValueError:
+            logging.error("Error: threads must be a number, or 'serial'.")
+            raise
+
+        if threads < 1:
+            logging.error("Error: threads must be >= 1")
+            raise ValueError("Error: threads must be >= 1")
+
+    return threaded, threads
+
+
 def _data_diff(
     database1,
     table1,
@@ -398,23 +516,7 @@ def _data_diff(
     bisection_factor = DEFAULT_BISECTION_FACTOR if bisection_factor is None else int(bisection_factor)
     bisection_threshold = DEFAULT_BISECTION_THRESHOLD if bisection_threshold is None else int(bisection_threshold)
 
-    threaded = True
-    if threads is None:
-        threads = 1
-    elif isinstance(threads, str) and threads.lower() == "serial":
-        assert not (threads1 or threads2)
-        threaded = False
-        threads = 1
-    else:
-        try:
-            threads = int(threads)
-        except ValueError:
-            logging.error("Error: threads must be a number, or 'serial'.")
-            return
-        if threads < 1:
-            logging.error("Error: threads must be >= 1")
-            return
-
+    threaded, threads = _get_threads(threads, threads1, threads2)
     start = time.monotonic()
 
     if database1 is None or database2 is None:
@@ -423,59 +525,19 @@ def _data_diff(
         )
         return
 
-    db1 = connect(database1, threads1 or threads)
-    if database1 == database2:
-        db2 = db1
-    else:
-        db2 = connect(database2, threads2 or threads)
-
-    with db1, db2:
+    with _get_dbs(threads, database1, threads1, database2, threads2, interactive) as (db1, db2):
         options = dict(
             case_sensitive=case_sensitive,
             where=where,
         )
 
-        if min_age or max_age:
-            now: datetime = db1.query(current_timestamp(), datetime)
-            now = now.replace(tzinfo=None)
-            try:
-                if max_age:
-                    options["min_update"] = parse_time_before(now, max_age)
-                if min_age:
-                    options["max_update"] = parse_time_before(now, min_age)
-            except ParseError as e:
-                logging.error(f"Error while parsing age expression: {e}")
-                return
-
+        _set_age(options, min_age, max_age, db1)
         dbs: Tuple[Database, Database] = db1, db2
 
-        if interactive:
-            for db in dbs:
-                db.enable_interactive()
-
-        algorithm = Algorithm(algorithm)
-        if algorithm == Algorithm.AUTO:
-            algorithm = Algorithm.JOINDIFF if db1 == db2 else Algorithm.HASHDIFF
-
-        if algorithm == Algorithm.JOINDIFF:
-            differ = JoinDiffer(
-                threaded=threaded,
-                max_threadpool_size=threads and threads * 2,
-                validate_unique_key=not assume_unique_key,
-                sample_exclusive_rows=sample_exclusive_rows,
-                materialize_all_rows=materialize_all_rows,
-                table_write_limit=table_write_limit,
-                materialize_to_table=materialize_to_table
-                and db1.dialect.parse_table_name(eval_name_template(materialize_to_table)),
-            )
-        else:
-            assert algorithm == Algorithm.HASHDIFF
-            differ = HashDiffer(
-                bisection_factor=bisection_factor,
-                bisection_threshold=bisection_threshold,
-                threaded=threaded,
-                max_threadpool_size=threads and threads * 2,
-            )
+        differ = _get_table_differ(
+            algorithm, db1, db2, threaded, threads, assume_unique_key, sample_exclusive_rows, materialize_all_rows,
+            table_write_limit, materialize_to_table, bisection_factor, bisection_threshold
+        )
 
         table_names = table1, table2
         table_paths = [db.dialect.parse_table_name(t) for db, t in safezip(dbs, table_names)]
@@ -489,18 +551,9 @@ def _data_diff(
         mutual = schema1.keys() & schema2.keys()  # Case-aware, according to case_sensitive
         logging.debug(f"Available mutual columns: {mutual}")
 
-        expanded_columns = set()
-        for c in columns:
-            cc = c if case_sensitive else c.lower()
-            match = set(match_like(cc, mutual))
-            if not match:
-                m1 = None if any(match_like(cc, schema1.keys())) else f"{db1}/{table1}"
-                m2 = None if any(match_like(cc, schema2.keys())) else f"{db2}/{table2}"
-                not_matched = ", ".join(m for m in [m1, m2] if m)
-                raise ValueError(f"Column '{c}' not found in: {not_matched}")
-
-            expanded_columns |= match
-
+        expanded_columns = _get_expanded_columns(
+            columns, case_sensitive, mutual, db1, schema1, table1, db2, schema2, table2
+        )
         columns = tuple(expanded_columns - {*key_columns, update_column})
 
         if db1 == db2:
@@ -517,7 +570,6 @@ def _data_diff(
             )
 
         logging.info(f"Diffing using columns: key={key_columns} update={update_column} extra={columns}.")
-        logging.info(f"Using algorithm '{algorithm.name.lower()}'.")
 
         segments = [
             TableSegment(db, table_path, key_columns, update_column, columns, **options)._with_raw_schema(raw_schema)
@@ -530,27 +582,9 @@ def _data_diff(
             assert not stats
             diff_iter = islice(diff_iter, int(limit))
 
-        if stats:
-            if json_output:
-                rich.print(json.dumps(diff_iter.get_stats_dict()))
-            else:
-                rich.print(diff_iter.get_stats_string())
+        _print_result(stats, json_output, diff_iter)
 
-        else:
-            for op, values in diff_iter:
-                color = COLOR_SCHEME.get(op, "grey62")
-
-                if json_output:
-                    jsonl = json.dumps([op, list(values)])
-                    rich.print(f"[{color}]{jsonl}[/{color}]")
-                else:
-                    text = f"{op} {', '.join(map(str, values))}"
-                    rich.print(f"[{color}]{text}[/{color}]")
-
-                sys.stdout.flush()
-
-        end = time.monotonic()
-
+    end = time.monotonic()
     logging.info(f"Duration: {end-start:.2f} seconds.")
 
 
