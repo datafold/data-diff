@@ -31,7 +31,7 @@ class ManifestJsonConfig(BaseModel):
         resource_type: str
         name: str
         alias: str
-        database: str
+        database: Optional[str]
         schema_: str = Field(..., alias="schema")
         columns: Optional[Dict[str, Column]]
         meta: Dict[str, Any]
