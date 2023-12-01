@@ -51,26 +51,6 @@ class Dialect(PostgresqlDialect):
     def md5_as_hex(self, s: str) -> str:
         return f"md5({s})"
 
-    def normalize_timestamp(self, value: str, coltype: TemporalType) -> str:
-        if coltype.rounds:
-            timestamp = f"{value}::timestamp(6)"
-            # Get seconds since epoch. Redshift doesn't support milli- or micro-seconds.
-            secs = f"timestamp 'epoch' + round(extract(epoch from {timestamp})::decimal(38)"
-            # Get the milliseconds from timestamp.
-            ms = f"extract(ms from {timestamp})"
-            # Get the microseconds from timestamp, without the milliseconds!
-            us = f"extract(us from {timestamp})"
-            # epoch = Total time since epoch in microseconds.
-            epoch = f"{secs}*1000000 + {ms}*1000 + {us}"
-            timestamp6 = (
-                f"to_char({epoch}, -6+{coltype.precision}) * interval '0.000001 seconds', 'YYYY-mm-dd HH24:MI:SS.US')"
-            )
-        else:
-            timestamp6 = f"to_char({value}::timestamp(6), 'YYYY-mm-dd HH24:MI:SS.US')"
-        return (
-            f"RPAD(LEFT({timestamp6}, {TIMESTAMP_PRECISION_POS+coltype.precision}), {TIMESTAMP_PRECISION_POS+6}, '0')"
-        )
-
     def normalize_number(self, value: str, coltype: FractionalType) -> str:
         return self.to_string(f"{value}::decimal(38,{coltype.precision})")
 

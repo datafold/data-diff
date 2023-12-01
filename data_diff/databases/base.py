@@ -800,6 +800,12 @@ class BaseDialect(abc.ABC):
         Date format: ``YYYY-MM-DD HH:mm:SS.FFFFFF``
 
         Precision of dates should be rounded up/down according to coltype.rounds
+        e.g. precision 3 and coltype.rounds:
+            - 1969-12-31 23:59:59.999999 -> 1970-01-01 00:00:00.000000
+            - 1970-01-01 00:00:00.000888 -> 1970-01-01 00:00:00.001000
+            - 1970-01-01 00:00:00.123123 -> 1970-01-01 00:00:00.123000
+
+        Make sure NULLs remain NULLs
         """
 
     @abstractmethod
