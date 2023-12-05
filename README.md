@@ -72,7 +72,7 @@ More information about the algorithm and performance considerations can be found
 # Get started
 
 ## Validating dbt model changes between dev and prod
-⚡ Looking to use `data-diff` in dbt development? Head over to [our `data-diff` + `dbt` documentation](https://docs.datafold.com/development_testing/open_source/) to get started!
+⚡ Looking to use `data-diff` in dbt development? Head over to [our `data-diff` + `dbt` documentation](https://docs.datafold.com/development_testing/how_it_works) to get started!
 
 ## Compare data tables between databases
 🔀 To compare data between databases, install `data-diff` with specific database adapters, e.g.:

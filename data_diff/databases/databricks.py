@@ -53,6 +53,7 @@ class Dialect(BaseDialect):
         "TIMESTAMP_NTZ": Timestamp,
         # Text
         "STRING": Text,
+        "VARCHAR": Text,
         # Boolean
         "BOOLEAN": Boolean,
     }
@@ -157,6 +158,19 @@ class Databricks(ThreadedDatabase):
             d = {r.COLUMN_NAME: (r.COLUMN_NAME, r.TYPE_NAME, r.DECIMAL_DIGITS, None, None) for r in rows}
             assert len(d) == len(rows)
             return d
+
+    # def select_table_schema(self, path: DbPath) -> str:
+    #     """Provide SQL for selecting the table schema as (name, type, date_prec, num_prec)"""
+    #     database, schema, name = self._normalize_table_path(path)
+    #     info_schema_path = ["information_schema", "columns"]
+    #     if database:
+    #         info_schema_path.insert(0, database)
+
+    #     return (
+    #         "SELECT column_name, data_type, datetime_precision, numeric_precision, numeric_scale "
+    #         f"FROM {'.'.join(info_schema_path)} "
+    #         f"WHERE table_name = '{name}' AND table_schema = '{schema}'"
+    #     )
 
     def _process_table_schema(
         self, path: DbPath, raw_schema: Dict[str, tuple], filter_columns: Sequence[str], where: str = None
