@@ -334,7 +334,16 @@ class JoinDiffer(TableDiffer):
         diff_rows = all_rows.where(or_(this[c] == 1 for c in is_diff_cols))
         return diff_rows, a_cols, b_cols, is_diff_cols, all_rows
 
-    def _count_diff_per_column(self, db, diff_rows, cols, is_diff_cols, table1=None, table2=None):
+    def _count_diff_per_column(
+        self,
+        db,
+        diff_rows,
+        cols,
+        is_diff_cols,
+        table1: Optional[TableSegment] = None,
+        table2: Optional[TableSegment] = None,
+    ):
+        logger.info(type(table1))
         logger.debug(f"Counting differences per column: {table1.table_path} <> {table2.table_path}")
         is_diff_cols_counts = db.query(
             diff_rows.select(sum_(this[c]) for c in is_diff_cols),
@@ -346,7 +355,15 @@ class JoinDiffer(TableDiffer):
             diff_counts[name] = diff_counts.get(name, 0) + (count or 0)
         self.stats["diff_counts"] = diff_counts
 
-    def _sample_and_count_exclusive(self, db, diff_rows, a_cols, b_cols, table1=None, table2=None):
+    def _sample_and_count_exclusive(
+        self,
+        db,
+        diff_rows,
+        a_cols,
+        b_cols,
+        table1: Optional[TableSegment] = None,
+        table2: Optional[TableSegment] = None,
+    ):
         if isinstance(db, (Oracle, MsSQL)):
             exclusive_rows_query = diff_rows.where((this.is_exclusive_a == 1) | (this.is_exclusive_b == 1))
         else:
