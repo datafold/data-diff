@@ -931,7 +931,7 @@ class Database(abc.ABC):
     def compile(self, sql_ast):
         return self.dialect.compile(Compiler(self), sql_ast)
 
-    def query(self, sql_ast: Union[Expr, Generator], res_type: type = None, log_message: str = None):
+    def query(self, sql_ast: Union[Expr, Generator], res_type: type = None, log_message: Optional[str] = None):
         """Query the given SQL code/AST, and attempt to convert the result to type 'res_type'
 
         If given a generator, it will execute all the yielded sql queries with the same thread and cursor.
