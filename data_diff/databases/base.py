@@ -931,7 +931,7 @@ class Database(abc.ABC):
     def compile(self, sql_ast):
         return self.dialect.compile(Compiler(self), sql_ast)
 
-    def query(self, sql_ast: Union[Expr, Generator], res_type: type = None):
+    def query(self, sql_ast: Union[Expr, Generator], res_type: type = None, log_message: Optional[str] = None):
         """Query the given SQL code/AST, and attempt to convert the result to type 'res_type'
 
         If given a generator, it will execute all the yielded sql queries with the same thread and cursor.
@@ -956,7 +956,10 @@ class Database(abc.ABC):
                 if sql_code is SKIP:
                     return SKIP
 
-            logger.debug("Running SQL (%s):\n%s", self.name, sql_code)
+            if log_message:
+                logger.debug("Running SQL (%s): %s \n%s", self.name, log_message, sql_code)
+            else:
+                logger.debug("Running SQL (%s):\n%s", self.name, sql_code)
 
         if self._interactive and isinstance(sql_ast, Select):
             explained_sql = self.compile(Explain(sql_ast))
@@ -1022,7 +1025,7 @@ class Database(abc.ABC):
         Note: This method exists instead of select_table_schema(), just because not all databases support
               accessing the schema using a SQL query.
         """
-        rows = self.query(self.select_table_schema(path), list)
+        rows = self.query(self.select_table_schema(path), list, log_message=path)
         if not rows:
             raise RuntimeError(f"{self.name}: Table '{'.'.join(path)}' does not exist, or has no columns")
 
@@ -1044,7 +1047,7 @@ class Database(abc.ABC):
         """Query the table for its unique columns for table in 'path', and return {column}"""
         if not self.SUPPORTS_UNIQUE_CONSTAINT:
             raise NotImplementedError("This database doesn't support 'unique' constraints")
-        res = self.query(self.select_table_unique_columns(path), List[str])
+        res = self.query(self.select_table_unique_columns(path), List[str], log_message=path)
         return list(res)
 
     def _process_table_schema(
@@ -1086,7 +1089,9 @@ class Database(abc.ABC):
         fields = [Code(self.dialect.normalize_uuid(self.dialect.quote(c), String_UUID())) for c in text_columns]
 
         samples_by_row = self.query(
-            table(*table_path).select(*fields).where(Code(where) if where else SKIP).limit(sample_size), list
+            table(*table_path).select(*fields).where(Code(where) if where else SKIP).limit(sample_size),
+            list,
+            log_message=table_path,
         )
         if not samples_by_row:
             raise ValueError(f"Table {table_path} is empty.")

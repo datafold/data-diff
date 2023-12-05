@@ -162,7 +162,7 @@ class JoinDiffer(TableDiffer):
                 yield from self._diff_segments(None, table1, table2, info_tree, None)
             else:
                 yield from self._bisect_and_diff_tables(table1, table2, info_tree)
-            logger.info("Diffing complete")
+            logger.info(f"Diffing complete: {table1.table_path} <> {table2.table_path}")
             if self.materialize_to_table:
                 logger.info("Materialized diff to table '%s'.", ".".join(self.materialize_to_table))
 
@@ -193,8 +193,8 @@ class JoinDiffer(TableDiffer):
             partial(self._collect_stats, 1, table1, info_tree),
             partial(self._collect_stats, 2, table2, info_tree),
             partial(self._test_null_keys, table1, table2),
-            partial(self._sample_and_count_exclusive, db, diff_rows, a_cols, b_cols),
-            partial(self._count_diff_per_column, db, diff_rows, list(a_cols), is_diff_cols),
+            partial(self._sample_and_count_exclusive, db, diff_rows, a_cols, b_cols, table1, table2),
+            partial(self._count_diff_per_column, db, diff_rows, list(a_cols), is_diff_cols, table1, table2),
             partial(
                 self._materialize_diff,
                 db,
@@ -205,8 +205,8 @@ class JoinDiffer(TableDiffer):
             else None,
         ):
             assert len(a_cols) == len(b_cols)
-            logger.debug("Querying for different rows")
-            diff = db.query(diff_rows, list)
+            logger.debug(f"Querying for different rows: {table1.table_path}")
+            diff = db.query(diff_rows, list, log_message=table1.table_path)
             info_tree.info.set_diff(diff, schema=tuple(diff_rows.schema.items()))
             for is_xa, is_xb, *x in diff:
                 if is_xa and is_xb:
@@ -227,7 +227,7 @@ class JoinDiffer(TableDiffer):
                     yield "+", tuple(b_row)
 
     def _test_duplicate_keys(self, table1: TableSegment, table2: TableSegment):
-        logger.debug("Testing for duplicate keys")
+        logger.debug(f"Testing for duplicate keys: {table1.table_path} <> {table2.table_path}")
 
         # Test duplicate keys
         for ts in [table1, table2]:
@@ -240,16 +240,16 @@ class JoinDiffer(TableDiffer):
 
             unvalidated = list(set(key_columns) - set(unique))
             if unvalidated:
-                logger.info(f"Validating that the are no duplicate keys in columns: {unvalidated}")
+                logger.info(f"Validating that the are no duplicate keys in columns: {unvalidated} for {ts.table_path}")
                 # Validate that there are no duplicate keys
                 self.stats["validated_unique_keys"] = self.stats.get("validated_unique_keys", []) + [unvalidated]
                 q = t.select(total=Count(), total_distinct=Count(Concat(this[unvalidated]), distinct=True))
-                total, total_distinct = ts.database.query(q, tuple)
+                total, total_distinct = ts.database.query(q, tuple, log_message=ts.table_path)
                 if total != total_distinct:
                     raise ValueError("Duplicate primary keys")
 
     def _test_null_keys(self, table1, table2):
-        logger.debug("Testing for null keys")
+        logger.debug(f"Testing for null keys: {table1.table_path} <> {table2.table_path}")
 
         # Test null keys
         for ts in [table1, table2]:
@@ -257,7 +257,7 @@ class JoinDiffer(TableDiffer):
             key_columns = ts.key_columns
 
             q = t.select(*this[key_columns]).where(or_(this[k] == None for k in key_columns))
-            nulls = ts.database.query(q, list)
+            nulls = ts.database.query(q, list, log_message=ts.table_path)
             if nulls:
                 if self.skip_null_keys:
                     logger.warning(
@@ -267,7 +267,7 @@ class JoinDiffer(TableDiffer):
                     raise ValueError(f"NULL values in one or more primary keys of {ts.table_path}")
 
     def _collect_stats(self, i, table_seg: TableSegment, info_tree: InfoTree):
-        logger.debug(f"Collecting stats for table #{i}")
+        logger.debug(f"Collecting stats for table #{i}: {table_seg.table_path}")
         db = table_seg.database
 
         # Metrics
@@ -288,7 +288,7 @@ class JoinDiffer(TableDiffer):
         )
         col_exprs["count"] = Count()
 
-        res = db.query(table_seg.make_select().select(**col_exprs), tuple)
+        res = db.query(table_seg.make_select().select(**col_exprs), tuple, log_message=table_seg.table_path)
 
         for col_name, value in safezip(col_exprs, res):
             if value is not None:
@@ -303,7 +303,7 @@ class JoinDiffer(TableDiffer):
                 else:
                     self.stats[stat_name] = value
 
-        logger.debug("Done collecting stats for table #%s", i)
+        logger.debug("Done collecting stats for table #%s: %s", i, table_seg.table_path)
 
     def _create_outer_join(self, table1, table2):
         db = table1.database
@@ -334,23 +334,46 @@ class JoinDiffer(TableDiffer):
         diff_rows = all_rows.where(or_(this[c] == 1 for c in is_diff_cols))
         return diff_rows, a_cols, b_cols, is_diff_cols, all_rows
 
-    def _count_diff_per_column(self, db, diff_rows, cols, is_diff_cols):
-        logger.debug("Counting differences per column")
-        is_diff_cols_counts = db.query(diff_rows.select(sum_(this[c]) for c in is_diff_cols), tuple)
+    def _count_diff_per_column(
+        self,
+        db,
+        diff_rows,
+        cols,
+        is_diff_cols,
+        table1: Optional[TableSegment] = None,
+        table2: Optional[TableSegment] = None,
+    ):
+        logger.info(type(table1))
+        logger.debug(f"Counting differences per column: {table1.table_path} <> {table2.table_path}")
+        is_diff_cols_counts = db.query(
+            diff_rows.select(sum_(this[c]) for c in is_diff_cols),
+            tuple,
+            log_message=f"{table1.table_path} <> {table2.table_path}",
+        )
         diff_counts = {}
         for name, count in safezip(cols, is_diff_cols_counts):
             diff_counts[name] = diff_counts.get(name, 0) + (count or 0)
         self.stats["diff_counts"] = diff_counts
 
-    def _sample_and_count_exclusive(self, db, diff_rows, a_cols, b_cols):
+    def _sample_and_count_exclusive(
+        self,
+        db,
+        diff_rows,
+        a_cols,
+        b_cols,
+        table1: Optional[TableSegment] = None,
+        table2: Optional[TableSegment] = None,
+    ):
         if isinstance(db, (Oracle, MsSQL)):
             exclusive_rows_query = diff_rows.where((this.is_exclusive_a == 1) | (this.is_exclusive_b == 1))
         else:
             exclusive_rows_query = diff_rows.where(this.is_exclusive_a | this.is_exclusive_b)
 
         if not self.sample_exclusive_rows:
-            logger.debug("Counting exclusive rows")
-            self.stats["exclusive_count"] = db.query(exclusive_rows_query.count(), int)
+            logger.debug(f"Counting exclusive rows: {table1.table_path} <> {table2.table_path}")
+            self.stats["exclusive_count"] = db.query(
+                exclusive_rows_query.count(), int, log_message=f"{table1.table_path} <> {table2.table_path}"
+            )
             return
 
         logger.info("Counting and sampling exclusive rows")
