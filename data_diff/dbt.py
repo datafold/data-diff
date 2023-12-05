@@ -112,7 +112,7 @@ def dbt_diff(
     else:
         dbt_parser.set_connection()
 
-    futures = []
+    futures = {}
 
     with log_status_handler.status if log_status_handler else nullcontext(), ThreadPoolExecutor(
         max_workers=dbt_parser.threads
@@ -149,7 +149,7 @@ def dbt_diff(
                     )
                 else:
                     future = executor.submit(_local_diff, diff_vars, json_output, log_status_handler)
-                futures.append(future)
+                futures[future] = model
             else:
                 if json_output:
                     print(
@@ -170,6 +170,7 @@ def dbt_diff(
                     )
 
     for future in as_completed(futures):
+        model = futures[future]
         try:
             future.result()  # if error occurred, it will be raised here
         except Exception as e:
