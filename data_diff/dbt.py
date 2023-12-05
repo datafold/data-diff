@@ -9,7 +9,6 @@ import pydantic
 import rich
 from rich.prompt import Prompt
 from concurrent.futures import ThreadPoolExecutor, as_completed
-import traceback
 
 from data_diff.errors import (
     DataDiffCustomSchemaNoConfigError,
@@ -174,9 +173,7 @@ def dbt_diff(
         try:
             future.result()  # if error occurred, it will be raised here
         except Exception as e:
-            tb_str = traceback.format_exception(etype=type(e), value=e, tb=e.__traceback__)
-            tb_str = "".join(tb_str)  # Format traceback string from list
-            logger.error(f"{tb_str}\nAn error occurred during the execution of a diff task: {model.unique_id} - {e}")
+            logger.error(f"An error occurred during the execution of a diff task: {model.unique_id} - {e}")
 
     _extension_notification()
 
