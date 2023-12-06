@@ -485,31 +485,31 @@ class LogStatusHandler(logging.Handler):
         super().__init__()
         self.status = Status("")
         self.prefix = ""
-        self.cloud_diff_status = {}
+        self.diff_status = {}
 
     def emit(self, record):
         log_entry = self.format(record)
-        if self.cloud_diff_status:
-            self._update_cloud_status(log_entry)
+        if self.diff_status:
+            self._update_diff_status(log_entry)
         else:
             self.status.update(self.prefix + log_entry)
 
     def set_prefix(self, prefix_string):
         self.prefix = prefix_string
 
-    def cloud_diff_started(self, model_name):
-        self.cloud_diff_status[model_name] = "[yellow]In Progress[/]"
-        self._update_cloud_status()
+    def diff_started(self, model_name):
+        self.diff_status[model_name] = "[yellow]In Progress[/]"
+        self._update_diff_status()
 
-    def cloud_diff_finished(self, model_name):
-        self.cloud_diff_status[model_name] = "[green]Finished   [/]"
-        self._update_cloud_status()
+    def diff_finished(self, model_name):
+        self.diff_status[model_name] = "[green]Finished   [/]"
+        self._update_diff_status()
 
-    def _update_cloud_status(self, log=None):
-        cloud_status_string = "\n"
-        for model_name, status in self.cloud_diff_status.items():
-            cloud_status_string += f"{status} {model_name}\n"
-        self.status.update(f"{cloud_status_string}{log or ''}")
+    def _update_diff_status(self, log=None):
+        status_string = "\n"
+        for model_name, status in self.diff_status.items():
+            status_string += f"{status} {model_name}\n"
+        self.status.update(f"{status_string}{log or ''}")
 
 
 class UnknownMeta(type):
