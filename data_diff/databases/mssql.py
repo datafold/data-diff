@@ -13,6 +13,7 @@ from data_diff.databases.base import (
 )
 from data_diff.abcs.database_types import (
     JSON,
+    ColType_UUID,
     NumericType,
     Timestamp,
     TimestampTZ,
@@ -153,6 +154,9 @@ class Dialect(BaseDialect):
 
     def md5_as_hex(self, s: str) -> str:
         return f"HashBytes('MD5', {s})"
+
+    def normalize_uuid(self, value: str, coltype: ColType_UUID) -> str:
+        return f"TRIM(CAST({value} AS char)) AS {value}"
 
 
 @attrs.define(frozen=False, init=False, kw_only=True)
