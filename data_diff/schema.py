@@ -9,7 +9,7 @@ Schema = CaseAwareMapping
 
 
 def create_schema(db_name: str, table_path: DbPath, schema: dict, case_sensitive: bool) -> CaseAwareMapping:
-    logger.debug(f"[{db_name}] Schema = {schema}")
+    logger.info(f"[{db_name}] Schema = {schema}")
 
     if case_sensitive:
         return CaseSensitiveDict(schema)

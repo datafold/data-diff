@@ -1,5 +1,5 @@
 import re
-from typing import Any, List, Union
+from typing import Any, ClassVar, List, Union, Type
 
 import attrs
 
@@ -20,14 +20,6 @@ from data_diff.abcs.database_types import (
     Boolean,
     UnknownColType,
 )
-from data_diff.abcs.mixins import (
-    AbstractMixin_MD5,
-    AbstractMixin_NormalizeValue,
-    AbstractMixin_Schema,
-    AbstractMixin_TimeTravel,
-)
-from data_diff.abcs.compiler import Compilable
-from data_diff.queries.api import this, table, SKIP, code
 from data_diff.databases.base import (
     BaseDialect,
     Database,
@@ -36,8 +28,11 @@ from data_diff.databases.base import (
     ConnectError,
     apply_query,
     QueryResult,
+    CHECKSUM_OFFSET,
+    CHECKSUM_HEXDIGITS,
+    MD5_HEXDIGITS,
 )
-from data_diff.databases.base import TIMESTAMP_PRECISION_POS, ThreadLocalInterpreter, Mixin_RandomSample
+from data_diff.databases.base import TIMESTAMP_PRECISION_POS, ThreadLocalInterpreter
 
 
 @import_helper(text="Please install BigQuery and configure your google-cloud access.")
@@ -60,102 +55,7 @@ def import_bigquery_service_account_impersonation():
 
 
 @attrs.define(frozen=False)
-class Mixin_MD5(AbstractMixin_MD5):
-    def md5_as_int(self, s: str) -> str:
-        return f"cast(cast( ('0x' || substr(TO_HEX(md5({s})), 18)) as int64) as numeric)"
-
-
-@attrs.define(frozen=False)
-class Mixin_NormalizeValue(AbstractMixin_NormalizeValue):
-    def normalize_timestamp(self, value: str, coltype: TemporalType) -> str:
-        if coltype.rounds:
-            timestamp = f"timestamp_micros(cast(round(unix_micros(cast({value} as timestamp))/1000000, {coltype.precision})*1000000 as int))"
-            return f"FORMAT_TIMESTAMP('%F %H:%M:%E6S', {timestamp})"
-
-        if coltype.precision == 0:
-            return f"FORMAT_TIMESTAMP('%F %H:%M:%S.000000', {value})"
-        elif coltype.precision == 6:
-            return f"FORMAT_TIMESTAMP('%F %H:%M:%E6S', {value})"
-
-        timestamp6 = f"FORMAT_TIMESTAMP('%F %H:%M:%E6S', {value})"
-        return (
-            f"RPAD(LEFT({timestamp6}, {TIMESTAMP_PRECISION_POS+coltype.precision}), {TIMESTAMP_PRECISION_POS+6}, '0')"
-        )
-
-    def normalize_number(self, value: str, coltype: FractionalType) -> str:
-        return f"format('%.{coltype.precision}f', {value})"
-
-    def normalize_boolean(self, value: str, _coltype: Boolean) -> str:
-        return self.to_string(f"cast({value} as int)")
-
-    def normalize_json(self, value: str, _coltype: JSON) -> str:
-        # BigQuery is unable to compare arrays & structs with ==/!=/distinct from, e.g.:
-        #   Got error: 400 Grouping is not defined for arguments of type ARRAY<INT64> at …
-        # So we do the best effort and compare it as strings, hoping that the JSON forms
-        # match on both sides: i.e. have properly ordered keys, same spacing, same quotes, etc.
-        return f"to_json_string({value})"
-
-    def normalize_array(self, value: str, _coltype: Array) -> str:
-        # BigQuery is unable to compare arrays & structs with ==/!=/distinct from, e.g.:
-        #   Got error: 400 Grouping is not defined for arguments of type ARRAY<INT64> at …
-        # So we do the best effort and compare it as strings, hoping that the JSON forms
-        # match on both sides: i.e. have properly ordered keys, same spacing, same quotes, etc.
-        return f"to_json_string({value})"
-
-    def normalize_struct(self, value: str, _coltype: Struct) -> str:
-        # BigQuery is unable to compare arrays & structs with ==/!=/distinct from, e.g.:
-        #   Got error: 400 Grouping is not defined for arguments of type ARRAY<INT64> at …
-        # So we do the best effort and compare it as strings, hoping that the JSON forms
-        # match on both sides: i.e. have properly ordered keys, same spacing, same quotes, etc.
-        return f"to_json_string({value})"
-
-
-@attrs.define(frozen=False)
-class Mixin_Schema(AbstractMixin_Schema):
-    def list_tables(self, table_schema: str, like: Compilable = None) -> Compilable:
-        return (
-            table(table_schema, "INFORMATION_SCHEMA", "TABLES")
-            .where(
-                this.table_schema == table_schema,
-                this.table_name.like(like) if like is not None else SKIP,
-                this.table_type == "BASE TABLE",
-            )
-            .select(this.table_name)
-        )
-
-
-@attrs.define(frozen=False)
-class Mixin_TimeTravel(AbstractMixin_TimeTravel):
-    def time_travel(
-        self,
-        table: Compilable,
-        before: bool = False,
-        timestamp: Compilable = None,
-        offset: Compilable = None,
-        statement: Compilable = None,
-    ) -> Compilable:
-        if before:
-            raise NotImplementedError("before=True not supported for BigQuery time-travel")
-
-        if statement is not None:
-            raise NotImplementedError("BigQuery time-travel doesn't support querying by statement id")
-
-        if timestamp is not None:
-            assert offset is None
-            return code("{table} FOR SYSTEM_TIME AS OF {timestamp}", table=table, timestamp=timestamp)
-
-        assert offset is not None
-        return code(
-            "{table} FOR SYSTEM_TIME AS OF TIMESTAMP_SUB(CURRENT_TIMESTAMP(), INTERVAL {offset} HOUR);",
-            table=table,
-            offset=offset,
-        )
-
-
-@attrs.define(frozen=False)
-class Dialect(
-    BaseDialect, Mixin_Schema, Mixin_MD5, Mixin_NormalizeValue, AbstractMixin_MD5, AbstractMixin_NormalizeValue
-):
+class Dialect(BaseDialect):
     name = "BigQuery"
     ROUNDS_ON_PREC_LOSS = False  # Technically BigQuery doesn't allow implicit rounding or truncation
     TYPE_CLASSES = {
@@ -231,12 +131,60 @@ class Dialect(
         path = parse_table_name(name)
         return tuple(i for i in path if i is not None)
 
+    def md5_as_int(self, s: str) -> str:
+        return f"cast(cast( ('0x' || substr(TO_HEX(md5({s})), {1+MD5_HEXDIGITS-CHECKSUM_HEXDIGITS})) as int64) as numeric) - {CHECKSUM_OFFSET}"
+
+    def md5_as_hex(self, s: str) -> str:
+        return f"md5({s})"
+
+    def normalize_timestamp(self, value: str, coltype: TemporalType) -> str:
+        if coltype.rounds:
+            timestamp = f"timestamp_micros(cast(round(unix_micros(cast({value} as timestamp))/1000000, {coltype.precision})*1000000 as int))"
+            return f"FORMAT_TIMESTAMP('%F %H:%M:%E6S', {timestamp})"
+
+        if coltype.precision == 0:
+            return f"FORMAT_TIMESTAMP('%F %H:%M:%S.000000', {value})"
+        elif coltype.precision == 6:
+            return f"FORMAT_TIMESTAMP('%F %H:%M:%E6S', {value})"
+
+        timestamp6 = f"FORMAT_TIMESTAMP('%F %H:%M:%E6S', {value})"
+        return (
+            f"RPAD(LEFT({timestamp6}, {TIMESTAMP_PRECISION_POS+coltype.precision}), {TIMESTAMP_PRECISION_POS+6}, '0')"
+        )
+
+    def normalize_number(self, value: str, coltype: FractionalType) -> str:
+        return f"format('%.{coltype.precision}f', {value})"
+
+    def normalize_boolean(self, value: str, _coltype: Boolean) -> str:
+        return self.to_string(f"cast({value} as int)")
+
+    def normalize_json(self, value: str, _coltype: JSON) -> str:
+        # BigQuery is unable to compare arrays & structs with ==/!=/distinct from, e.g.:
+        #   Got error: 400 Grouping is not defined for arguments of type ARRAY<INT64> at …
+        # So we do the best effort and compare it as strings, hoping that the JSON forms
+        # match on both sides: i.e. have properly ordered keys, same spacing, same quotes, etc.
+        return f"to_json_string({value})"
+
+    def normalize_array(self, value: str, _coltype: Array) -> str:
+        # BigQuery is unable to compare arrays & structs with ==/!=/distinct from, e.g.:
+        #   Got error: 400 Grouping is not defined for arguments of type ARRAY<INT64> at …
+        # So we do the best effort and compare it as strings, hoping that the JSON forms
+        # match on both sides: i.e. have properly ordered keys, same spacing, same quotes, etc.
+        return f"to_json_string({value})"
+
+    def normalize_struct(self, value: str, _coltype: Struct) -> str:
+        # BigQuery is unable to compare arrays & structs with ==/!=/distinct from, e.g.:
+        #   Got error: 400 Grouping is not defined for arguments of type ARRAY<INT64> at …
+        # So we do the best effort and compare it as strings, hoping that the JSON forms
+        # match on both sides: i.e. have properly ordered keys, same spacing, same quotes, etc.
+        return f"to_json_string({value})"
+
 
 @attrs.define(frozen=False, init=False, kw_only=True)
 class BigQuery(Database):
+    DIALECT_CLASS: ClassVar[Type[BaseDialect]] = Dialect
     CONNECT_URI_HELP = "bigquery://<project>/<dataset>"
     CONNECT_URI_PARAMS = ["dataset"]
-    dialect = Dialect()
 
     project: str
     dataset: str
@@ -248,17 +196,18 @@ class BigQuery(Database):
         bigquery = import_bigquery()
 
         keyfile = kw.pop("keyfile", None)
+        impersonate_service_account = kw.pop("impersonate_service_account", None)
         if keyfile:
             bigquery_service_account = import_bigquery_service_account()
             credentials = bigquery_service_account.Credentials.from_service_account_file(
                 keyfile,
                 scopes=["https://www.googleapis.com/auth/cloud-platform"],
             )
-        elif kw.get("impersonate_service_account"):
+        elif impersonate_service_account:
             bigquery_service_account_impersonation = import_bigquery_service_account_impersonation()
             credentials = bigquery_service_account_impersonation.Credentials(
                 source_credentials=credentials,
-                target_principal=kw["impersonate_service_account"],
+                target_principal=impersonate_service_account,
                 target_scopes=["https://www.googleapis.com/auth/cloud-platform"],
             )
 

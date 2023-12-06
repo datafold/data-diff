@@ -267,6 +267,20 @@ click.Context.formatter_class = MyHelpFormatter
     metavar="PATH",
     help="Specify manifest to utilize for 'prod' comparison paths instead of using configuration.",
 )
+@click.option(
+    "-pd",
+    "--prod-database",
+    "prod_database",
+    default=None,
+    help="Override the dbt production database configuration within dbt_project.yml",
+)
+@click.option(
+    "-ps",
+    "--prod-schema",
+    "prod_schema",
+    default=None,
+    help="Override the dbt production schema configuration within dbt_project.yml",
+)
 def main(conf, run, **kw):
     log_handlers = _get_log_handlers(kw["dbt"])
     if kw["table2"] is None and kw["database2"]:
@@ -323,6 +337,8 @@ def main(conf, run, **kw):
                 where_flag=kw["where"],
                 stats_flag=kw["stats"],
                 columns_flag=kw["columns"],
+                production_database_flag=kw["prod_database"],
+                production_schema_flag=kw["prod_schema"],
             )
         else:
             return _data_diff(
@@ -366,6 +382,8 @@ def _data_diff(
     cloud,
     dbt_profiles_dir,
     dbt_project_dir,
+    prod_database,
+    prod_schema,
     select,
     state,
     threads1=None,
@@ -519,7 +537,7 @@ def _data_diff(
 
     else:
         for op, values in diff_iter:
-            color = COLOR_SCHEME[op]
+            color = COLOR_SCHEME.get(op, "grey62")
 
             if json_output:
                 jsonl = json.dumps([op, list(values)])

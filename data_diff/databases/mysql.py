@@ -1,4 +1,4 @@
-from typing import Any, Dict
+from typing import Any, ClassVar, Dict, Type
 
 import attrs
 
@@ -15,26 +15,18 @@ from data_diff.abcs.database_types import (
     Boolean,
     Date,
 )
-from data_diff.abcs.mixins import (
-    AbstractMixin_MD5,
-    AbstractMixin_NormalizeValue,
-)
 from data_diff.databases.base import (
-    Mixin_OptimizerHints,
     ThreadedDatabase,
     import_helper,
     ConnectError,
     BaseDialect,
-    Compilable,
 )
 from data_diff.databases.base import (
     MD5_HEXDIGITS,
     CHECKSUM_HEXDIGITS,
     TIMESTAMP_PRECISION_POS,
-    Mixin_Schema,
-    Mixin_RandomSample,
+    CHECKSUM_OFFSET,
 )
-from data_diff.queries.ast_classes import BinBoolOp
 
 
 @import_helper("mysql")
@@ -45,40 +37,10 @@ def import_mysql():
 
 
 @attrs.define(frozen=False)
-class Mixin_MD5(AbstractMixin_MD5):
-    def md5_as_int(self, s: str) -> str:
-        return f"cast(conv(substring(md5({s}), {1+MD5_HEXDIGITS-CHECKSUM_HEXDIGITS}), 16, 10) as unsigned)"
-
-
-@attrs.define(frozen=False)
-class Mixin_NormalizeValue(AbstractMixin_NormalizeValue):
-    def normalize_timestamp(self, value: str, coltype: TemporalType) -> str:
-        if coltype.rounds:
-            return self.to_string(f"cast( cast({value} as datetime({coltype.precision})) as datetime(6))")
-
-        s = self.to_string(f"cast({value} as datetime(6))")
-        return f"RPAD(RPAD({s}, {TIMESTAMP_PRECISION_POS+coltype.precision}, '.'), {TIMESTAMP_PRECISION_POS+6}, '0')"
-
-    def normalize_number(self, value: str, coltype: FractionalType) -> str:
-        return self.to_string(f"cast({value} as decimal(38, {coltype.precision}))")
-
-    def normalize_uuid(self, value: str, coltype: ColType_UUID) -> str:
-        return f"TRIM(CAST({value} AS char))"
-
-
-@attrs.define(frozen=False)
-class Dialect(
-    BaseDialect,
-    Mixin_Schema,
-    Mixin_OptimizerHints,
-    Mixin_MD5,
-    Mixin_NormalizeValue,
-    AbstractMixin_MD5,
-    AbstractMixin_NormalizeValue,
-):
+class Dialect(BaseDialect):
     name = "MySQL"
     ROUNDS_ON_PREC_LOSS = True
-    SUPPORTS_PRIMARY_KEY = True
+    SUPPORTS_PRIMARY_KEY: ClassVar[bool] = True
     SUPPORTS_INDEXES = True
     TYPE_CLASSES = {
         # Dates
@@ -136,10 +98,29 @@ class Dialect(
     def set_timezone_to_utc(self) -> str:
         return "SET @@session.time_zone='+00:00'"
 
+    def md5_as_int(self, s: str) -> str:
+        return f"conv(substring(md5({s}), {1+MD5_HEXDIGITS-CHECKSUM_HEXDIGITS}), 16, 10) - {CHECKSUM_OFFSET}"
+
+    def md5_as_hex(self, s: str) -> str:
+        return f"md5({s})"
+
+    def normalize_timestamp(self, value: str, coltype: TemporalType) -> str:
+        if coltype.rounds:
+            return self.to_string(f"cast( cast({value} as datetime({coltype.precision})) as datetime(6))")
+
+        s = self.to_string(f"cast({value} as datetime(6))")
+        return f"RPAD(RPAD({s}, {TIMESTAMP_PRECISION_POS+coltype.precision}, '.'), {TIMESTAMP_PRECISION_POS+6}, '0')"
+
+    def normalize_number(self, value: str, coltype: FractionalType) -> str:
+        return self.to_string(f"cast({value} as decimal(38, {coltype.precision}))")
+
+    def normalize_uuid(self, value: str, coltype: ColType_UUID) -> str:
+        return f"TRIM(CAST({value} AS char))"
+
 
 @attrs.define(frozen=False, init=False, kw_only=True)
 class MySQL(ThreadedDatabase):
-    dialect = Dialect()
+    DIALECT_CLASS: ClassVar[Type[BaseDialect]] = Dialect
     SUPPORTS_ALPHANUMS = False
     SUPPORTS_UNIQUE_CONSTAINT = True
     CONNECT_URI_HELP = "mysql://<user>:<password>@<host>/<database>"

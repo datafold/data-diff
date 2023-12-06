@@ -1,4 +1,4 @@
-from typing import Any, Dict, Union
+from typing import Any, ClassVar, Dict, Union, Type
 
 import attrs
 
@@ -17,11 +17,6 @@ from data_diff.abcs.database_types import (
     FractionalType,
     Boolean,
 )
-from data_diff.abcs.mixins import (
-    AbstractMixin_MD5,
-    AbstractMixin_NormalizeValue,
-    AbstractMixin_RandomSample,
-)
 from data_diff.databases.base import (
     Database,
     BaseDialect,
@@ -29,10 +24,9 @@ from data_diff.databases.base import (
     ConnectError,
     ThreadLocalInterpreter,
     TIMESTAMP_PRECISION_POS,
+    CHECKSUM_OFFSET,
 )
-from data_diff.databases.base import MD5_HEXDIGITS, CHECKSUM_HEXDIGITS, Mixin_Schema
-from data_diff.queries.ast_classes import Func, Compilable, ITable
-from data_diff.queries.api import code
+from data_diff.databases.base import MD5_HEXDIGITS, CHECKSUM_HEXDIGITS
 
 
 @import_helper("duckdb")
@@ -43,40 +37,7 @@ def import_duckdb():
 
 
 @attrs.define(frozen=False)
-class Mixin_MD5(AbstractMixin_MD5):
-    def md5_as_int(self, s: str) -> str:
-        return f"('0x' || SUBSTRING(md5({s}), {1+MD5_HEXDIGITS-CHECKSUM_HEXDIGITS},{CHECKSUM_HEXDIGITS}))::BIGINT"
-
-
-@attrs.define(frozen=False)
-class Mixin_NormalizeValue(AbstractMixin_NormalizeValue):
-    def normalize_timestamp(self, value: str, coltype: TemporalType) -> str:
-        # It's precision 6 by default. If precision is less than 6 -> we remove the trailing numbers.
-        if coltype.rounds and coltype.precision > 0:
-            return f"CONCAT(SUBSTRING(STRFTIME({value}::TIMESTAMP, '%Y-%m-%d %H:%M:%S.'),1,23), LPAD(((ROUND(strftime({value}::timestamp, '%f')::DECIMAL(15,7)/100000,{coltype.precision-1})*100000)::INT)::VARCHAR,6,'0'))"
-
-        return f"rpad(substring(strftime({value}::timestamp, '%Y-%m-%d %H:%M:%S.%f'),1,{TIMESTAMP_PRECISION_POS+coltype.precision}),26,'0')"
-
-    def normalize_number(self, value: str, coltype: FractionalType) -> str:
-        return self.to_string(f"{value}::DECIMAL(38, {coltype.precision})")
-
-    def normalize_boolean(self, value: str, _coltype: Boolean) -> str:
-        return self.to_string(f"{value}::INTEGER")
-
-
-@attrs.define(frozen=False)
-class Mixin_RandomSample(AbstractMixin_RandomSample):
-    def random_sample_n(self, tbl: ITable, size: int) -> ITable:
-        return code("SELECT * FROM ({tbl}) USING SAMPLE {size};", tbl=tbl, size=size)
-
-    def random_sample_ratio_approx(self, tbl: ITable, ratio: float) -> ITable:
-        return code("SELECT * FROM ({tbl}) USING SAMPLE {percent}%;", tbl=tbl, percent=int(100 * ratio))
-
-
-@attrs.define(frozen=False)
-class Dialect(
-    BaseDialect, Mixin_Schema, Mixin_MD5, Mixin_NormalizeValue, AbstractMixin_MD5, AbstractMixin_NormalizeValue
-):
+class Dialect(BaseDialect):
     name = "DuckDB"
     ROUNDS_ON_PREC_LOSS = False
     SUPPORTS_PRIMARY_KEY = True
@@ -136,10 +97,29 @@ class Dialect(
     def current_timestamp(self) -> str:
         return "current_timestamp"
 
+    def md5_as_int(self, s: str) -> str:
+        return f"('0x' || SUBSTRING(md5({s}), {1+MD5_HEXDIGITS-CHECKSUM_HEXDIGITS},{CHECKSUM_HEXDIGITS}))::BIGINT - {CHECKSUM_OFFSET}"
+
+    def md5_as_hex(self, s: str) -> str:
+        return f"md5({s})"
+
+    def normalize_timestamp(self, value: str, coltype: TemporalType) -> str:
+        # It's precision 6 by default. If precision is less than 6 -> we remove the trailing numbers.
+        if coltype.rounds and coltype.precision > 0:
+            return f"CONCAT(SUBSTRING(STRFTIME({value}::TIMESTAMP, '%Y-%m-%d %H:%M:%S.'),1,23), LPAD(((ROUND(strftime({value}::timestamp, '%f')::DECIMAL(15,7)/100000,{coltype.precision-1})*100000)::INT)::VARCHAR,6,'0'))"
+
+        return f"rpad(substring(strftime({value}::timestamp, '%Y-%m-%d %H:%M:%S.%f'),1,{TIMESTAMP_PRECISION_POS+coltype.precision}),26,'0')"
+
+    def normalize_number(self, value: str, coltype: FractionalType) -> str:
+        return self.to_string(f"{value}::DECIMAL(38, {coltype.precision})")
+
+    def normalize_boolean(self, value: str, _coltype: Boolean) -> str:
+        return self.to_string(f"{value}::INTEGER")
+
 
 @attrs.define(frozen=False, init=False, kw_only=True)
 class DuckDB(Database):
-    dialect = Dialect()
+    DIALECT_CLASS: ClassVar[Type[BaseDialect]] = Dialect
     SUPPORTS_UNIQUE_CONSTAINT = False  # Temporary, until we implement it
     CONNECT_URI_HELP = "duckdb://<dbname>@<filepath>"
     CONNECT_URI_PARAMS = ["database", "dbpath"]

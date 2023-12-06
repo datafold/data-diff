@@ -3,7 +3,6 @@ from numbers import Number
 import logging
 from collections import defaultdict
 from typing import Iterator
-from operator import attrgetter
 
 import attrs
 
@@ -71,7 +70,8 @@ class HashDiffer(TableDiffer):
     """
 
     bisection_factor: int = DEFAULT_BISECTION_FACTOR
-    bisection_threshold: Number = DEFAULT_BISECTION_THRESHOLD  # Accepts inf for tests
+    bisection_threshold: int = DEFAULT_BISECTION_THRESHOLD
+    bisection_disabled: bool = False  # i.e. always download the rows (used in tests)
 
     stats: dict = attrs.field(factory=dict)
 
@@ -82,7 +82,7 @@ class HashDiffer(TableDiffer):
         if self.bisection_factor < 2:
             raise ValueError("Must have at least two segments per iteration (i.e. bisection_factor >= 2)")
 
-    def _validate_and_adjust_columns(self, table1, table2):
+    def _validate_and_adjust_columns(self, table1: TableSegment, table2: TableSegment, *, strict: bool = True) -> None:
         for c1, c2 in safezip(table1.relevant_columns, table2.relevant_columns):
             if c1 not in table1._schema:
                 raise ValueError(f"Column '{c1}' not found in schema for table {table1}")
@@ -92,11 +92,11 @@ class HashDiffer(TableDiffer):
             # Update schemas to minimal mutual precision
             col1 = table1._schema[c1]
             col2 = table2._schema[c2]
-            if isinstance(col1, PrecisionType):
-                if not isinstance(col2, PrecisionType):
+            if isinstance(col1, PrecisionType) and isinstance(col2, PrecisionType):
+                if strict and not isinstance(col2, PrecisionType):
                     raise TypeError(f"Incompatible types for column '{c1}':  {col1} <-> {col2}")
 
-                lowest = min(col1, col2, key=attrgetter("precision"))
+                lowest = min(col1, col2, key=lambda col: col.precision)
 
                 if col1.precision != col2.precision:
                     logger.warning(f"Using reduced precision {lowest} for column '{c1}'. Types={col1}, {col2}")
@@ -104,11 +104,11 @@ class HashDiffer(TableDiffer):
                 table1._schema[c1] = attrs.evolve(col1, precision=lowest.precision, rounds=lowest.rounds)
                 table2._schema[c2] = attrs.evolve(col2, precision=lowest.precision, rounds=lowest.rounds)
 
-            elif isinstance(col1, (NumericType, Boolean)):
-                if not isinstance(col2, (NumericType, Boolean)):
+            elif isinstance(col1, (NumericType, Boolean)) and isinstance(col2, (NumericType, Boolean)):
+                if strict and not isinstance(col2, (NumericType, Boolean)):
                     raise TypeError(f"Incompatible types for column '{c1}':  {col1} <-> {col2}")
 
-                lowest = min(col1, col2, key=attrgetter("precision"))
+                lowest = min(col1, col2, key=lambda col: col.precision)
 
                 if col1.precision != col2.precision:
                     logger.warning(f"Using reduced precision {lowest} for column '{c1}'. Types={col1}, {col2}")
@@ -119,11 +119,11 @@ class HashDiffer(TableDiffer):
                     table2._schema[c2] = attrs.evolve(col2, precision=lowest.precision)
 
             elif isinstance(col1, ColType_UUID):
-                if not isinstance(col2, ColType_UUID):
+                if strict and not isinstance(col2, ColType_UUID):
                     raise TypeError(f"Incompatible types for column '{c1}':  {col1} <-> {col2}")
 
             elif isinstance(col1, StringType):
-                if not isinstance(col2, StringType):
+                if strict and not isinstance(col2, StringType):
                     raise TypeError(f"Incompatible types for column '{c1}':  {col1} <-> {col2}")
 
         for t in [table1, table2]:
@@ -157,7 +157,7 @@ class HashDiffer(TableDiffer):
         # default, data-diff will checksum the section first (when it's below
         # the threshold) and _then_ download it.
         if BENCHMARK:
-            if max_rows < self.bisection_threshold:
+            if self.bisection_disabled or max_rows < self.bisection_threshold:
                 return self._bisect_and_diff_segments(ti, table1, table2, info_tree, level=level, max_rows=max_rows)
 
         (count1, checksum1), (count2, checksum2) = self._threaded_call("count_and_checksum", [table1, table2])
@@ -202,7 +202,7 @@ class HashDiffer(TableDiffer):
 
         # If count is below the threshold, just download and compare the columns locally
         # This saves time, as bisection speed is limited by ping and query performance.
-        if max_rows < self.bisection_threshold or max_space_size < self.bisection_factor * 2:
+        if self.bisection_disabled or max_rows < self.bisection_threshold or max_space_size < self.bisection_factor * 2:
             rows1, rows2 = self._threaded_call("get_values", [table1, table2])
             json_cols = {
                 i: colname

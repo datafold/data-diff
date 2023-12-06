@@ -64,44 +64,6 @@ class TestConnect(unittest.TestCase):
 
 
 @test_each_database
-class TestSchema(unittest.TestCase):
-    def test_table_list(self):
-        name = "tbl_" + random_table_suffix()
-        db = get_conn(self.db_cls)
-        tbl = table(db.dialect.parse_table_name(name), schema={"id": int})
-        q = db.dialect.list_tables(db.default_schema, name)
-        assert not db.query(q)
-
-        db.query(tbl.create())
-        self.assertEqual(db.query(q, List[str]), [name])
-
-        db.query(tbl.drop())
-        assert not db.query(q)
-
-    def test_type_mapping(self):
-        name = "tbl_" + random_table_suffix()
-        db = get_conn(self.db_cls)
-        tbl = table(
-            db.dialect.parse_table_name(name),
-            schema={
-                "int": int,
-                "float": float,
-                "datetime": datetime,
-                "str": str,
-                "bool": bool,
-            },
-        )
-        q = db.dialect.list_tables(db.default_schema, name)
-        assert not db.query(q)
-
-        db.query(tbl.create())
-        self.assertEqual(db.query(q, List[str]), [name])
-
-        db.query(tbl.drop())
-        assert not db.query(q)
-
-
-@test_each_database
 class TestQueries(unittest.TestCase):
     def test_current_timestamp(self):
         db = get_conn(self.db_cls)

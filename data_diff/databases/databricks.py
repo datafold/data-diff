@@ -1,5 +1,5 @@
 import math
-from typing import Any, Dict, Sequence
+from typing import Any, ClassVar, Dict, Sequence, Type
 import logging
 
 import attrs
@@ -17,15 +17,14 @@ from data_diff.abcs.database_types import (
     UnknownColType,
     Boolean,
 )
-from data_diff.abcs.mixins import AbstractMixin_MD5, AbstractMixin_NormalizeValue
 from data_diff.databases.base import (
     MD5_HEXDIGITS,
     CHECKSUM_HEXDIGITS,
+    CHECKSUM_OFFSET,
     BaseDialect,
     ThreadedDatabase,
     import_helper,
     parse_table_name,
-    Mixin_RandomSample,
 )
 
 
@@ -37,35 +36,7 @@ def import_databricks():
 
 
 @attrs.define(frozen=False)
-class Mixin_MD5(AbstractMixin_MD5):
-    def md5_as_int(self, s: str) -> str:
-        return f"cast(conv(substr(md5({s}), {1+MD5_HEXDIGITS-CHECKSUM_HEXDIGITS}), 16, 10) as decimal(38, 0))"
-
-
-@attrs.define(frozen=False)
-class Mixin_NormalizeValue(AbstractMixin_NormalizeValue):
-    def normalize_timestamp(self, value: str, coltype: TemporalType) -> str:
-        """Databricks timestamp contains no more than 6 digits in precision"""
-
-        if coltype.rounds:
-            timestamp = f"cast(round(unix_micros({value}) / 1000000, {coltype.precision}) * 1000000 as bigint)"
-            return f"date_format(timestamp_micros({timestamp}), 'yyyy-MM-dd HH:mm:ss.SSSSSS')"
-
-        precision_format = "S" * coltype.precision + "0" * (6 - coltype.precision)
-        return f"date_format({value}, 'yyyy-MM-dd HH:mm:ss.{precision_format}')"
-
-    def normalize_number(self, value: str, coltype: NumericType) -> str:
-        value = f"cast({value} as decimal(38, {coltype.precision}))"
-        if coltype.precision > 0:
-            value = f"format_number({value}, {coltype.precision})"
-        return f"replace({self.to_string(value)}, ',', '')"
-
-    def normalize_boolean(self, value: str, _coltype: Boolean) -> str:
-        return self.to_string(f"cast ({value} as int)")
-
-
-@attrs.define(frozen=False)
-class Dialect(BaseDialect, Mixin_MD5, Mixin_NormalizeValue, AbstractMixin_MD5, AbstractMixin_NormalizeValue):
+class Dialect(BaseDialect):
     name = "Databricks"
     ROUNDS_ON_PREC_LOSS = True
     TYPE_CLASSES = {
@@ -79,11 +50,19 @@ class Dialect(BaseDialect, Mixin_MD5, Mixin_NormalizeValue, AbstractMixin_MD5, A
         "DECIMAL": Decimal,
         # Timestamps
         "TIMESTAMP": Timestamp,
+        "TIMESTAMP_NTZ": Timestamp,
         # Text
         "STRING": Text,
+        "VARCHAR": Text,
         # Boolean
         "BOOLEAN": Boolean,
     }
+
+    def type_repr(self, t) -> str:
+        try:
+            return {str: "STRING"}[t]
+        except KeyError:
+            return super().type_repr(t)
 
     def quote(self, s: str):
         return f"`{s}`"
@@ -102,10 +81,36 @@ class Dialect(BaseDialect, Mixin_MD5, Mixin_NormalizeValue, AbstractMixin_MD5, A
         path = parse_table_name(name)
         return tuple(i for i in path if i is not None)
 
+    def md5_as_int(self, s: str) -> str:
+        return f"cast(conv(substr(md5({s}), {1+MD5_HEXDIGITS-CHECKSUM_HEXDIGITS}), 16, 10) as decimal(38, 0)) - {CHECKSUM_OFFSET}"
+
+    def md5_as_hex(self, s: str) -> str:
+        return f"md5({s})"
+
+    def normalize_timestamp(self, value: str, coltype: TemporalType) -> str:
+        """Databricks timestamp contains no more than 6 digits in precision"""
+
+        if coltype.rounds:
+            # cast to timestamp due to unix_micros() requiring timestamp
+            timestamp = f"cast(round(unix_micros(cast({value} as timestamp)) / 1000000, {coltype.precision}) * 1000000 as bigint)"
+            return f"date_format(timestamp_micros({timestamp}), 'yyyy-MM-dd HH:mm:ss.SSSSSS')"
+
+        precision_format = "S" * coltype.precision + "0" * (6 - coltype.precision)
+        return f"date_format({value}, 'yyyy-MM-dd HH:mm:ss.{precision_format}')"
+
+    def normalize_number(self, value: str, coltype: NumericType) -> str:
+        value = f"cast({value} as decimal(38, {coltype.precision}))"
+        if coltype.precision > 0:
+            value = f"format_number({value}, {coltype.precision})"
+        return f"replace({self.to_string(value)}, ',', '')"
+
+    def normalize_boolean(self, value: str, _coltype: Boolean) -> str:
+        return self.to_string(f"cast ({value} as int)")
+
 
 @attrs.define(frozen=False, init=False, kw_only=True)
 class Databricks(ThreadedDatabase):
-    dialect = Dialect()
+    DIALECT_CLASS: ClassVar[Type[BaseDialect]] = Dialect
     CONNECT_URI_HELP = "databricks://:<access_token>@<server_hostname>/<http_path>"
     CONNECT_URI_PARAMS = ["catalog", "schema"]
 
@@ -153,6 +158,19 @@ class Databricks(ThreadedDatabase):
             d = {r.COLUMN_NAME: (r.COLUMN_NAME, r.TYPE_NAME, r.DECIMAL_DIGITS, None, None) for r in rows}
             assert len(d) == len(rows)
             return d
+
+    # def select_table_schema(self, path: DbPath) -> str:
+    #     """Provide SQL for selecting the table schema as (name, type, date_prec, num_prec)"""
+    #     database, schema, name = self._normalize_table_path(path)
+    #     info_schema_path = ["information_schema", "columns"]
+    #     if database:
+    #         info_schema_path.insert(0, database)
+
+    #     return (
+    #         "SELECT column_name, data_type, datetime_precision, numeric_precision, numeric_scale "
+    #         f"FROM {'.'.join(info_schema_path)} "
+    #         f"WHERE table_name = '{name}' AND table_schema = '{schema}'"
+    #     )
 
     def _process_table_schema(
         self, path: DbPath, raw_schema: Dict[str, tuple], filter_columns: Sequence[str], where: str = None

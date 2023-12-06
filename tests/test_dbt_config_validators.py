@@ -15,7 +15,7 @@ MANIFEST_PATH = "tests/dbt_artifacts/manifests/"
 class TestRunResultsJsonConfig(unittest.TestCase):
     def test_run_results(self):
         # https://docs.getdbt.com/reference/artifacts/run-results-json
-        versions = ["v4"]
+        versions = ["v4", "v5"]
 
         for version in versions:
             with self.subTest(version=version):
@@ -26,7 +26,7 @@ class TestRunResultsJsonConfig(unittest.TestCase):
 class TestManifestJsonConfig(unittest.TestCase):
     def test_manifest(self):
         # https://docs.getdbt.com/reference/artifacts/manifest-json
-        versions = ["v4", "v5", "v6", "v7", "v8", "v9", "v10", "v11"]
+        versions = ["v4", "v5", "v6", "v7", "v8", "v9", "v10", "v11", "v11_no_tracking"]
 
         for version in versions:
             with self.subTest(version=version):

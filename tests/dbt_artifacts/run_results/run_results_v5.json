@@ -1,0 +1,78 @@
+{
+    "metadata": {
+        "dbt_schema_version": "https://schemas.getdbt.com/dbt/run-results/v5.json",
+        "dbt_version": "1.7.0",
+        "generated_at": "2023-11-03T18:58:01.711121Z",
+        "invocation_id": "13fd3e9b-66fd-4dee-bb27-b6acd818c747",
+        "env": {}
+    },
+    "results": [
+        {
+            "status": "success",
+            "timing": [
+                {
+                    "name": "compile",
+                    "started_at": "2023-11-03T18:57:54.451415Z",
+                    "completed_at": "2023-11-03T18:57:54.455521Z"
+                },
+                {
+                    "name": "execute",
+                    "started_at": "2023-11-03T18:57:54.456321Z",
+                    "completed_at": "2023-11-03T18:57:56.603978Z"
+                }
+            ],
+            "thread_id": "Thread-4",
+            "execution_time": 2.2710530757904053,
+            "adapter_response": {
+                "_message": "SUCCESS 1",
+                "code": "SUCCESS",
+                "rows_affected": 1,
+                "query_id": "01b01671-0903-c114-0008-fb8312780ad2"
+            },
+            "message": "SUCCESS 1",
+            "failures": null,
+            "unique_id": "model.demo.customers",
+            "compiled": true,
+            "compiled_code": "with customers as (\n\n    select * from DEV.development_sung.stg_customers\n\n),\n\norders as (\n\n    select * from DEV.development_sung.stg_orders\n\n),\n\npayments as (\n\n    select * from DEV.development_sung.stg_payments\n\n),\n\ncustomer_orders as (\n\n        select\n        customer_id,\n\n        min(order_date) as first_order,\n        max(order_date) as most_recent_order,\n        count(order_id) as number_of_orders\n    from orders\n\n    group by customer_id\n\n),\n\ncustomer_payments as (\n\n    select\n        orders.customer_id,\n        sum(amount) as total_amount\n\n    from payments\n\n    left join orders on\n         payments.order_id = orders.order_id\n\n    group by orders.customer_id\n\n),\n\nfinal as (\n\n    select\n        customers.customer_id,\n        customers.first_name as changed_names,\n        customers.last_name,\n        customer_orders.first_order,\n        customer_orders.most_recent_order,\n        customer_orders.number_of_orders,\n        customer_payments.total_amount as customer_lifetime_value\n\n    from customers\n\n    left join customer_orders\n        on customers.customer_id = customer_orders.customer_id\n\n    left join customer_payments\n        on  customers.customer_id = customer_payments.customer_id\n\n)\n\nselect * from final",
+            "relation_name": "DEV.development_sung.customers"
+        }
+    ],
+    "elapsed_time": 9.092561960220337,
+    "args": {
+        "version_check": true,
+        "printer_width": 80,
+        "project_dir": "/Users/sung/Desktop/data-diff/datafold-demo-sung",
+        "quiet": false,
+        "send_anonymous_usage_stats": true,
+        "introspect": true,
+        "exclude": [],
+        "log_file_max_bytes": 10485760,
+        "strict_mode": false,
+        "warn_error_options": { "include": [], "exclude": [] },
+        "cache_selected_only": false,
+        "log_level_file": "debug",
+        "macro_debugging": false,
+        "profiles_dir": "/Users/sung/Desktop/data-diff/datafold-demo-sung",
+        "log_path": "/Users/sung/Desktop/data-diff/datafold-demo-sung/logs",
+        "log_format": "default",
+        "use_colors_file": true,
+        "partial_parse_file_diff": true,
+        "indirect_selection": "eager",
+        "select": ["customers"],
+        "favor_state": false,
+        "populate_cache": true,
+        "log_level": "info",
+        "print": true,
+        "write_json": true,
+        "which": "run",
+        "invocation_command": "dbt run -s customers",
+        "static_parser": true,
+        "enable_legacy_logger": false,
+        "partial_parse": true,
+        "vars": {},
+        "show_resource_report": false,
+        "defer": false,
+        "log_format_file": "debug",
+        "use_colors": true
+    }
+}

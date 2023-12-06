@@ -54,6 +54,8 @@ Once inside, you can install the dependencies.
 
 - Option 2: Run `pip install -e .` to install them, and data-diff, in the global context.
 
+- Run `pre-commit install` to automatically format your code before committing.
+
 At the bare minimum, you need MySQL to run the tests.
 
 You can create a local MySQL instance using `docker-compose up mysql`. The URI for it will be `mysql://mysql:Password1@localhost/mysql`. If you're using a different server, make sure to update `TEST_MYSQL_CONN_STRING` in `tests/common.py`. For your convenience, we recommend creating `tests/local_settings.py`, and to override the value there.

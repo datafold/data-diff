@@ -18,14 +18,13 @@ from data_diff.abcs.database_types import (
     Boolean,
     Date,
 )
-from data_diff.abcs.mixins import AbstractMixin_MD5, AbstractMixin_NormalizeValue
-from data_diff.databases.base import BaseDialect, ThreadedDatabase, import_helper, ConnectError, Mixin_Schema
+from data_diff.databases.base import BaseDialect, ThreadedDatabase, import_helper, ConnectError
 from data_diff.databases.base import (
     MD5_HEXDIGITS,
     CHECKSUM_HEXDIGITS,
     _CHECKSUM_BITSIZE,
     TIMESTAMP_PRECISION_POS,
-    Mixin_RandomSample,
+    CHECKSUM_OFFSET,
 )
 
 SESSION_TIME_ZONE = None  # Changed by the tests
@@ -40,39 +39,10 @@ def import_postgresql():
 
 
 @attrs.define(frozen=False)
-class Mixin_MD5(AbstractMixin_MD5):
-    def md5_as_int(self, s: str) -> str:
-        return f"('x' || substring(md5({s}), {1+MD5_HEXDIGITS-CHECKSUM_HEXDIGITS}))::bit({_CHECKSUM_BITSIZE})::bigint"
-
-
-@attrs.define(frozen=False)
-class Mixin_NormalizeValue(AbstractMixin_NormalizeValue):
-    def normalize_timestamp(self, value: str, coltype: TemporalType) -> str:
-        if coltype.rounds:
-            return f"to_char({value}::timestamp({coltype.precision}), 'YYYY-mm-dd HH24:MI:SS.US')"
-
-        timestamp6 = f"to_char({value}::timestamp(6), 'YYYY-mm-dd HH24:MI:SS.US')"
-        return (
-            f"RPAD(LEFT({timestamp6}, {TIMESTAMP_PRECISION_POS+coltype.precision}), {TIMESTAMP_PRECISION_POS+6}, '0')"
-        )
-
-    def normalize_number(self, value: str, coltype: FractionalType) -> str:
-        return self.to_string(f"{value}::decimal(38, {coltype.precision})")
-
-    def normalize_boolean(self, value: str, _coltype: Boolean) -> str:
-        return self.to_string(f"{value}::int")
-
-    def normalize_json(self, value: str, _coltype: JSON) -> str:
-        return f"{value}::text"
-
-
-@attrs.define(frozen=False)
-class PostgresqlDialect(
-    BaseDialect, Mixin_Schema, Mixin_MD5, Mixin_NormalizeValue, AbstractMixin_MD5, AbstractMixin_NormalizeValue
-):
+class PostgresqlDialect(BaseDialect):
     name = "PostgreSQL"
     ROUNDS_ON_PREC_LOSS = True
-    SUPPORTS_PRIMARY_KEY = True
+    SUPPORTS_PRIMARY_KEY: ClassVar[bool] = True
     SUPPORTS_INDEXES = True
 
     TYPE_CLASSES: ClassVar[Dict[str, Type[ColType]]] = {
@@ -125,10 +95,61 @@ class PostgresqlDialect(
             return f"timestamp ({t.precision}) with time zone"
         return super().type_repr(t)
 
+    def md5_as_int(self, s: str) -> str:
+        return f"('x' || substring(md5({s}), {1+MD5_HEXDIGITS-CHECKSUM_HEXDIGITS}))::bit({_CHECKSUM_BITSIZE})::bigint - {CHECKSUM_OFFSET}"
+
+    def md5_as_hex(self, s: str) -> str:
+        return f"md5({s})"
+
+    def normalize_timestamp(self, value: str, coltype: TemporalType) -> str:
+        def _add_padding(coltype: TemporalType, timestamp6: str):
+            return f"RPAD(LEFT({timestamp6}, {TIMESTAMP_PRECISION_POS+coltype.precision}), {TIMESTAMP_PRECISION_POS+6}, '0')"
+
+        if coltype.rounds:
+            # NULL value expected to return NULL after normalization
+            null_case_begin = f"CASE WHEN {value} IS NULL THEN NULL ELSE "
+            null_case_end = "END"
+
+            # 294277 or 4714 BC would be out of range, make sure we can't round to that
+            # TODO test timezones for overflow?
+            max_timestamp = "294276-12-31 23:59:59.0000"
+            min_timestamp = "4713-01-01 00:00:00.00 BC"
+            timestamp = f"least('{max_timestamp}'::timestamp(6), {value}::timestamp(6))"
+            timestamp = f"greatest('{min_timestamp}'::timestamp(6), {timestamp})"
+
+            interval = format((0.5 * (10 ** (-coltype.precision))), f".{coltype.precision+1}f")
+
+            rounded_timestamp = (
+                f"left(to_char(least('{max_timestamp}'::timestamp, {timestamp})"
+                f"+ interval '{interval}', 'YYYY-mm-dd HH24:MI:SS.US'),"
+                f"length(to_char(least('{max_timestamp}'::timestamp, {timestamp})"
+                f"+ interval '{interval}', 'YYYY-mm-dd HH24:MI:SS.US')) - (6-{coltype.precision}))"
+            )
+
+            padded = _add_padding(coltype, rounded_timestamp)
+            return f"{null_case_begin} {padded} {null_case_end}"
+
+            # TODO years with > 4 digits not padded correctly
+            # current w/ precision 6: 294276-12-31 23:59:59.0000
+            # should be 294276-12-31 23:59:59.000000
+        else:
+            rounded_timestamp = f"to_char({value}::timestamp(6), 'YYYY-mm-dd HH24:MI:SS.US')"
+            padded = _add_padding(coltype, rounded_timestamp)
+            return padded
+
+    def normalize_number(self, value: str, coltype: FractionalType) -> str:
+        return self.to_string(f"{value}::decimal(38, {coltype.precision})")
+
+    def normalize_boolean(self, value: str, _coltype: Boolean) -> str:
+        return self.to_string(f"{value}::int")
+
+    def normalize_json(self, value: str, _coltype: JSON) -> str:
+        return f"{value}::text"
+
 
 @attrs.define(frozen=False, init=False, kw_only=True)
 class PostgreSQL(ThreadedDatabase):
-    dialect = PostgresqlDialect()
+    DIALECT_CLASS: ClassVar[Type[BaseDialect]] = PostgresqlDialect
     SUPPORTS_UNIQUE_CONSTAINT = True
     CONNECT_URI_HELP = "postgresql://<user>:<password>@<host>/<database>"
     CONNECT_URI_PARAMS = ["database?"]

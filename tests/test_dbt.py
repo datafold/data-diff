@@ -93,8 +93,8 @@ class TestDbtDiffer(unittest.TestCase):
         )
         self.assertEqual(len(mock_diff_tables.call_args[1]["extra_columns"]), 2)
         self.assertEqual(mock_connect.call_count, 2)
-        mock_connect.assert_any_call(connection, ".".join(dev_qualified_list), tuple(expected_primary_keys), threads)
-        mock_connect.assert_any_call(connection, ".".join(prod_qualified_list), tuple(expected_primary_keys), threads)
+        mock_connect.assert_any_call(connection, ".".join(dev_qualified_list), tuple(expected_primary_keys))
+        mock_connect.assert_any_call(connection, ".".join(prod_qualified_list), tuple(expected_primary_keys))
         mock_diff.get_stats_string.assert_called_once()
 
     @patch("data_diff.dbt.diff_tables")
@@ -180,8 +180,8 @@ class TestDbtDiffer(unittest.TestCase):
         )
         self.assertEqual(len(mock_diff_tables.call_args[1]["extra_columns"]), 2)
         self.assertEqual(mock_connect.call_count, 2)
-        mock_connect.assert_any_call(connection, ".".join(dev_qualified_list), tuple(expected_primary_keys), None)
-        mock_connect.assert_any_call(connection, ".".join(prod_qualified_list), tuple(expected_primary_keys), None)
+        mock_connect.assert_any_call(connection, ".".join(dev_qualified_list), tuple(expected_primary_keys))
+        mock_connect.assert_any_call(connection, ".".join(prod_qualified_list), tuple(expected_primary_keys))
         mock_diff.get_stats_string.assert_not_called()
 
     @patch("data_diff.dbt.rich.print")
@@ -248,6 +248,7 @@ class TestDbtDiffer(unittest.TestCase):
         where = "a_string"
         config = TDatadiffConfig(prod_database="prod_db", prod_schema="prod_schema", datasource_id=1)
         mock_dbt_parser_inst = Mock()
+        mock_dbt_parser_inst.threads = threads
         mock_model = Mock()
         mock_api.get_data_source.return_value = TCloudApiDataSource(id=1, type="snowflake", name="snowflake")
         mock_initialize_api.return_value = mock_api
@@ -386,6 +387,7 @@ class TestDbtDiffer(unittest.TestCase):
         threads = None
         where = "a_string"
         mock_dbt_parser_inst = Mock()
+        mock_dbt_parser_inst.threads = threads
         mock_dbt_parser.return_value = mock_dbt_parser_inst
         mock_model = Mock()
         mock_dbt_parser_inst.get_models.return_value = [mock_model]
@@ -407,7 +409,7 @@ class TestDbtDiffer(unittest.TestCase):
         mock_dbt_parser_inst.get_models.assert_called_once()
         mock_dbt_parser_inst.set_connection.assert_called_once()
         mock_cloud_diff.assert_not_called()
-        mock_local_diff.assert_called_once_with(diff_vars, False)
+        mock_local_diff.assert_called_once_with(diff_vars, False, None)
         mock_print.assert_not_called()
 
     @patch("data_diff.dbt._get_diff_vars")
@@ -423,6 +425,7 @@ class TestDbtDiffer(unittest.TestCase):
         threads = None
         where = "a_string"
         mock_dbt_parser_inst = Mock()
+        mock_dbt_parser_inst.threads = threads
         mock_dbt_parser.return_value = mock_dbt_parser_inst
         mock_model = Mock()
         mock_dbt_parser_inst.get_models.return_value = [mock_model]
@@ -460,6 +463,7 @@ class TestDbtDiffer(unittest.TestCase):
         threads = None
         where = "a_string"
         mock_dbt_parser_inst = Mock()
+        mock_dbt_parser_inst.threads = threads
         mock_dbt_parser.return_value = mock_dbt_parser_inst
         mock_model = Mock()
         mock_dbt_parser_inst.get_models.return_value = [mock_model]
@@ -481,7 +485,7 @@ class TestDbtDiffer(unittest.TestCase):
         mock_dbt_parser_inst.get_models.assert_called_once()
         mock_dbt_parser_inst.set_connection.assert_called_once()
         mock_cloud_diff.assert_not_called()
-        mock_local_diff.assert_called_once_with(diff_vars, False)
+        mock_local_diff.assert_called_once_with(diff_vars, False, None)
         mock_print.assert_not_called()
 
     @patch("data_diff.dbt._get_diff_vars")
@@ -497,6 +501,7 @@ class TestDbtDiffer(unittest.TestCase):
         threads = None
         where = "a_string"
         mock_dbt_parser_inst = Mock()
+        mock_dbt_parser_inst.threads = threads
         mock_dbt_parser.return_value = mock_dbt_parser_inst
         mock_model = Mock()
         mock_dbt_parser_inst.get_models.return_value = [mock_model]
@@ -518,7 +523,7 @@ class TestDbtDiffer(unittest.TestCase):
         mock_dbt_parser_inst.get_models.assert_called_once()
         mock_dbt_parser_inst.set_connection.assert_called_once()
         mock_cloud_diff.assert_not_called()
-        mock_local_diff.assert_called_once_with(diff_vars, False)
+        mock_local_diff.assert_called_once_with(diff_vars, False, None)
         mock_print.assert_not_called()
 
     @patch("data_diff.dbt._initialize_api")
@@ -543,6 +548,7 @@ class TestDbtDiffer(unittest.TestCase):
         mock_model = Mock()
         connection = {}
         threads = None
+        mock_dbt_parser_inst.threads = threads
         where = "a_string"
         config = TDatadiffConfig(prod_database="prod_db", prod_schema="prod_schema", datasource_id=1)
         mock_api = Mock()
@@ -584,6 +590,7 @@ class TestDbtDiffer(unittest.TestCase):
         threads = None
         where = "a_string"
         mock_dbt_parser_inst = Mock()
+        mock_dbt_parser_inst.threads = threads
         mock_dbt_parser.return_value = mock_dbt_parser_inst
         mock_model = Mock()
         mock_dbt_parser_inst.get_models.return_value = [mock_model]
@@ -964,11 +971,23 @@ class TestDbtDiffer(unittest.TestCase):
         mock_dbt_parser.prod_manifest_obj = None
         mock_prod_path_from_config.return_value = ("prod_db", "prod_schema")
         cli_columns = ("col1", "col2")
+        production_database_flag_override = "prod_db_override"
+        production_schema_flag_override = "prod_schema_override"
 
-        diff_vars = _get_diff_vars(mock_dbt_parser, config, mock_model, where_flag=None, columns_flag=cli_columns)
+        diff_vars = _get_diff_vars(
+            mock_dbt_parser,
+            config,
+            mock_model,
+            where_flag=None,
+            columns_flag=cli_columns,
+            production_database_flag=production_database_flag_override,
+            production_schema_flag=production_schema_flag_override,
+        )
 
         mock_dbt_parser.get_pk_from_model.assert_called_once()
         mock_prod_path_from_config.assert_called_once_with(config, mock_model, mock_model.database, mock_model.schema_)
         mock_prod_path_from_manifest.assert_not_called()
         self.assertEqual(diff_vars.include_columns, list(cli_columns))
         self.assertEqual(diff_vars.exclude_columns, [])
+        self.assertEqual(diff_vars.prod_path[0], production_database_flag_override)
+        self.assertEqual(diff_vars.prod_path[1], production_schema_flag_override)

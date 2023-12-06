@@ -17,7 +17,7 @@ import contextvars
 import attrs
 from typing_extensions import Self
 
-from data_diff.abcs.compiler import AbstractCompiler
+from data_diff.abcs.compiler import AbstractCompiler, Compilable
 from data_diff.queries.extras import ApplyFuncAndNormalizeAsString, Checksum, NormalizeAsString
 from data_diff.utils import ArithString, is_uuid, join_iter, safezip
 from data_diff.queries.api import Expr, table, Select, SKIP, Explain, Code, this
@@ -48,7 +48,6 @@ from data_diff.queries.ast_classes import (
     TableAlias,
     TableOp,
     TablePath,
-    TimeTravel,
     TruncateTable,
     UnaryOp,
     WhenThen,
@@ -56,6 +55,8 @@ from data_diff.queries.ast_classes import (
 )
 from data_diff.abcs.database_types import (
     Array,
+    ColType_UUID,
+    FractionalType,
     Struct,
     ColType,
     Integer,
@@ -73,13 +74,6 @@ from data_diff.abcs.database_types import (
     DbPath,
     Boolean,
     JSON,
-)
-from data_diff.abcs.mixins import AbstractMixin_TimeTravel, Compilable
-from data_diff.abcs.mixins import (
-    AbstractMixin_Schema,
-    AbstractMixin_RandomSample,
-    AbstractMixin_NormalizeValue,
-    AbstractMixin_OptimizerHints,
 )
 
 logger = logging.getLogger("database")
@@ -182,7 +176,7 @@ class ThreadLocalInterpreter:
         q: Expr = next(self.gen)
         while True:
             sql = self.compiler.database.dialect.compile(self.compiler, q)
-            logger.debug("Running SQL (%s-TL): %s", self.compiler.database.name, sql)
+            logger.debug("Running SQL (%s-TL):\n%s", self.compiler.database.name, sql)
             try:
                 try:
                     res = callback(sql) if sql is not SKIP else SKIP
@@ -202,45 +196,21 @@ def apply_query(callback: Callable[[str], Any], sql_code: Union[str, ThreadLocal
 
 
 @attrs.define(frozen=False)
-class Mixin_Schema(AbstractMixin_Schema):
-    def table_information(self) -> Compilable:
-        return table("information_schema", "tables")
-
-    def list_tables(self, table_schema: str, like: Compilable = None) -> Compilable:
-        return (
-            self.table_information()
-            .where(
-                this.table_schema == table_schema,
-                this.table_name.like(like) if like is not None else SKIP,
-                this.table_type == "BASE TABLE",
-            )
-            .select(this.table_name)
-        )
-
-
-@attrs.define(frozen=False)
-class Mixin_RandomSample(AbstractMixin_RandomSample):
-    def random_sample_n(self, tbl: ITable, size: int) -> ITable:
-        # TODO use a more efficient algorithm, when the table count is known
-        return tbl.order_by(Random()).limit(size)
-
-    def random_sample_ratio_approx(self, tbl: ITable, ratio: float) -> ITable:
-        return tbl.where(Random() < ratio)
-
-
-@attrs.define(frozen=False)
-class Mixin_OptimizerHints(AbstractMixin_OptimizerHints):
-    def optimizer_hints(self, hints: str) -> str:
-        return f"/*+ {hints} */ "
-
-
-@attrs.define(frozen=False)
 class BaseDialect(abc.ABC):
     SUPPORTS_PRIMARY_KEY: ClassVar[bool] = False
     SUPPORTS_INDEXES: ClassVar[bool] = False
+    PREVENT_OVERFLOW_WHEN_CONCAT: ClassVar[bool] = False
     TYPE_CLASSES: ClassVar[Dict[str, Type[ColType]]] = {}
 
     PLACEHOLDER_TABLE = None  # Used for Oracle
+
+    # Some database do not support long string so concatenation might lead to type overflow
+
+    _prevent_overflow_when_concat: bool = False
+
+    def enable_preventing_type_overflow(self) -> None:
+        logger.info("Preventing type overflow when concatenation is enabled")
+        self._prevent_overflow_when_concat = True
 
     def parse_table_name(self, name: str) -> DbPath:
         "Parse the given table name into a DbPath"
@@ -267,6 +237,8 @@ class BaseDialect(abc.ABC):
             return "NULL"
         elif isinstance(elem, Compilable):
             return self.render_compilable(attrs.evolve(compiler, root=False), elem)
+        elif isinstance(elem, ColType):
+            return self.render_coltype(attrs.evolve(compiler, root=False), elem)
         elif isinstance(elem, str):
             return f"'{elem}'"
         elif isinstance(elem, (int, float)):
@@ -336,8 +308,6 @@ class BaseDialect(abc.ABC):
             return self.render_explain(c, elem)
         elif isinstance(elem, CurrentTimestamp):
             return self.render_currenttimestamp(c, elem)
-        elif isinstance(elem, TimeTravel):
-            return self.render_timetravel(c, elem)
         elif isinstance(elem, CreateTable):
             return self.render_createtable(c, elem)
         elif isinstance(elem, DropTable):
@@ -358,6 +328,9 @@ class BaseDialect(abc.ABC):
         else:
             raise RuntimeError(f"Cannot render AST of type {elem.__class__}")
         # return elem.compile(compiler.replace(root=False))
+
+    def render_coltype(self, c: Compiler, elem: ColType) -> str:
+        return self.type_repr(elem)
 
     def render_column(self, c: Compiler, elem: Column) -> str:
         if c._table_context:
@@ -428,10 +401,19 @@ class BaseDialect(abc.ABC):
         return f"sum({md5})"
 
     def render_concat(self, c: Compiler, elem: Concat) -> str:
+        if self._prevent_overflow_when_concat:
+            items = [
+                f"{self.compile(c, Code(self.md5_as_hex(self.to_string(self.compile(c, expr)))))}"
+                for expr in elem.exprs
+            ]
+
         # We coalesce because on some DBs (e.g. MySQL) concat('a', NULL) is NULL
-        items = [
-            f"coalesce({self.compile(c, Code(self.to_string(self.compile(c, expr))))}, '<null>')" for expr in elem.exprs
-        ]
+        else:
+            items = [
+                f"coalesce({self.compile(c, Code(self.to_string(self.compile(c, expr))))}, '<null>')"
+                for expr in elem.exprs
+            ]
+
         assert items
         if len(items) == 1:
             return items[0]
@@ -529,7 +511,7 @@ class BaseDialect(abc.ABC):
 
         if elem.limit_expr is not None:
             has_order_by = bool(elem.order_by_exprs)
-            select += " " + self.offset_limit(0, elem.limit_expr, has_order_by=has_order_by)
+            select = self.limit_select(select_query=select, offset=0, limit=elem.limit_expr, has_order_by=has_order_by)
 
         if parent_c.in_select:
             select = f"({select}) {c.new_unique_name()}"
@@ -611,16 +593,6 @@ class BaseDialect(abc.ABC):
     def render_currenttimestamp(self, c: Compiler, elem: CurrentTimestamp) -> str:
         return self.current_timestamp()
 
-    def render_timetravel(self, c: Compiler, elem: TimeTravel) -> str:
-        assert isinstance(c, AbstractMixin_TimeTravel)
-        return self.compile(
-            c,
-            # TODO: why is it c.? why not self? time-trvelling is the dialect's thing, isnt't it?
-            c.time_travel(
-                elem.table, before=elem.before, timestamp=elem.timestamp, offset=elem.offset, statement=elem.statement
-            ),
-        )
-
     def render_createtable(self, c: Compiler, elem: CreateTable) -> str:
         ne = "IF NOT EXISTS " if elem.if_not_exists else ""
         if elem.source_table:
@@ -651,14 +623,17 @@ class BaseDialect(abc.ABC):
 
         return f"INSERT INTO {self.compile(c, elem.path)}{columns} {expr}"
 
-    def offset_limit(
-        self, offset: Optional[int] = None, limit: Optional[int] = None, has_order_by: Optional[bool] = None
+    def limit_select(
+        self,
+        select_query: str,
+        offset: Optional[int] = None,
+        limit: Optional[int] = None,
+        has_order_by: Optional[bool] = None,
     ) -> str:
-        "Provide SQL fragment for limit and offset inside a select"
         if offset:
             raise NotImplementedError("No support for OFFSET in query")
 
-        return f"LIMIT {limit}"
+        return f"SELECT * FROM ({select_query}) AS LIMITED_SELECT LIMIT {limit}"
 
     def concat(self, items: List[str]) -> str:
         "Provide SQL for concatenating a bunch of columns into a string"
@@ -808,6 +783,108 @@ class BaseDialect(abc.ABC):
     def set_timezone_to_utc(self) -> str:
         "Provide SQL for setting the session timezone to UTC"
 
+    @abstractmethod
+    def md5_as_int(self, s: str) -> str:
+        "Provide SQL for computing md5 and returning an int"
+
+    @abstractmethod
+    def md5_as_hex(self, s: str) -> str:
+        """Method to calculate MD5"""
+
+    @abstractmethod
+    def normalize_timestamp(self, value: str, coltype: TemporalType) -> str:
+        """Creates an SQL expression, that converts 'value' to a normalized timestamp.
+
+        The returned expression must accept any SQL datetime/timestamp, and return a string.
+
+        Date format: ``YYYY-MM-DD HH:mm:SS.FFFFFF``
+
+        Precision of dates should be rounded up/down according to coltype.rounds
+        e.g. precision 3 and coltype.rounds:
+            - 1969-12-31 23:59:59.999999 -> 1970-01-01 00:00:00.000000
+            - 1970-01-01 00:00:00.000888 -> 1970-01-01 00:00:00.001000
+            - 1970-01-01 00:00:00.123123 -> 1970-01-01 00:00:00.123000
+
+        Make sure NULLs remain NULLs
+        """
+
+    @abstractmethod
+    def normalize_number(self, value: str, coltype: FractionalType) -> str:
+        """Creates an SQL expression, that converts 'value' to a normalized number.
+
+        The returned expression must accept any SQL int/numeric/float, and return a string.
+
+        Floats/Decimals are expected in the format
+        "I.P"
+
+        Where I is the integer part of the number (as many digits as necessary),
+        and must be at least one digit (0).
+        P is the fractional digits, the amount of which is specified with
+        coltype.precision. Trailing zeroes may be necessary.
+        If P is 0, the dot is omitted.
+
+        Note: We use 'precision' differently than most databases. For decimals,
+        it's the same as ``numeric_scale``, and for floats, who use binary precision,
+        it can be calculated as ``log10(2**numeric_precision)``.
+        """
+
+    def normalize_boolean(self, value: str, _coltype: Boolean) -> str:
+        """Creates an SQL expression, that converts 'value' to either '0' or '1'."""
+        return self.to_string(value)
+
+    def normalize_uuid(self, value: str, coltype: ColType_UUID) -> str:
+        """Creates an SQL expression, that strips uuids of artifacts like whitespace."""
+        if isinstance(coltype, String_UUID):
+            return f"TRIM({value})"
+        return self.to_string(value)
+
+    def normalize_json(self, value: str, _coltype: JSON) -> str:
+        """Creates an SQL expression, that converts 'value' to its minified json string representation."""
+        return self.to_string(value)
+
+    def normalize_array(self, value: str, _coltype: Array) -> str:
+        """Creates an SQL expression, that serialized an array into a JSON string."""
+        return self.to_string(value)
+
+    def normalize_struct(self, value: str, _coltype: Struct) -> str:
+        """Creates an SQL expression, that serialized a typed struct into a JSON string."""
+        return self.to_string(value)
+
+    def normalize_value_by_type(self, value: str, coltype: ColType) -> str:
+        """Creates an SQL expression, that converts 'value' to a normalized representation.
+
+        The returned expression must accept any SQL value, and return a string.
+
+        The default implementation dispatches to a method according to `coltype`:
+
+        ::
+
+            TemporalType    -> normalize_timestamp()
+            FractionalType  -> normalize_number()
+            *else*          -> to_string()
+
+            (`Integer` falls in the *else* category)
+
+        """
+        if isinstance(coltype, TemporalType):
+            return self.normalize_timestamp(value, coltype)
+        elif isinstance(coltype, FractionalType):
+            return self.normalize_number(value, coltype)
+        elif isinstance(coltype, ColType_UUID):
+            return self.normalize_uuid(value, coltype)
+        elif isinstance(coltype, Boolean):
+            return self.normalize_boolean(value, coltype)
+        elif isinstance(coltype, JSON):
+            return self.normalize_json(value, coltype)
+        elif isinstance(coltype, Array):
+            return self.normalize_array(value, coltype)
+        elif isinstance(coltype, Struct):
+            return self.normalize_struct(value, coltype)
+        return self.to_string(value)
+
+    def optimizer_hints(self, hints: str) -> str:
+        return f"/*+ {hints} */ "
+
 
 T = TypeVar("T", bound=BaseDialect)
 
@@ -836,6 +913,8 @@ class Database(abc.ABC):
     Instanciated using :meth:`~data_diff.connect`
     """
 
+    DIALECT_CLASS: ClassVar[Type[BaseDialect]] = BaseDialect
+
     SUPPORTS_ALPHANUMS: ClassVar[bool] = True
     SUPPORTS_UNIQUE_CONSTAINT: ClassVar[bool] = False
     CONNECT_URI_KWPARAMS: ClassVar[List[str]] = []
@@ -843,6 +922,7 @@ class Database(abc.ABC):
     default_schema: Optional[str] = None
     _interactive: bool = False
     is_closed: bool = False
+    _dialect: BaseDialect = None
 
     @property
     def name(self):
@@ -851,7 +931,7 @@ class Database(abc.ABC):
     def compile(self, sql_ast):
         return self.dialect.compile(Compiler(self), sql_ast)
 
-    def query(self, sql_ast: Union[Expr, Generator], res_type: type = None):
+    def query(self, sql_ast: Union[Expr, Generator], res_type: type = None, log_message: Optional[str] = None):
         """Query the given SQL code/AST, and attempt to convert the result to type 'res_type'
 
         If given a generator, it will execute all the yielded sql queries with the same thread and cursor.
@@ -876,7 +956,10 @@ class Database(abc.ABC):
                 if sql_code is SKIP:
                     return SKIP
 
-            logger.debug("Running SQL (%s): %s", self.name, sql_code)
+            if log_message:
+                logger.debug("Running SQL (%s): %s \n%s", self.name, log_message, sql_code)
+            else:
+                logger.debug("Running SQL (%s):\n%s", self.name, sql_code)
 
         if self._interactive and isinstance(sql_ast, Select):
             explained_sql = self.compile(Explain(sql_ast))
@@ -942,7 +1025,7 @@ class Database(abc.ABC):
         Note: This method exists instead of select_table_schema(), just because not all databases support
               accessing the schema using a SQL query.
         """
-        rows = self.query(self.select_table_schema(path), list)
+        rows = self.query(self.select_table_schema(path), list, log_message=path)
         if not rows:
             raise RuntimeError(f"{self.name}: Table '{'.'.join(path)}' does not exist, or has no columns")
 
@@ -964,7 +1047,7 @@ class Database(abc.ABC):
         """Query the table for its unique columns for table in 'path', and return {column}"""
         if not self.SUPPORTS_UNIQUE_CONSTAINT:
             raise NotImplementedError("This database doesn't support 'unique' constraints")
-        res = self.query(self.select_table_unique_columns(path), List[str])
+        res = self.query(self.select_table_unique_columns(path), List[str], log_message=path)
         return list(res)
 
     def _process_table_schema(
@@ -991,7 +1074,9 @@ class Database(abc.ABC):
         # Return a dict of form {name: type} after normalization
         return col_dict
 
-    def _refine_coltypes(self, table_path: DbPath, col_dict: Dict[str, ColType], where: str = None, sample_size=64):
+    def _refine_coltypes(
+        self, table_path: DbPath, col_dict: Dict[str, ColType], where: Optional[str] = None, sample_size=64
+    ):
         """Refine the types in the column dict, by querying the database for a sample of their values
 
         'where' restricts the rows to be sampled.
@@ -1001,13 +1086,12 @@ class Database(abc.ABC):
         if not text_columns:
             return
 
-        if isinstance(self.dialect, AbstractMixin_NormalizeValue):
-            fields = [Code(self.dialect.normalize_uuid(self.dialect.quote(c), String_UUID())) for c in text_columns]
-        else:
-            fields = this[text_columns]
+        fields = [Code(self.dialect.normalize_uuid(self.dialect.quote(c), String_UUID())) for c in text_columns]
 
         samples_by_row = self.query(
-            table(*table_path).select(*fields).where(Code(where) if where else SKIP).limit(sample_size), list
+            table(*table_path).select(*fields).where(Code(where) if where else SKIP).limit(sample_size),
+            list,
+            log_message=table_path,
         )
         if not samples_by_row:
             raise ValueError(f"Table {table_path} is empty.")
@@ -1038,10 +1122,6 @@ class Database(abc.ABC):
                         assert col_name in col_dict
                         col_dict[col_name] = String_VaryingAlphanum()
 
-    # @lru_cache()
-    # def get_table_schema(self, path: DbPath) -> Dict[str, ColType]:
-    #     return self.query_table_schema(path)
-
     def _normalize_table_path(self, path: DbPath) -> DbPath:
         if len(path) == 1:
             return self.default_schema, path[0]
@@ -1062,7 +1142,7 @@ class Database(abc.ABC):
                 return result
         except Exception as _e:
             # logger.exception(e)
-            # logger.error(f'Caused by SQL: {sql_code}')
+            # logger.error(f"Caused by SQL: {sql_code}")
             raise
 
     def _query_conn(self, conn, sql_code: Union[str, ThreadLocalInterpreter]) -> QueryResult:
@@ -1075,13 +1155,13 @@ class Database(abc.ABC):
         self.is_closed = True
         return super().close()
 
-    def list_tables(self, tables_like, schema=None):
-        return self.query(self.dialect.list_tables(schema or self.default_schema, tables_like))
-
     @property
-    @abstractmethod
     def dialect(self) -> BaseDialect:
         "The dialect of the database. Used internally by Database, and also available publicly."
+
+        if not self._dialect:
+            self._dialect = self.DIALECT_CLASS()
+        return self._dialect
 
     @property
     @abstractmethod
@@ -1155,6 +1235,17 @@ MD5_HEXDIGITS = 32
 
 _CHECKSUM_BITSIZE = CHECKSUM_HEXDIGITS << 2
 CHECKSUM_MASK = (2**_CHECKSUM_BITSIZE) - 1
+
+# bigint is typically 8 bytes
+# if checksum is shorter, most databases will pad it with zeros
+# 0xFF → 0x00000000000000FF;
+# because of that, the numeric representation is always positive,
+# which limits the number of checksums that we can add together before overflowing.
+# we can fix that by adding a negative offset of half the max value,
+# so that the distribution is from -0.5*max to +0.5*max.
+# then negative numbers can compensate for the positive ones allowing to add more checksums together
+# without overflowing.
+CHECKSUM_OFFSET = CHECKSUM_MASK // 2
 
 DEFAULT_DATETIME_PRECISION = 6
 DEFAULT_NUMERIC_PRECISION = 24

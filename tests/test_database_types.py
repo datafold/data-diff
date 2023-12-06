@@ -1,8 +1,8 @@
+import sys
 import unittest
 import time
 import json
 import re
-import math
 import uuid
 from datetime import datetime, timedelta, timezone
 import logging
@@ -765,10 +765,13 @@ class TestDiffCrossDatabaseTables(unittest.TestCase):
         # reasonable amount of rows each. These will then be downloaded in
         # parallel, using the existing implementation.
         dl_factor = max(int(N_SAMPLES / 100_000), 2) if BENCHMARK else 2
-        dl_threshold = int(N_SAMPLES / dl_factor) + 1 if BENCHMARK else math.inf
+        dl_threshold = int(N_SAMPLES / dl_factor) + 1 if BENCHMARK else sys.maxsize
         dl_threads = N_THREADS
         differ = HashDiffer(
-            bisection_threshold=dl_threshold, bisection_factor=dl_factor, max_threadpool_size=dl_threads
+            bisection_factor=dl_factor,
+            bisection_threshold=dl_threshold,
+            bisection_disabled=True,
+            max_threadpool_size=dl_threads,
         )
         start = time.monotonic()
         diff = list(differ.diff_tables(self.table, self.table2))

@@ -1,21 +1,19 @@
-from typing import Any, Dict, Optional
+from typing import Any, ClassVar, Dict, Optional, Type
 
 import attrs
 
-from data_diff.abcs.mixins import AbstractMixin_MD5, AbstractMixin_NormalizeValue
 from data_diff.databases.base import (
     CHECKSUM_HEXDIGITS,
-    Mixin_OptimizerHints,
-    Mixin_RandomSample,
+    CHECKSUM_OFFSET,
     QueryError,
     ThreadedDatabase,
     import_helper,
     ConnectError,
     BaseDialect,
 )
-from data_diff.databases.base import Mixin_Schema
 from data_diff.abcs.database_types import (
     JSON,
+    NumericType,
     Timestamp,
     TimestampTZ,
     DbPath,
@@ -25,7 +23,6 @@ from data_diff.abcs.database_types import (
     TemporalType,
     Native_UUID,
     Text,
-    FractionalType,
     Boolean,
 )
 
@@ -38,44 +35,10 @@ def import_mssql():
 
 
 @attrs.define(frozen=False)
-class Mixin_NormalizeValue(AbstractMixin_NormalizeValue):
-    def normalize_timestamp(self, value: str, coltype: TemporalType) -> str:
-        if coltype.precision > 0:
-            formatted_value = (
-                f"FORMAT({value}, 'yyyy-MM-dd HH:mm:ss') + '.' + "
-                f"SUBSTRING(FORMAT({value}, 'fffffff'), 1, {coltype.precision})"
-            )
-        else:
-            formatted_value = f"FORMAT({value}, 'yyyy-MM-dd HH:mm:ss')"
-
-        return formatted_value
-
-    def normalize_number(self, value: str, coltype: FractionalType) -> str:
-        if coltype.precision == 0:
-            return f"CAST(FLOOR({value}) AS VARCHAR)"
-
-        return f"FORMAT({value}, 'N{coltype.precision}')"
-
-
-@attrs.define(frozen=False)
-class Mixin_MD5(AbstractMixin_MD5):
-    def md5_as_int(self, s: str) -> str:
-        return f"convert(bigint, convert(varbinary, '0x' + RIGHT(CONVERT(NVARCHAR(32), HashBytes('MD5', {s}), 2), {CHECKSUM_HEXDIGITS}), 1))"
-
-
-@attrs.define(frozen=False)
-class Dialect(
-    BaseDialect,
-    Mixin_Schema,
-    Mixin_OptimizerHints,
-    Mixin_MD5,
-    Mixin_NormalizeValue,
-    AbstractMixin_MD5,
-    AbstractMixin_NormalizeValue,
-):
+class Dialect(BaseDialect):
     name = "MsSQL"
     ROUNDS_ON_PREC_LOSS = True
-    SUPPORTS_PRIMARY_KEY = True
+    SUPPORTS_PRIMARY_KEY: ClassVar[bool] = True
     SUPPORTS_INDEXES = True
     TYPE_CLASSES = {
         # Timestamps
@@ -135,7 +98,7 @@ class Dialect(
 
     def type_repr(self, t) -> str:
         try:
-            return {bool: "bit"}[t]
+            return {bool: "bit", str: "text"}[t]
         except KeyError:
             return super().type_repr(t)
 
@@ -147,8 +110,12 @@ class Dialect(
         # See: https://stackoverflow.com/a/18684859/857383
         return f"(({a}<>{b} OR {a} IS NULL OR {b} IS NULL) AND NOT({a} IS NULL AND {b} IS NULL))"
 
-    def offset_limit(
-        self, offset: Optional[int] = None, limit: Optional[int] = None, has_order_by: Optional[bool] = None
+    def limit_select(
+        self,
+        select_query: str,
+        offset: Optional[int] = None,
+        limit: Optional[int] = None,
+        has_order_by: Optional[bool] = None,
     ) -> str:
         if offset:
             raise NotImplementedError("No support for OFFSET in query")
@@ -158,16 +125,39 @@ class Dialect(
             result += "ORDER BY 1"
 
         result += f" OFFSET 0 ROWS FETCH NEXT {limit} ROWS ONLY"
-        return result
+        return f"SELECT * FROM ({select_query}) AS LIMITED_SELECT {result}"
 
     def constant_values(self, rows) -> str:
         values = ", ".join("(%s)" % ", ".join(self._constant_value(v) for v in row) for row in rows)
         return f"VALUES {values}"
 
+    def normalize_timestamp(self, value: str, coltype: TemporalType) -> str:
+        if coltype.precision > 0:
+            formatted_value = (
+                f"FORMAT({value}, 'yyyy-MM-dd HH:mm:ss') + '.' + "
+                f"SUBSTRING(FORMAT({value}, 'fffffff'), 1, {coltype.precision})"
+            )
+        else:
+            formatted_value = f"FORMAT({value}, 'yyyy-MM-dd HH:mm:ss')"
+
+        return formatted_value
+
+    def normalize_number(self, value: str, coltype: NumericType) -> str:
+        if coltype.precision == 0:
+            return f"CAST(FLOOR({value}) AS VARCHAR)"
+
+        return f"FORMAT({value}, 'N{coltype.precision}')"
+
+    def md5_as_int(self, s: str) -> str:
+        return f"convert(bigint, convert(varbinary, '0x' + RIGHT(CONVERT(NVARCHAR(32), HashBytes('MD5', {s}), 2), {CHECKSUM_HEXDIGITS}), 1)) - {CHECKSUM_OFFSET}"
+
+    def md5_as_hex(self, s: str) -> str:
+        return f"HashBytes('MD5', {s})"
+
 
 @attrs.define(frozen=False, init=False, kw_only=True)
 class MsSQL(ThreadedDatabase):
-    dialect = Dialect()
+    DIALECT_CLASS: ClassVar[Type[BaseDialect]] = Dialect
     CONNECT_URI_HELP = "mssql://<user>:<password>@<host>/<database>/<schema>"
     CONNECT_URI_PARAMS = ["database", "schema"]
 

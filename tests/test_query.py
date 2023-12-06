@@ -1,6 +1,8 @@
 from datetime import datetime
 from typing import List, Optional
 import unittest
+
+from data_diff.abcs.database_types import FractionalType, TemporalType
 from data_diff.databases.base import Database, BaseDialect
 from data_diff.utils import CaseInsensitiveDict, CaseSensitiveDict
 
@@ -48,11 +50,16 @@ class MockDialect(BaseDialect):
     def current_schema(self) -> str:
         return "current_schema()"
 
-    def offset_limit(
-        self, offset: Optional[int] = None, limit: Optional[int] = None, has_order_by: Optional[bool] = None
+    def limit_select(
+        self,
+        select_query: str,
+        offset: Optional[int] = None,
+        limit: Optional[int] = None,
+        has_order_by: Optional[bool] = None,
     ) -> str:
         x = offset and f"OFFSET {offset}", limit and f"LIMIT {limit}"
-        return " ".join(filter(None, x))
+        result = " ".join(filter(None, x))
+        return f"SELECT * FROM ({select_query}) AS LIMITED_SELECT {result}"
 
     def explain_as_text(self, query: str) -> str:
         return f"explain {query}"
@@ -65,6 +72,18 @@ class MockDialect(BaseDialect):
 
     def optimizer_hints(self, s: str):
         return f"/*+ {s} */ "
+
+    def md5_as_int(self, s: str) -> str:
+        raise NotImplementedError
+
+    def md5_as_hex(self, s: str) -> str:
+        raise NotImplementedError
+
+    def normalize_number(self, value: str, coltype: FractionalType) -> str:
+        raise NotImplementedError
+
+    def normalize_timestamp(self, value: str, coltype: TemporalType) -> str:
+        raise NotImplementedError
 
     parse_type = NotImplemented
 
@@ -181,7 +200,7 @@ class TestQuery(unittest.TestCase):
         t = table("a")
 
         q = c.compile(t.order_by(Random()).limit(10))
-        self.assertEqual(q, "SELECT * FROM a ORDER BY random() LIMIT 10")
+        self.assertEqual(q, "SELECT * FROM (SELECT * FROM a ORDER BY random()) AS LIMITED_SELECT LIMIT 10")
 
         q = c.compile(t.select(coalesce(this.a, this.b)))
         self.assertEqual(q, "SELECT COALESCE(a, b) FROM a")
@@ -199,7 +218,7 @@ class TestQuery(unittest.TestCase):
 
         # selects stay apart
         q = c.compile(t.limit(10).select(this.b, distinct=True))
-        self.assertEqual(q, "SELECT DISTINCT b FROM (SELECT * FROM a LIMIT 10) tmp1")
+        self.assertEqual(q, "SELECT DISTINCT b FROM (SELECT * FROM (SELECT * FROM a) AS LIMITED_SELECT LIMIT 10) tmp1")
 
         q = c.compile(t.select(this.b, distinct=True).select(distinct=False))
         self.assertEqual(q, "SELECT * FROM (SELECT DISTINCT b FROM a) tmp2")
@@ -215,7 +234,9 @@ class TestQuery(unittest.TestCase):
         self.assertEqual(q, "SELECT /*+ PARALLEL(a 16) */ b FROM a WHERE (b > 10)")
 
         q = c.compile(t.limit(10).select(this.b, optimizer_hints="PARALLEL(a 16)"))
-        self.assertEqual(q, "SELECT /*+ PARALLEL(a 16) */ b FROM (SELECT * FROM a LIMIT 10) tmp1")
+        self.assertEqual(
+            q, "SELECT /*+ PARALLEL(a 16) */ b FROM (SELECT * FROM (SELECT * FROM a) AS LIMITED_SELECT LIMIT 10) tmp1"
+        )
 
         q = c.compile(t.select(this.a).group_by(this.b).agg(this.c).select(optimizer_hints="PARALLEL(a 16)"))
         self.assertEqual(

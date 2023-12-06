@@ -8,6 +8,7 @@ import keyring
 import pydantic
 import rich
 from rich.prompt import Prompt
+from concurrent.futures import ThreadPoolExecutor, as_completed
 
 from data_diff.errors import (
     DataDiffCustomSchemaNoConfigError,
@@ -76,9 +77,10 @@ def dbt_diff(
     where_flag: Optional[str] = None,
     stats_flag: bool = False,
     columns_flag: Optional[Tuple[str]] = None,
+    production_database_flag: Optional[str] = None,
+    production_schema_flag: Optional[str] = None,
 ) -> None:
     print_version_info()
-    diff_threads = []
     set_entrypoint_name(os.getenv("DATAFOLD_TRIGGERED_BY", "CLI-dbt"))
     dbt_parser = DbtParser(profiles_dir_override, project_dir_override, state)
     models = dbt_parser.get_models(dbt_selection)
@@ -110,12 +112,25 @@ def dbt_diff(
     else:
         dbt_parser.set_connection()
 
-    with log_status_handler.status if log_status_handler else nullcontext():
+    futures = {}
+
+    with log_status_handler.status if log_status_handler else nullcontext(), ThreadPoolExecutor(
+        max_workers=dbt_parser.threads
+    ) as executor:
         for model in models:
             if log_status_handler:
                 log_status_handler.set_prefix(f"Diffing {model.alias} \n")
 
-            diff_vars = _get_diff_vars(dbt_parser, config, model, where_flag, stats_flag, columns_flag)
+            diff_vars = _get_diff_vars(
+                dbt_parser,
+                config,
+                model,
+                where_flag,
+                stats_flag,
+                columns_flag,
+                production_database_flag,
+                production_schema_flag,
+            )
 
             # we won't always have a prod path when using state
             # when the model DNE in prod manifest, skip the model diff
@@ -129,12 +144,12 @@ def dbt_diff(
 
             if diff_vars.primary_keys:
                 if is_cloud:
-                    diff_thread = run_as_daemon(
+                    future = executor.submit(
                         _cloud_diff, diff_vars, config.datasource_id, api, org_meta, log_status_handler
                     )
-                    diff_threads.append(diff_thread)
                 else:
-                    _local_diff(diff_vars, json_output)
+                    future = executor.submit(_local_diff, diff_vars, json_output, log_status_handler)
+                futures[future] = model
             else:
                 if json_output:
                     print(
@@ -154,10 +169,12 @@ def dbt_diff(
                         + "Skipped due to unknown primary key. Add uniqueness tests, meta, or tags.\n"
                     )
 
-        # wait for all threads
-        if diff_threads:
-            for thread in diff_threads:
-                thread.join()
+    for future in as_completed(futures):
+        model = futures[future]
+        try:
+            future.result()  # if error occurred, it will be raised here
+        except Exception as e:
+            logger.error(f"An error occurred during the execution of a diff task: {model.unique_id} - {e}")
 
     _extension_notification()
 
@@ -169,6 +186,8 @@ def _get_diff_vars(
     where_flag: Optional[str] = None,
     stats_flag: bool = False,
     columns_flag: Optional[Tuple[str]] = None,
+    production_database_flag: Optional[str] = None,
+    production_schema_flag: Optional[str] = None,
 ) -> TDiffVars:
     cli_columns = list(columns_flag) if columns_flag else []
     dev_database = model.database
@@ -181,6 +200,10 @@ def _get_diff_vars(
         prod_database, prod_schema, prod_alias = _get_prod_path_from_manifest(model, dbt_parser.prod_manifest_obj)
     else:
         prod_database, prod_schema = _get_prod_path_from_config(config, model, dev_database, dev_schema)
+
+    # cli flags take precedence over any project level config
+    prod_database = production_database_flag or prod_database
+    prod_schema = production_schema_flag or prod_schema
 
     if dbt_parser.requires_upper:
         dev_qualified_list = [x.upper() for x in [dev_database, dev_schema, dev_alias] if x]
@@ -248,15 +271,17 @@ def _get_prod_path_from_manifest(model, prod_manifest) -> Union[Tuple[str, str, 
     return prod_database, prod_schema, prod_alias
 
 
-def _local_diff(diff_vars: TDiffVars, json_output: bool = False) -> None:
+def _local_diff(
+    diff_vars: TDiffVars, json_output: bool = False, log_status_handler: Optional[LogStatusHandler] = None
+) -> None:
+    if log_status_handler:
+        log_status_handler.diff_started(diff_vars.dev_path[-1])
     dev_qualified_str = ".".join(diff_vars.dev_path)
     prod_qualified_str = ".".join(diff_vars.prod_path)
     diff_output_str = _diff_output_base(dev_qualified_str, prod_qualified_str)
 
-    table1 = connect_to_table(
-        diff_vars.connection, prod_qualified_str, tuple(diff_vars.primary_keys), diff_vars.threads
-    )
-    table2 = connect_to_table(diff_vars.connection, dev_qualified_str, tuple(diff_vars.primary_keys), diff_vars.threads)
+    table1 = connect_to_table(diff_vars.connection, prod_qualified_str, tuple(diff_vars.primary_keys))
+    table2 = connect_to_table(diff_vars.connection, dev_qualified_str, tuple(diff_vars.primary_keys))
 
     try:
         table1_columns = table1.get_schema()
@@ -356,6 +381,9 @@ def _local_diff(diff_vars: TDiffVars, json_output: bool = False) -> None:
         diff_output_str += no_differences_template()
         rich.print(diff_output_str)
 
+    if log_status_handler:
+        log_status_handler.diff_finished(diff_vars.dev_path[-1])
+
 
 def _initialize_api() -> Optional[DatafoldAPI]:
     datafold_host = os.environ.get("DATAFOLD_HOST")
@@ -389,7 +417,7 @@ def _cloud_diff(
     log_status_handler: Optional[LogStatusHandler] = None,
 ) -> None:
     if log_status_handler:
-        log_status_handler.cloud_diff_started(diff_vars.dev_path[-1])
+        log_status_handler.diff_started(diff_vars.dev_path[-1])
     diff_output_str = _diff_output_base(".".join(diff_vars.dev_path), ".".join(diff_vars.prod_path))
     payload = TCloudApiDataDiff(
         data_source1_id=datasource_id,
@@ -459,7 +487,7 @@ def _cloud_diff(
             rich.print(diff_output_str)
 
         if log_status_handler:
-            log_status_handler.cloud_diff_finished(diff_vars.dev_path[-1])
+            log_status_handler.diff_finished(diff_vars.dev_path[-1])
     except BaseException as ex:  # Catch KeyboardInterrupt too
         error = ex
     finally:

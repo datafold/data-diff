@@ -1,6 +1,6 @@
 from functools import partial
 import re
-from typing import Any
+from typing import Any, ClassVar, Type
 
 import attrs
 
@@ -21,18 +21,16 @@ from data_diff.abcs.database_types import (
     TemporalType,
     Boolean,
 )
-from data_diff.abcs.mixins import AbstractMixin_MD5, AbstractMixin_NormalizeValue
 from data_diff.databases.base import (
     BaseDialect,
     Database,
     import_helper,
     ThreadLocalInterpreter,
-    Mixin_Schema,
-    Mixin_RandomSample,
 )
 from data_diff.databases.base import (
     MD5_HEXDIGITS,
     CHECKSUM_HEXDIGITS,
+    CHECKSUM_OFFSET,
     TIMESTAMP_PRECISION_POS,
 )
 
@@ -53,37 +51,7 @@ def import_presto():
     return prestodb
 
 
-@attrs.define(frozen=False)
-class Mixin_MD5(AbstractMixin_MD5):
-    def md5_as_int(self, s: str) -> str:
-        return f"cast(from_base(substr(to_hex(md5(to_utf8({s}))), {1+MD5_HEXDIGITS-CHECKSUM_HEXDIGITS}), 16) as decimal(38, 0))"
-
-
-@attrs.define(frozen=False)
-class Mixin_NormalizeValue(AbstractMixin_NormalizeValue):
-    def normalize_uuid(self, value: str, coltype: ColType_UUID) -> str:
-        # Trim doesn't work on CHAR type
-        return f"TRIM(CAST({value} AS VARCHAR))"
-
-    def normalize_timestamp(self, value: str, coltype: TemporalType) -> str:
-        # TODO rounds
-        if coltype.rounds:
-            s = f"date_format(cast({value} as timestamp(6)), '%Y-%m-%d %H:%i:%S.%f')"
-        else:
-            s = f"date_format(cast({value} as timestamp(6)), '%Y-%m-%d %H:%i:%S.%f')"
-
-        return f"RPAD(RPAD({s}, {TIMESTAMP_PRECISION_POS+coltype.precision}, '.'), {TIMESTAMP_PRECISION_POS+6}, '0')"
-
-    def normalize_number(self, value: str, coltype: FractionalType) -> str:
-        return self.to_string(f"cast({value} as decimal(38,{coltype.precision}))")
-
-    def normalize_boolean(self, value: str, _coltype: Boolean) -> str:
-        return self.to_string(f"cast ({value} as int)")
-
-
-class Dialect(
-    BaseDialect, Mixin_Schema, Mixin_MD5, Mixin_NormalizeValue, AbstractMixin_MD5, AbstractMixin_NormalizeValue
-):
+class Dialect(BaseDialect):
     name = "Presto"
     ROUNDS_ON_PREC_LOSS = True
     TYPE_CLASSES = {
@@ -157,10 +125,35 @@ class Dialect(
     def current_timestamp(self) -> str:
         return "current_timestamp"
 
+    def md5_as_int(self, s: str) -> str:
+        return f"cast(from_base(substr(to_hex(md5(to_utf8({s}))), {1+MD5_HEXDIGITS-CHECKSUM_HEXDIGITS}), 16) as decimal(38, 0)) - {CHECKSUM_OFFSET}"
+
+    def md5_as_hex(self, s: str) -> str:
+        return f"to_hex(md5(to_utf8({s})))"
+
+    def normalize_uuid(self, value: str, coltype: ColType_UUID) -> str:
+        # Trim doesn't work on CHAR type
+        return f"TRIM(CAST({value} AS VARCHAR))"
+
+    def normalize_timestamp(self, value: str, coltype: TemporalType) -> str:
+        # TODO rounds
+        if coltype.rounds:
+            s = f"date_format(cast({value} as timestamp(6)), '%Y-%m-%d %H:%i:%S.%f')"
+        else:
+            s = f"date_format(cast({value} as timestamp(6)), '%Y-%m-%d %H:%i:%S.%f')"
+
+        return f"RPAD(RPAD({s}, {TIMESTAMP_PRECISION_POS+coltype.precision}, '.'), {TIMESTAMP_PRECISION_POS+6}, '0')"
+
+    def normalize_number(self, value: str, coltype: FractionalType) -> str:
+        return self.to_string(f"cast({value} as decimal(38,{coltype.precision}))")
+
+    def normalize_boolean(self, value: str, _coltype: Boolean) -> str:
+        return self.to_string(f"cast ({value} as int)")
+
 
 @attrs.define(frozen=False, init=False, kw_only=True)
 class Presto(Database):
-    dialect = Dialect()
+    DIALECT_CLASS: ClassVar[Type[BaseDialect]] = Dialect
     CONNECT_URI_HELP = "presto://<user>@<host>/<catalog>/<schema>"
     CONNECT_URI_PARAMS = ["catalog", "schema"]
 
@@ -175,7 +168,7 @@ class Presto(Database):
             self.default_schema = kw.get("schema")
 
         if kw.get("auth") == "basic":  # if auth=basic, add basic authenticator for Presto
-            kw["auth"] = prestodb.auth.BasicAuthentication(kw.pop("user"), kw.pop("password"))
+            kw["auth"] = prestodb.auth.BasicAuthentication(kw["user"], kw.pop("password"))
 
         if "cert" in kw:  # if a certificate was specified in URI, verify session with cert
             cert = kw.pop("cert")

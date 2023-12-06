@@ -11,55 +11,19 @@ from data_diff.abcs.database_types import (
     DbPath,
     TimestampTZ,
 )
-from data_diff.abcs.mixins import AbstractMixin_MD5, AbstractMixin_NormalizeValue
 from data_diff.databases.postgresql import (
+    BaseDialect,
     PostgreSQL,
     MD5_HEXDIGITS,
     CHECKSUM_HEXDIGITS,
+    CHECKSUM_OFFSET,
     TIMESTAMP_PRECISION_POS,
     PostgresqlDialect,
-    Mixin_NormalizeValue,
-    Mixin_MD5,
 )
 
 
 @attrs.define(frozen=False)
-class Mixin_MD5(Mixin_MD5):
-    def md5_as_int(self, s: str) -> str:
-        return f"strtol(substring(md5({s}), {1+MD5_HEXDIGITS-CHECKSUM_HEXDIGITS}), 16)::decimal(38)"
-
-
-@attrs.define(frozen=False)
-class Mixin_NormalizeValue(Mixin_NormalizeValue):
-    def normalize_timestamp(self, value: str, coltype: TemporalType) -> str:
-        if coltype.rounds:
-            timestamp = f"{value}::timestamp(6)"
-            # Get seconds since epoch. Redshift doesn't support milli- or micro-seconds.
-            secs = f"timestamp 'epoch' + round(extract(epoch from {timestamp})::decimal(38)"
-            # Get the milliseconds from timestamp.
-            ms = f"extract(ms from {timestamp})"
-            # Get the microseconds from timestamp, without the milliseconds!
-            us = f"extract(us from {timestamp})"
-            # epoch = Total time since epoch in microseconds.
-            epoch = f"{secs}*1000000 + {ms}*1000 + {us}"
-            timestamp6 = (
-                f"to_char({epoch}, -6+{coltype.precision}) * interval '0.000001 seconds', 'YYYY-mm-dd HH24:MI:SS.US')"
-            )
-        else:
-            timestamp6 = f"to_char({value}::timestamp(6), 'YYYY-mm-dd HH24:MI:SS.US')"
-        return (
-            f"RPAD(LEFT({timestamp6}, {TIMESTAMP_PRECISION_POS+coltype.precision}), {TIMESTAMP_PRECISION_POS+6}, '0')"
-        )
-
-    def normalize_number(self, value: str, coltype: FractionalType) -> str:
-        return self.to_string(f"{value}::decimal(38,{coltype.precision})")
-
-    def normalize_json(self, value: str, _coltype: JSON) -> str:
-        return f"nvl2({value}, json_serialize({value}), NULL)"
-
-
-@attrs.define(frozen=False)
-class Dialect(PostgresqlDialect, Mixin_MD5, Mixin_NormalizeValue, AbstractMixin_MD5, AbstractMixin_NormalizeValue):
+class Dialect(PostgresqlDialect):
     name = "Redshift"
     TYPE_CLASSES: ClassVar[Dict[str, Type[ColType]]] = {
         **PostgresqlDialect.TYPE_CLASSES,
@@ -81,10 +45,22 @@ class Dialect(PostgresqlDialect, Mixin_MD5, Mixin_NormalizeValue, AbstractMixin_
             return f"timestamptz"
         return super().type_repr(t)
 
+    def md5_as_int(self, s: str) -> str:
+        return f"strtol(substring(md5({s}), {1+MD5_HEXDIGITS-CHECKSUM_HEXDIGITS}), 16)::decimal(38) - {CHECKSUM_OFFSET}"
+
+    def md5_as_hex(self, s: str) -> str:
+        return f"md5({s})"
+
+    def normalize_number(self, value: str, coltype: FractionalType) -> str:
+        return self.to_string(f"{value}::decimal(38,{coltype.precision})")
+
+    def normalize_json(self, value: str, _coltype: JSON) -> str:
+        return f"nvl2({value}, json_serialize({value}), NULL)"
+
 
 @attrs.define(frozen=False, init=False, kw_only=True)
 class Redshift(PostgreSQL):
-    dialect = Dialect()
+    DIALECT_CLASS: ClassVar[Type[BaseDialect]] = Dialect
     CONNECT_URI_HELP = "redshift://<user>:<password>@<host>/<database>"
     CONNECT_URI_PARAMS = ["database?"]
 
@@ -125,18 +101,16 @@ class Redshift(PostgreSQL):
         if not rows:
             raise RuntimeError(f"{self.name}: Table '{'.'.join(path)}' does not exist, or has no columns")
 
-        d = {r[0]: r for r in rows}
-        assert len(d) == len(rows)
-        return d
+        schema_dict = self._normalize_schema_info(rows)
+
+        return schema_dict
 
     def select_view_columns(self, path: DbPath) -> str:
         _, schema, table = self._normalize_table_path(path)
 
         return """select * from pg_get_cols('{}.{}')
-                cols(view_schema name, view_name name, col_name name, col_type varchar, col_num int)
-            """.format(
-            schema, table
-        )
+                cols(col_name name, col_type varchar)
+            """.format(schema, table)
 
     def query_pg_get_cols(self, path: DbPath) -> Dict[str, tuple]:
         rows = self.query(self.select_view_columns(path), list)
@@ -144,10 +118,17 @@ class Redshift(PostgreSQL):
         if not rows:
             raise RuntimeError(f"{self.name}: View '{'.'.join(path)}' does not exist, or has no columns")
 
-        output = {}
+        schema_dict = self._normalize_schema_info(rows)
+
+        return schema_dict
+
+    # when using a non-information_schema source, strip (N) from type(N) etc. to match
+    # typical information_schema output
+    def _normalize_schema_info(self, rows) -> Dict[str, tuple]:
+        schema_dict = {}
         for r in rows:
-            col_name = r[2]
-            type_info = r[3].split("(")
+            col_name = r[0]
+            type_info = r[1].split("(")
             base_type = type_info[0]
             precision = None
             scale = None
@@ -159,9 +140,8 @@ class Redshift(PostgreSQL):
                     scale = int(scale)
 
             out = [col_name, base_type, None, precision, scale]
-            output[col_name] = tuple(out)
-
-        return output
+            schema_dict[col_name] = tuple(out)
+        return schema_dict
 
     def query_table_schema(self, path: DbPath) -> Dict[str, tuple]:
         try:
