@@ -113,19 +113,21 @@ class Dialect(BaseDialect):
     def limit_select(
         self,
         select_query: str,
-        offset: Optional[int] = None,
-        limit: Optional[int] = None,
-        has_order_by: Optional[bool] = None,
+        offset: int | None = None,
+        limit: int | None = None,
+        has_order_by: bool | None = None,
     ) -> str:
         if offset:
             raise NotImplementedError("No support for OFFSET in query")
-
         result = ""
         if not has_order_by:
             result += "ORDER BY 1"
 
         result += f" OFFSET 0 ROWS FETCH NEXT {limit} ROWS ONLY"
-        return f"SELECT * FROM ({select_query}) AS LIMITED_SELECT {result}"
+
+        # mssql requires that subquery columns are all aliased, so
+        # don't wrap in an outer select
+        return f"{select_query} {result}"
 
     def constant_values(self, rows) -> str:
         values = ", ".join("(%s)" % ", ".join(self._constant_value(v) for v in row) for row in rows)
