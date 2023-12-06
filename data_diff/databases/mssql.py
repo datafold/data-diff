@@ -113,9 +113,9 @@ class Dialect(BaseDialect):
     def limit_select(
         self,
         select_query: str,
-        offset: int | None = None,
-        limit: int | None = None,
-        has_order_by: bool | None = None,
+        offset: Optional[int] = None,
+        limit: Optional[int] = None,
+        has_order_by: Optional[bool] = None,
     ) -> str:
         if offset:
             raise NotImplementedError("No support for OFFSET in query")
