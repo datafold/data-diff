@@ -13,7 +13,6 @@ from data_diff.databases.base import (
 )
 from data_diff.abcs.database_types import (
     JSON,
-    ColType_UUID,
     NumericType,
     Timestamp,
     TimestampTZ,
@@ -120,13 +119,15 @@ class Dialect(BaseDialect):
     ) -> str:
         if offset:
             raise NotImplementedError("No support for OFFSET in query")
-
         result = ""
         if not has_order_by:
             result += "ORDER BY 1"
 
         result += f" OFFSET 0 ROWS FETCH NEXT {limit} ROWS ONLY"
-        return f"SELECT * FROM ({select_query}) AS LIMITED_SELECT {result}"
+
+        # mssql requires that subquery columns are all aliased, so
+        # don't wrap in an outer select
+        return f"{select_query} {result}"
 
     def constant_values(self, rows) -> str:
         values = ", ".join("(%s)" % ", ".join(self._constant_value(v) for v in row) for row in rows)
@@ -154,9 +155,6 @@ class Dialect(BaseDialect):
 
     def md5_as_hex(self, s: str) -> str:
         return f"HashBytes('MD5', {s})"
-
-    def normalize_uuid(self, value: str, coltype: ColType_UUID) -> str:
-        return f"TRIM(CAST({value} AS char)) AS {value}"
 
 
 @attrs.define(frozen=False, init=False, kw_only=True)
