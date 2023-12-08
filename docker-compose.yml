@@ -117,6 +117,19 @@ services:
       networks:
       - local
 
+    mssql:
+      container_name: dd-mssql
+      image: mcr.microsoft.com/mssql/server
+      restart: always
+      volumes:
+        - mssql-data:/var/opt/mssql
+      ports:
+      - '1433:1433'
+      env_file:
+        - dev/dev.env
+      tty: true
+      networks:
+      - local
 
 
 volumes:
@@ -124,6 +137,7 @@ volumes:
   mysql-data:
   clickhouse-data:
   vertica-data:
+  mssql-data:
 
 networks:
   local:

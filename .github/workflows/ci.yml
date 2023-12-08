@@ -33,8 +33,18 @@ jobs:
         with:
           python-version: ${{ matrix.python-version }}
 
+      - name: Install MSSQL packages
+        run: |
+          curl https://packages.microsoft.com/keys/microsoft.asc | sudo tee /etc/apt/trusted.gpg.d/microsoft.asc
+          curl https://packages.microsoft.com/config/ubuntu/$(lsb_release -rs)/prod.list | sudo tee /etc/apt/sources.list.d/mssql-release.list
+          curl -fsSL https://packages.microsoft.com/keys/microsoft.asc | sudo gpg --dearmor -o /usr/share/keyrings/microsoft-prod.gpg
+          sudo apt-get update
+          ACCEPT_EULA=Y sudo apt-get install -y msodbcsql18
+          ACCEPT_EULA=Y sudo apt-get install -y mssql-tools18
+          sudo apt-get install -y unixodbc-dev
+
       - name: Build the stack
-        run: docker-compose up -d mysql postgres presto trino clickhouse vertica
+        run: docker-compose up -d mysql postgres presto trino clickhouse vertica mssql
 
       - name: Install Poetry
         run: pip install poetry
@@ -66,6 +76,7 @@ jobs:
             DATADIFF_TRINO_URI: '${{ secrets.DATADIFF_TRINO_URI }}'
             # DATADIFF_BIGQUERY_URI: '${{ secrets.DATADIFF_BIGQUERY_URI }}'
             DATADIFF_CLICKHOUSE_URI: 'clickhouse://clickhouse:Password1@localhost:9000/clickhouse'
+            DATADIFF_MSSQL_URI: 'mssql://SA:Password123mssql@localhost:1433/master/dbo'
             DATADIFF_VERTICA_URI: 'vertica://vertica:Password1@localhost:5433/vertica'
             DATADIFF_REDSHIFT_URI: '${{ secrets.DATADIFF_REDSHIFT_URI }}'
             MOTHERDUCK_TOKEN: '${{ secrets.MOTHERDUCK_TOKEN }}'
