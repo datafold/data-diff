@@ -343,7 +343,6 @@ class JoinDiffer(TableDiffer):
         table1: Optional[TableSegment] = None,
         table2: Optional[TableSegment] = None,
     ):
-        logger.info(type(table1))
         logger.debug(f"Counting differences per column: {table1.table_path} <> {table2.table_path}")
         is_diff_cols_counts = db.query(
             diff_rows.select(sum_(this[c]) for c in is_diff_cols),
