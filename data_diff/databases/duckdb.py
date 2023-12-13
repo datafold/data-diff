@@ -148,7 +148,10 @@ class DuckDB(Database):
     def create_connection(self):
         ddb = import_duckdb()
         try:
-            return ddb.connect(self._args["filepath"])
+            # print(f'self._args["filepath"]: {self._args["filepath"]}')
+            # print(f'self._args: {self._args}')
+            return ddb.connect(database=self._args["filepath"], config={"custom_user_agent": "data-diff"})
+            # return ddb.connect(database='datafold_demo.duckdb', config={"custom_user_agent": "data-diff"})
         except ddb.OperationalError as e:
             raise ConnectError(*e.args) from e
 
