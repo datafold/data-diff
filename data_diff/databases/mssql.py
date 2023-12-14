@@ -154,10 +154,7 @@ class Dialect(BaseDialect):
         return formatted_value
 
     def normalize_number(self, value: str, coltype: NumericType) -> str:
-        if coltype.precision == 0:
-            return f"CAST(FLOOR({value}) AS VARCHAR)"
-
-        return f"FORMAT({value}, 'N{coltype.precision}')"
+        return f"FORMAT(CAST({value} AS DECIMAL(38, {coltype.precision})), 'N{coltype.precision}')"
 
     def md5_as_int(self, s: str) -> str:
         return f"convert(bigint, convert(varbinary, '0x' + RIGHT(CONVERT(NVARCHAR(32), HashBytes('MD5', {s}), 2), {CHECKSUM_HEXDIGITS}), 1)) - {CHECKSUM_OFFSET}"
