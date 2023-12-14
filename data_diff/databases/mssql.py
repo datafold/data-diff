@@ -134,13 +134,22 @@ class Dialect(BaseDialect):
         return f"VALUES {values}"
 
     def normalize_timestamp(self, value: str, coltype: TemporalType) -> str:
-        if coltype.precision > 0:
-            formatted_value = (
-                f"FORMAT({value}, 'yyyy-MM-dd HH:mm:ss') + '.' + "
-                f"SUBSTRING(FORMAT({value}, 'fffffff'), 1, {coltype.precision})"
-            )
-        else:
-            formatted_value = f"FORMAT({value}, 'yyyy-MM-dd HH:mm:ss')"
+        if coltype.rounds:
+            value = f"""
+                DATEADD(
+                    nanosecond,
+                    CAST(
+                        CAST(
+                            CAST(
+                                DATEDIFF(nanosecond , FORMAT(col, 'yyyy-MM-dd HH:mm:ss'), col) AS DECIMAL(38, 9)
+                            ) / 1000000000 AS DECIMAL(38, {coltype.precision})
+                        ) * 1000000000 AS INT
+                    ),
+                    CAST(FORMAT(col, 'yyyy-MM-dd HH:mm:ss') AS DATETIME2(6))
+                )
+            """
+
+        formatted_value = f"FORMAT({value}, 'yyyy-MM-dd HH:mm:ss.ffffff')"
 
         return formatted_value
 
