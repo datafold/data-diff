@@ -27,6 +27,7 @@ from data_diff.databases.base import (
     CHECKSUM_OFFSET,
 )
 from data_diff.databases.base import MD5_HEXDIGITS, CHECKSUM_HEXDIGITS
+from data_diff.version import __version__
 
 
 @import_helper("duckdb")
@@ -148,12 +149,16 @@ class DuckDB(Database):
     def create_connection(self):
         ddb = import_duckdb()
         try:
-            # print(f'self._args["filepath"]: {self._args["filepath"]}')
-            # print(f'self._args: {self._args}')
-            return ddb.connect(database=self._args["filepath"], config={"custom_user_agent": "data-diff"})
-            # return ddb.connect(database='datafold_demo.duckdb', config={"custom_user_agent": "data-diff"})
+            custom_user_agent = f"data-diff {__version__}"
+            connection = ddb.connect(database=self._args["filepath"], config={"custom_user_agent": custom_user_agent})
+            custom_user_agent_results = connection.sql("PRAGMA USER_AGENT;").fetchall()
+            custom_user_agent_filtered = custom_user_agent_results[0][0]
+            assert custom_user_agent in custom_user_agent_filtered
+            return connection
         except ddb.OperationalError as e:
             raise ConnectError(*e.args) from e
+        except AssertionError:
+            raise ConnectError("Assertion failed: Custom user agent is invalid.") from None
 
     def select_table_schema(self, path: DbPath) -> str:
         database, schema, table = self._normalize_table_path(path)
