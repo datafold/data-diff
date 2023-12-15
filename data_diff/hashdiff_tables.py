@@ -118,14 +118,6 @@ class HashDiffer(TableDiffer):
                 if lowest.precision != col2.precision:
                     table2._schema[c2] = attrs.evolve(col2, precision=lowest.precision)
 
-            elif isinstance(col1, ColType_UUID):
-                if strict and not isinstance(col2, ColType_UUID):
-                    raise TypeError(f"Incompatible types for column '{c1}':  {col1} <-> {col2}")
-
-            elif isinstance(col1, StringType):
-                if strict and not isinstance(col2, StringType):
-                    raise TypeError(f"Incompatible types for column '{c1}':  {col1} <-> {col2}")
-
         for t in [table1, table2]:
             for c in t.relevant_columns:
                 ctype = t._schema[c]
