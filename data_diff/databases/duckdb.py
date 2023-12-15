@@ -149,11 +149,17 @@ class DuckDB(Database):
     def create_connection(self):
         ddb = import_duckdb()
         try:
-            custom_user_agent = f"data-diff {__version__}"
-            connection = ddb.connect(database=self._args["filepath"], config={"custom_user_agent": custom_user_agent})
-            custom_user_agent_results = connection.sql("PRAGMA USER_AGENT;").fetchall()
-            custom_user_agent_filtered = custom_user_agent_results[0][0]
-            assert custom_user_agent in custom_user_agent_filtered
+            # custom_user_agent is only available in duckdb >= 0.9.2
+            if ddb.__version__ >= "0.9.2":
+                custom_user_agent = f"data-diff {__version__}"
+                connection = ddb.connect(
+                    database=self._args["filepath"], config={"custom_user_agent": custom_user_agent}
+                )
+                custom_user_agent_results = connection.sql("PRAGMA USER_AGENT;").fetchall()
+                custom_user_agent_filtered = custom_user_agent_results[0][0]
+                assert custom_user_agent in custom_user_agent_filtered
+            else:
+                connection = ddb.connect(database=self._args["filepath"])
             return connection
         except ddb.OperationalError as e:
             raise ConnectError(*e.args) from e
