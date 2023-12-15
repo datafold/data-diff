@@ -1,6 +1,7 @@
 from typing import Any, ClassVar, Dict, Union, Type
 
 import attrs
+from packaging.version import parse as parse_version
 
 from data_diff.utils import match_regexps
 from data_diff.abcs.database_types import (
@@ -150,7 +151,7 @@ class DuckDB(Database):
         ddb = import_duckdb()
         try:
             # custom_user_agent is only available in duckdb >= 0.9.2
-            if ddb.__version__ >= "0.9.2":
+            if parse_version(ddb.__version__) >= parse_version("0.9.2"):
                 custom_user_agent = f"data-diff {__version__}"
                 connection = ddb.connect(
                     database=self._args["filepath"], config={"custom_user_agent": custom_user_agent}
