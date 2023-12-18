@@ -14,6 +14,7 @@ from data_diff.databases.base import (
 )
 from data_diff.abcs.database_types import (
     ColType,
+    DbPath,
     Decimal,
     Float,
     Integer,
@@ -24,6 +25,7 @@ from data_diff.abcs.database_types import (
     Timestamp,
     Boolean,
 )
+from data_diff.schema import RawColumnInfo
 
 # https://clickhouse.com/docs/en/operations/server-configuration-parameters/settings/#default-database
 DEFAULT_DATABASE = "default"
@@ -75,19 +77,19 @@ class Dialect(BaseDialect):
         # because it does not help for float with a big integer part.
         return super()._convert_db_precision_to_digits(p) - 2
 
-    def _parse_type_repr(self, type_repr: str) -> Optional[Type[ColType]]:
+    def parse_type(self, table_path: DbPath, info: RawColumnInfo) -> ColType:
         nullable_prefix = "Nullable("
-        if type_repr.startswith(nullable_prefix):
-            type_repr = type_repr[len(nullable_prefix) :].rstrip(")")
+        if info.type_repr.startswith(nullable_prefix):
+            info = attrs.evolve(info, data_type=info.type_repr[len(nullable_prefix) :].rstrip(")"))
 
-        if type_repr.startswith("Decimal"):
-            type_repr = "Decimal"
-        elif type_repr.startswith("FixedString"):
-            type_repr = "FixedString"
-        elif type_repr.startswith("DateTime64"):
-            type_repr = "DateTime64"
+        if info.type_repr.startswith("Decimal"):
+            info = attrs.evolve(info, data_type="Decimal")
+        elif info.type_repr.startswith("FixedString"):
+            info = attrs.evolve(info, data_type="FixedString")
+        elif info.type_repr.startswith("DateTime64"):
+            info = attrs.evolve(info, data_type="DateTime64")
 
-        return self.TYPE_CLASSES.get(type_repr)
+        return super().parse_type(table_path, info)
 
     # def timestamp_value(self, t: DbTime) -> str:
     #     # return f"'{t}'"

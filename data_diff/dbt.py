@@ -303,7 +303,7 @@ def _local_diff(
     columns_removed = table1_column_names.difference(table2_column_names)
     # col type is i = 1 in tuple
     columns_type_changed = {
-        k for k, v in table2_columns.items() if k in table1_columns and v[1] != table1_columns[k][1]
+        k for k, v in table2_columns.items() if k in table1_columns and v.type_repr != table1_columns[k].type_repr
     }
 
     if columns_added:

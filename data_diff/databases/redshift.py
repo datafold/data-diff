@@ -1,4 +1,4 @@
-from typing import ClassVar, List, Dict, Type
+from typing import Any, ClassVar, Iterable, List, Dict, Tuple, Type
 
 import attrs
 
@@ -20,6 +20,7 @@ from data_diff.databases.postgresql import (
     TIMESTAMP_PRECISION_POS,
     PostgresqlDialect,
 )
+from data_diff.schema import RawColumnInfo
 
 
 @attrs.define(frozen=False)
@@ -96,13 +97,12 @@ class Redshift(PostgreSQL):
             + db_clause
         )
 
-    def query_external_table_schema(self, path: DbPath) -> Dict[str, tuple]:
+    def query_external_table_schema(self, path: DbPath) -> Dict[str, RawColumnInfo]:
         rows = self.query(self.select_external_table_schema(path), list)
         if not rows:
             raise RuntimeError(f"{self.name}: Table '{'.'.join(path)}' does not exist, or has no columns")
 
         schema_dict = self._normalize_schema_info(rows)
-
         return schema_dict
 
     def select_view_columns(self, path: DbPath) -> str:
@@ -112,14 +112,12 @@ class Redshift(PostgreSQL):
                 cols(col_name name, col_type varchar)
             """.format(schema, table)
 
-    def query_pg_get_cols(self, path: DbPath) -> Dict[str, tuple]:
+    def query_pg_get_cols(self, path: DbPath) -> Dict[str, RawColumnInfo]:
         rows = self.query(self.select_view_columns(path), list)
-
         if not rows:
             raise RuntimeError(f"{self.name}: View '{'.'.join(path)}' does not exist, or has no columns")
 
         schema_dict = self._normalize_schema_info(rows)
-
         return schema_dict
 
     def select_svv_columns_schema(self, path: DbPath) -> Dict[str, tuple]:
@@ -145,19 +143,29 @@ class Redshift(PostgreSQL):
             + db_clause
         )
 
-    def query_svv_columns(self, path: DbPath) -> Dict[str, tuple]:
+    def query_svv_columns(self, path: DbPath) -> Dict[str, RawColumnInfo]:
         rows = self.query(self.select_svv_columns_schema(path), list)
         if not rows:
             raise RuntimeError(f"{self.name}: Table '{'.'.join(path)}' does not exist, or has no columns")
 
-        d = {r[0]: r for r in rows}
+        d = {
+            r[0]: RawColumnInfo(
+                column_name=r[0],
+                type_repr=r[1],
+                datetime_precision=r[2],
+                numeric_precision=r[3],
+                numeric_scale=r[4],
+                collation_name=r[5] if len(r) > 5 else None,
+            )
+            for r in rows
+        }
         assert len(d) == len(rows)
         return d
 
     # when using a non-information_schema source, strip (N) from type(N) etc. to match
     # typical information_schema output
-    def _normalize_schema_info(self, rows) -> Dict[str, tuple]:
-        schema_dict = {}
+    def _normalize_schema_info(self, rows: Iterable[Tuple[Any]]) -> Dict[str, RawColumnInfo]:
+        schema_dict: Dict[str, RawColumnInfo] = {}
         for r in rows:
             col_name = r[0]
             type_info = r[1].split("(")
@@ -171,11 +179,17 @@ class Redshift(PostgreSQL):
                     precision = int(precision)
                     scale = int(scale)
 
-            out = [col_name, base_type, None, precision, scale]
-            schema_dict[col_name] = tuple(out)
+            schema_dict[col_name] = RawColumnInfo(
+                column_name=col_name,
+                type_repr=col_name,
+                datetime_precision=None,
+                numeric_precision=precision,
+                numeric_scale=scale,
+                collation_name=None,
+            )
         return schema_dict
 
-    def query_table_schema(self, path: DbPath) -> Dict[str, tuple]:
+    def query_table_schema(self, path: DbPath) -> Dict[str, RawColumnInfo]:
         try:
             return super().query_table_schema(path)
         except RuntimeError:
