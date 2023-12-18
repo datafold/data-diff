@@ -1122,7 +1122,7 @@ class Database(abc.ABC):
                         )
                     else:
                         assert col_name in col_dict
-                        col_dict[col_name] = String_VaryingAlphanum()
+                        col_dict[col_name] = String_VaryingAlphanum(collation=col_dict[col_name].collation)
 
         return col_dict
 
