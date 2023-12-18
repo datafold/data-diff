@@ -33,6 +33,7 @@ from data_diff.databases.base import (
     MD5_HEXDIGITS,
 )
 from data_diff.databases.base import TIMESTAMP_PRECISION_POS, ThreadLocalInterpreter
+from data_diff.schema import RawColumnInfo
 
 
 @import_helper(text="Please install BigQuery and configure your google-cloud access.")
@@ -91,19 +92,13 @@ class Dialect(BaseDialect):
         except KeyError:
             return super().type_repr(t)
 
-    def parse_type(
-        self,
-        table_path: DbPath,
-        col_name: str,
-        type_repr: str,
-        *args: Any,  # pass-through args
-        **kwargs: Any,  # pass-through args
-    ) -> ColType:
-        col_type = super().parse_type(table_path, col_name, type_repr, *args, **kwargs)
+    def parse_type(self, table_path: DbPath, info: RawColumnInfo) -> ColType:
+        col_type = super().parse_type(table_path, info)
         if isinstance(col_type, UnknownColType):
-            m = self.TYPE_ARRAY_RE.fullmatch(type_repr)
+            m = self.TYPE_ARRAY_RE.fullmatch(info.type_repr)
             if m:
-                item_type = self.parse_type(table_path, col_name, m.group(1), *args, **kwargs)
+                item_info = attrs.evolve(info, data_type=m.group(1))
+                item_type = self.parse_type(table_path, item_info)
                 col_type = Array(item_type=item_type)
 
             # We currently ignore structs' structure, but later can parse it too. Examples:
@@ -111,7 +106,7 @@ class Dialect(BaseDialect):
             # - STRUCT<foo INT64, bar STRING(10)> (named)
             # - STRUCT<foo INT64, bar ARRAY<INT64>> (with complex fields)
             # - STRUCT<foo INT64, bar STRUCT<a INT64, b INT64>> (nested)
-            m = self.TYPE_STRUCT_RE.fullmatch(type_repr)
+            m = self.TYPE_STRUCT_RE.fullmatch(info.type_repr)
             if m:
                 col_type = Struct()
 

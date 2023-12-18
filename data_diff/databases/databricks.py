@@ -26,6 +26,7 @@ from data_diff.databases.base import (
     import_helper,
     parse_table_name,
 )
+from data_diff.schema import RawColumnInfo
 
 
 @import_helper(text="You can install it using 'pip install databricks-sql-connector'")
@@ -138,7 +139,7 @@ class Databricks(ThreadedDatabase):
         except databricks.sql.exc.Error as e:
             raise ConnectionError(*e.args) from e
 
-    def query_table_schema(self, path: DbPath) -> Dict[str, tuple]:
+    def query_table_schema(self, path: DbPath) -> Dict[str, RawColumnInfo]:
         # Databricks has INFORMATION_SCHEMA only for Databricks Runtime, not for Databricks SQL.
         # https://docs.databricks.com/spark/latest/spark-sql/language-manual/information-schema/columns.html
         # So, to obtain information about schema, we should use another approach.
@@ -155,7 +156,12 @@ class Databricks(ThreadedDatabase):
             if not rows:
                 raise RuntimeError(f"{self.name}: Table '{'.'.join(path)}' does not exist, or has no columns")
 
-            d = {r.COLUMN_NAME: (r.COLUMN_NAME, r.TYPE_NAME, r.DECIMAL_DIGITS, None, None) for r in rows}
+            d = {
+                r.COLUMN_NAME: RawColumnInfo(
+                    column_name=r.COLUMN_NAME, data_type=r.TYPE_NAME, datetime_precision=r.DECIMAL_DIGITS
+                )
+                for r in rows
+            }
             assert len(d) == len(rows)
             return d
 

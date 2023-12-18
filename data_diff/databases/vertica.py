@@ -2,6 +2,7 @@ from typing import Any, ClassVar, Dict, List, Type
 
 import attrs
 
+from data_diff.schema import RawColumnInfo
 from data_diff.utils import match_regexps
 from data_diff.databases.base import (
     CHECKSUM_HEXDIGITS,
@@ -68,27 +69,19 @@ class Dialect(BaseDialect):
     def is_distinct_from(self, a: str, b: str) -> str:
         return f"not ({a} <=> {b})"
 
-    def parse_type(
-        self,
-        table_path: DbPath,
-        col_name: str,
-        type_repr: str,
-        datetime_precision: int = None,
-        numeric_precision: int = None,
-        numeric_scale: int = None,
-    ) -> ColType:
+    def parse_type(self, table_path: DbPath, info: RawColumnInfo) -> ColType:
         timestamp_regexps = {
             r"timestamp\(?(\d?)\)?": Timestamp,
             r"timestamptz\(?(\d?)\)?": TimestampTZ,
         }
-        for m, t_cls in match_regexps(timestamp_regexps, type_repr):
+        for m, t_cls in match_regexps(timestamp_regexps, info.type_repr):
             precision = int(m.group(1)) if m.group(1) else 6
             return t_cls(precision=precision, rounds=self.ROUNDS_ON_PREC_LOSS)
 
         number_regexps = {
             r"numeric\((\d+),(\d+)\)": Decimal,
         }
-        for m, n_cls in match_regexps(number_regexps, type_repr):
+        for m, n_cls in match_regexps(number_regexps, info.type_repr):
             _prec, scale = map(int, m.groups())
             return n_cls(scale)
 
@@ -96,10 +89,10 @@ class Dialect(BaseDialect):
             r"varchar\((\d+)\)": Text,
             r"char\((\d+)\)": Text,
         }
-        for m, n_cls in match_regexps(string_regexps, type_repr):
+        for m, n_cls in match_regexps(string_regexps, info.type_repr):
             return n_cls()
 
-        return super().parse_type(table_path, col_name, type_repr, datetime_precision, numeric_precision)
+        return super().parse_type(table_path, info)
 
     def set_timezone_to_utc(self) -> str:
         return "SET TIME ZONE TO 'UTC'"

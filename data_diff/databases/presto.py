@@ -4,6 +4,7 @@ from typing import Any, ClassVar, Type
 
 import attrs
 
+from data_diff.schema import RawColumnInfo
 from data_diff.utils import match_regexps
 
 from data_diff.abcs.database_types import (
@@ -91,33 +92,25 @@ class Dialect(BaseDialect):
     def to_string(self, s: str):
         return f"cast({s} as varchar)"
 
-    def parse_type(
-        self,
-        table_path: DbPath,
-        col_name: str,
-        type_repr: str,
-        datetime_precision: int = None,
-        numeric_precision: int = None,
-        _numeric_scale: int = None,
-    ) -> ColType:
+    def parse_type(self, table_path: DbPath, info: RawColumnInfo) -> ColType:
         timestamp_regexps = {
             r"timestamp\((\d)\)": Timestamp,
             r"timestamp\((\d)\) with time zone": TimestampTZ,
         }
-        for m, t_cls in match_regexps(timestamp_regexps, type_repr):
+        for m, t_cls in match_regexps(timestamp_regexps, info.type_repr):
             precision = int(m.group(1))
             return t_cls(precision=precision, rounds=self.ROUNDS_ON_PREC_LOSS)
 
         number_regexps = {r"decimal\((\d+),(\d+)\)": Decimal}
-        for m, n_cls in match_regexps(number_regexps, type_repr):
+        for m, n_cls in match_regexps(number_regexps, info.type_repr):
             _prec, scale = map(int, m.groups())
             return n_cls(scale)
 
         string_regexps = {r"varchar\((\d+)\)": Text, r"char\((\d+)\)": Text}
-        for m, n_cls in match_regexps(string_regexps, type_repr):
+        for m, n_cls in match_regexps(string_regexps, info.type_repr):
             return n_cls()
 
-        return super().parse_type(table_path, col_name, type_repr, datetime_precision, numeric_precision)
+        return super().parse_type(table_path, info)
 
     def set_timezone_to_utc(self) -> str:
         return "SET TIME ZONE '+00:00'"
