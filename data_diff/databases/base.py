@@ -1093,11 +1093,7 @@ class Database(abc.ABC):
             list,
             log_message=table_path,
         )
-        if not samples_by_row:
-            raise ValueError(f"Table {table_path} is empty.")
-
-        samples_by_col = list(zip(*samples_by_row))
-
+        samples_by_col = list(zip(*samples_by_row)) if samples_by_row else [[]] * len(text_columns)
         for col_name, samples in safezip(text_columns, samples_by_col):
             uuid_samples = [s for s in samples if s and is_uuid(s)]
 
