@@ -48,7 +48,7 @@ class TestDbtDiffer(unittest.TestCase):
     def test_integration_motherduck_dbt(self):
         artifacts_path = os.getcwd() + "/tests/dbt_artifacts"
         test_project_path = os.environ.get("DATA_DIFF_DBT_PROJ") or artifacts_path
-        test_profiles_path = artifacts_path + "/motherduck"
+        test_profiles_path = os.environ.get("DATA_DIFF_DBT_PROJ") or artifacts_path + "/motherduck"
         diff = run_datadiff_cli(
             "--dbt", "--dbt-project-dir", test_project_path, "--dbt-profiles-dir", test_profiles_path
         )

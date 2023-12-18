@@ -4,4 +4,4 @@ jaffle_shop:
     dev_motherduck:
       type: duckdb
       path: 'md:jaffle_shop?motherduck_token={{ env_var("MOTHERDUCK_TOKEN") }}'
-      schema: dev_motherduck
+      schema: dev
