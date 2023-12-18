@@ -152,7 +152,7 @@ class DuckDB(Database):
         try:
             # custom_user_agent is only available in duckdb >= 0.9.2
             if parse_version(ddb.__version__) >= parse_version("0.9.2"):
-                custom_user_agent = f"data-diff {__version__}"
+                custom_user_agent = f"data-diff/v{__version__}"
                 config = {"custom_user_agent": custom_user_agent}
                 connection = ddb.connect(database=self._args["filepath"], config=config)
                 custom_user_agent_results = connection.sql("PRAGMA USER_AGENT;").fetchall()
