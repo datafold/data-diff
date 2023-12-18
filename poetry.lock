@@ -1383,13 +1383,13 @@ server = ["starlette"]
 
 [[package]]
 name = "presto-python-client"
-version = "0.8.4"
+version = "0.8.3"
 description = "Client for the Presto distributed SQL Engine"
 optional = false
 python-versions = "*"
 files = [
-    {file = "presto-python-client-0.8.4.tar.gz", hash = "sha256:b5d9d7278c10af932c6b5ce3a417dfa883b539e947ece1f7f43ba4632c2994c5"},
-    {file = "presto_python_client-0.8.4-py3-none-any.whl", hash = "sha256:f8ae1e139f7676fb955dd180027ac9ac6450a8552d53b6b85b79fc1da6d37190"},
+    {file = "presto-python-client-0.8.3.tar.gz", hash = "sha256:260249efefbcf56f407f93d39d92fb9963164ca3d7abffa4493fd127346d2732"},
+    {file = "presto_python_client-0.8.3-py3-none-any.whl", hash = "sha256:c45fbb8be71cdbca75b37836c47878eb6333733cc65ceff73b7aa116c410b5bc"},
 ]
 
 [package.dependencies]
@@ -2290,4 +2290,4 @@ vertica = ["vertica-python"]
 [metadata]
 lock-version = "2.0"
 python-versions = "^3.8.0"
-content-hash = "678558d083c7032e236ba755465dfa49fb139dccc4eed8bac6a9d94b260334cd"
+content-hash = "54f5248145c8920e27de3e781bb01461b3f68bc6335d75d8793b19dffd5f4163"
