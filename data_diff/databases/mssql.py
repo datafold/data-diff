@@ -166,6 +166,9 @@ class Dialect(BaseDialect):
     def md5_as_hex(self, s: str) -> str:
         return f"HashBytes('MD5', {s})"
 
+    def normalize_uuid(self, value: str, coltype) -> str:
+        return f"CONVERT(VARCHAR(36), UPPER(TRIM(CONVERT(varchar(4000), {value}))))"
+
 
 @attrs.define(frozen=False, init=False, kw_only=True)
 class MsSQL(ThreadedDatabase):
