@@ -353,7 +353,7 @@ DATABASE_TYPES = {
         "int": ["INT", "BIGINT"],
         "datetime": ["datetime2(6)"],
         "float": ["DECIMAL(6, 2)", "FLOAT", "REAL"],
-        "uuid": ["VARCHAR(100)", "CHAR(100)", "UNIQUEIDENTIFIER"],
+        "uuid": ["VARCHAR(100)", "CHAR(100)"],
         "boolean": [
             "BIT",
         ],

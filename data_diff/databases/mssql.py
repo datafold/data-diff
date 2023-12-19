@@ -69,7 +69,7 @@ class Dialect(BaseDialect):
         "varbinary": Text,
         "xml": Text,
         # UUID
-        "uniqueidentifier": Native_UUID,
+        # "uniqueidentifier": Native_UUID,  # It is not supported yet
         # Bool
         "bit": Boolean,
         # JSON
@@ -167,7 +167,7 @@ class Dialect(BaseDialect):
         return f"HashBytes('MD5', {s})"
 
     def normalize_uuid(self, value: str, coltype) -> str:
-        return f"CONVERT(VARCHAR(36), UPPER(TRIM(CONVERT(varchar(4000), {value}))))"
+        return f"CONVERT(VARCHAR(36), TRIM(CONVERT(varchar(4000), {value})))"
 
 
 @attrs.define(frozen=False, init=False, kw_only=True)
