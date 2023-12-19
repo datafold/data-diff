@@ -26,7 +26,7 @@ from data_diff.databases.duckdb import DuckDB
 from data_diff.databases.mssql import MsSQL
 
 
-@attrs.define(frozen=True)
+@attrs.frozen
 class MatchUriPath:
     database_cls: Type[Database]
 
@@ -98,13 +98,11 @@ class Connect:
     """Provides methods for connecting to a supported database using a URL or connection dict."""
 
     database_by_scheme: Dict[str, Database]
-    match_uri_path: Dict[str, MatchUriPath]
     conn_cache: MutableMapping[Hashable, Database]
 
     def __init__(self, database_by_scheme: Dict[str, Database] = DATABASE_BY_SCHEME):
         super().__init__()
         self.database_by_scheme = database_by_scheme
-        self.match_uri_path = {name: MatchUriPath(cls) for name, cls in database_by_scheme.items()}
         self.conn_cache = weakref.WeakValueDictionary()
 
     def for_databases(self, *dbs) -> Self:
@@ -157,11 +155,9 @@ class Connect:
             return self.connect_with_dict(conn_dict, thread_count, **kwargs)
 
         try:
-            matcher = self.match_uri_path[scheme]
+            cls = self.database_by_scheme[scheme]
         except KeyError:
             raise NotImplementedError(f"Scheme '{scheme}' currently not supported")
-
-        cls = matcher.database_cls
 
         if scheme == "databricks":
             assert not dsn.user
@@ -175,6 +171,7 @@ class Connect:
             kw["filepath"] = dsn.dbname
             kw["dbname"] = dsn.user
         else:
+            matcher = MatchUriPath(cls)
             kw = matcher.match_path(dsn)
 
             if scheme == "bigquery":
@@ -198,7 +195,7 @@ class Connect:
 
         kw = {k: v for k, v in kw.items() if v is not None}
 
-        if issubclass(cls, ThreadedDatabase):
+        if isinstance(cls, type) and issubclass(cls, ThreadedDatabase):
             db = cls(thread_count=thread_count, **kw, **kwargs)
         else:
             db = cls(**kw, **kwargs)
@@ -209,11 +206,10 @@ class Connect:
         d = dict(d)
         driver = d.pop("driver")
         try:
-            matcher = self.match_uri_path[driver]
+            cls = self.database_by_scheme[driver]
         except KeyError:
             raise NotImplementedError(f"Driver '{driver}' currently not supported")
 
-        cls = matcher.database_cls
         if issubclass(cls, ThreadedDatabase):
             db = cls(thread_count=thread_count, **d, **kwargs)
         else:

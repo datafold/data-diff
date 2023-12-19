@@ -1,6 +1,7 @@
 from typing import Any, ClassVar, Dict, Union, Type
 
 import attrs
+from packaging.version import parse as parse_version
 
 from data_diff.utils import match_regexps
 from data_diff.abcs.database_types import (
@@ -27,6 +28,7 @@ from data_diff.databases.base import (
     CHECKSUM_OFFSET,
 )
 from data_diff.databases.base import MD5_HEXDIGITS, CHECKSUM_HEXDIGITS
+from data_diff.version import __version__
 
 
 @import_helper("duckdb")
@@ -148,9 +150,21 @@ class DuckDB(Database):
     def create_connection(self):
         ddb = import_duckdb()
         try:
-            return ddb.connect(self._args["filepath"])
+            # custom_user_agent is only available in duckdb >= 0.9.2
+            if parse_version(ddb.__version__) >= parse_version("0.9.2"):
+                custom_user_agent = f"data-diff/v{__version__}"
+                config = {"custom_user_agent": custom_user_agent}
+                connection = ddb.connect(database=self._args["filepath"], config=config)
+                custom_user_agent_results = connection.sql("PRAGMA USER_AGENT;").fetchall()
+                custom_user_agent_filtered = custom_user_agent_results[0][0]
+                assert custom_user_agent in custom_user_agent_filtered
+            else:
+                connection = ddb.connect(database=self._args["filepath"])
+            return connection
         except ddb.OperationalError as e:
             raise ConnectError(*e.args) from e
+        except AssertionError:
+            raise ConnectError("Assertion failed: Custom user agent is invalid.") from None
 
     def select_table_schema(self, path: DbPath) -> str:
         database, schema, table = self._normalize_table_path(path)
