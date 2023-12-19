@@ -92,7 +92,7 @@ class HashDiffer(TableDiffer):
             # Update schemas to minimal mutual precision
             col1 = table1._schema[c1]
             col2 = table2._schema[c2]
-            if isinstance(col1, PrecisionType) and isinstance(col2, PrecisionType):
+            if isinstance(col1, PrecisionType):
                 if strict and not isinstance(col2, PrecisionType):
                     raise TypeError(f"Incompatible types for column '{c1}':  {col1} <-> {col2}")
 
@@ -104,7 +104,7 @@ class HashDiffer(TableDiffer):
                 table1._schema[c1] = attrs.evolve(col1, precision=lowest.precision, rounds=lowest.rounds)
                 table2._schema[c2] = attrs.evolve(col2, precision=lowest.precision, rounds=lowest.rounds)
 
-            elif isinstance(col1, (NumericType, Boolean)) and isinstance(col2, (NumericType, Boolean)):
+            elif isinstance(col1, (NumericType, Boolean)):
                 if strict and not isinstance(col2, (NumericType, Boolean)):
                     raise TypeError(f"Incompatible types for column '{c1}':  {col1} <-> {col2}")
 
