@@ -94,13 +94,17 @@ class Dialect(BaseDialect):
         WHERE name = CURRENT_USER"""
 
     def to_string(self, s: str):
-        return f"CONVERT(varchar, {s})"
+        return f"CONVERT(varchar(4000), {s})"
 
     def type_repr(self, t) -> str:
         try:
             return {bool: "bit", str: "text"}[t]
         except KeyError:
             return super().type_repr(t)
+
+    def _convert_db_precision_to_digits(self, p: int) -> int:
+        # Subtracting 2 due to wierd precision issues in PostgreSQL
+        return super()._convert_db_precision_to_digits(p) - 2
 
     def random(self) -> str:
         return "rand()"
