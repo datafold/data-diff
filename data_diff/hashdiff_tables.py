@@ -238,4 +238,4 @@ class HashDiffer(TableDiffer):
             self.stats["rows_downloaded"] = self.stats.get("rows_downloaded", 0) + max(len(rows1), len(rows2))
             return diff
 
-        return super()._bisect_and_diff_segments(ti, table1, table2, info_tree, level, max_rows)
+        return super()._bisect_and_diff_segments_root(ti, table1, table2, info_tree, level, max_rows)
