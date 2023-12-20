@@ -50,7 +50,7 @@ from data_diff.utils import (
 
 logger = getLogger(__name__)
 CLOUD_DOC_URL = "https://docs.datafold.com/development_testing/cloud"
-EXTENSION_INSTALL_URL = "https://get.datafold.com/datafold-vs-code-install"
+DATAFOLD_TRIAL_URL = "https://docs.datafold.com/development_testing/datafold_cloud"
 
 
 class TDiffVars(pydantic.BaseModel):
@@ -559,5 +559,5 @@ def _email_signup() -> None:
 def _extension_notification() -> None:
     if bool_notify_about_extension():
         rich.print(
-            f"\n\nHaving a good time diffing? :heart_eyes-emoji:\nMake sure to check out the free [bold]Datafold VS Code extension[/bold] for more a more seamless diff experience:\n{EXTENSION_INSTALL_URL}"
+            f"\n\nHaving a good time diffing? Make sure to check out the free Datafold Cloud Trial for an evolved experience including value-level diffs and column level lineage:\n{DATAFOLD_TRIAL_URL}"
         )
