@@ -306,7 +306,7 @@ class TableDiffer(ThreadBase, ABC):
 
         ti = ThreadedYielder(self.max_threadpool_size, self.yield_list)
         # Bisect (split) the table into segments, and diff them recursively.
-        ti.submit(self._bisect_and_diff_segments_root, ti, btable1, btable2, info_tree)
+        ti.submit(self._bisect_and_diff_segments_root, ti, btable1, btable2, info_tree, priority=999)
 
         # Now we check for the second min-max, to diff the portions we "missed".
         # This is achieved by subtracting the table ranges, and dividing the resulting space into aligned boxes.
@@ -330,7 +330,7 @@ class TableDiffer(ThreadBase, ABC):
 
         for p1, p2 in new_regions:
             extra_tables = [t.new_key_bounds(min_key=p1, max_key=p2) for t in (table1, table2)]
-            ti.submit(self._bisect_and_diff_segments_root, ti, *extra_tables, info_tree)
+            ti.submit(self._bisect_and_diff_segments_root, ti, *extra_tables, info_tree, priority=999)
 
         return ti
 
