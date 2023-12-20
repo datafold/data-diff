@@ -9,6 +9,8 @@ data-diff: Compare datasets fast, within or across SQL databases
 </h2>
 <br>
 
+> [Make sure to join us at our virtual hands-on lab series where our team walks through live how to get set-up with it!](https://www.datafold.com/virtual-hands-on-lab)
+
 # Use Cases
 
 ## Data Migration & Replication Testing
