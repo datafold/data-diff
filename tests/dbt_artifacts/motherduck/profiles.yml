@@ -1,0 +1,7 @@
+jaffle_shop:
+  target: dev_motherduck
+  outputs:
+    dev_motherduck:
+      type: duckdb
+      path: 'md:jaffle_shop?motherduck_token={{ env_var("MOTHERDUCK_TOKEN") }}'
+      schema: dev

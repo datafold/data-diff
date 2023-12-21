@@ -45,6 +45,24 @@ class TestDbtDiffer(unittest.TestCase):
             # 1 with a diff
             assert diff_string.count("  Rows Added    Rows Removed") == 1
 
+    def test_integration_motherduck_dbt(self):
+        artifacts_path = os.getcwd() + "/tests/dbt_artifacts"
+        test_project_path = os.environ.get("DATA_DIFF_DBT_PROJ") or artifacts_path
+        test_profiles_path = os.environ.get("DATA_DIFF_DBT_PROJ") or artifacts_path + "/motherduck"
+        diff = run_datadiff_cli(
+            "--dbt", "--dbt-project-dir", test_project_path, "--dbt-profiles-dir", test_profiles_path
+        )
+
+        # assertions for the diff that exists in tests/dbt_artifacts/jaffle_shop.duckdb
+        if test_project_path == artifacts_path:
+            diff_string = b"".join(diff).decode("utf-8")
+            # 5 diffs were ran
+            assert diff_string.count("<>") == 5
+            # 4 with no diffs
+            assert diff_string.count("No row differences") == 4
+            # 1 with a diff
+            assert diff_string.count("  Rows Added    Rows Removed") == 1
+
     def test_integration_cloud_dbt(self):
         project_dir = os.environ.get("DATA_DIFF_DBT_PROJ")
         if project_dir is not None:
