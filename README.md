@@ -45,8 +45,6 @@ Test SQL code and preview changes by comparing development/staging environment d
 
 **[Get started with data-diff & dbt](https://docs.datafold.com/development_testing/open_source)**
 
-Also available in a [VS Code Extension](https://marketplace.visualstudio.com/items?itemName=Datafold.datafold-vscode)
-
 Reach out on the dbt Slack in [#tools-datafold](https://getdbt.slack.com/archives/C03D25A92UU) for advice and support
 
 
