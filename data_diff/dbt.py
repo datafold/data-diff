@@ -8,6 +8,7 @@ import keyring
 import pydantic
 import rich
 from rich.prompt import Prompt
+from rich.markdown import Markdown
 from concurrent.futures import ThreadPoolExecutor, as_completed
 
 from data_diff.errors import (
@@ -50,7 +51,8 @@ from data_diff.utils import (
 
 logger = getLogger(__name__)
 CLOUD_DOC_URL = "https://docs.datafold.com/development_testing/cloud"
-EXTENSION_INSTALL_URL = "https://get.datafold.com/datafold-vs-code-install"
+DATAFOLD_TRIAL_URL = "https://app.datafold.com/org-signup"
+DATAFOLD_INSTRUCTIONS_URL = "https://docs.datafold.com/development_testing/datafold_cloud"
 
 
 class TDiffVars(pydantic.BaseModel):
@@ -558,6 +560,8 @@ def _email_signup() -> None:
 
 def _extension_notification() -> None:
     if bool_notify_about_extension():
-        rich.print(
-            f"\n\nHaving a good time diffing? :heart_eyes-emoji:\nMake sure to check out the free [bold]Datafold VS Code extension[/bold] for more a more seamless diff experience:\n{EXTENSION_INSTALL_URL}"
-        )
+        message = "\n\nHaving a good time diffing?\n\nMake sure to check out the free Datafold Cloud Trial for an evolved experience:\n\n- value-level diffs\n- column-level lineage\n"
+        rich.print(message)
+        rich.print(Markdown(f"[Sign Up Here]({DATAFOLD_TRIAL_URL})"))
+        rich.print("")
+        rich.print(Markdown(f"[Follow the instructions to get started]({DATAFOLD_INSTRUCTIONS_URL})"))
