@@ -20,7 +20,7 @@ Compare source to target and check for discrepancies when moving data between sy
 - Continuously replicating data from an OLTP DB to OLAP DWH (e.g., MySQL > Redshift)
 
 
-## Data Development Testing
+## Data Development Testing 
 Test SQL code and preview changes by comparing development/staging environment data to production:
 1. Make a change to some SQL code
 2. Run the SQL code to create a new dataset
@@ -30,22 +30,14 @@ Test SQL code and preview changes by comparing development/staging environment d
   <img alt="dbt" src="https://seeklogo.com/images/D/dbt-logo-E4B0ED72A2-seeklogo.com.png" width="10%" />
   </p>
 
-<details>
-<summary> data-diff integrates with dbt Core to seamlessly compare local development to production datasets
+- data-diff integrates with [dbt Core](https://github.com/dbt-labs/dbt-core) to seamlessly compare local development to production datasets
+- [dbt Cloud users should check out Datafold's out-of-the-box deployment testing integration](https://www.datafold.com/data-deployment-testing)
 
- </summary>
+- :eyes: **Watch the [4-min demo video](https://www.loom.com/share/ad3df969ba6b4298939efb2fbcc14cde)**
 
-![data-development-testing](docs/development_testing.png)
+- **[Get started with data-diff & dbt](https://docs.datafold.com/development_testing/cli)**
 
-</details>
-
-> [dbt Cloud users should check out Datafold's out-of-the-box deployment testing integration](https://www.datafold.com/data-deployment-testing)
-
-:eyes: **Watch [4-min demo video](https://www.loom.com/share/ad3df969ba6b4298939efb2fbcc14cde)**
-
-**[Get started with data-diff & dbt](https://docs.datafold.com/development_testing/open_source)**
-
-Reach out on the dbt Slack in [#tools-datafold](https://getdbt.slack.com/archives/C03D25A92UU) for advice and support
+Reach out on the dbt Community Slack in [#tools-datafold](https://getdbt.slack.com/archives/C03D25A92UU) for advice and support
 
 
 # How it works
@@ -103,7 +95,6 @@ Run `data-diff` with a `toml` configuration file. In the following example, we c
   # filepath = "datafold_demo.duckdb" # local duckdb file example
   # filepath = "md:" # default motherduck connection example
   filepath = "md:datafold_demo?motherduck_token=${motherduck_token}" # API token recommended for motherduck connection
-  database = "datafold_demo"
 
 [database.snowflake_connection]
   driver = "snowflake"
@@ -161,8 +152,8 @@ Check out [documentation](https://docs.datafold.com/reference/open_source/cli) f
 | Snowflake     |  🟢     | `"snowflake://<user>[:<password>]@<account>/<database>/<SCHEMA>?warehouse=<WAREHOUSE>&role=<role>[&authenticator=externalbrowser]"` |
 | BigQuery      |  🟢     | `bigquery://<project>/<dataset>`                                                                                                    |
 | Redshift      |  🟢     | `redshift://<username>:<password>@<hostname>:5439/<database>`                                                                       |
-| DuckDB        |  🟢   | `duckdb://<dbname>@<filepath>`                                                                                          |
-| MotherDuck        |  🟢   | `duckdb://<dbname>@<filepath>`                                                                                                   |
+| DuckDB        |  🟢   | `duckdb://<filepath>`                                                                                          |
+| MotherDuck        |  🟢   | `duckdb://<filepath>`                                                                                                   |
 | Oracle        |  🟡   | `oracle://<username>:<password>@<hostname>/servive_or_sid`                                                                          |
 | Presto        |  🟡   | `presto://<username>:<password>@<hostname>:8080/<database>`                                                                         |
 | Databricks    |  🟡   | `databricks://<http_path>:<access_token>@<server_hostname>/<catalog>/<schema>`                                                      |
@@ -191,7 +182,9 @@ Your database not listed here?
 
 ## Contributors
 
-We thank everyone who contributed so far!
+We thank everyone who contributed so far! 
+
+We'd love to see your face here: [Contributing Instructions](CONTRIBUTING.md)
 
 <a href="https://github.com/datafold/data-diff/graphs/contributors">
   <img src="https://contributors-img.web.app/image?repo=datafold/data-diff" />
