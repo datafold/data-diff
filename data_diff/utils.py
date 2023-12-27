@@ -43,7 +43,14 @@ def safezip(*args):
     return zip(*args)
 
 
-def is_uuid(u):
+UUID_PATTERN = re.compile(r"[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}", re.I)
+
+
+def is_uuid(u: str) -> bool:
+    # E.g., hashlib.md5(b'hello') is a 32-letter hex number, but not an UUID.
+    # It would fail UUID-like comparison (< & >) because of casing and dashes.
+    if not UUID_PATTERN.fullmatch(u):
+        return False
     try:
         UUID(u)
     except ValueError:
