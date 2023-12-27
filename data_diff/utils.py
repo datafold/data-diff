@@ -151,6 +151,9 @@ class ArithUUID(ArithString):
     "A UUID that supports basic arithmetic (add, sub)"
 
     uuid: UUID = attrs.field(converter=_any_to_uuid)
+    lowercase: Optional[bool] = None
+    uppercase: Optional[bool] = None
+
     def range(self, other: "ArithUUID", count: int) -> List[Self]:
         assert isinstance(other, ArithUUID)
         checkpoints = split_space(self.uuid.int, other.uuid.int, count)
