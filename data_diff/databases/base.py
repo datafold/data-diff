@@ -250,7 +250,7 @@ class BaseDialect(abc.ABC):
             return f"b'{elem.decode()}'"
         elif isinstance(elem, ArithUUID):
             s = f"'{elem.uuid}'"
-            return s
+            return s.upper() if elem.uppercase else s.lower() if elem.lowercase else s
         elif isinstance(elem, ArithString):
             return f"'{elem}'"
         assert False, elem
@@ -1115,7 +1115,10 @@ class Database(abc.ABC):
                     )
                 else:
                     assert col_name in col_dict
-                    col_dict[col_name] = String_UUID()
+                    col_dict[col_name] = String_UUID(
+                        lowercase=all(s == s.lower() for s in uuid_samples),
+                        uppercase=all(s == s.upper() for s in uuid_samples),
+                    )
                     continue
 
             if self.SUPPORTS_ALPHANUMS:  # Anything but MySQL (so far)

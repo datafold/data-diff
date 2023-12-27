@@ -217,7 +217,14 @@ class Native_UUID(ColType_UUID):
 
 @attrs.define(frozen=True)
 class String_UUID(ColType_UUID, StringType):
-    pass
+    # Case is important for UUIDs stored as regular string, not native UUIDs stored as numbers.
+    # We slice them internally as numbers, but render them back to SQL as lower/upper case.
+    # None means we do not know for sure, behave as with False, but it might be unreliable.
+    lowercase: Optional[bool] = None
+    uppercase: Optional[bool] = None
+
+    def make_value(self, v: str) -> ArithUUID:
+        return self.python_type(v, lowercase=self.lowercase, uppercase=self.uppercase)
 
 
 @attrs.define(frozen=True)
