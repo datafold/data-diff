@@ -77,8 +77,8 @@ class TestDbtDiffer(unittest.TestCase):
         connection = {}
         mock_table1 = Mock()
         column_dictionary = {
-            "col1": RawColumnInfo(column_name="col1", type_repr="type"),
-            "col2": RawColumnInfo(column_name="col2", type_repr="type"),
+            "col1": RawColumnInfo(column_name="col1", data_type="type"),
+            "col2": RawColumnInfo(column_name="col2", data_type="type"),
         }
         mock_table1.get_schema.return_value = column_dictionary
         mock_table2 = Mock()
@@ -125,12 +125,12 @@ class TestDbtDiffer(unittest.TestCase):
         mock_table1 = Mock()
         mock_table2 = Mock()
         table1_column_dictionary = {
-            "col1": RawColumnInfo(column_name="col1", type_repr="type"),
-            "col2": RawColumnInfo(column_name="col2", type_repr="type"),
+            "col1": RawColumnInfo(column_name="col1", data_type="type"),
+            "col2": RawColumnInfo(column_name="col2", data_type="type"),
         }
         table2_column_dictionary = {
-            "col1": RawColumnInfo(column_name="col1", type_repr="type"),
-            "col2": RawColumnInfo(column_name="col2", type_repr="differing_type"),
+            "col1": RawColumnInfo(column_name="col1", data_type="type"),
+            "col2": RawColumnInfo(column_name="col2", data_type="differing_type"),
         }
         mock_table1.get_schema.return_value = table1_column_dictionary
         mock_table2.get_schema.return_value = table2_column_dictionary
@@ -172,8 +172,8 @@ class TestDbtDiffer(unittest.TestCase):
     def test_local_diff_no_diffs(self, mock_diff_tables):
         connection = {}
         column_dictionary = {
-            "col1": RawColumnInfo(column_name="col1", type_repr="type"),
-            "col2": RawColumnInfo(column_name="col2", type_repr="type"),
+            "col1": RawColumnInfo(column_name="col1", data_type="type"),
+            "col2": RawColumnInfo(column_name="col2", data_type="type"),
         }
         mock_table1 = Mock()
         mock_table1.get_schema.return_value = column_dictionary

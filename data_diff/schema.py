@@ -21,7 +21,7 @@ class RawColumnInfo(Collection[Any]):
     """
 
     column_name: str
-    type_repr: str
+    data_type: str
     datetime_precision: Optional[int] = None
     numeric_precision: Optional[int] = None
     numeric_scale: Optional[int] = None
@@ -30,7 +30,7 @@ class RawColumnInfo(Collection[Any]):
     # It was a tuple once, so we keep it backward compatible temporarily, until remade to classes.
     def __iter__(self) -> Iterable[Any]:
         return iter(
-            (self.column_name, self.type_repr, self.datetime_precision, self.numeric_precision, self.numeric_scale)
+            (self.column_name, self.data_type, self.datetime_precision, self.numeric_precision, self.numeric_scale)
         )
 
     def __len__(self) -> int:

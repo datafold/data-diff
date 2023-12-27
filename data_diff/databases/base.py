@@ -711,9 +711,9 @@ class BaseDialect(abc.ABC):
     def parse_type(self, table_path: DbPath, info: RawColumnInfo) -> ColType:
         "Parse type info as returned by the database"
 
-        cls = self.TYPE_CLASSES.get(info.type_repr)
+        cls = self.TYPE_CLASSES.get(info.data_type)
         if cls is None:
-            return UnknownColType(info.type_repr)
+            return UnknownColType(info.data_type)
 
         if issubclass(cls, TemporalType):
             return cls(
@@ -745,7 +745,7 @@ class BaseDialect(abc.ABC):
         elif issubclass(cls, (JSON, Array, Struct, Text, Native_UUID)):
             return cls()
 
-        raise TypeError(f"Parsing {info.type_repr} returned an unknown type {cls!r}.")
+        raise TypeError(f"Parsing {info.data_type} returned an unknown type {cls!r}.")
 
     def _convert_db_precision_to_digits(self, p: int) -> int:
         """Convert from binary precision, used by floats, to decimal precision."""
@@ -1024,7 +1024,7 @@ class Database(abc.ABC):
         d = {
             r[0]: RawColumnInfo(
                 column_name=r[0],
-                type_repr=r[1],
+                data_type=r[1],
                 datetime_precision=r[2],
                 numeric_precision=r[3],
                 numeric_scale=r[4],

@@ -113,7 +113,7 @@ class Dialect(
             r"TIMESTAMP\((\d)\)": Timestamp,
         }
 
-        for m, t_cls in match_regexps(regexps, info.type_repr):
+        for m, t_cls in match_regexps(regexps, info.data_type):
             precision = int(m.group(1))
             return t_cls(precision=precision, rounds=self.ROUNDS_ON_PREC_LOSS)
 

@@ -80,7 +80,7 @@ class Dialect(BaseDialect):
             r"DECIMAL\((\d+),(\d+)\)": Decimal,
         }
 
-        for m, t_cls in match_regexps(regexps, info.type_repr):
+        for m, t_cls in match_regexps(regexps, info.data_type):
             precision = int(m.group(2))
             return t_cls(precision=precision)
 

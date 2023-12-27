@@ -79,14 +79,14 @@ class Dialect(BaseDialect):
 
     def parse_type(self, table_path: DbPath, info: RawColumnInfo) -> ColType:
         nullable_prefix = "Nullable("
-        if info.type_repr.startswith(nullable_prefix):
-            info = attrs.evolve(info, data_type=info.type_repr[len(nullable_prefix) :].rstrip(")"))
+        if info.data_type.startswith(nullable_prefix):
+            info = attrs.evolve(info, data_type=info.data_type[len(nullable_prefix) :].rstrip(")"))
 
-        if info.type_repr.startswith("Decimal"):
+        if info.data_type.startswith("Decimal"):
             info = attrs.evolve(info, data_type="Decimal")
-        elif info.type_repr.startswith("FixedString"):
+        elif info.data_type.startswith("FixedString"):
             info = attrs.evolve(info, data_type="FixedString")
-        elif info.type_repr.startswith("DateTime64"):
+        elif info.data_type.startswith("DateTime64"):
             info = attrs.evolve(info, data_type="DateTime64")
 
         return super().parse_type(table_path, info)

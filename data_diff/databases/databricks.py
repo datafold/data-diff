@@ -158,7 +158,7 @@ class Databricks(ThreadedDatabase):
 
             d = {
                 r.COLUMN_NAME: RawColumnInfo(
-                    column_name=r.COLUMN_NAME, type_repr=r.TYPE_NAME, datetime_precision=r.DECIMAL_DIGITS
+                    column_name=r.COLUMN_NAME, data_type=r.TYPE_NAME, datetime_precision=r.DECIMAL_DIGITS
                 )
                 for r in rows
             }
@@ -186,8 +186,8 @@ class Databricks(ThreadedDatabase):
 
         resulted_rows = []
         for info in col_infos:
-            row_type = "DECIMAL" if info.type_repr.startswith("DECIMAL") else info.type_repr
-            info = attrs.evolve(info, type_repr=row_type)
+            row_type = "DECIMAL" if info.data_type.startswith("DECIMAL") else info.data_type
+            info = attrs.evolve(info, data_type=row_type)
             type_cls = self.dialect.TYPE_CLASSES.get(row_type, UnknownColType)
 
             if issubclass(type_cls, Integer):
@@ -198,7 +198,7 @@ class Databricks(ThreadedDatabase):
                 info = attrs.evolve(info, numeric_precision=numeric_precision)
 
             elif issubclass(type_cls, Decimal):
-                items = info.type_repr[8:].rstrip(")").split(",")
+                items = info.data_type[8:].rstrip(")").split(",")
                 numeric_precision, numeric_scale = int(items[0]), int(items[1])
                 info = attrs.evolve(
                     info,

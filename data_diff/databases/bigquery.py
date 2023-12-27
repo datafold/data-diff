@@ -95,7 +95,7 @@ class Dialect(BaseDialect):
     def parse_type(self, table_path: DbPath, info: RawColumnInfo) -> ColType:
         col_type = super().parse_type(table_path, info)
         if isinstance(col_type, UnknownColType):
-            m = self.TYPE_ARRAY_RE.fullmatch(info.type_repr)
+            m = self.TYPE_ARRAY_RE.fullmatch(info.data_type)
             if m:
                 item_info = attrs.evolve(info, data_type=m.group(1))
                 item_type = self.parse_type(table_path, item_info)
@@ -106,7 +106,7 @@ class Dialect(BaseDialect):
             # - STRUCT<foo INT64, bar STRING(10)> (named)
             # - STRUCT<foo INT64, bar ARRAY<INT64>> (with complex fields)
             # - STRUCT<foo INT64, bar STRUCT<a INT64, b INT64>> (nested)
-            m = self.TYPE_STRUCT_RE.fullmatch(info.type_repr)
+            m = self.TYPE_STRUCT_RE.fullmatch(info.data_type)
             if m:
                 col_type = Struct()
 

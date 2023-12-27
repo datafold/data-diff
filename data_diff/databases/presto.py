@@ -97,17 +97,17 @@ class Dialect(BaseDialect):
             r"timestamp\((\d)\)": Timestamp,
             r"timestamp\((\d)\) with time zone": TimestampTZ,
         }
-        for m, t_cls in match_regexps(timestamp_regexps, info.type_repr):
+        for m, t_cls in match_regexps(timestamp_regexps, info.data_type):
             precision = int(m.group(1))
             return t_cls(precision=precision, rounds=self.ROUNDS_ON_PREC_LOSS)
 
         number_regexps = {r"decimal\((\d+),(\d+)\)": Decimal}
-        for m, n_cls in match_regexps(number_regexps, info.type_repr):
+        for m, n_cls in match_regexps(number_regexps, info.data_type):
             _prec, scale = map(int, m.groups())
             return n_cls(scale)
 
         string_regexps = {r"varchar\((\d+)\)": Text, r"char\((\d+)\)": Text}
-        for m, n_cls in match_regexps(string_regexps, info.type_repr):
+        for m, n_cls in match_regexps(string_regexps, info.data_type):
             return n_cls()
 
         return super().parse_type(table_path, info)
