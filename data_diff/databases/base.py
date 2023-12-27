@@ -20,7 +20,7 @@ from typing_extensions import Self
 from data_diff.abcs.compiler import AbstractCompiler, Compilable
 from data_diff.queries.extras import ApplyFuncAndNormalizeAsString, Checksum, NormalizeAsString
 from data_diff.schema import RawColumnInfo
-from data_diff.utils import ArithString, is_uuid, join_iter, safezip
+from data_diff.utils import ArithString, ArithUUID, is_uuid, join_iter, safezip
 from data_diff.queries.api import Expr, table, Select, SKIP, Explain, Code, this
 from data_diff.queries.ast_classes import (
     Alias,
@@ -248,6 +248,9 @@ class BaseDialect(abc.ABC):
             return self.timestamp_value(elem)
         elif isinstance(elem, bytes):
             return f"b'{elem.decode()}'"
+        elif isinstance(elem, ArithUUID):
+            s = f"'{elem.uuid}'"
+            return s
         elif isinstance(elem, ArithString):
             return f"'{elem}'"
         assert False, elem
@@ -681,8 +684,10 @@ class BaseDialect(abc.ABC):
             return f"'{v}'"
         elif isinstance(v, datetime):
             return self.timestamp_value(v)
-        elif isinstance(v, UUID):
+        elif isinstance(v, UUID):  # probably unused anymore in favour of ArithUUID
             return f"'{v}'"
+        elif isinstance(v, ArithUUID):
+            return f"'{v.uuid}'"
         elif isinstance(v, decimal.Decimal):
             return str(v)
         elif isinstance(v, bytearray):

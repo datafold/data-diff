@@ -135,23 +135,70 @@ class ArithString:
         return [self.new(int=i) for i in checkpoints]
 
 
-# @attrs.define  # not as long as it inherits from UUID
-class ArithUUID(UUID, ArithString):
+def _any_to_uuid(v: Union[str, int, UUID]) -> UUID:
+    if isinstance(v, UUID):
+        return v
+    elif isinstance(v, str):
+        return UUID(v)
+    elif isinstance(v, int):
+        return UUID(int=v)
+    else:
+        raise ValueError(f"Cannot convert a value to UUID: {v!r}")
+
+
+@attrs.define(frozen=True, eq=False, order=False)
+class ArithUUID(ArithString):
     "A UUID that supports basic arithmetic (add, sub)"
 
+    uuid: UUID = attrs.field(converter=_any_to_uuid)
+    def range(self, other: "ArithUUID", count: int) -> List[Self]:
+        assert isinstance(other, ArithUUID)
+        checkpoints = split_space(self.uuid.int, other.uuid.int, count)
+        return [attrs.evolve(self, uuid=i) for i in checkpoints]
+
     def __int__(self):
-        return self.int
+        return self.uuid.int
 
     def __add__(self, other: int) -> Self:
         if isinstance(other, int):
-            return self.new(int=self.int + other)
+            return attrs.evolve(self, uuid=self.uuid.int + other)
         return NotImplemented
 
-    def __sub__(self, other: Union[UUID, int]):
+    def __sub__(self, other: Union["ArithUUID", int]):
         if isinstance(other, int):
-            return self.new(int=self.int - other)
-        elif isinstance(other, UUID):
-            return self.int - other.int
+            return attrs.evolve(self, uuid=self.uuid.int - other)
+        elif isinstance(other, ArithUUID):
+            return self.uuid.int - other.uuid.int
+        return NotImplemented
+
+    def __eq__(self, other: object) -> bool:
+        if isinstance(other, ArithUUID):
+            return self.uuid == other.uuid
+        return NotImplemented
+
+    def __ne__(self, other: object) -> bool:
+        if isinstance(other, ArithUUID):
+            return self.uuid != other.uuid
+        return NotImplemented
+
+    def __gt__(self, other: object) -> bool:
+        if isinstance(other, ArithUUID):
+            return self.uuid > other.uuid
+        return NotImplemented
+
+    def __lt__(self, other: object) -> bool:
+        if isinstance(other, ArithUUID):
+            return self.uuid < other.uuid
+        return NotImplemented
+
+    def __ge__(self, other: object) -> bool:
+        if isinstance(other, ArithUUID):
+            return self.uuid >= other.uuid
+        return NotImplemented
+
+    def __le__(self, other: object) -> bool:
+        if isinstance(other, ArithUUID):
+            return self.uuid <= other.uuid
         return NotImplemented
 
 
