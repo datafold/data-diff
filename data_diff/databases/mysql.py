@@ -157,3 +157,4 @@ class MySQL(ThreadedDatabase):
         if not self.thread_local.conn.is_connected():
             self.thread_local.conn.ping(reconnect=True, attempts=3, delay=5)
         return self._query_conn(self.thread_local.conn, sql_code)
+       
