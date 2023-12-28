@@ -19,7 +19,8 @@ from data_diff.databases.base import (
     ThreadedDatabase,
     import_helper,
     ConnectError,
-    BaseDialect, ThreadLocalInterpreter,
+    BaseDialect,
+    ThreadLocalInterpreter,
 )
 from data_diff.databases.base import (
     MD5_HEXDIGITS,
