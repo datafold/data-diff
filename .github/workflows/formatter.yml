@@ -1,31 +1,32 @@
 name: formatter
 on:
-  pull_request_target:
-    branches: [ master ]
+    pull_request:
+        branches: [ master ]
     
-  workflow_dispatch:
+    workflow_dispatch:
 
 jobs:
   linter_name:
     name: runner / ruff
     runs-on: ubuntu-latest
     steps:
-      - name: Checkout base code
-        uses: actions/checkout@v3
-
       - name: Checkout PR head
         uses: actions/checkout@v3
+        if: github.event_name == 'pull_request'
         with:
           repository: ${{ github.event.pull_request.head.repo.full_name }}
           ref: ${{ github.event.pull_request.head.ref }}
-          path: pr
-        
+
+      - name: Checkout Repo 
+        uses: actions/checkout@v3
+        if: github.event_name == 'workflow_dispatch'
+
       - name: Check files using the ruff formatter
         uses: chartboost/ruff-action@v1
         id: ruff_formatter
         with:
           args: format
-          
+
       - id: auto_commit
         name: Auto commit ruff formatting
         uses: stefanzweifel/git-auto-commit-action@v5
@@ -37,18 +38,10 @@ jobs:
         id: commit_failure
         run: echo "::set-output name=status::failure"
         if: ${{ steps.auto_commit.outcome == 'failure' }}
-        
+
       - name: Suggest Changes
         if: ${{ steps.commit_failure.outputs.status == 'failure' }}
-        uses: peter-evans/create-or-update-comment@v1
+        uses: chartboost/ruff-action@v1
+        id: ruff_formatter_suggestions
         with:
-          token: ${{ secrets.GITHUB_TOKEN }}
-          issue-number: ${{ github.event.pull_request.number }}
-          body: |
-            Here are some styling fixes:
-
-            ```diff
-            ${{ steps.ruff_formatter.outputs.diff }}
-            ```
-
-            To apply these changes, you can use the 'Commit suggestion' option.
+          args: format --diff
