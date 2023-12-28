@@ -34,8 +34,13 @@ jobs:
           commit_message: 'style fixes by ruff'
         continue-on-error: true
 
-      - name: Suggest Changes
+      - name: Set commit failure output
+        id: commit_failure
+        run: echo "::set-output name=status::failure"
         if: ${{ steps.auto_commit.outcome == 'failure' }}
+        
+      - name: Suggest Changes
+        if: ${{ steps.commit_failure.outputs.status == 'failure' }}
         uses: peter-evans/create-or-update-comment@v1
         with:
           token: ${{ secrets.GITHUB_TOKEN }}
