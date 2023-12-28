@@ -1,9 +1,9 @@
 name: formatter
 on:
-    pull_request:
-        branches: [ master ]
+  pull_request:
+    branches: [ master ]
     
-    workflow_dispatch:
+  workflow_dispatch:
 
 jobs:
   linter_name:
@@ -31,3 +31,19 @@ jobs:
         uses: stefanzweifel/git-auto-commit-action@v5
         with:
           commit_message: 'style fixes by ruff'
+        continue-on-error: true
+
+      - name: Suggest Changes
+        uses: peter-evans/create-or-update-comment@v1
+        if: ${{ failure() }}
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+          issue-number: ${{ github.event.pull_request.number }}
+          body: |
+            Here are some styling fixes:
+
+            ```diff
+            ${{ steps.ruff_formatter.outputs.diff }}
+            ```
+
+            To apply these changes, you can use the 'Commit suggestion' option.
