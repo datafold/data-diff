@@ -152,4 +152,4 @@ class TestSpecialCharacterPassword(unittest.TestCase):
         db_url = f"postgresql://{db_config['user']}:{db_config['password']}@{db_config['host']}:{db_config['port']}/{db_config['dbname']}"
 
         connection_verified = connect(db_url)
-        assert connection_verified._args.get('password') == password
+        assert connection_verified._args.get("password") == password
