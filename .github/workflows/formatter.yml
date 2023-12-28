@@ -21,27 +21,25 @@ jobs:
         uses: actions/checkout@v3
         if: github.event_name == 'workflow_dispatch'
 
-      - name: Check files using the ruff formatter
+      # This is used for forked PRs as write permissions are required to format files
+      - name: Suggest ruff formatting
+        if: ${{ github.event.pull_request.head.repo.fork == true }}
+        uses: chartboost/ruff-action@v1
+        id: ruff_formatter_suggestions
+        with:
+          args: format --diff
+
+      # This only runs if the PR is NOT from a forked repo
+      - name: Format files using ruff
+        if: ${{ github.event.pull_request.head.repo.fork == false }}
         uses: chartboost/ruff-action@v1
         id: ruff_formatter
         with:
           args: format
 
-      - id: auto_commit
-        name: Auto commit ruff formatting
+      # This only runs if the PR is NOT from a forked repo
+      - name: Auto commit ruff formatting
+        if: ${{ github.event.pull_request.head.repo.fork == false }}
         uses: stefanzweifel/git-auto-commit-action@v5
         with:
           commit_message: 'style fixes by ruff'
-        continue-on-error: true
-
-      - name: Set commit failure output
-        id: commit_failure
-        run: echo "::set-output name=status::failure"
-        if: ${{ steps.auto_commit.outcome == 'failure' }}
-
-      - name: Suggest Changes
-        if: ${{ steps.commit_failure.outputs.status == 'failure' }}
-        uses: chartboost/ruff-action@v1
-        id: ruff_formatter_suggestions
-        with:
-          args: format --diff
