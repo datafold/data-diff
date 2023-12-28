@@ -27,15 +27,16 @@ jobs:
         with:
           args: format
 
-      - name: Auto commit ruff formatting
+      - id: auto_commit
+        name: Auto commit ruff formatting
         uses: stefanzweifel/git-auto-commit-action@v5
         with:
           commit_message: 'style fixes by ruff'
         continue-on-error: true
 
       - name: Suggest Changes
+        if: ${{ steps.auto_commit.outcome == 'failure' }}
         uses: peter-evans/create-or-update-comment@v1
-        if: ${{ failure() }}
         with:
           token: ${{ secrets.GITHUB_TOKEN }}
           issue-number: ${{ github.event.pull_request.number }}
