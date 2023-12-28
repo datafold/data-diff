@@ -21,13 +21,25 @@ jobs:
         uses: actions/checkout@v3
         if: github.event_name == 'workflow_dispatch'
 
-      - name: Check files using the ruff formatter
+      # This is used for forked PRs as write permissions are required to format files
+      - name: Run and commit changes with `ruff format .` locally on your forked branch to fix errors if they appear
+        if: ${{ github.event.pull_request.head.repo.fork == true }}
+        uses: chartboost/ruff-action@v1
+        id: ruff_formatter_suggestions
+        with:
+          args: format --diff
+
+      # This only runs if the PR is NOT from a forked repo
+      - name: Format files using ruff
+        if: ${{ github.event.pull_request.head.repo.fork == false }}
         uses: chartboost/ruff-action@v1
         id: ruff_formatter
         with:
           args: format
 
+      # This only runs if the PR is NOT from a forked repo
       - name: Auto commit ruff formatting
+        if: ${{ github.event.pull_request.head.repo.fork == false }}
         uses: stefanzweifel/git-auto-commit-action@v5
         with:
           commit_message: 'style fixes by ruff'
