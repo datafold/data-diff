@@ -29,6 +29,10 @@ jobs:
         with:
           args: format --diff
 
+      - name: Error Message
+        if: ${{ steps.ruff_formatter_suggestions.outcome == 'failure' }}
+        run: echo "Run `ruff format .` in your forked branch and commit those changes to fix this error"
+
       # This only runs if the PR is NOT from a forked repo
       - name: Format files using ruff
         if: ${{ github.event.pull_request.head.repo.fork == false }}
