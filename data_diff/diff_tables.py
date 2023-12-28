@@ -300,7 +300,8 @@ class TableDiffer(ThreadBase, ABC):
         # Start with the first completed value, so we don't waste time waiting
         min_key1, max_key1 = self._parse_key_range_result(key_types1, next(key_ranges))
 
-        btable1, btable2 = [t.new_key_bounds(min_key=min_key1, max_key=max_key1) for t in (table1, table2)]
+        btable1 = table1.new_key_bounds(min_key=min_key1, max_key=max_key1, key_types=key_types1)
+        btable2 = table2.new_key_bounds(min_key=min_key1, max_key=max_key1, key_types=key_types2)
 
         logger.info(
             f"Diffing segments at key-range: {btable1.min_key}..{btable2.max_key}. "
@@ -324,7 +325,8 @@ class TableDiffer(ThreadBase, ABC):
         # └──┴──────┴──┘
         # Overall, the max number of new regions in this 2nd pass is 3^|k| - 1
 
-        min_key2, max_key2 = self._parse_key_range_result(key_types1, next(key_ranges))
+        # Note: python types can be the same, but the rendering parameters (e.g. casing) can differ.
+        min_key2, max_key2 = self._parse_key_range_result(key_types2, next(key_ranges))
 
         points = [list(sorted(p)) for p in safezip(min_key1, min_key2, max_key1, max_key2)]
         box_mesh = create_mesh_from_points(*points)
@@ -332,8 +334,9 @@ class TableDiffer(ThreadBase, ABC):
         new_regions = [(p1, p2) for p1, p2 in box_mesh if p1 < p2 and not (p1 >= min_key1 and p2 <= max_key1)]
 
         for p1, p2 in new_regions:
-            extra_tables = [t.new_key_bounds(min_key=p1, max_key=p2) for t in (table1, table2)]
-            ti.submit(self._bisect_and_diff_segments, ti, *extra_tables, info_tree, priority=999)
+            extra_table1 = table1.new_key_bounds(min_key=p1, max_key=p2, key_types=key_types1)
+            extra_table2 = table2.new_key_bounds(min_key=p1, max_key=p2, key_types=key_types2)
+            ti.submit(self._bisect_and_diff_segments, ti, extra_table1, extra_table2, info_tree, priority=999)
 
         return ti
 

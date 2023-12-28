@@ -135,8 +135,10 @@ class ArithString:
         return [self.new(int=i) for i in checkpoints]
 
 
-def _any_to_uuid(v: Union[str, int, UUID]) -> UUID:
-    if isinstance(v, UUID):
+def _any_to_uuid(v: Union[str, int, UUID, "ArithUUID"]) -> UUID:
+    if isinstance(v, ArithUUID):
+        return v.uuid
+    elif isinstance(v, UUID):
         return v
     elif isinstance(v, str):
         return UUID(v)

@@ -182,6 +182,8 @@ class IKey(ABC):
         "Return the equivalent Python type of the key"
 
     def make_value(self, value):
+        if isinstance(value, self.python_type):
+            return value
         return self.python_type(value)
 
 
@@ -237,9 +239,6 @@ class String_Alphanum(ColType_Alphanum, StringType):
         except ValueError:
             return False
 
-    def make_value(self, value):
-        return self.python_type(value)
-
 
 @attrs.define(frozen=True)
 class String_VaryingAlphanum(String_Alphanum):
@@ -251,6 +250,8 @@ class String_FixedAlphanum(String_Alphanum):
     length: int
 
     def make_value(self, value):
+        if isinstance(value, self.python_type):
+            return value
         if len(value) != self.length:
             raise ValueError(f"Expected alphanumeric value of length {self.length}, but got '{value}'.")
         return self.python_type(value, max_len=self.length)
