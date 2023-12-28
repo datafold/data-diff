@@ -22,16 +22,12 @@ jobs:
         if: github.event_name == 'workflow_dispatch'
 
       # This is used for forked PRs as write permissions are required to format files
-      - name: Suggest ruff formatting
+      - name: Suggest ruff formatting (you must run and commit changes with `ruff format .` locally on your forked branch to fix errors if they appear)
         if: ${{ github.event.pull_request.head.repo.fork == true }}
         uses: chartboost/ruff-action@v1
         id: ruff_formatter_suggestions
         with:
           args: format --diff
-
-      - name: Error Message
-        if: ${{ steps.ruff_formatter_suggestions.outcome == 'failure' }}
-        run: echo "Run `ruff format .` in your forked branch and commit those changes to fix this error"
 
       # This only runs if the PR is NOT from a forked repo
       - name: Format files using ruff
