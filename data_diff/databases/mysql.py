@@ -19,7 +19,7 @@ from data_diff.databases.base import (
     ThreadedDatabase,
     import_helper,
     ConnectError,
-    BaseDialect, 
+    BaseDialect,
     ThreadLocalInterpreter,
 )
 from data_diff.databases.base import (
