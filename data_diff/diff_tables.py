@@ -1,12 +1,12 @@
 """Provides classes for performing a table diff
 """
-
+import threading
 import time
 from abc import ABC, abstractmethod
 from enum import Enum
 from contextlib import contextmanager
 from operator import methodcaller
-from typing import Dict, Tuple, Iterator, Optional
+from typing import Dict, Set, Tuple, Iterator, Optional
 from concurrent.futures import ThreadPoolExecutor, as_completed
 
 import attrs
@@ -184,6 +184,10 @@ class TableDiffer(ThreadBase, ABC):
     bisection_factor = 32
     stats: dict = {}
 
+    ignored_columns1: Set[str] = attrs.field(factory=set)
+    ignored_columns2: Set[str] = attrs.field(factory=set)
+    _ignored_columns_lock: threading.Lock = attrs.field(factory=threading.Lock, init=False)
+
     def diff_tables(self, table1: TableSegment, table2: TableSegment, info_tree: InfoTree = None) -> DiffResultWrapper:
         """Diff the given tables.
 
@@ -353,6 +357,11 @@ class TableDiffer(ThreadBase, ABC):
         biggest_table = max(table1, table2, key=methodcaller("approximate_size"))
         checkpoints = biggest_table.choose_checkpoints(self.bisection_factor - 1)
 
+        # Get it thread-safe, to avoid segment misalignment because of bad timing.
+        with self._ignored_columns_lock:
+            table1 = attrs.evolve(table1, ignored_columns=frozenset(self.ignored_columns1))
+            table2 = attrs.evolve(table2, ignored_columns=frozenset(self.ignored_columns2))
+
         # Create new instances of TableSegment between each checkpoint
         segmented1 = table1.segment_by_checkpoints(checkpoints)
         segmented2 = table2.segment_by_checkpoints(checkpoints)
@@ -363,3 +372,24 @@ class TableDiffer(ThreadBase, ABC):
             ti.submit(
                 self._diff_segments, ti, t1, t2, info_node, max_rows, level + 1, i + 1, len(segmented1), priority=level
             )
+
+    def ignore_column(self, column_name1: str, column_name2: str) -> None:
+        """
+        Ignore the column (by name on sides A & B) in md5s & diffs from now on.
+
+        This affects 2 places:
+
+        - The columns are not checksumed for new(!) segments.
+        - The columns are ignored in in-memory diffing for running segments.
+
+        The columns are never ignored in the fetched values, whether they are
+        the same or different — for data consistency.
+
+        Use this feature to collect relatively well-represented differences
+        across all columns if one of them is highly different in the beginning
+        of a table (as per the order of segmentation/bisection). Otherwise,
+        that one column might easily hit the limit and stop the whole diff.
+        """
+        with self._ignored_columns_lock:
+            self.ignored_columns1.add(column_name1)
+            self.ignored_columns2.add(column_name2)
