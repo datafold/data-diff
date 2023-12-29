@@ -153,5 +153,3 @@ class TestSpecialCharacterPassword(unittest.TestCase):
 
         connection_verified = connect(db_url)
         assert connection_verified._args.get("password") == password
-
-
