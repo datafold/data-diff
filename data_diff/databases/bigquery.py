@@ -75,6 +75,8 @@ class Dialect(BaseDialect):
     }
     TYPE_ARRAY_RE = re.compile(r"ARRAY<(.+)>")
     TYPE_STRUCT_RE = re.compile(r"STRUCT<(.+)>")
+    # [BIG]NUMERIC, [BIG]NUMERIC(precision, scale), [BIG]NUMERIC(precision)
+    TYPE_NUMERIC_RE = re.compile(r'^((BIG)?NUMERIC)(?:\((\d+)(?:, (\d+))?\))?$')
     # https://cloud.google.com/bigquery/docs/reference/standard-sql/data-types#parameterized_decimal_type
     # The default scale is 9, which means a number can have up to 9 digits after the decimal point.
     DEFAULT_NUMERIC_PRECISION = 9
@@ -103,20 +105,33 @@ class Dialect(BaseDialect):
         **kwargs: Any,  # pass-through args
     ) -> ColType:
         col_type = super().parse_type(table_path, col_name, type_repr, *args, **kwargs)
-        if isinstance(col_type, UnknownColType):
-            m = self.TYPE_ARRAY_RE.fullmatch(type_repr)
-            if m:
-                item_type = self.parse_type(table_path, col_name, m.group(1), *args, **kwargs)
-                col_type = Array(item_type=item_type)
+        if not isinstance(col_type, UnknownColType):
+            return col_type
 
-            # We currently ignore structs' structure, but later can parse it too. Examples:
-            # - STRUCT<INT64, STRING(10)> (unnamed)
-            # - STRUCT<foo INT64, bar STRING(10)> (named)
-            # - STRUCT<foo INT64, bar ARRAY<INT64>> (with complex fields)
-            # - STRUCT<foo INT64, bar STRUCT<a INT64, b INT64>> (nested)
-            m = self.TYPE_STRUCT_RE.fullmatch(type_repr)
-            if m:
-                col_type = Struct()
+        m = self.TYPE_ARRAY_RE.fullmatch(type_repr)
+        if m:
+            item_type = self.parse_type(table_path, col_name, m.group(1), *args, **kwargs)
+            col_type = Array(item_type=item_type)
+            return col_type
+
+        # We currently ignore structs' structure, but later can parse it too. Examples:
+        # - STRUCT<INT64, STRING(10)> (unnamed)
+        # - STRUCT<foo INT64, bar STRING(10)> (named)
+        # - STRUCT<foo INT64, bar ARRAY<INT64>> (with complex fields)
+        # - STRUCT<foo INT64, bar STRUCT<a INT64, b INT64>> (nested)
+        m = self.TYPE_STRUCT_RE.fullmatch(type_repr)
+        if m:
+            col_type = Struct()
+            return col_type
+
+        m = self.TYPE_NUMERIC_RE.fullmatch(type_repr)
+        if m:
+            precision = int(m.group(3)) if m.group(3) else None
+            scale = int(m.group(4)) if m.group(4) else None
+            col_type = Decimal(
+                precision=scale if scale else 0 if precision else 9
+            )
+            return col_type
 
         return col_type
 
