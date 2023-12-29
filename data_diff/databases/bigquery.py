@@ -76,7 +76,7 @@ class Dialect(BaseDialect):
     TYPE_ARRAY_RE = re.compile(r"ARRAY<(.+)>")
     TYPE_STRUCT_RE = re.compile(r"STRUCT<(.+)>")
     # [BIG]NUMERIC, [BIG]NUMERIC(precision, scale), [BIG]NUMERIC(precision)
-    TYPE_NUMERIC_RE = re.compile(r'^((BIG)?NUMERIC)(?:\((\d+)(?:, (\d+))?\))?$')
+    TYPE_NUMERIC_RE = re.compile(r"^((BIG)?NUMERIC)(?:\((\d+)(?:, (\d+))?\))?$")
     # https://cloud.google.com/bigquery/docs/reference/standard-sql/data-types#parameterized_decimal_type
     # The default scale is 9, which means a number can have up to 9 digits after the decimal point.
     DEFAULT_NUMERIC_PRECISION = 9
@@ -128,9 +128,7 @@ class Dialect(BaseDialect):
         if m:
             precision = int(m.group(3)) if m.group(3) else None
             scale = int(m.group(4)) if m.group(4) else None
-            col_type = Decimal(
-                precision=scale if scale else 0 if precision else 9
-            )
+            col_type = Decimal(precision=scale if scale else 0 if precision else 9)
             return col_type
 
         return col_type
