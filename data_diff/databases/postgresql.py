@@ -191,8 +191,21 @@ class PostgreSQL(ThreadedDatabase):
             info_schema_path.insert(0, database)
 
         return (
-            f"SELECT column_name, data_type, datetime_precision, numeric_precision, numeric_scale FROM {'.'.join(info_schema_path)} "
-            f"WHERE table_name = '{table}' AND table_schema = '{schema}'"
+            f"""
+            SELECT column_name, data_type, datetime_precision,
+                CASE
+                    WHEN data_type = 'numeric'
+                        THEN coalesce(numeric_precision, 131072 + 16383)
+                    ELSE numeric_precision
+                END AS numeric_precision,
+                CASE
+                    WHEN data_type = 'numeric'
+                        THEN coalesce(numeric_scale, 16383)
+                    ELSE numeric_scale
+                END AS numeric_scale
+                FROM {'.'.join(info_schema_path)}
+            WHERE table_name = '{table}' AND table_schema = '{schema}'
+            """
         )
 
     def select_table_unique_columns(self, path: DbPath) -> str:
