@@ -1,5 +1,5 @@
 import time
-from typing import List, Optional, Tuple
+from typing import Container, List, Optional, Tuple
 import logging
 from itertools import product
 
@@ -114,6 +114,7 @@ class TableSegment:
     key_columns: Tuple[str, ...]
     update_column: Optional[str] = None
     extra_columns: Tuple[str, ...] = ()
+    ignored_columns: Container[str] = frozenset()
 
     # Restrict the segment
     min_key: Optional[Vector] = None
@@ -179,7 +180,10 @@ class TableSegment:
 
     def get_values(self) -> list:
         "Download all the relevant values of the segment from the database"
-        select = self.make_select().select(*self._relevant_columns_repr)
+
+        # Fetch all the original columns, even if some were later excluded from checking.
+        fetched_cols = [NormalizeAsString(this[c]) for c in self.relevant_columns]
+        select = self.make_select().select(*fetched_cols)
         return self.database.query(select, List[Tuple])
 
     def choose_checkpoints(self, count: int) -> List[List[DbKey]]:
@@ -221,18 +225,18 @@ class TableSegment:
 
         return list(self.key_columns) + extras
 
-    @property
-    def _relevant_columns_repr(self) -> List[Expr]:
-        return [NormalizeAsString(this[c]) for c in self.relevant_columns]
-
     def count(self) -> int:
         """Count how many rows are in the segment, in one pass."""
         return self.database.query(self.make_select().select(Count()), int)
 
     def count_and_checksum(self) -> Tuple[int, int]:
         """Count and checksum the rows in the segment, in one pass."""
+
+        checked_columns = [c for c in self.relevant_columns if c not in self.ignored_columns]
+        cols = [NormalizeAsString(this[c]) for c in checked_columns]
+
         start = time.monotonic()
-        q = self.make_select().select(Count(), Checksum(self._relevant_columns_repr))
+        q = self.make_select().select(Count(), Checksum(cols))
         count, checksum = self.database.query(q, tuple)
         duration = time.monotonic() - start
         if duration > RECOMMENDED_CHECKSUM_DURATION:
