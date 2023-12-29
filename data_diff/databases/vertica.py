@@ -56,6 +56,9 @@ class Dialect(BaseDialect):
         "boolean": Boolean,
     }
 
+    # https://www.vertica.com/docs/9.3.x/HTML/Content/Authoring/SQLReferenceManual/DataTypes/Numeric/NUMERIC.htm#Default
+    DEFAULT_NUMERIC_PRECISION = 15
+
     def quote(self, s: str):
         return f'"{s}"'
 
