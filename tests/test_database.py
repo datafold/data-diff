@@ -141,7 +141,7 @@ class TestNumericPrecisionParsing(unittest.TestCase):
     def test_specified_precision(self):
         name = "tbl_" + random_table_suffix()
         db = get_conn(self.db_cls)
-        tbl = table(name, schema={"value": "NUMERIC(10, 2)"})
+        tbl = table(name, schema={"value": "DECIMAL(10, 2)"})
         db.query(tbl.create())
         t = table(name)
         raw_schema = db.query_table_schema(t.path)
@@ -151,7 +151,7 @@ class TestNumericPrecisionParsing(unittest.TestCase):
     def test_specified_zero_precision(self):
         name = "tbl_" + random_table_suffix()
         db = get_conn(self.db_cls)
-        tbl = table(name, schema={"value": "NUMERIC(10)"})
+        tbl = table(name, schema={"value": "DECIMAL(10)"})
         db.query(tbl.create())
         t = table(name)
         raw_schema = db.query_table_schema(t.path)
@@ -161,7 +161,7 @@ class TestNumericPrecisionParsing(unittest.TestCase):
     def test_default_precision(self):
         name = "tbl_" + random_table_suffix()
         db = get_conn(self.db_cls)
-        tbl = table(name, schema={"value": "NUMERIC"})
+        tbl = table(name, schema={"value": "DECIMAL"})
         db.query(tbl.create())
         t = table(name)
         raw_schema = db.query_table_schema(t.path)
