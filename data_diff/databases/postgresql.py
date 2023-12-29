@@ -190,8 +190,7 @@ class PostgreSQL(ThreadedDatabase):
         if database:
             info_schema_path.insert(0, database)
 
-        return (
-            f"""
+        return f"""
             SELECT column_name, data_type, datetime_precision,
                 CASE
                     WHEN data_type = 'numeric'
@@ -206,7 +205,6 @@ class PostgreSQL(ThreadedDatabase):
                 FROM {'.'.join(info_schema_path)}
             WHERE table_name = '{table}' AND table_schema = '{schema}'
             """
-        )
 
     def select_table_unique_columns(self, path: DbPath) -> str:
         database, schema, table = self._normalize_table_path(path)

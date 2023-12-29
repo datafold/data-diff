@@ -146,7 +146,7 @@ class TestNumericPrecisionParsing(unittest.TestCase):
         t = table(name)
         raw_schema = db.query_table_schema(t.path)
         schema = db._process_table_schema(t.path, raw_schema)
-        self.assertEqual(schema["value"].precision,  2)
+        self.assertEqual(schema["value"].precision, 2)
 
     def test_specified_zero_precision(self):
         name = "tbl_" + random_table_suffix()
