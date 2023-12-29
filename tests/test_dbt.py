@@ -46,7 +46,7 @@ class TestDbtDiffer(unittest.TestCase):
             assert diff_string.count("  Rows Added    Rows Removed") == 1
 
     @unittest.skipIf(
-        os.environ.get('MOTHERDUCK_TOKEN') is None,
+        os.environ.get("MOTHERDUCK_TOKEN") is None,
         "MOTHERDUCK_TOKEN doesn't exist if this is run from a forked branch pull request",
     )
     def test_integration_motherduck_dbt(self):
