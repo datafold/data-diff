@@ -45,6 +45,12 @@ class PostgresqlDialect(BaseDialect):
     SUPPORTS_PRIMARY_KEY: ClassVar[bool] = True
     SUPPORTS_INDEXES = True
 
+    # https://www.postgresql.org/docs/current/datatype-numeric.html#DATATYPE-NUMERIC-DECIMAL
+    # without any precision or scale creates an “unconstrained numeric” column
+    # in which numeric values of any length can be stored, up to the implementation limits.
+    # https://www.postgresql.org/docs/current/datatype-numeric.html#DATATYPE-NUMERIC-TABLE
+    DEFAULT_NUMERIC_PRECISION = 16383
+
     TYPE_CLASSES: ClassVar[Dict[str, Type[ColType]]] = {
         # Timestamps
         "timestamp with time zone": TimestampTZ,

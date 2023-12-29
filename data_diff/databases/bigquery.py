@@ -75,6 +75,9 @@ class Dialect(BaseDialect):
     }
     TYPE_ARRAY_RE = re.compile(r"ARRAY<(.+)>")
     TYPE_STRUCT_RE = re.compile(r"STRUCT<(.+)>")
+    # https://cloud.google.com/bigquery/docs/reference/standard-sql/data-types#parameterized_decimal_type
+    # The default scale is 9, which means a number can have up to 9 digits after the decimal point.
+    DEFAULT_NUMERIC_PRECISION = 9
 
     def random(self) -> str:
         return "RAND()"

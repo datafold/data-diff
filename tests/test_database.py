@@ -134,3 +134,36 @@ class TestThreePartIds(unittest.TestCase):
             d = db.query_table_schema(part.path)
             assert len(d) == 1
             db.query(part.drop())
+
+
+@test_each_database
+class TestNumericPrecisionParsing(unittest.TestCase):
+    def test_specified_precision(self):
+        name = "tbl_" + random_table_suffix()
+        db = get_conn(self.db_cls)
+        tbl = table(name, schema={"value": "NUMERIC(10, 2)"})
+        db.query(tbl.create())
+        t = table(name)
+        raw_schema = db.query_table_schema(t.path)
+        schema = db._process_table_schema(t.path, raw_schema)
+        self.assertEqual(schema["value"].precision,  2)
+
+    def test_specified_zero_precision(self):
+        name = "tbl_" + random_table_suffix()
+        db = get_conn(self.db_cls)
+        tbl = table(name, schema={"value": "NUMERIC(10)"})
+        db.query(tbl.create())
+        t = table(name)
+        raw_schema = db.query_table_schema(t.path)
+        schema = db._process_table_schema(t.path, raw_schema)
+        self.assertEqual(schema["value"].precision, 0)
+
+    def test_default_precision(self):
+        name = "tbl_" + random_table_suffix()
+        db = get_conn(self.db_cls)
+        tbl = table(name, schema={"value": "NUMERIC"})
+        db.query(tbl.create())
+        t = table(name)
+        raw_schema = db.query_table_schema(t.path)
+        schema = db._process_table_schema(t.path, raw_schema)
+        self.assertEqual(schema["value"].precision, db.dialect.DEFAULT_NUMERIC_PRECISION)
