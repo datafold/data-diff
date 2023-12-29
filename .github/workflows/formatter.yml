@@ -10,12 +10,23 @@ jobs:
     name: runner / ruff
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v3
+      - name: Checkout PR head
+        uses: actions/checkout@v3
+        if: github.event_name == 'pull_request'
+        with:
+          repository: ${{ github.event.pull_request.head.repo.full_name }}
+          ref: ${{ github.event.pull_request.head.ref }}
+
+      - name: Checkout Repo 
+        uses: actions/checkout@v3
+        if: github.event_name == 'workflow_dispatch'
+
       - name: Check files using the ruff formatter
         uses: chartboost/ruff-action@v1
         id: ruff_formatter
         with:
           args: format
+
       - name: Auto commit ruff formatting
         uses: stefanzweifel/git-auto-commit-action@v5
         with:
