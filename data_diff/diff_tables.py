@@ -6,7 +6,7 @@ from abc import ABC, abstractmethod
 from enum import Enum
 from contextlib import contextmanager
 from operator import methodcaller
-from typing import Dict, Set, List, Tuple, Iterator, Optional
+from typing import Dict, Set, List, Tuple, Iterator, Optional, Union
 from concurrent.futures import ThreadPoolExecutor, as_completed
 
 import attrs
@@ -182,6 +182,8 @@ class DiffResultWrapper:
 
 @attrs.define(frozen=False)
 class TableDiffer(ThreadBase, ABC):
+    INFO_TREE_CLASS = InfoTree
+
     bisection_factor = 32
     stats: dict = {}
 
@@ -204,7 +206,8 @@ class TableDiffer(ThreadBase, ABC):
             Where `row` is a tuple of values, corresponding to the diffed columns.
         """
         if info_tree is None:
-            info_tree = InfoTree(SegmentInfo([table1, table2]))
+            segment_info = self.INFO_TREE_CLASS.SEGMENT_INFO_CLASS([table1, table2])
+            info_tree = self.INFO_TREE_CLASS(segment_info)
         return DiffResultWrapper(self._diff_tables_wrapper(table1, table2, info_tree), info_tree, self.stats)
 
     def _diff_tables_wrapper(self, table1: TableSegment, table2: TableSegment, info_tree: InfoTree) -> DiffResult:
@@ -259,7 +262,7 @@ class TableDiffer(ThreadBase, ABC):
 
     def _diff_tables_root(
         self, table1: TableSegment, table2: TableSegment, info_tree: InfoTree
-    ) -> DiffResult | DiffResultList:
+    ) -> Union[DiffResult, DiffResultList]:
         return self._bisect_and_diff_tables(table1, table2, info_tree)
 
     @abstractmethod
