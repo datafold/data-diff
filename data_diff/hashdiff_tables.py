@@ -2,9 +2,10 @@ import os
 from numbers import Number
 import logging
 from collections import defaultdict
-from typing import Iterator
+from typing import Any, Collection, Dict, Iterator, List, Sequence, Set, Tuple
 
 import attrs
+from typing_extensions import Literal
 
 from data_diff.abcs.database_types import ColType_UUID, NumericType, PrecisionType, StringType, Boolean, JSON
 from data_diff.info_tree import InfoTree
@@ -20,25 +21,42 @@ DEFAULT_BISECTION_FACTOR = 32
 
 logger = logging.getLogger("hashdiff_tables")
 
+# Just for local readability: TODO: later switch to real type declarations of these.
+_Op = Literal["+", "-"]
+_PK = Any
+_Row = Tuple[Any]
 
-def diff_sets(a: list, b: list, json_cols: dict = None) -> Iterator:
-    sa = set(a)
-    sb = set(b)
+
+def diff_sets(
+    a: Sequence[_Row],
+    b: Sequence[_Row],
+    *,
+    json_cols: dict = None,
+    columns1: Sequence[str],
+    columns2: Sequence[str],
+    ignored_columns1: Collection[str],
+    ignored_columns2: Collection[str],
+) -> Iterator:
+    # Differ only by columns of interest (PKs+relevant-ignored). But yield with ignored ones!
+    sa: Set[_Row] = {tuple(val for col, val in safezip(columns1, row) if col not in ignored_columns1) for row in a}
+    sb: Set[_Row] = {tuple(val for col, val in safezip(columns2, row) if col not in ignored_columns2) for row in b}
 
     # The first item is always the key (see TableDiffer.relevant_columns)
     # TODO update when we add compound keys to hashdiff
-    d = defaultdict(list)
+    diffs_by_pks: Dict[_PK, List[Tuple[_Op, _Row]]] = defaultdict(list)
     for row in a:
-        if row not in sb:
-            d[row[0]].append(("-", row))
+        cutrow: _Row = tuple(val for col, val in zip(columns1, row) if col not in ignored_columns1)
+        if cutrow not in sb:
+            diffs_by_pks[row[0]].append(("-", row))
     for row in b:
-        if row not in sa:
-            d[row[0]].append(("+", row))
+        cutrow: _Row = tuple(val for col, val in zip(columns2, row) if col not in ignored_columns2)
+        if cutrow not in sa:
+            diffs_by_pks[row[0]].append(("+", row))
 
     warned_diff_cols = set()
-    for _k, v in sorted(d.items(), key=lambda i: i[0]):
+    for diffs in (diffs_by_pks[pk] for pk in sorted(diffs_by_pks)):
         if json_cols:
-            parsed_match, overriden_diff_cols = diffs_are_equiv_jsons(v, json_cols)
+            parsed_match, overriden_diff_cols = diffs_are_equiv_jsons(diffs, json_cols)
             if parsed_match:
                 to_warn = overriden_diff_cols - warned_diff_cols
                 for w in to_warn:
@@ -48,7 +66,7 @@ def diff_sets(a: list, b: list, json_cols: dict = None) -> Iterator:
                     )
                     warned_diff_cols.add(w)
                 continue
-        yield from v
+        yield from diffs
 
 
 @attrs.define(frozen=False)
@@ -201,7 +219,17 @@ class HashDiffer(TableDiffer):
                 for i, colname in enumerate(table1.extra_columns)
                 if isinstance(table1._schema[colname], JSON)
             }
-            diff = list(diff_sets(rows1, rows2, json_cols))
+            diff = list(
+                diff_sets(
+                    rows1,
+                    rows2,
+                    json_cols=json_cols,
+                    columns1=table1.relevant_columns,
+                    columns2=table2.relevant_columns,
+                    ignored_columns1=self.ignored_columns1,
+                    ignored_columns2=self.ignored_columns1,
+                )
+            )
 
             info_tree.info.set_diff(diff)
             info_tree.info.rowcounts = {1: len(rows1), 2: len(rows2)}

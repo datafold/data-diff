@@ -56,19 +56,24 @@ class ThreadedYielder(Iterable):
     _futures: deque
     _yield: deque = attrs.field(alias="_yield")  # Python keyword!
     _exception: Optional[None]
+    yield_list: bool
 
-    def __init__(self, max_workers: Optional[int] = None):
+    def __init__(self, max_workers: Optional[int] = None, yield_list: bool = False):
         super().__init__()
         self._pool = PriorityThreadPoolExecutor(max_workers)
         self._futures = deque()
         self._yield = deque()
         self._exception = None
+        self.yield_list = yield_list
 
     def _worker(self, fn, *args, **kwargs):
         try:
             res = fn(*args, **kwargs)
             if res is not None:
-                self._yield += res
+                if self.yield_list:
+                    self._yield.append(res)
+                else:
+                    self._yield += res
         except Exception as e:
             self._exception = e
 
