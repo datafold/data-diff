@@ -1,9 +1,11 @@
 import unittest
 
+from urllib.parse import quote
 from data_diff.queries.api import table, commit
 from data_diff import TableSegment, HashDiffer
 from data_diff import databases as db
-from tests.common import get_conn, random_table_suffix
+from tests.common import get_conn, random_table_suffix, connect
+from data_diff import connect_to_table
 
 
 class TestUUID(unittest.TestCase):
@@ -113,3 +115,41 @@ class Test100Fields(unittest.TestCase):
         id_ = diff[0][1][0]
         result = (id_,) + tuple("1" for x in range(100))
         self.assertEqual(diff, [("-", result)])
+
+
+class TestSpecialCharacterPassword(unittest.TestCase):
+    def setUp(self) -> None:
+        self.connection = get_conn(db.PostgreSQL)
+
+        table_suffix = random_table_suffix()
+
+        self.table_name = f"table{table_suffix}"
+        self.table = table(self.table_name)
+
+    def test_special_char_password(self):
+        password = "passw!!!@rd"
+        # Setup user with special character '@' in password
+        self.connection.query("DROP USER IF EXISTS test;", None)
+        self.connection.query(f"CREATE USER test WITH PASSWORD '{password}';", None)
+
+        password_quoted = quote(password)
+        db_config = {
+            "driver": "postgresql",
+            "host": "localhost",
+            "port": 5432,
+            "dbname": "postgres",
+            "user": "test",
+            "password": password_quoted,
+        }
+
+        # verify pythonic connection method
+        connect_to_table(
+            db_config,
+            self.table_name,
+        )
+
+        # verify connection method with URL string unquoted after it's verified
+        db_url = f"postgresql://{db_config['user']}:{db_config['password']}@{db_config['host']}:{db_config['port']}/{db_config['dbname']}"
+
+        connection_verified = connect(db_url)
+        assert connection_verified._args.get("password") == password

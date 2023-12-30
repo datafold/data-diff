@@ -1,5 +1,5 @@
 import time
-from typing import Container, List, Optional, Tuple
+from typing import Container, Dict, List, Optional, Tuple
 import logging
 from itertools import product
 
@@ -10,7 +10,7 @@ from data_diff.utils import safezip, Vector
 from data_diff.utils import ArithString, split_space
 from data_diff.databases.base import Database
 from data_diff.abcs.database_types import DbPath, DbKey, DbTime
-from data_diff.schema import Schema, create_schema
+from data_diff.schema import RawColumnInfo, Schema, create_schema
 from data_diff.queries.extras import Checksum
 from data_diff.queries.api import Count, SKIP, table, this, Expr, min_, max_, Code
 from data_diff.queries.extras import ApplyFuncAndNormalizeAsString, NormalizeAsString
@@ -141,7 +141,7 @@ class TableSegment:
     def _where(self):
         return f"({self.where})" if self.where else None
 
-    def _with_raw_schema(self, raw_schema: dict) -> Self:
+    def _with_raw_schema(self, raw_schema: Dict[str, RawColumnInfo]) -> Self:
         schema = self.database._process_table_schema(self.table_path, raw_schema, self.relevant_columns, self._where())
         return self.new(schema=create_schema(self.database.name, self.table_path, schema, self.case_sensitive))
 
@@ -152,7 +152,7 @@ class TableSegment:
 
         return self._with_raw_schema(self.database.query_table_schema(self.table_path))
 
-    def get_schema(self):
+    def get_schema(self) -> Dict[str, RawColumnInfo]:
         return self.database.query_table_schema(self.table_path)
 
     def _make_key_range(self):
