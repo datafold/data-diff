@@ -43,7 +43,14 @@ def safezip(*args):
     return zip(*args)
 
 
-def is_uuid(u):
+UUID_PATTERN = re.compile(r"[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}", re.I)
+
+
+def is_uuid(u: str) -> bool:
+    # E.g., hashlib.md5(b'hello') is a 32-letter hex number, but not an UUID.
+    # It would fail UUID-like comparison (< & >) because of casing and dashes.
+    if not UUID_PATTERN.fullmatch(u):
+        return False
     try:
         UUID(u)
     except ValueError:
@@ -128,23 +135,75 @@ class ArithString:
         return [self.new(int=i) for i in checkpoints]
 
 
-# @attrs.define  # not as long as it inherits from UUID
-class ArithUUID(UUID, ArithString):
+def _any_to_uuid(v: Union[str, int, UUID, "ArithUUID"]) -> UUID:
+    if isinstance(v, ArithUUID):
+        return v.uuid
+    elif isinstance(v, UUID):
+        return v
+    elif isinstance(v, str):
+        return UUID(v)
+    elif isinstance(v, int):
+        return UUID(int=v)
+    else:
+        raise ValueError(f"Cannot convert a value to UUID: {v!r}")
+
+
+@attrs.define(frozen=True, eq=False, order=False)
+class ArithUUID(ArithString):
     "A UUID that supports basic arithmetic (add, sub)"
 
+    uuid: UUID = attrs.field(converter=_any_to_uuid)
+    lowercase: Optional[bool] = None
+    uppercase: Optional[bool] = None
+
+    def range(self, other: "ArithUUID", count: int) -> List[Self]:
+        assert isinstance(other, ArithUUID)
+        checkpoints = split_space(self.uuid.int, other.uuid.int, count)
+        return [attrs.evolve(self, uuid=i) for i in checkpoints]
+
     def __int__(self):
-        return self.int
+        return self.uuid.int
 
     def __add__(self, other: int) -> Self:
         if isinstance(other, int):
-            return self.new(int=self.int + other)
+            return attrs.evolve(self, uuid=self.uuid.int + other)
         return NotImplemented
 
-    def __sub__(self, other: Union[UUID, int]):
+    def __sub__(self, other: Union["ArithUUID", int]):
         if isinstance(other, int):
-            return self.new(int=self.int - other)
-        elif isinstance(other, UUID):
-            return self.int - other.int
+            return attrs.evolve(self, uuid=self.uuid.int - other)
+        elif isinstance(other, ArithUUID):
+            return self.uuid.int - other.uuid.int
+        return NotImplemented
+
+    def __eq__(self, other: object) -> bool:
+        if isinstance(other, ArithUUID):
+            return self.uuid == other.uuid
+        return NotImplemented
+
+    def __ne__(self, other: object) -> bool:
+        if isinstance(other, ArithUUID):
+            return self.uuid != other.uuid
+        return NotImplemented
+
+    def __gt__(self, other: object) -> bool:
+        if isinstance(other, ArithUUID):
+            return self.uuid > other.uuid
+        return NotImplemented
+
+    def __lt__(self, other: object) -> bool:
+        if isinstance(other, ArithUUID):
+            return self.uuid < other.uuid
+        return NotImplemented
+
+    def __ge__(self, other: object) -> bool:
+        if isinstance(other, ArithUUID):
+            return self.uuid >= other.uuid
+        return NotImplemented
+
+    def __le__(self, other: object) -> bool:
+        if isinstance(other, ArithUUID):
+            return self.uuid <= other.uuid
         return NotImplemented
 
 

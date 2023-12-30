@@ -182,6 +182,8 @@ class IKey(ABC):
         "Return the equivalent Python type of the key"
 
     def make_value(self, value):
+        if isinstance(value, self.python_type):
+            return value
         return self.python_type(value)
 
 
@@ -217,7 +219,14 @@ class Native_UUID(ColType_UUID):
 
 @attrs.define(frozen=True)
 class String_UUID(ColType_UUID, StringType):
-    pass
+    # Case is important for UUIDs stored as regular string, not native UUIDs stored as numbers.
+    # We slice them internally as numbers, but render them back to SQL as lower/upper case.
+    # None means we do not know for sure, behave as with False, but it might be unreliable.
+    lowercase: Optional[bool] = None
+    uppercase: Optional[bool] = None
+
+    def make_value(self, v: str) -> ArithUUID:
+        return self.python_type(v, lowercase=self.lowercase, uppercase=self.uppercase)
 
 
 @attrs.define(frozen=True)
@@ -230,9 +239,6 @@ class String_Alphanum(ColType_Alphanum, StringType):
         except ValueError:
             return False
 
-    def make_value(self, value):
-        return self.python_type(value)
-
 
 @attrs.define(frozen=True)
 class String_VaryingAlphanum(String_Alphanum):
@@ -244,6 +250,8 @@ class String_FixedAlphanum(String_Alphanum):
     length: int
 
     def make_value(self, value):
+        if isinstance(value, self.python_type):
+            return value
         if len(value) != self.length:
             raise ValueError(f"Expected alphanumeric value of length {self.length}, but got '{value}'.")
         return self.python_type(value, max_len=self.length)

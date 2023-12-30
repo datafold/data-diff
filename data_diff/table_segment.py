@@ -1,5 +1,5 @@
 import time
-from typing import Container, Dict, List, Optional, Tuple
+from typing import Container, Dict, List, Optional, Sequence, Tuple
 import logging
 from itertools import product
 
@@ -9,7 +9,7 @@ from typing_extensions import Self
 from data_diff.utils import safezip, Vector
 from data_diff.utils import ArithString, split_space
 from data_diff.databases.base import Database
-from data_diff.abcs.database_types import DbPath, DbKey, DbTime
+from data_diff.abcs.database_types import DbPath, DbKey, DbTime, IKey
 from data_diff.schema import RawColumnInfo, Schema, create_schema
 from data_diff.queries.extras import Checksum
 from data_diff.queries.api import Count, SKIP, table, this, Expr, min_, max_, Code
@@ -205,7 +205,7 @@ class TableSegment:
         """Creates a copy of the instance using 'replace()'"""
         return attrs.evolve(self, **kwargs)
 
-    def new_key_bounds(self, min_key: Vector, max_key: Vector) -> Self:
+    def new_key_bounds(self, min_key: Vector, max_key: Vector, *, key_types: Optional[Sequence[IKey]] = None) -> Self:
         if self.min_key is not None:
             assert self.min_key <= min_key, (self.min_key, min_key)
             assert self.min_key < max_key
@@ -213,6 +213,13 @@ class TableSegment:
         if self.max_key is not None:
             assert min_key < self.max_key
             assert max_key <= self.max_key
+
+        # If asked, enforce the PKs to proper types, mainly to meta-params of the relevant side,
+        # so that we do not leak e.g. casing of UUIDs from side A to side B and vice versa.
+        # If not asked, keep the meta-params of the keys as is (assume them already casted).
+        if key_types is not None:
+            min_key = Vector(type.make_value(val) for type, val in safezip(key_types, min_key))
+            max_key = Vector(type.make_value(val) for type, val in safezip(key_types, max_key))
 
         return attrs.evolve(self, min_key=min_key, max_key=max_key)
 
