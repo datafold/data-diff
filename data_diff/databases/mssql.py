@@ -94,7 +94,8 @@ class Dialect(BaseDialect):
         WHERE name = CURRENT_USER"""
 
     def to_string(self, s: str):
-        return f"CONVERT(varchar, {s})"
+        # Both convert(varchar(max), …) and convert(text, …) do work.
+        return f"CONVERT(VARCHAR(MAX), {s})"
 
     def type_repr(self, t) -> str:
         try:
