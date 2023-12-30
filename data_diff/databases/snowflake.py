@@ -164,7 +164,8 @@ class Snowflake(Database):
             info_schema_path.insert(0, database)
 
         return (
-            "SELECT column_name, data_type, datetime_precision, numeric_precision, numeric_scale "
+            "SELECT column_name, data_type, datetime_precision, numeric_precision, numeric_scale"
+            "   , coalesce(collation_name, 'utf8') "
             f"FROM {'.'.join(info_schema_path)} "
             f"WHERE table_name = '{name}' AND table_schema = '{schema}'"
         )
