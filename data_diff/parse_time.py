@@ -33,7 +33,7 @@ TIME_RE = re.compile(r"(\d+)([a-z]+)")
 UNITS_STR = ", ".join(sorted(TIME_UNITS.keys()))
 
 
-def string_similarity(a, b):
+def string_similarity(a, b) -> SequenceMatcher:
     return SequenceMatcher(None, a, b).ratio()
 
 

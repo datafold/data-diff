@@ -26,7 +26,7 @@ def join(*tables: ITable) -> Join:
     return Join(tables)
 
 
-def leftjoin(*tables: ITable):
+def leftjoin(*tables: ITable) -> Join:
     """Left-joins a sequence of table expressions.
 
     See Also: ``join()``
@@ -34,7 +34,7 @@ def leftjoin(*tables: ITable):
     return Join(tables, "LEFT")
 
 
-def rightjoin(*tables: ITable):
+def rightjoin(*tables: ITable) -> Join:
     """Right-joins a sequence of table expressions.
 
     See Also: ``join()``
@@ -42,7 +42,7 @@ def rightjoin(*tables: ITable):
     return Join(tables, "RIGHT")
 
 
-def outerjoin(*tables: ITable):
+def outerjoin(*tables: ITable) -> Join:
     """Outer-joins a sequence of table expressions.
 
     See Also: ``join()``
@@ -50,7 +50,7 @@ def outerjoin(*tables: ITable):
     return Join(tables, "FULL OUTER")
 
 
-def cte(expr: Expr, *, name: Optional[str] = None, params: Sequence[str] = None):
+def cte(expr: Expr, *, name: Optional[str] = None, params: Sequence[str] = None) -> Cte:
     """Define a CTE"""
     return Cte(expr, name, params)
 
@@ -72,7 +72,7 @@ def table(*path: str, schema: Union[dict, CaseAwareMapping] = None) -> TablePath
     return TablePath(path, schema)
 
 
-def or_(*exprs: Expr):
+def or_(*exprs: Expr) -> Union[BinBoolOp, Expr]:
     """Apply OR between a sequence of boolean expressions"""
     exprs = args_as_tuple(exprs)
     if len(exprs) == 1:
@@ -80,7 +80,7 @@ def or_(*exprs: Expr):
     return BinBoolOp("OR", exprs)
 
 
-def and_(*exprs: Expr):
+def and_(*exprs: Expr) -> Union[BinBoolOp, Expr]:
     """Apply AND between a sequence of boolean expressions"""
     exprs = args_as_tuple(exprs)
     if len(exprs) == 1:
@@ -88,32 +88,32 @@ def and_(*exprs: Expr):
     return BinBoolOp("AND", exprs)
 
 
-def sum_(expr: Expr):
+def sum_(expr: Expr) -> Func:
     """Call SUM(expr)"""
     return Func("sum", [expr])
 
 
-def avg(expr: Expr):
+def avg(expr: Expr) -> Func:
     """Call AVG(expr)"""
     return Func("avg", [expr])
 
 
-def min_(expr: Expr):
+def min_(expr: Expr) -> Func:
     """Call MIN(expr)"""
     return Func("min", [expr])
 
 
-def max_(expr: Expr):
+def max_(expr: Expr) -> Func:
     """Call MAX(expr)"""
     return Func("max", [expr])
 
 
-def exists(expr: Expr):
+def exists(expr: Expr) -> Func:
     """Call EXISTS(expr)"""
     return Func("exists", [expr])
 
 
-def if_(cond: Expr, then: Expr, else_: Optional[Expr] = None):
+def if_(cond: Expr, then: Expr, else_: Optional[Expr] = None) -> CaseWhen:
     """Conditional expression, shortcut to when-then-else.
 
     Example:
@@ -125,7 +125,7 @@ def if_(cond: Expr, then: Expr, else_: Optional[Expr] = None):
     return when(cond).then(then).else_(else_)
 
 
-def when(*when_exprs: Expr):
+def when(*when_exprs: Expr) -> QB_When:
     """Start a when-then expression
 
     Example:
@@ -145,7 +145,7 @@ def when(*when_exprs: Expr):
     return CaseWhen([]).when(*when_exprs)
 
 
-def coalesce(*exprs):
+def coalesce(*exprs) -> Func:
     "Returns a call to COALESCE"
     exprs = args_as_tuple(exprs)
     return Func("COALESCE", exprs)
@@ -160,7 +160,7 @@ def insert_rows_in_batches(db, tbl: TablePath, rows, *, columns=None, batch_size
         db.query(tbl.insert_rows(batch, columns=columns))
 
 
-def current_timestamp():
+def current_timestamp() -> CurrentTimestamp:
     """Returns CURRENT_TIMESTAMP() or NOW()"""
     return CurrentTimestamp()
 
