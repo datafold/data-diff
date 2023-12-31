@@ -1,11 +1,12 @@
 import unittest
-
+from copy import deepcopy
 from urllib.parse import quote
-from data_diff.queries.api import table, commit
+
 from data_diff import TableSegment, HashDiffer
-from data_diff import databases as db
-from tests.common import get_conn, random_table_suffix, connect
 from data_diff import connect_to_table
+from data_diff import databases as db
+from data_diff.queries.api import table, commit
+from tests.common import get_conn, random_table_suffix, connect
 
 
 class TestUUID(unittest.TestCase):
@@ -127,20 +128,22 @@ class TestSpecialCharacterPassword(unittest.TestCase):
         self.table = table(self.table_name)
 
     def test_special_char_password(self):
+        username = "test"
         password = "passw!!!@rd"
         # Setup user with special character '@' in password
-        self.connection.query("DROP USER IF EXISTS test;", None)
-        self.connection.query(f"CREATE USER test WITH PASSWORD '{password}';", None)
+        self.connection.query(f"DROP USER IF EXISTS {username};", None)
+        self.connection.query(f"CREATE USER {username} WITH PASSWORD '{password}';", None)
 
         password_quoted = quote(password)
-        db_config = {
-            "driver": "postgresql",
-            "host": "localhost",
-            "port": 5432,
-            "dbname": "postgres",
-            "user": "test",
-            "password": password_quoted,
-        }
+        db_config = deepcopy(self.connection._args)
+        db_config.update(
+            {
+                "driver": "postgresql",
+                "dbname": db_config.pop("database"),
+                "user": username,
+                "password": password_quoted,
+            }
+        )
 
         # verify pythonic connection method
         connect_to_table(
