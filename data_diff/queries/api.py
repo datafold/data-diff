@@ -151,7 +151,7 @@ def coalesce(*exprs) -> Func:
     return Func("COALESCE", exprs)
 
 
-def insert_rows_in_batches(db, tbl: TablePath, rows, *, columns=None, batch_size=1024 * 8):
+def insert_rows_in_batches(db, tbl: TablePath, rows, *, columns=None, batch_size=1024 * 8) -> None:
     assert batch_size > 0
     rows = list(rows)
 

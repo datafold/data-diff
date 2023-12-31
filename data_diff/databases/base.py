@@ -188,7 +188,7 @@ class ThreadLocalInterpreter:
     compiler: Compiler
     gen: Generator
 
-    def apply_queries(self, callback: Callable[[str], Any]):
+    def apply_queries(self, callback: Callable[[str], Any]) -> None:
         q: Expr = next(self.gen)
         while True:
             sql = self.compiler.database.dialect.compile(self.compiler, q)

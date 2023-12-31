@@ -93,13 +93,13 @@ class CaseInsensitiveDict(CaseAwareMapping):
     def __len__(self) -> int:
         return len(self._dict)
 
-    def __setitem__(self, key: str, value):
+    def __setitem__(self, key: str, value) -> None:
         k = key.lower()
         if k in self._dict:
             key = self._dict[k][0]
         self._dict[k] = key, value
 
-    def __delitem__(self, key: str):
+    def __delitem__(self, key: str) -> None:
         del self._dict[key.lower()]
 
     def get_key(self, key: str) -> str:

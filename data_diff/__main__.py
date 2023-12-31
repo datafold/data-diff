@@ -77,7 +77,7 @@ def _get_schema(pair: Tuple[Database, DbPath]) -> Dict[str, RawColumnInfo]:
     return db.query_table_schema(table_path)
 
 
-def diff_schemas(table1, table2, schema1, schema2, columns):
+def diff_schemas(table1, table2, schema1, schema2, columns) -> None:
     logging.info("Diffing schemas...")
     attrs = "name", "type", "datetime_precision", "numeric_precision", "numeric_scale"
     for c in columns:
@@ -281,7 +281,7 @@ click.Context.formatter_class = MyHelpFormatter
     default=None,
     help="Override the dbt production schema configuration within dbt_project.yml",
 )
-def main(conf, run, **kw):
+def main(conf, run, **kw) -> None:
     log_handlers = _get_log_handlers(kw["dbt"])
     if kw["table2"] is None and kw["database2"]:
         # Use the "database table table" form
@@ -341,9 +341,7 @@ def main(conf, run, **kw):
                 production_schema_flag=kw["prod_schema"],
             )
         else:
-            return _data_diff(
-                dbt_project_dir=project_dir_override, dbt_profiles_dir=profiles_dir_override, state=state, **kw
-            )
+            _data_diff(dbt_project_dir=project_dir_override, dbt_profiles_dir=profiles_dir_override, state=state, **kw)
     except Exception as e:
         logging.error(e)
         raise
@@ -389,7 +387,7 @@ def _data_diff(
     threads1=None,
     threads2=None,
     __conf__=None,
-):
+) -> None:
     if limit and stats:
         logging.error("Cannot specify a limit when using the -s/--stats switch")
         return

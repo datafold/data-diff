@@ -80,7 +80,7 @@ g_anonymous_id = None
 entrypoint_name = "Python API"
 
 
-def disable_tracking():
+def disable_tracking() -> None:
     global g_tracking_enabled
     g_tracking_enabled = False
 
@@ -89,7 +89,7 @@ def is_tracking_enabled():
     return g_tracking_enabled
 
 
-def set_entrypoint_name(s):
+def set_entrypoint_name(s) -> None:
     global entrypoint_name
     entrypoint_name = s
 
@@ -99,17 +99,17 @@ dbt_version = None
 dbt_project_id = None
 
 
-def set_dbt_user_id(s):
+def set_dbt_user_id(s) -> None:
     global dbt_user_id
     dbt_user_id = s
 
 
-def set_dbt_version(s):
+def set_dbt_version(s) -> None:
     global dbt_version
     dbt_version = s
 
 
-def set_dbt_project_id(s):
+def set_dbt_project_id(s) -> None:
     global dbt_project_id
     dbt_project_id = s
 
@@ -201,7 +201,7 @@ def create_email_signup_event_json(email: str) -> Dict[str, Any]:
     }
 
 
-def send_event_json(event_json):
+def send_event_json(event_json) -> None:
     if not g_tracking_enabled:
         raise RuntimeError("Won't send; tracking is disabled!")
 

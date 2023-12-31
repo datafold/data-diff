@@ -19,7 +19,7 @@ class AutoPriorityQueue(PriorityQueue):
 
     _counter = itertools.count().__next__
 
-    def put(self, item: Optional[_WorkItem], block=True, timeout=None):
+    def put(self, item: Optional[_WorkItem], block=True, timeout=None) -> None:
         priority = item.kwargs.pop("priority") if item is not None else 0
         super().put((-priority, self._counter(), item), block, timeout)
 
@@ -66,7 +66,7 @@ class ThreadedYielder(Iterable):
         self._exception = None
         self.yield_list = yield_list
 
-    def _worker(self, fn, *args, **kwargs):
+    def _worker(self, fn, *args, **kwargs) -> None:
         try:
             res = fn(*args, **kwargs)
             if res is not None:
@@ -77,7 +77,7 @@ class ThreadedYielder(Iterable):
         except Exception as e:
             self._exception = e
 
-    def submit(self, fn: Callable, *args, priority: int = 0, **kwargs):
+    def submit(self, fn: Callable, *args, priority: int = 0, **kwargs) -> None:
         self._futures.append(self._pool.submit(self._worker, fn, *args, priority=priority, **kwargs))
 
     def __iter__(self) -> Iterator[Any]:

@@ -99,7 +99,7 @@ def _apply_config(config: Dict[str, Any], run_name: str, kw: Dict[str, Any]):
 _ENV_VAR_PATTERN = r"\$\{([A-Za-z0-9_]+)\}"
 
 
-def _resolve_env(config: Dict[str, Any]):
+def _resolve_env(config: Dict[str, Any]) -> None:
     """
     Resolve environment variables referenced as ${ENV_VAR_NAME}.
     Missing environment variables are replaced with an empty string.
