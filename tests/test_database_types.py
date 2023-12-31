@@ -407,7 +407,7 @@ class DateTimeFaker:
         step = timedelta(seconds=3, microseconds=571)
         return islice(chain(self.MANUAL_FAKES, accumulate(repeat(step), initial=initial)), self.max)
 
-    def __len__(self):
+    def __len__(self) -> int:
         return self.max
 
 
@@ -423,7 +423,7 @@ class IntFaker:
         step = 1
         return islice(chain(self.MANUAL_FAKES, accumulate(repeat(step), initial=initial)), self.max)
 
-    def __len__(self):
+    def __len__(self) -> int:
         return self.max
 
 
@@ -437,7 +437,7 @@ class BooleanFaker:
     def __iter__(self):
         return iter(self.MANUAL_FAKES[: self.max])
 
-    def __len__(self):
+    def __len__(self) -> int:
         return min(self.max, len(self.MANUAL_FAKES))
 
 
@@ -470,7 +470,7 @@ class FloatFaker:
         step = 0.00571
         return islice(chain(self.MANUAL_FAKES, accumulate(repeat(step), initial=initial)), self.max)
 
-    def __len__(self):
+    def __len__(self) -> int:
         return self.max
 
 
@@ -479,7 +479,7 @@ class UUID_Faker:
         super().__init__()
         self.max = max
 
-    def __len__(self):
+    def __len__(self) -> int:
         return self.max
 
     def __iter__(self):
@@ -498,7 +498,7 @@ class JsonFaker:
     def __iter__(self):
         return iter(self.MANUAL_FAKES[: self.max])
 
-    def __len__(self):
+    def __len__(self) -> int:
         return min(self.max, len(self.MANUAL_FAKES))
 
 

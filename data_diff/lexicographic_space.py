@@ -70,7 +70,7 @@ class LexicographicSpace:
         super().__init__()
         self.dims = dims
 
-    def __contains__(self, v: Vector):
+    def __contains__(self, v: Vector) -> bool:
         return all(0 <= i < d for i, d in safezip(v, self.dims))
 
     def add(self, v1: Vector, v2: Vector) -> Vector:
@@ -138,7 +138,7 @@ class BoundedLexicographicSpace:
 
         self.uspace = LexicographicSpace(dims)
 
-    def __contains__(self, p: Vector):
+    def __contains__(self, p: Vector) -> bool:
         return all(mn <= i < mx for i, mn, mx in safezip(p, self.min_bound, self.max_bound))
 
     def to_uspace(self, v: Vector) -> Vector:

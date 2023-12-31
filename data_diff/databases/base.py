@@ -895,7 +895,7 @@ class QueryResult:
     def __iter__(self):
         return iter(self.rows)
 
-    def __len__(self):
+    def __len__(self) -> int:
         return len(self.rows)
 
     def __getitem__(self, i):
