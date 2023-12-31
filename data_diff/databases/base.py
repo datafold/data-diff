@@ -1209,7 +1209,7 @@ class ThreadedDatabase(Database):
     _queue: Optional[ThreadPoolExecutor] = None
     thread_local: threading.local = attrs.field(factory=threading.local)
 
-    def __attrs_post_init__(self):
+    def __attrs_post_init__(self) -> None:
         self._queue = ThreadPoolExecutor(self.thread_count, initializer=self.set_conn)
         logger.info(f"[{self.name}] Starting a threadpool, size={self.thread_count}.")
 

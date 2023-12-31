@@ -103,7 +103,7 @@ def diff_schemas(table1, table2, schema1, schema2, columns):
 
 
 class MyHelpFormatter(click.HelpFormatter):
-    def __init__(self, **kwargs):
+    def __init__(self, **kwargs) -> None:
         super().__init__(self, **kwargs)
         self.indent_increment = 6
 

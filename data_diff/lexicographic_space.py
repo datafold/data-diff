@@ -66,7 +66,7 @@ class LexicographicSpace:
     All elements must be of the same length as the number of dimensions. (no rpadding)
     """
 
-    def __init__(self, dims: Vector):
+    def __init__(self, dims: Vector) -> None:
         super().__init__()
         self.dims = dims
 
@@ -124,7 +124,7 @@ class BoundedLexicographicSpace:
     i.e. a space resticted by a "bounding-box" between two arbitrary points.
     """
 
-    def __init__(self, min_bound: Vector, max_bound: Vector):
+    def __init__(self, min_bound: Vector, max_bound: Vector) -> None:
         super().__init__()
 
         dims = tuple(mx - mn for mn, mx in safezip(min_bound, max_bound))

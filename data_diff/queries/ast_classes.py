@@ -523,7 +523,7 @@ class GroupBy(ExprNode, ITable, Root):
     values: Optional[Sequence[Expr]] = None
     having_exprs: Optional[Sequence[Expr]] = None
 
-    def __attrs_post_init__(self):
+    def __attrs_post_init__(self) -> None:
         assert self.keys or self.values
 
     def having(self, *exprs) -> Self:

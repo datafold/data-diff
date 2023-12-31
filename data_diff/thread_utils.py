@@ -34,7 +34,7 @@ class PriorityThreadPoolExecutor(ThreadPoolExecutor):
     XXX WARNING: Might break in future versions of Python
     """
 
-    def __init__(self, *args):
+    def __init__(self, *args) -> None:
         super().__init__(*args)
         self._work_queue = AutoPriorityQueue()
 
@@ -58,7 +58,7 @@ class ThreadedYielder(Iterable):
     _exception: Optional[None]
     yield_list: bool
 
-    def __init__(self, max_workers: Optional[int] = None, yield_list: bool = False):
+    def __init__(self, max_workers: Optional[int] = None, yield_list: bool = False) -> None:
         super().__init__()
         self._pool = PriorityThreadPoolExecutor(max_workers)
         self._futures = deque()

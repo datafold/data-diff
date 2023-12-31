@@ -212,7 +212,7 @@ class BigQuery(Database):
     dataset: str
     _client: Any
 
-    def __init__(self, project, *, dataset, bigquery_credentials=None, **kw):
+    def __init__(self, project, *, dataset, bigquery_credentials=None, **kw) -> None:
         super().__init__()
         credentials = bigquery_credentials
         bigquery = import_bigquery()

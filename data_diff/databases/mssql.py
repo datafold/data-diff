@@ -168,7 +168,7 @@ class MsSQL(ThreadedDatabase):
     _args: Dict[str, Any]
     _mssql: Any
 
-    def __init__(self, host, port, user, password, *, database, thread_count, **kw):
+    def __init__(self, host, port, user, password, *, database, thread_count, **kw) -> None:
         super().__init__(thread_count=thread_count)
 
         args = dict(server=host, port=port, database=database, user=user, password=password, **kw)

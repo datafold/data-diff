@@ -80,7 +80,7 @@ class CaseAwareMapping(MutableMapping[str, V]):
 
 
 class CaseInsensitiveDict(CaseAwareMapping):
-    def __init__(self, initial):
+    def __init__(self, initial) -> None:
         super().__init__()
         self._dict = {k.lower(): (k, v) for k, v in dict(initial).items()}
 
@@ -241,7 +241,7 @@ class ArithAlphanumeric(ArithString):
     _str: str
     _max_len: Optional[int] = None
 
-    def __attrs_post_init__(self):
+    def __attrs_post_init__(self) -> None:
         if self._str is None:
             raise ValueError("Alphanum string cannot be None")
         if self._max_len and len(self._str) > self._max_len:
@@ -540,7 +540,7 @@ class LogStatusHandler(logging.Handler):
     This log handler can be used to update a rich.status every time a log is emitted.
     """
 
-    def __init__(self):
+    def __init__(self) -> None:
         super().__init__()
         self.status = Status("")
         self.prefix = ""

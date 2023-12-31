@@ -137,7 +137,7 @@ class Vertica(ThreadedDatabase):
 
     _args: Dict[str, Any]
 
-    def __init__(self, *, thread_count, **kw):
+    def __init__(self, *, thread_count, **kw) -> None:
         super().__init__(thread_count=thread_count)
         self._args = kw
         self._args["AUTOCOMMIT"] = False

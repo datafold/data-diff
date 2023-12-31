@@ -366,7 +366,7 @@ class PaginatedTable:
     # much memory.
     RECORDS_PER_BATCH = 1000000
 
-    def __init__(self, table_path, conn):
+    def __init__(self, table_path, conn) -> None:
         super().__init__()
         self.table_path = table_path
         self.conn = conn
@@ -398,7 +398,7 @@ class DateTimeFaker:
         datetime.fromisoformat("2022-06-01 15:10:05.009900"),
     ]
 
-    def __init__(self, max):
+    def __init__(self, max) -> None:
         super().__init__()
         self.max = max
 
@@ -414,7 +414,7 @@ class DateTimeFaker:
 class IntFaker:
     MANUAL_FAKES = [127, -3, -9, 37, 15, 0]
 
-    def __init__(self, max):
+    def __init__(self, max) -> None:
         super().__init__()
         self.max = max
 
@@ -430,7 +430,7 @@ class IntFaker:
 class BooleanFaker:
     MANUAL_FAKES = [False, True, True, False]
 
-    def __init__(self, max):
+    def __init__(self, max) -> None:
         super().__init__()
         self.max = max
 
@@ -461,7 +461,7 @@ class FloatFaker:
         3.141592653589793,
     ]
 
-    def __init__(self, max):
+    def __init__(self, max) -> None:
         super().__init__()
         self.max = max
 
@@ -475,7 +475,7 @@ class FloatFaker:
 
 
 class UUID_Faker:
-    def __init__(self, max):
+    def __init__(self, max) -> None:
         super().__init__()
         self.max = max
 
@@ -491,7 +491,7 @@ class JsonFaker:
         '{"keyText": "text", "keyInt": 3, "keyFloat": 5.4445, "keyBoolean": true}',
     ]
 
-    def __init__(self, max):
+    def __init__(self, max) -> None:
         super().__init__()
         self.max = max
 

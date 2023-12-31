@@ -96,7 +96,7 @@ class HashDiffer(TableDiffer):
 
     stats: dict = attrs.field(factory=dict)
 
-    def __attrs_post_init__(self):
+    def __attrs_post_init__(self) -> None:
         # Validate options
         if self.bisection_factor >= self.bisection_threshold:
             raise ValueError("Incorrect param values (bisection factor must be lower than threshold)")
