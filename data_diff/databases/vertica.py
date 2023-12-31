@@ -60,7 +60,7 @@ class Dialect(BaseDialect):
     # https://www.vertica.com/docs/9.3.x/HTML/Content/Authoring/SQLReferenceManual/DataTypes/Numeric/NUMERIC.htm#Default
     DEFAULT_NUMERIC_PRECISION = 15
 
-    def quote(self, s: str):
+    def quote(self, s: str) -> str:
         return f'"{s}"'
 
     def concat(self, items: List[str]) -> str:

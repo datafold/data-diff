@@ -85,10 +85,10 @@ class Dialect(BaseDialect):
     def random(self) -> str:
         return "RAND()"
 
-    def quote(self, s: str):
+    def quote(self, s: str) -> str:
         return f"`{s}`"
 
-    def to_string(self, s: str):
+    def to_string(self, s: str) -> str:
         return f"cast({s} as string)"
 
     def type_repr(self, t) -> str:

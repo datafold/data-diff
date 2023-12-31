@@ -138,7 +138,7 @@ class TableSegment:
                 f"Error: min_update expected to be smaller than max_update! ({self.min_update} >= {self.max_update})"
             )
 
-    def _where(self):
+    def _where(self) -> Optional[str]:
         return f"({self.where})" if self.where else None
 
     def _with_raw_schema(self, raw_schema: Dict[str, RawColumnInfo]) -> Self:

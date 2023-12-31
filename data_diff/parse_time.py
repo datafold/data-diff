@@ -53,7 +53,7 @@ def parse_time_atom(count, unit):
     return count, unit
 
 
-def parse_time_delta(t: str):
+def parse_time_delta(t: str) -> timedelta:
     time_dict = {}
     while t:
         m = TIME_RE.match(t)
@@ -70,5 +70,5 @@ def parse_time_delta(t: str):
     return timedelta(**time_dict)
 
 
-def parse_time_before(time: datetime, delta: str):
+def parse_time_before(time: datetime, delta: str) -> datetime:
     return time - parse_time_delta(delta)

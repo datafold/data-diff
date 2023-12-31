@@ -85,7 +85,7 @@ def disable_tracking() -> None:
     g_tracking_enabled = False
 
 
-def is_tracking_enabled():
+def is_tracking_enabled() -> bool:
     return g_tracking_enabled
 
 
@@ -114,7 +114,7 @@ def set_dbt_project_id(s) -> None:
     dbt_project_id = s
 
 
-def get_anonymous_id():
+def get_anonymous_id() -> str:
     global g_anonymous_id
     if g_anonymous_id is None:
         profile = _load_profile()

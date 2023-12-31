@@ -65,7 +65,7 @@ class Dialect(BaseDialect):
         except KeyError:
             return super().type_repr(t)
 
-    def quote(self, s: str):
+    def quote(self, s: str) -> str:
         return f"`{s}`"
 
     def to_string(self, s: str) -> str:

@@ -59,10 +59,10 @@ class Dialect(
     ROUNDS_ON_PREC_LOSS = True
     PLACEHOLDER_TABLE = "DUAL"
 
-    def quote(self, s: str):
+    def quote(self, s: str) -> str:
         return f'"{s}"'
 
-    def to_string(self, s: str):
+    def to_string(self, s: str) -> str:
         return f"cast({s} as varchar(1024))"
 
     def limit_select(
