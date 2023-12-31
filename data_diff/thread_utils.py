@@ -5,7 +5,7 @@ from collections.abc import Iterable
 from concurrent.futures import ThreadPoolExecutor
 from concurrent.futures.thread import _WorkItem
 from time import sleep
-from typing import Callable, Iterator, Optional
+from typing import Any, Callable, Iterator, Optional
 
 import attrs
 
@@ -80,7 +80,7 @@ class ThreadedYielder(Iterable):
     def submit(self, fn: Callable, *args, priority: int = 0, **kwargs):
         self._futures.append(self._pool.submit(self._worker, fn, *args, priority=priority, **kwargs))
 
-    def __iter__(self) -> Iterator:
+    def __iter__(self) -> Iterator[Any]:
         while True:
             if self._exception:
                 raise self._exception

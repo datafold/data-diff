@@ -8,9 +8,11 @@ from datetime import datetime, timedelta, timezone
 import logging
 from decimal import Decimal
 from itertools import islice, repeat, chain
+from typing import Iterator
 
 from parameterized import parameterized
 
+from data_diff.databases.base import Row
 from data_diff.utils import number_to_human
 from data_diff.queries.api import table, commit, this, Code
 from data_diff.queries.api import insert_rows_in_batches
@@ -371,7 +373,7 @@ class PaginatedTable:
         self.table_path = table_path
         self.conn = conn
 
-    def __iter__(self):
+    def __iter__(self) -> Iterator[Row]:
         last_id = 0
         while True:
             query = (
@@ -402,7 +404,7 @@ class DateTimeFaker:
         super().__init__()
         self.max = max
 
-    def __iter__(self):
+    def __iter__(self) -> Iterator[datetime]:
         initial = datetime(2000, 1, 1, 0, 0, 0, 0)
         step = timedelta(seconds=3, microseconds=571)
         return islice(chain(self.MANUAL_FAKES, accumulate(repeat(step), initial=initial)), self.max)
@@ -418,7 +420,7 @@ class IntFaker:
         super().__init__()
         self.max = max
 
-    def __iter__(self):
+    def __iter__(self) -> Iterator[int]:
         initial = -128
         step = 1
         return islice(chain(self.MANUAL_FAKES, accumulate(repeat(step), initial=initial)), self.max)
@@ -434,7 +436,7 @@ class BooleanFaker:
         super().__init__()
         self.max = max
 
-    def __iter__(self):
+    def __iter__(self) -> Iterator[bool]:
         return iter(self.MANUAL_FAKES[: self.max])
 
     def __len__(self) -> int:
@@ -465,7 +467,7 @@ class FloatFaker:
         super().__init__()
         self.max = max
 
-    def __iter__(self):
+    def __iter__(self) -> Iterator[float]:
         initial = -10.0001
         step = 0.00571
         return islice(chain(self.MANUAL_FAKES, accumulate(repeat(step), initial=initial)), self.max)
@@ -482,7 +484,7 @@ class UUID_Faker:
     def __len__(self) -> int:
         return self.max
 
-    def __iter__(self):
+    def __iter__(self) -> Iterator[uuid.UUID]:
         return (uuid.uuid1(i) for i in range(self.max))
 
 
@@ -495,7 +497,7 @@ class JsonFaker:
         super().__init__()
         self.max = max
 
-    def __iter__(self):
+    def __iter__(self) -> Iterator[str]:
         return iter(self.MANUAL_FAKES[: self.max])
 
     def __len__(self) -> int:
