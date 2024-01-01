@@ -12,8 +12,8 @@ import rich
 from rich.logging import RichHandler
 import click
 
-from data_diff import Database
-from data_diff.schema import create_schema
+from data_diff import Database, DbPath
+from data_diff.schema import RawColumnInfo, create_schema
 from data_diff.queries.api import current_timestamp
 
 from data_diff.dbt import dbt_diff
@@ -72,7 +72,7 @@ def _remove_passwords_in_dict(d: dict) -> None:
             d[k] = remove_password_from_url(v)
 
 
-def _get_schema(pair):
+def _get_schema(pair: Tuple[Database, DbPath]) -> Dict[str, RawColumnInfo]:
     db, table_path = pair
     return db.query_table_schema(table_path)
 

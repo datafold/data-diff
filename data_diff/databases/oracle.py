@@ -2,6 +2,7 @@ from typing import Any, ClassVar, Dict, List, Optional, Type
 
 import attrs
 
+from data_diff.schema import RawColumnInfo
 from data_diff.utils import match_regexps
 from data_diff.abcs.database_types import (
     Decimal,
@@ -105,26 +106,18 @@ class Dialect(
     def explain_as_text(self, query: str) -> str:
         raise NotImplementedError("Explain not yet implemented in Oracle")
 
-    def parse_type(
-        self,
-        table_path: DbPath,
-        col_name: str,
-        type_repr: str,
-        datetime_precision: int = None,
-        numeric_precision: int = None,
-        numeric_scale: int = None,
-    ) -> ColType:
+    def parse_type(self, table_path: DbPath, info: RawColumnInfo) -> ColType:
         regexps = {
             r"TIMESTAMP\((\d)\) WITH LOCAL TIME ZONE": Timestamp,
             r"TIMESTAMP\((\d)\) WITH TIME ZONE": TimestampTZ,
             r"TIMESTAMP\((\d)\)": Timestamp,
         }
 
-        for m, t_cls in match_regexps(regexps, type_repr):
+        for m, t_cls in match_regexps(regexps, info.data_type):
             precision = int(m.group(1))
             return t_cls(precision=precision, rounds=self.ROUNDS_ON_PREC_LOSS)
 
-        return super().parse_type(table_path, col_name, type_repr, datetime_precision, numeric_precision, numeric_scale)
+        return super().parse_type(table_path, info)
 
     def set_timezone_to_utc(self) -> str:
         return "ALTER SESSION SET TIME_ZONE = 'UTC'"

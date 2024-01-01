@@ -22,6 +22,7 @@ from data_diff.dbt import (
 from data_diff.dbt_parser import (
     TDatadiffConfig,
 )
+from data_diff.schema import RawColumnInfo
 from tests.test_cli import run_datadiff_cli
 
 
@@ -75,7 +76,10 @@ class TestDbtDiffer(unittest.TestCase):
     def test_local_diff(self, mock_diff_tables):
         connection = {}
         mock_table1 = Mock()
-        column_dictionary = {"col1": ("col1", "type"), "col2": ("col2", "type")}
+        column_dictionary = {
+            "col1": RawColumnInfo(column_name="col1", data_type="type"),
+            "col2": RawColumnInfo(column_name="col2", data_type="type"),
+        }
         mock_table1.get_schema.return_value = column_dictionary
         mock_table2 = Mock()
         mock_table2.get_schema.return_value = column_dictionary
@@ -120,8 +124,14 @@ class TestDbtDiffer(unittest.TestCase):
         connection = {}
         mock_table1 = Mock()
         mock_table2 = Mock()
-        table1_column_dictionary = {"col1": ("col1", "type"), "col2": ("col2", "type")}
-        table2_column_dictionary = {"col1": ("col1", "type"), "col2": ("col2", "differing_type")}
+        table1_column_dictionary = {
+            "col1": RawColumnInfo(column_name="col1", data_type="type"),
+            "col2": RawColumnInfo(column_name="col2", data_type="type"),
+        }
+        table2_column_dictionary = {
+            "col1": RawColumnInfo(column_name="col1", data_type="type"),
+            "col2": RawColumnInfo(column_name="col2", data_type="differing_type"),
+        }
         mock_table1.get_schema.return_value = table1_column_dictionary
         mock_table2.get_schema.return_value = table2_column_dictionary
         mock_diff = MagicMock()
@@ -161,7 +171,10 @@ class TestDbtDiffer(unittest.TestCase):
     @patch("data_diff.dbt.diff_tables")
     def test_local_diff_no_diffs(self, mock_diff_tables):
         connection = {}
-        column_dictionary = {"col1": ("col1", "type"), "col2": ("col2", "type")}
+        column_dictionary = {
+            "col1": RawColumnInfo(column_name="col1", data_type="type"),
+            "col2": RawColumnInfo(column_name="col2", data_type="type"),
+        }
         mock_table1 = Mock()
         mock_table1.get_schema.return_value = column_dictionary
         mock_table2 = Mock()
