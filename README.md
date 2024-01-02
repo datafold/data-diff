@@ -9,6 +9,8 @@ data-diff: Compare datasets fast, within or across SQL databases
 </h2>
 <br>
 
+> [Make sure to join us at our virtual hands-on lab series where our team walks through live how to get set-up with it!](https://www.datafold.com/virtual-hands-on-lab)
+
 # Use Cases
 
 ## Data Migration & Replication Testing
@@ -42,8 +44,6 @@ Test SQL code and preview changes by comparing development/staging environment d
 :eyes: **Watch [4-min demo video](https://www.loom.com/share/ad3df969ba6b4298939efb2fbcc14cde)**
 
 **[Get started with data-diff & dbt](https://docs.datafold.com/development_testing/open_source)**
-
-Also available in a [VS Code Extension](https://marketplace.visualstudio.com/items?itemName=Datafold.datafold-vscode)
 
 Reach out on the dbt Slack in [#tools-datafold](https://getdbt.slack.com/archives/C03D25A92UU) for advice and support
 
