@@ -1,5 +1,5 @@
 import time
-from typing import List, Optional, Tuple
+from typing import Container, Dict, List, Optional, Sequence, Tuple
 import logging
 from itertools import product
 
@@ -9,8 +9,8 @@ from typing_extensions import Self
 from data_diff.utils import safezip, Vector
 from data_diff.utils import ArithString, split_space
 from data_diff.databases.base import Database
-from data_diff.abcs.database_types import DbPath, DbKey, DbTime
-from data_diff.schema import Schema, create_schema
+from data_diff.abcs.database_types import DbPath, DbKey, DbTime, IKey
+from data_diff.schema import RawColumnInfo, Schema, create_schema
 from data_diff.queries.extras import Checksum
 from data_diff.queries.api import Count, SKIP, table, this, Expr, min_, max_, Code
 from data_diff.queries.extras import ApplyFuncAndNormalizeAsString, NormalizeAsString
@@ -114,6 +114,7 @@ class TableSegment:
     key_columns: Tuple[str, ...]
     update_column: Optional[str] = None
     extra_columns: Tuple[str, ...] = ()
+    ignored_columns: Container[str] = frozenset()
 
     # Restrict the segment
     min_key: Optional[Vector] = None
@@ -140,7 +141,7 @@ class TableSegment:
     def _where(self):
         return f"({self.where})" if self.where else None
 
-    def _with_raw_schema(self, raw_schema: dict) -> Self:
+    def _with_raw_schema(self, raw_schema: Dict[str, RawColumnInfo]) -> Self:
         schema = self.database._process_table_schema(self.table_path, raw_schema, self.relevant_columns, self._where())
         return self.new(schema=create_schema(self.database.name, self.table_path, schema, self.case_sensitive))
 
@@ -151,7 +152,7 @@ class TableSegment:
 
         return self._with_raw_schema(self.database.query_table_schema(self.table_path))
 
-    def get_schema(self):
+    def get_schema(self) -> Dict[str, RawColumnInfo]:
         return self.database.query_table_schema(self.table_path)
 
     def _make_key_range(self):
@@ -179,7 +180,10 @@ class TableSegment:
 
     def get_values(self) -> list:
         "Download all the relevant values of the segment from the database"
-        select = self.make_select().select(*self._relevant_columns_repr)
+
+        # Fetch all the original columns, even if some were later excluded from checking.
+        fetched_cols = [NormalizeAsString(this[c]) for c in self.relevant_columns]
+        select = self.make_select().select(*fetched_cols)
         return self.database.query(select, List[Tuple])
 
     def choose_checkpoints(self, count: int) -> List[List[DbKey]]:
@@ -201,7 +205,7 @@ class TableSegment:
         """Creates a copy of the instance using 'replace()'"""
         return attrs.evolve(self, **kwargs)
 
-    def new_key_bounds(self, min_key: Vector, max_key: Vector) -> Self:
+    def new_key_bounds(self, min_key: Vector, max_key: Vector, *, key_types: Optional[Sequence[IKey]] = None) -> Self:
         if self.min_key is not None:
             assert self.min_key <= min_key, (self.min_key, min_key)
             assert self.min_key < max_key
@@ -209,6 +213,13 @@ class TableSegment:
         if self.max_key is not None:
             assert min_key < self.max_key
             assert max_key <= self.max_key
+
+        # If asked, enforce the PKs to proper types, mainly to meta-params of the relevant side,
+        # so that we do not leak e.g. casing of UUIDs from side A to side B and vice versa.
+        # If not asked, keep the meta-params of the keys as is (assume them already casted).
+        if key_types is not None:
+            min_key = Vector(type.make_value(val) for type, val in safezip(key_types, min_key))
+            max_key = Vector(type.make_value(val) for type, val in safezip(key_types, max_key))
 
         return attrs.evolve(self, min_key=min_key, max_key=max_key)
 
@@ -221,18 +232,18 @@ class TableSegment:
 
         return list(self.key_columns) + extras
 
-    @property
-    def _relevant_columns_repr(self) -> List[Expr]:
-        return [NormalizeAsString(this[c]) for c in self.relevant_columns]
-
     def count(self) -> int:
         """Count how many rows are in the segment, in one pass."""
         return self.database.query(self.make_select().select(Count()), int)
 
     def count_and_checksum(self) -> Tuple[int, int]:
         """Count and checksum the rows in the segment, in one pass."""
+
+        checked_columns = [c for c in self.relevant_columns if c not in self.ignored_columns]
+        cols = [NormalizeAsString(this[c]) for c in checked_columns]
+
         start = time.monotonic()
-        q = self.make_select().select(Count(), Checksum(self._relevant_columns_repr))
+        q = self.make_select().select(Count(), Checksum(cols))
         count, checksum = self.database.query(q, tuple)
         duration = time.monotonic() - start
         if duration > RECOMMENDED_CHECKSUM_DURATION:
