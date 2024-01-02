@@ -239,7 +239,7 @@ class TableSegment:
     def count_and_checksum(self) -> Tuple[int, int]:
         """Count and checksum the rows in the segment, in one pass."""
 
-        checked_columns = [c for c in self.relevant_columns if c not in self.ignored_columns]
+        checked_columns = [c for c in self.relevant_columns if c.lower() not in self.ignored_columns]
         cols = [NormalizeAsString(this[c]) for c in checked_columns]
 
         start = time.monotonic()
