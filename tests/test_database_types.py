@@ -358,6 +358,26 @@ DATABASE_TYPES = {
             "BIT",
         ],
     },
+    db.Clickzetta: {
+        "int": [
+            "INT",
+            "BIGINT",
+        ],
+        "datetime": [
+            "TIMESTAMP",
+        ],
+        "float": [
+            "FLOAT",
+            "DOUBLE",
+            "DECIMAL(6, 2)",
+        ],
+        "uuid": [
+            "STRING",
+        ],
+        "boolean": [
+            "boolean",
+        ],
+    },
 }
 
 

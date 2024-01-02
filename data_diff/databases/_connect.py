@@ -24,6 +24,7 @@ from data_diff.databases.clickhouse import Clickhouse
 from data_diff.databases.vertica import Vertica
 from data_diff.databases.duckdb import DuckDB
 from data_diff.databases.mssql import MsSQL
+from data_diff.databases.clickzetta import Clickzetta
 
 
 @attrs.frozen
@@ -90,6 +91,7 @@ DATABASE_BY_SCHEME = {
     "clickhouse": Clickhouse,
     "vertica": Vertica,
     "mssql": MsSQL,
+    "clickzetta": Clickzetta,
 }
 
 
@@ -134,6 +136,7 @@ class Connect:
         - clickhouse
         - vertica
         - duckdb
+        - clickzetta
         """
 
         dsn = dsnparse.parse(db_uri)
@@ -170,6 +173,17 @@ class Connect:
             kw = {}
             kw["filepath"] = dsn.dbname
             kw["dbname"] = dsn.user
+        elif scheme == "clickzetta":
+            kw = {}
+            kw["username"] = dsn.user
+            kw["password"] = dsn.password
+            instance_and_service = dsn.host.split(".", 1)
+            assert len(instance_and_service) == 2
+            kw["instance"] = instance_and_service[0]
+            kw["service"] = instance_and_service[1]
+            kw["workspace"] = dsn.database
+            for k, v in dsn.query.items():
+                kw[k] = v
         else:
             matcher = MatchUriPath(cls)
             kw = matcher.match_path(dsn)
@@ -254,6 +268,7 @@ class Connect:
         - trino
         - clickhouse
         - vertica
+        - clickzetta
 
         Example:
             >>> connect("mysql://localhost/db")

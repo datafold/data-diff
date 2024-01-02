@@ -68,6 +68,7 @@ jobs:
             DATADIFF_CLICKHOUSE_URI: 'clickhouse://clickhouse:Password1@localhost:9000/clickhouse'
             DATADIFF_VERTICA_URI: 'vertica://vertica:Password1@localhost:5433/vertica'
             DATADIFF_REDSHIFT_URI: '${{ secrets.DATADIFF_REDSHIFT_URI }}'
+            DATADIFF_CLICKZETTA_URI: '${{ secrets.DATADIFF_CLICKZETTA_URI }}'
             MOTHERDUCK_TOKEN: '${{ secrets.MOTHERDUCK_TOKEN }}'
         run: |
           chmod +x tests/waiting_for_stack_up.sh

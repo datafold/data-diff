@@ -62,6 +62,7 @@ jobs:
             DATADIFF_PRESTO_URI: '${{ secrets.DATADIFF_PRESTO_URI }}'
             DATADIFF_CLICKHOUSE_URI: 'clickhouse://clickhouse:Password1@localhost:9000/clickhouse'
             DATADIFF_VERTICA_URI: 'vertica://vertica:Password1@localhost:5433/vertica'
+            DATADIFF_CLICKZETTA_URI: '${{ secrets.DATADIFF_CLICKZETTA_URI }}'
             # DATADIFF_BIGQUERY_URI: '${{ secrets.DATADIFF_BIGQUERY_URI }}'
             DATADIFF_REDSHIFT_URI: '${{ secrets.DATADIFF_REDSHIFT_URI }}'
             MOTHERDUCK_TOKEN: '${{ secrets.MOTHERDUCK_TOKEN }}'

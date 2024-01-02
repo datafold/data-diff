@@ -46,6 +46,7 @@ pyodbc = {version="^4.0.39", optional=true}
 typing-extensions = ">=4.0.1"
 attrs = "^23.1.0"
 mashumaro = {version = ">=2.9,<3.11.0", extras = ["msgpack"]}
+clickzetta-connector = {version = ">=0.8.59", optional=true}
 
 [tool.poetry.dev-dependencies]
 parameterized = "*"
@@ -80,6 +81,7 @@ trino = ["trino"]
 clickhouse = ["clickhouse-driver"]
 vertica = ["vertica-python"]
 duckdb = ["duckdb"]
+clickzetta = ["clickzetta-connector"]
 
 [tool.poetry.group.dev.dependencies]
 pre-commit = "^3.5.0"

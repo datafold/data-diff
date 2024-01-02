@@ -31,6 +31,7 @@ TEST_DATABASES = {
     dbs.Trino,
     dbs.Vertica,
     dbs.MsSQL,
+    dbs.Clickzetta,
 }
 
 test_each_database: Callable = test_each_database_in_list(TEST_DATABASES)

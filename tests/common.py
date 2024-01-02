@@ -36,6 +36,8 @@ TEST_CLICKHOUSE_CONN_STRING: str = os.environ.get("DATADIFF_CLICKHOUSE_URI")
 TEST_VERTICA_CONN_STRING: str = os.environ.get("DATADIFF_VERTICA_URI")
 TEST_DUCKDB_CONN_STRING: str = "duckdb://main:@:memory:"
 TEST_MSSQL_CONN_STRING: str = os.environ.get("DATADIFF_MSSQL_URI")
+# clickzetta uri for provided docker will be provided later
+TEST_CLICKZETTA_CONN_STRING: str = os.environ.get("DATADIFF_CLICKZETTA_URI")
 
 
 DEFAULT_N_SAMPLES = 50
@@ -82,6 +84,7 @@ CONN_STRINGS = {
     db.Vertica: TEST_VERTICA_CONN_STRING,
     db.DuckDB: TEST_DUCKDB_CONN_STRING,
     db.MsSQL: TEST_MSSQL_CONN_STRING,
+    db.Clickzetta: TEST_CLICKZETTA_CONN_STRING,
 }
 
 _database_instances = {}
