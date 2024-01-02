@@ -400,6 +400,9 @@ class TableDiffer(ThreadBase, ABC):
         of a table (as per the order of segmentation/bisection). Otherwise,
         that one column might easily hit the limit and stop the whole diff.
         """
+        lowered_column_name1 = column_name1.lower()
+        lowered_column_name2 = column_name2.lower()
+
         with self._ignored_columns_lock:
-            self.ignored_columns1.add(column_name1)
-            self.ignored_columns2.add(column_name2)
+            self.ignored_columns1.add(lowered_column_name1)
+            self.ignored_columns2.add(lowered_column_name2)

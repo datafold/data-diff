@@ -38,8 +38,12 @@ def diff_sets(
     ignored_columns2: Collection[str],
 ) -> Iterator:
     # Differ only by columns of interest (PKs+relevant-ignored). But yield with ignored ones!
-    sa: Set[_Row] = {tuple(val for col, val in safezip(columns1, row) if col not in ignored_columns1) for row in a}
-    sb: Set[_Row] = {tuple(val for col, val in safezip(columns2, row) if col not in ignored_columns2) for row in b}
+    sa: Set[_Row] = {
+        tuple(val for col, val in safezip(columns1, row) if col.lower() not in ignored_columns1) for row in a
+    }
+    sb: Set[_Row] = {
+        tuple(val for col, val in safezip(columns2, row) if col.lower() not in ignored_columns2) for row in b
+    }
 
     # The first item is always the key (see TableDiffer.relevant_columns)
     # TODO update when we add compound keys to hashdiff
