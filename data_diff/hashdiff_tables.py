@@ -111,8 +111,11 @@ class HashDiffer(TableDiffer):
             col1 = table1._schema[c1]
             col2 = table2._schema[c2]
             if isinstance(col1, PrecisionType):
-                if strict and not isinstance(col2, PrecisionType):
-                    raise TypeError(f"Incompatible types for column '{c1}':  {col1} <-> {col2}")
+                if not isinstance(col2, PrecisionType):
+                    if strict:
+                        raise TypeError(f"Incompatible types for column '{c1}':  {col1} <-> {col2}")
+                    else:
+                        continue
 
                 lowest = min(col1, col2, key=lambda col: col.precision)
 
@@ -123,8 +126,11 @@ class HashDiffer(TableDiffer):
                 table2._schema[c2] = attrs.evolve(col2, precision=lowest.precision, rounds=lowest.rounds)
 
             elif isinstance(col1, (NumericType, Boolean)):
-                if strict and not isinstance(col2, (NumericType, Boolean)):
-                    raise TypeError(f"Incompatible types for column '{c1}':  {col1} <-> {col2}")
+                if not isinstance(col2, (NumericType, Boolean)):
+                    if strict:
+                        raise TypeError(f"Incompatible types for column '{c1}':  {col1} <-> {col2}")
+                    else:
+                        continue
 
                 lowest = min(col1, col2, key=lambda col: col.precision)
 
