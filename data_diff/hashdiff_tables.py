@@ -233,7 +233,7 @@ class HashDiffer(TableDiffer):
                     columns1=table1.relevant_columns,
                     columns2=table2.relevant_columns,
                     ignored_columns1=self.ignored_columns1,
-                    ignored_columns2=self.ignored_columns1,
+                    ignored_columns2=self.ignored_columns2,
                 )
             )
 
