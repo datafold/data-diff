@@ -49,11 +49,11 @@ def diff_sets(
     # TODO update when we add compound keys to hashdiff
     diffs_by_pks: Dict[_PK, List[Tuple[_Op, _Row]]] = defaultdict(list)
     for row in a:
-        cutrow: _Row = tuple(val for col, val in zip(columns1, row) if col not in ignored_columns1)
+        cutrow: _Row = tuple(val for col, val in zip(columns1, row) if col.lower() not in ignored_columns1)
         if cutrow not in sb:
             diffs_by_pks[row[0]].append(("-", row))
     for row in b:
-        cutrow: _Row = tuple(val for col, val in zip(columns2, row) if col not in ignored_columns2)
+        cutrow: _Row = tuple(val for col, val in zip(columns2, row) if col.lower() not in ignored_columns2)
         if cutrow not in sa:
             diffs_by_pks[row[0]].append(("+", row))
 
