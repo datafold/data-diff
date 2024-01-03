@@ -154,27 +154,28 @@ Check out [documentation](https://docs.datafold.com/reference/open_source/cli) f
 # Supported databases
 
 
-| Database      | Status | Connection string                                                                                                                   |
-|---------------|-------------------------------------------------------------------------------------------------------------------------------------|-------------------------------------------------------------------------------------------------------------------------------------|
+| Database        | Status | Connection string                                                                                                                   |
+|-----------------|-------------------------------------------------------------------------------------------------------------------------------------|-------------------------------------------------------------------------------------------------------------------------------------|
 | PostgreSQL >=10 |  🟢   | `postgresql://<user>:<password>@<host>:5432/<database>`                                                                             |
-| MySQL         |  🟢     | `mysql://<user>:<password>@<hostname>:5432/<database>`                                                                              |
-| Snowflake     |  🟢     | `"snowflake://<user>[:<password>]@<account>/<database>/<SCHEMA>?warehouse=<WAREHOUSE>&role=<role>[&authenticator=externalbrowser]"` |
-| BigQuery      |  🟢     | `bigquery://<project>/<dataset>`                                                                                                    |
-| Redshift      |  🟢     | `redshift://<username>:<password>@<hostname>:5439/<database>`                                                                       |
-| DuckDB        |  🟢   | `duckdb://<dbname>@<filepath>`                                                                                          |
-| MotherDuck        |  🟢   | `duckdb://<dbname>@<filepath>`                                                                                                   |
-| Oracle        |  🟡   | `oracle://<username>:<password>@<hostname>/servive_or_sid`                                                                          |
-| Presto        |  🟡   | `presto://<username>:<password>@<hostname>:8080/<database>`                                                                         |
-| Databricks    |  🟡   | `databricks://<http_path>:<access_token>@<server_hostname>/<catalog>/<schema>`                                                      |
-| Trino         |  🟡   | `trino://<username>:<password>@<hostname>:8080/<database>`                                                                          |
-| Clickhouse    |  🟡   | `clickhouse://<username>:<password>@<hostname>:9000/<database>`                                                                     |
-| Vertica       |  🟡   | `vertica://<username>:<password>@<hostname>:5433/<database>`                                                                        |
-| ElasticSearch |  📝    |                                                                                                                                     |
-| Planetscale   |  📝    |                                                                                                                                     |
-| Pinot         |  📝    |                                                                                                                                     |
-| Druid         |  📝    |                                                                                                                                     |
-| Kafka         |  📝    |                                                                                                                                     |
-| SQLite        |  📝    |                                                                                                                                     |
+| MySQL           |  🟢     | `mysql://<user>:<password>@<hostname>:5432/<database>`                                                                              |
+| Snowflake       |  🟢     | `"snowflake://<user>[:<password>]@<account>/<database>/<SCHEMA>?warehouse=<WAREHOUSE>&role=<role>[&authenticator=externalbrowser]"` |
+| BigQuery        |  🟢     | `bigquery://<project>/<dataset>`                                                                                                    |
+| Redshift        |  🟢     | `redshift://<username>:<password>@<hostname>:5439/<database>`                                                                       |
+| DuckDB          |  🟢   | `duckdb://<dbname>@<filepath>`                                                                                                      |
+| MotherDuck      |  🟢   | `duckdb://<dbname>@<filepath>`                                                                                                      |
+| Clickzetta      |  🟢   | `clickzetta://<user>:<password>@<instance>.<service>/<workspace>?virtualcluster=<VC>&<schema>=<SCHEMA>`                             |
+| Oracle          |  🟡   | `oracle://<username>:<password>@<hostname>/servive_or_sid`                                                                          |
+| Presto          |  🟡   | `presto://<username>:<password>@<hostname>:8080/<database>`                                                                         |
+| Databricks      |  🟡   | `databricks://<http_path>:<access_token>@<server_hostname>/<catalog>/<schema>`                                                      |
+| Trino           |  🟡   | `trino://<username>:<password>@<hostname>:8080/<database>`                                                                          |
+| Clickhouse      |  🟡   | `clickhouse://<username>:<password>@<hostname>:9000/<database>`                                                                     |
+| Vertica         |  🟡   | `vertica://<username>:<password>@<hostname>:5433/<database>`                                                                        |
+| ElasticSearch   |  📝    |                                                                                                                                     |
+| Planetscale     |  📝    |                                                                                                                                     |
+| Pinot           |  📝    |                                                                                                                                     |
+| Druid           |  📝    |                                                                                                                                     |
+| Kafka           |  📝    |                                                                                                                                     |
+| SQLite          |  📝    |                                                                                                                                     |
 
 * 🟢: Implemented and thoroughly tested.
 * 🟡: Implemented, but not thoroughly tested yet.

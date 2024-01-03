@@ -27,7 +27,7 @@ class TestClickzetta(unittest.TestCase):
             f"CREATE TABLE {self.table_src_name} (id BIGINT, comment VARCHAR)",
             self.table_src.insert_rows([[i, str(i + 1)] for i in range(100)], columns=["id", "comment"]),
             self.table_dst.create(self.table_src),
-            self.table_src.insert_row([200, "This one is different"], columns=["id", "comment"]),
+            self.table_src.insert_row(200, "This one is different", columns=["id", "comment"]),
         ]
 
         for query in queries:
