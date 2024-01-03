@@ -187,7 +187,7 @@ class Databricks(ThreadedDatabase):
         resulted_rows = []
         for info in col_infos:
             raw_data_type = info.data_type
-            row_type = "DECIMAL" if info.data_type.startswith("DECIMAL") else info.data_type
+            row_type = info.data_type.split("(")[0]
             info = attrs.evolve(info, data_type=row_type)
             type_cls = self.dialect.TYPE_CLASSES.get(row_type, UnknownColType)
 
