@@ -202,6 +202,7 @@ class BaseDialect(abc.ABC):
     SUPPORTS_INDEXES: ClassVar[bool] = False
     PREVENT_OVERFLOW_WHEN_CONCAT: ClassVar[bool] = False
     TYPE_CLASSES: ClassVar[Dict[str, Type[ColType]]] = {}
+    DEFAULT_NUMERIC_PRECISION: ClassVar[int] = 0  # effective precision when type is just "NUMERIC"
 
     PLACEHOLDER_TABLE = None  # Used for Oracle
 
