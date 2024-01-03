@@ -152,7 +152,10 @@ class TestSpecialCharacterPassword(unittest.TestCase):
         )
 
         # verify connection method with URL string unquoted after it's verified
-        db_url = f"postgresql://{db_config['user']}:{db_config['password']}@{db_config['host']}:{db_config['port']}/{db_config['dbname']}"
+        db_url = (
+            f"postgresql://{db_config['user']}:{db_config['password']}@{db_config['host']}:"
+            f"{db_config.get('port', 5432)}/{db_config['dbname']}"
+        )
 
         connection_verified = connect(db_url)
         assert connection_verified._args.get("password") == password
