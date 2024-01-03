@@ -40,23 +40,30 @@ data-diff integrates with [dbt Core](https://github.com/dbt-labs/dbt-core) to se
 Learn more about how data-diff works with dbt:
 * Read our docs to get started with [data-diff & dbt](https://docs.datafold.com/development_testing/cli) or :eyes: **watch the [4-min demo video](https://www.loom.com/share/ad3df969ba6b4298939efb2fbcc14cde)**
 * dbt Cloud users should check out [Datafold's out-of-the-box deployment testing integration](https://www.datafold.com/data-deployment-testing)
-* ⚡ Looking to use data-diff in dbt development? Head over to [our `data-diff` + `dbt` documentation](https://docs.datafold.com/development_testing/how_it_works) to get started!
 * Get support from the dbt Community Slack in [#tools-datafold](https://getdbt.slack.com/archives/C03D25A92UU)
 
 
-# Get started
+# Getting Started
 
-## Validating dbt model changes between dev and prod
+### ⚡ Validating dbt model changes between dev and prod
+Looking to use data-diff in dbt development? 
 
+Development testing with Datafold enables you to see the impact of dbt code changes on data as you write the code, whether in your IDE or CLI. 
 
-## Compare data tables between databases
-🔀 To compare data between databases, install `data-diff` with specific database adapters, e.g.:
+ Head over to [our `data-diff` + `dbt` documentation](https://docs.datafold.com/development_testing/how_it_works) to get started with a development testing workflow!
+
+### 🔀 Compare data tables between databases
+1. Install `data-diff` with adapters
+
+To compare data between databases, install `data-diff` with specific database adapters. For example, install it for PostgreSQL and Snowflake like this:
 
 ```
 pip install data-diff 'data-diff[postgresql,snowflake]' -U
 ```
 
-Run `data-diff` with connection URIs. In the following example, we compare tables between PostgreSQL and Snowflake using the hashdiff algorithm:
+2. Run `data-diff` with connection URIs
+
+Then, we compare tables between PostgreSQL and Snowflake using the hashdiff algorithm:
 
 ```bash
 data-diff \
@@ -68,8 +75,9 @@ data-diff \
   -c <columns to compare> \
   -w <filter condition>
 ```
+3. Set up your configuration 
 
-Run `data-diff` with a `toml` configuration file. In the following example, we compare tables between MotherDuck(hosted DuckDB) and Snowflake using the hashdiff algorithm:
+You can use a `toml` configuration file to run your `data-diff` job. In this example, we compare tables between MotherDuck (hosted DuckDB) and Snowflake using the hashdiff algorithm:
 
 ```toml
 ## DATABASE CONNECTION ##
@@ -106,8 +114,12 @@ Run `data-diff` with a `toml` configuration file. In the following example, we c
 
   verbose = false
 ```
+4. Run your `data-diff` job
+
+Make sure to export relevant environment variables as needed. For example, we compare data based on the earlier configuration:
 
 ```bash
+
 # export relevant environment variables, example below
 export motherduck_token=<MOTHERDUCK_TOKEN>
 
@@ -121,6 +133,10 @@ data-diff --conf datadiff.toml \
 - 1, completed
 + 1, returned
 ```
+
+5. Review the output
+
+After running your data-diff job, review the output to identify and analyze differences in your data.
 
 Check out [documentation](https://docs.datafold.com/reference/open_source/cli) for the full command reference.
 
