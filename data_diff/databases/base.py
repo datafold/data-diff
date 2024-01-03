@@ -19,7 +19,8 @@ from typing_extensions import Self
 
 from data_diff.abcs.compiler import AbstractCompiler, Compilable
 from data_diff.queries.extras import ApplyFuncAndNormalizeAsString, Checksum, NormalizeAsString
-from data_diff.utils import ArithString, is_uuid, join_iter, safezip
+from data_diff.schema import RawColumnInfo
+from data_diff.utils import ArithString, ArithUUID, is_uuid, join_iter, safezip
 from data_diff.queries.api import Expr, table, Select, SKIP, Explain, Code, this
 from data_diff.queries.ast_classes import (
     Alias,
@@ -248,6 +249,9 @@ class BaseDialect(abc.ABC):
             return self.timestamp_value(elem)
         elif isinstance(elem, bytes):
             return f"b'{elem.decode()}'"
+        elif isinstance(elem, ArithUUID):
+            s = f"'{elem.uuid}'"
+            return s.upper() if elem.uppercase else s.lower() if elem.lowercase else s
         elif isinstance(elem, ArithString):
             return f"'{elem}'"
         assert False, elem
@@ -681,8 +685,10 @@ class BaseDialect(abc.ABC):
             return f"'{v}'"
         elif isinstance(v, datetime):
             return self.timestamp_value(v)
-        elif isinstance(v, UUID):
+        elif isinstance(v, UUID):  # probably unused anymore in favour of ArithUUID
             return f"'{v}'"
+        elif isinstance(v, ArithUUID):
+            return f"'{v.uuid}'"
         elif isinstance(v, decimal.Decimal):
             return str(v)
         elif isinstance(v, bytearray):
@@ -708,27 +714,18 @@ class BaseDialect(abc.ABC):
             datetime: "TIMESTAMP",
         }[t]
 
-    def _parse_type_repr(self, type_repr: str) -> Optional[Type[ColType]]:
-        return self.TYPE_CLASSES.get(type_repr)
-
-    def parse_type(
-        self,
-        table_path: DbPath,
-        col_name: str,
-        type_repr: str,
-        datetime_precision: int = None,
-        numeric_precision: int = None,
-        numeric_scale: int = None,
-    ) -> ColType:
+    def parse_type(self, table_path: DbPath, info: RawColumnInfo) -> ColType:
         "Parse type info as returned by the database"
 
-        cls = self._parse_type_repr(type_repr)
+        cls = self.TYPE_CLASSES.get(info.data_type)
         if cls is None:
-            return UnknownColType(type_repr)
+            return UnknownColType(info.data_type)
 
         if issubclass(cls, TemporalType):
             return cls(
-                precision=datetime_precision if datetime_precision is not None else DEFAULT_DATETIME_PRECISION,
+                precision=info.datetime_precision
+                if info.datetime_precision is not None
+                else DEFAULT_DATETIME_PRECISION,
                 rounds=self.ROUNDS_ON_PREC_LOSS,
             )
 
@@ -739,22 +736,22 @@ class BaseDialect(abc.ABC):
             return cls()
 
         elif issubclass(cls, Decimal):
-            if numeric_scale is None:
-                numeric_scale = 0  # Needed for Oracle.
-            return cls(precision=numeric_scale)
+            if info.numeric_scale is None:
+                return cls(precision=0)  # Needed for Oracle.
+            return cls(precision=info.numeric_scale)
 
         elif issubclass(cls, Float):
             # assert numeric_scale is None
             return cls(
                 precision=self._convert_db_precision_to_digits(
-                    numeric_precision if numeric_precision is not None else DEFAULT_NUMERIC_PRECISION
+                    info.numeric_precision if info.numeric_precision is not None else DEFAULT_NUMERIC_PRECISION
                 )
             )
 
         elif issubclass(cls, (JSON, Array, Struct, Text, Native_UUID)):
             return cls()
 
-        raise TypeError(f"Parsing {type_repr} returned an unknown type '{cls}'.")
+        raise TypeError(f"Parsing {info.data_type} returned an unknown type {cls!r}.")
 
     def _convert_db_precision_to_digits(self, p: int) -> int:
         """Convert from binary precision, used by floats, to decimal precision."""
@@ -1019,7 +1016,7 @@ class Database(abc.ABC):
             f"WHERE table_name = '{name}' AND table_schema = '{schema}'"
         )
 
-    def query_table_schema(self, path: DbPath) -> Dict[str, tuple]:
+    def query_table_schema(self, path: DbPath) -> Dict[str, RawColumnInfo]:
         """Query the table for its schema for table in 'path', and return {column: tuple}
         where the tuple is (table_name, col_name, type_repr, datetime_precision?, numeric_precision?, numeric_scale?)
 
@@ -1030,7 +1027,17 @@ class Database(abc.ABC):
         if not rows:
             raise RuntimeError(f"{self.name}: Table '{'.'.join(path)}' does not exist, or has no columns")
 
-        d = {r[0]: r for r in rows}
+        d = {
+            r[0]: RawColumnInfo(
+                column_name=r[0],
+                data_type=r[1],
+                datetime_precision=r[2],
+                numeric_precision=r[3],
+                numeric_scale=r[4],
+                collation_name=r[5] if len(r) > 5 else None,
+            )
+            for r in rows
+        }
         assert len(d) == len(rows)
         return d
 
@@ -1052,7 +1059,11 @@ class Database(abc.ABC):
         return list(res)
 
     def _process_table_schema(
-        self, path: DbPath, raw_schema: Dict[str, tuple], filter_columns: Sequence[str] = None, where: str = None
+        self,
+        path: DbPath,
+        raw_schema: Dict[str, RawColumnInfo],
+        filter_columns: Sequence[str] = None,
+        where: str = None,
     ):
         """Process the result of query_table_schema().
 
@@ -1068,7 +1079,7 @@ class Database(abc.ABC):
             accept = {i.lower() for i in filter_columns}
             filtered_schema = {name: row for name, row in raw_schema.items() if name.lower() in accept}
 
-        col_dict = {row[0]: self.dialect.parse_type(path, *row) for _name, row in filtered_schema.items()}
+        col_dict = {info.column_name: self.dialect.parse_type(path, info) for info in filtered_schema.values()}
 
         self._refine_coltypes(path, col_dict, where)
 
@@ -1077,7 +1088,7 @@ class Database(abc.ABC):
 
     def _refine_coltypes(
         self, table_path: DbPath, col_dict: Dict[str, ColType], where: Optional[str] = None, sample_size=64
-    ):
+    ) -> Dict[str, ColType]:
         """Refine the types in the column dict, by querying the database for a sample of their values
 
         'where' restricts the rows to be sampled.
@@ -1085,7 +1096,7 @@ class Database(abc.ABC):
 
         text_columns = [k for k, v in col_dict.items() if isinstance(v, Text)]
         if not text_columns:
-            return
+            return col_dict
 
         fields = [Code(self.dialect.normalize_uuid(self.dialect.quote(c), String_UUID())) for c in text_columns]
 
@@ -1105,7 +1116,10 @@ class Database(abc.ABC):
                     )
                 else:
                     assert col_name in col_dict
-                    col_dict[col_name] = String_UUID()
+                    col_dict[col_name] = String_UUID(
+                        lowercase=all(s == s.lower() for s in uuid_samples),
+                        uppercase=all(s == s.upper() for s in uuid_samples),
+                    )
                     continue
 
             if self.SUPPORTS_ALPHANUMS:  # Anything but MySQL (so far)
@@ -1117,7 +1131,9 @@ class Database(abc.ABC):
                         )
                     else:
                         assert col_name in col_dict
-                        col_dict[col_name] = String_VaryingAlphanum()
+                        col_dict[col_name] = String_VaryingAlphanum(collation=col_dict[col_name].collation)
+
+        return col_dict
 
     def _normalize_table_path(self, path: DbPath) -> DbPath:
         if len(path) == 1:

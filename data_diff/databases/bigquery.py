@@ -33,6 +33,7 @@ from data_diff.databases.base import (
     MD5_HEXDIGITS,
 )
 from data_diff.databases.base import TIMESTAMP_PRECISION_POS, ThreadLocalInterpreter
+from data_diff.schema import RawColumnInfo
 
 
 @import_helper(text="Please install BigQuery and configure your google-cloud access.")
@@ -96,21 +97,15 @@ class Dialect(BaseDialect):
         except KeyError:
             return super().type_repr(t)
 
-    def parse_type(
-        self,
-        table_path: DbPath,
-        col_name: str,
-        type_repr: str,
-        *args: Any,  # pass-through args
-        **kwargs: Any,  # pass-through args
-    ) -> ColType:
-        col_type = super().parse_type(table_path, col_name, type_repr, *args, **kwargs)
+    def parse_type(self, table_path: DbPath, info: RawColumnInfo) -> ColType:
+        col_type = super().parse_type(table_path, info)
         if not isinstance(col_type, UnknownColType):
             return col_type
 
-        m = self.TYPE_ARRAY_RE.fullmatch(type_repr)
+        m = self.TYPE_ARRAY_RE.fullmatch(info.data_type)
         if m:
-            item_type = self.parse_type(table_path, col_name, m.group(1), *args, **kwargs)
+            item_info = attrs.evolve(info, data_type=m.group(1))
+            item_type = self.parse_type(table_path, item_info)
             col_type = Array(item_type=item_type)
             return col_type
 
@@ -119,16 +114,27 @@ class Dialect(BaseDialect):
         # - STRUCT<foo INT64, bar STRING(10)> (named)
         # - STRUCT<foo INT64, bar ARRAY<INT64>> (with complex fields)
         # - STRUCT<foo INT64, bar STRUCT<a INT64, b INT64>> (nested)
-        m = self.TYPE_STRUCT_RE.fullmatch(type_repr)
+        m = self.TYPE_STRUCT_RE.fullmatch(info.data_type)
         if m:
             col_type = Struct()
             return col_type
 
-        m = self.TYPE_NUMERIC_RE.fullmatch(type_repr)
+        m = self.TYPE_NUMERIC_RE.fullmatch(info.data_type)
         if m:
             precision = int(m.group(3)) if m.group(3) else None
             scale = int(m.group(4)) if m.group(4) else None
-            col_type = Decimal(precision=scale if scale else 0 if precision else 9)
+            
+            if scale is not None:
+              # NUMERIC(..., scale) — scale is set explicitly
+              effective_precision = scale
+            elif precision is not None:
+              # NUMERIC(...) — scale is missing but precision is set
+              # effectively the same as NUMERIC(..., 0)
+              effective_precision = 0
+            else:
+              # NUMERIC → default scale is 9
+              effective_precision = 9
+            col_type = Decimal(precision=effective_precision)
             return col_type
 
         return col_type

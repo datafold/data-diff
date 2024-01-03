@@ -3,6 +3,7 @@ from typing import Any, ClassVar, Dict, Union, Type
 import attrs
 from packaging.version import parse as parse_version
 
+from data_diff.schema import RawColumnInfo
 from data_diff.utils import match_regexps
 from data_diff.abcs.database_types import (
     Timestamp,
@@ -78,24 +79,16 @@ class Dialect(BaseDialect):
         # Subtracting 2 due to wierd precision issues in PostgreSQL
         return super()._convert_db_precision_to_digits(p) - 2
 
-    def parse_type(
-        self,
-        table_path: DbPath,
-        col_name: str,
-        type_repr: str,
-        datetime_precision: int = None,
-        numeric_precision: int = None,
-        numeric_scale: int = None,
-    ) -> ColType:
+    def parse_type(self, table_path: DbPath, info: RawColumnInfo) -> ColType:
         regexps = {
             r"DECIMAL\((\d+),(\d+)\)": Decimal,
         }
 
-        for m, t_cls in match_regexps(regexps, type_repr):
+        for m, t_cls in match_regexps(regexps, info.data_type):
             precision = int(m.group(2))
             return t_cls(precision=precision)
 
-        return super().parse_type(table_path, col_name, type_repr, datetime_precision, numeric_precision, numeric_scale)
+        return super().parse_type(table_path, info)
 
     def set_timezone_to_utc(self) -> str:
         return "SET GLOBAL TimeZone='UTC'"

@@ -1,6 +1,7 @@
 from typing import List, Dict, Optional, Any, Tuple, Union
 
 import attrs
+from typing_extensions import Self
 
 from data_diff.table_segment import TableSegment
 
@@ -41,11 +42,14 @@ class SegmentInfo:
 
 @attrs.define(frozen=True)
 class InfoTree:
+    SEGMENT_INFO_CLASS = SegmentInfo
+
     info: SegmentInfo
     children: List["InfoTree"] = attrs.field(factory=list)
 
-    def add_node(self, table1: TableSegment, table2: TableSegment, max_rows: int = None):
-        node = InfoTree(SegmentInfo([table1, table2], max_rows=max_rows))
+    def add_node(self, table1: TableSegment, table2: TableSegment, max_rows: Optional[int] = None) -> Self:
+        cls = self.__class__
+        node = cls(cls.SEGMENT_INFO_CLASS([table1, table2], max_rows=max_rows))
         self.children.append(node)
         return node
 

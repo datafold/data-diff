@@ -1,5 +1,5 @@
 from typing import Any, ClassVar, Dict, List, Type
-
+from urllib.parse import unquote
 import attrs
 
 from data_diff.abcs.database_types import (
@@ -174,6 +174,7 @@ class PostgreSQL(ThreadedDatabase):
 
         pg = import_postgresql()
         try:
+            self._args["password"] = unquote(self._args["password"])
             self._conn = pg.connect(
                 **self._args, keepalives=1, keepalives_idle=5, keepalives_interval=2, keepalives_count=2
             )

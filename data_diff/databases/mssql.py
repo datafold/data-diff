@@ -94,7 +94,8 @@ class Dialect(BaseDialect):
         WHERE name = CURRENT_USER"""
 
     def to_string(self, s: str):
-        return f"CONVERT(varchar, {s})"
+        # Both convert(varchar(max), …) and convert(text, …) do work.
+        return f"CONVERT(VARCHAR(MAX), {s})"
 
     def type_repr(self, t) -> str:
         try:
@@ -201,7 +202,7 @@ class MsSQL(ThreadedDatabase):
             info_schema_path.insert(0, self.dialect.quote(database))
 
         return (
-            "SELECT column_name, data_type, datetime_precision, numeric_precision, numeric_scale "
+            "SELECT column_name, data_type, datetime_precision, numeric_precision, numeric_scale, collation_name "
             f"FROM {'.'.join(info_schema_path)} "
             f"WHERE table_name = '{name}' AND table_schema = '{schema}'"
         )

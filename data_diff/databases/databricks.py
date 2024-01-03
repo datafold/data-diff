@@ -26,6 +26,7 @@ from data_diff.databases.base import (
     import_helper,
     parse_table_name,
 )
+from data_diff.schema import RawColumnInfo
 
 
 @import_helper(text="You can install it using 'pip install databricks-sql-connector'")
@@ -138,7 +139,7 @@ class Databricks(ThreadedDatabase):
         except databricks.sql.exc.Error as e:
             raise ConnectionError(*e.args) from e
 
-    def query_table_schema(self, path: DbPath) -> Dict[str, tuple]:
+    def query_table_schema(self, path: DbPath) -> Dict[str, RawColumnInfo]:
         # Databricks has INFORMATION_SCHEMA only for Databricks Runtime, not for Databricks SQL.
         # https://docs.databricks.com/spark/latest/spark-sql/language-manual/information-schema/columns.html
         # So, to obtain information about schema, we should use another approach.
@@ -155,7 +156,12 @@ class Databricks(ThreadedDatabase):
             if not rows:
                 raise RuntimeError(f"{self.name}: Table '{'.'.join(path)}' does not exist, or has no columns")
 
-            d = {r.COLUMN_NAME: (r.COLUMN_NAME, r.TYPE_NAME, r.DECIMAL_DIGITS, None, None) for r in rows}
+            d = {
+                r.COLUMN_NAME: RawColumnInfo(
+                    column_name=r.COLUMN_NAME, data_type=r.TYPE_NAME, numeric_precision=r.DECIMAL_DIGITS
+                )
+                for r in rows
+            }
             assert len(d) == len(rows)
             return d
 
@@ -173,37 +179,47 @@ class Databricks(ThreadedDatabase):
     #     )
 
     def _process_table_schema(
-        self, path: DbPath, raw_schema: Dict[str, tuple], filter_columns: Sequence[str], where: str = None
+        self, path: DbPath, raw_schema: Dict[str, RawColumnInfo], filter_columns: Sequence[str], where: str = None
     ):
         accept = {i.lower() for i in filter_columns}
-        rows = [row for name, row in raw_schema.items() if name.lower() in accept]
+        col_infos = [row for name, row in raw_schema.items() if name.lower() in accept]
 
         resulted_rows = []
-        for row in rows:
-            row_type = "DECIMAL" if row[1].startswith("DECIMAL") else row[1]
+        for info in col_infos:
+            raw_data_type = info.data_type
+            row_type = info.data_type.split("(")[0]
+            info = attrs.evolve(info, data_type=row_type)
             type_cls = self.dialect.TYPE_CLASSES.get(row_type, UnknownColType)
 
             if issubclass(type_cls, Integer):
-                row = (row[0], row_type, None, None, 0)
+                info = attrs.evolve(info, numeric_scale=0)
 
             elif issubclass(type_cls, Float):
-                numeric_precision = math.ceil(row[2] / math.log(2, 10))
-                row = (row[0], row_type, None, numeric_precision, None)
+                numeric_precision = math.ceil(info.numeric_precision / math.log(2, 10))
+                info = attrs.evolve(info, numeric_precision=numeric_precision)
 
             elif issubclass(type_cls, Decimal):
-                items = row[1][8:].rstrip(")").split(",")
+                items = raw_data_type[8:].rstrip(")").split(",")
                 numeric_precision, numeric_scale = int(items[0]), int(items[1])
-                row = (row[0], row_type, None, numeric_precision, numeric_scale)
+                info = attrs.evolve(
+                    info,
+                    numeric_precision=numeric_precision,
+                    numeric_scale=numeric_scale,
+                )
 
             elif issubclass(type_cls, Timestamp):
-                row = (row[0], row_type, row[2], None, None)
+                info = attrs.evolve(
+                    info,
+                    datetime_precision=info.numeric_precision,
+                    numeric_precision=None,
+                )
 
             else:
-                row = (row[0], row_type, None, None, None)
+                info = attrs.evolve(info, numeric_precision=None)
 
-            resulted_rows.append(row)
+            resulted_rows.append(info)
 
-        col_dict: Dict[str, ColType] = {row[0]: self.dialect.parse_type(path, *row) for row in resulted_rows}
+        col_dict: Dict[str, ColType] = {info.column_name: self.dialect.parse_type(path, info) for info in resulted_rows}
 
         self._refine_coltypes(path, col_dict, where)
         return col_dict
