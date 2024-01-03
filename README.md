@@ -9,71 +9,61 @@ data-diff: Compare datasets fast, within or across SQL databases
 </h2>
 <br>
 
-> [Make sure to join us at our virtual hands-on lab series where our team walks through live how to get set-up with it!](https://www.datafold.com/virtual-hands-on-lab)
+> [Join our live virtual lab series to learn how to set it up!](https://www.datafold.com/virtual-hands-on-lab)
+
+# What's a Data Diff?
+A data diff is the value-level comparison between two tables—used to identify critical changes to your data and guarantee data quality.
+
+There is a lot you can do with data-diff: you can test SQL code by comparing development or staging environment data to production, or compare source and target data to identify discrepancies when moving data between databases.
 
 # Use Cases
 
-## Data Migration & Replication Testing
-Compare source to target and check for discrepancies when moving data between systems:
-- Migrating to a new data warehouse (e.g., Oracle > Snowflake)
-- Converting SQL to a new transformation framework (e.g., stored procedures > dbt)
-- Continuously replicating data from an OLTP DB to OLAP DWH (e.g., MySQL > Redshift)
+### Data Migration & Replication Testing
+data-diff is a powerful tool for comparing data when you're moving it between systems. Use it to ensure data accuracy and identify discrepancies during tasks like:
+- **Migrating** to a new data warehouse (e.g., Oracle > Snowflake)
+- **Converting SQL** to a new transformation framework (e.g., stored procedures > dbt)
+- Continuously **replicating data** from an OLTP database to OLAP data warehouse (e.g., MySQL > Redshift)
 
-
-## Data Development Testing 
-Test SQL code and preview changes by comparing development/staging environment data to production:
-1. Make a change to some SQL code
+### Data Development Testing 
+When developing SQL code, data-diff helps you validate and preview changes by comparing data between development/staging environments and production. Here's how it works:
+1. Make a change to your SQL code
 2. Run the SQL code to create a new dataset
-3. Compare the dataset with its production version or another iteration
+3. Compare this dataset with its production version or other iterations
 
-  <p align="left">
+# dbt Integration
+  <p align="center">
   <img alt="dbt" src="https://seeklogo.com/images/D/dbt-logo-E4B0ED72A2-seeklogo.com.png" width="10%" />
-  </p>
+  </p> 
 
-- data-diff integrates with [dbt Core](https://github.com/dbt-labs/dbt-core) to seamlessly compare local development to production datasets
-- [dbt Cloud users should check out Datafold's out-of-the-box deployment testing integration](https://www.datafold.com/data-deployment-testing)
+data-diff integrates with [dbt Core](https://github.com/dbt-labs/dbt-core) to seamlessly compare local development to production datasets.
 
-- :eyes: **Watch the [4-min demo video](https://www.loom.com/share/ad3df969ba6b4298939efb2fbcc14cde)**
-
-- **[Get started with data-diff & dbt](https://docs.datafold.com/development_testing/cli)**
-
-Reach out on the dbt Community Slack in [#tools-datafold](https://getdbt.slack.com/archives/C03D25A92UU) for advice and support
+Learn more about how data-diff works with dbt:
+* Read our docs to get started with [data-diff & dbt](https://docs.datafold.com/development_testing/cli) or :eyes: **watch the [4-min demo video](https://www.loom.com/share/ad3df969ba6b4298939efb2fbcc14cde)**
+* dbt Cloud users should check out [Datafold's out-of-the-box deployment testing integration](https://www.datafold.com/data-deployment-testing)
+* Get support from the dbt Community Slack in [#tools-datafold](https://getdbt.slack.com/archives/C03D25A92UU)
 
 
-# How it works
+# Getting Started
 
-When comparing the data, `data-diff` utilizes the resources of the underlying databases as much as possible. It has two primary modes of comparison:
+### ⚡ Validating dbt model changes between dev and prod
+Looking to use data-diff in dbt development? 
 
-## `joindiff`
-- Recommended for comparing data within the same database
-- Uses the outer join operation to diff the rows as efficiently as possible within the same database
-- Fully relies on the underlying database engine for computation
-- Requires both datasets to be queryable with a single SQL query
-- Time complexity approximates JOIN operation and is largely independent of the number of differences in the dataset
+Development testing with Datafold enables you to see the impact of dbt code changes on data as you write the code, whether in your IDE or CLI. 
 
-## `hashdiff`
-- Recommended for comparing datasets across different databases
-- Can also be helpful in diffing very large tables with few expected differences within the same database
-- Employs a divide-and-conquer algorithm based on hashing and binary search
-- Can diff data across distinct database engines, e.g., PostgreSQL <> Snowflake
-- Time complexity approximates COUNT(*) operation when there are few differences
-- Performance degrades when datasets have a large number of differences
+ Head over to [our `data-diff` + `dbt` documentation](https://docs.datafold.com/development_testing/how_it_works) to get started with a development testing workflow!
 
-More information about the algorithm and performance considerations can be found [here](https://github.com/datafold/data-diff/blob/master/docs/technical-explanation.md)
+### 🔀 Compare data tables between databases
+1. Install `data-diff` with adapters
 
-# Get started
-
-## Validating dbt model changes between dev and prod
-⚡ Looking to use `data-diff` in dbt development? Head over to [our `data-diff` + `dbt` documentation](https://docs.datafold.com/development_testing/how_it_works) to get started!
-
-## Compare data tables between databases
-🔀 To compare data between databases, install `data-diff` with specific database adapters, e.g.:
+To compare data between databases, install `data-diff` with specific database adapters. For example, install it for PostgreSQL and Snowflake like this:
 
 ```
 pip install data-diff 'data-diff[postgresql,snowflake]' -U
 ```
 
-Run `data-diff` with connection URIs. In the following example, we compare tables between PostgreSQL and Snowflake using the hashdiff algorithm:
+2. Run `data-diff` with connection URIs
+
+Then, we compare tables between PostgreSQL and Snowflake using the hashdiff algorithm:
 
 ```bash
 data-diff \
@@ -85,8 +75,9 @@ data-diff \
   -c <columns to compare> \
   -w <filter condition>
 ```
+3. Set up your configuration 
 
-Run `data-diff` with a `toml` configuration file. In the following example, we compare tables between MotherDuck(hosted DuckDB) and Snowflake using the hashdiff algorithm:
+You can use a `toml` configuration file to run your `data-diff` job. In this example, we compare tables between MotherDuck (hosted DuckDB) and Snowflake using the hashdiff algorithm:
 
 ```toml
 ## DATABASE CONNECTION ##
@@ -123,8 +114,12 @@ Run `data-diff` with a `toml` configuration file. In the following example, we c
 
   verbose = false
 ```
+4. Run your `data-diff` job
+
+Make sure to export relevant environment variables as needed. For example, we compare data based on the earlier configuration:
 
 ```bash
+
 # export relevant environment variables, example below
 export motherduck_token=<MOTHERDUCK_TOKEN>
 
@@ -138,6 +133,10 @@ data-diff --conf datadiff.toml \
 - 1, completed
 + 1, returned
 ```
+
+5. Review the output
+
+After running your data-diff job, review the output to identify and analyze differences in your data.
 
 Check out [documentation](https://docs.datafold.com/reference/open_source/cli) for the full command reference.
 
@@ -179,6 +178,16 @@ Your database not listed here?
 
 
 <br>
+
+# How it works
+
+`data-diff` efficiently compares data using two modes:
+
+1. **`joindiff`**: Ideal for comparing data within the same database, utilizing outer joins for efficient row comparisons. It relies on the database engine for computation and has consistent performance.
+
+2. **`hashdiff`**: Recommended for comparing datasets across different databases or large tables with minimal differences. It uses hashing and binary search, capable of diffing data across distinct database engines.
+
+For detailed algorithm and performance insights, explore [here](https://github.com/datafold/data-diff/blob/master/docs/technical-explanation.md).
 
 ## Contributors
 
