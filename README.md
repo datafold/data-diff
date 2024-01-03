@@ -31,7 +31,7 @@ When developing SQL code, data-diff helps you validate and preview changes by co
 3. Compare this dataset with its production version or other iterations
 
 # dbt Integration
-  <p align="center">
+  <p align="left">
   <img alt="dbt" src="https://seeklogo.com/images/D/dbt-logo-E4B0ED72A2-seeklogo.com.png" width="10%" />
   </p> 
 
