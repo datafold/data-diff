@@ -179,6 +179,16 @@ Your database not listed here?
 
 <br>
 
+# How it works
+
+`data-diff` efficiently compares data using two modes:
+
+1. **`joindiff`**: Ideal for comparing data within the same database, utilizing outer joins for efficient row comparisons. It relies on the database engine for computation and has consistent performance.
+
+2. **`hashdiff`**: Recommended for comparing datasets across different databases or large tables with minimal differences. It uses hashing and binary search, capable of diffing data across distinct database engines.
+
+For detailed algorithm and performance insights, explore [here](https://github.com/datafold/data-diff/blob/master/docs/technical-explanation.md).
+
 ## Contributors
 
 We thank everyone who contributed so far! 
