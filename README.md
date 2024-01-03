@@ -31,22 +31,23 @@ When developing SQL code, data-diff helps you validate and preview changes by co
 3. Compare this dataset with its production version or other iterations
 
 # dbt Integration
-data-diff integrates with [dbt Core](https://github.com/dbt-labs/dbt-core) to seamlessly compare local development to production datasets
-
   <p align="center">
   <img alt="dbt" src="https://seeklogo.com/images/D/dbt-logo-E4B0ED72A2-seeklogo.com.png" width="10%" />
   </p> 
 
+data-diff integrates with [dbt Core](https://github.com/dbt-labs/dbt-core) to seamlessly compare local development to production datasets.
+
 Learn more about how data-diff works with dbt:
 * Read our docs to get started with [data-diff & dbt](https://docs.datafold.com/development_testing/cli) or :eyes: **watch the [4-min demo video](https://www.loom.com/share/ad3df969ba6b4298939efb2fbcc14cde)**
 * dbt Cloud users should check out [Datafold's out-of-the-box deployment testing integration](https://www.datafold.com/data-deployment-testing)
+* ⚡ Looking to use data-diff in dbt development? Head over to [our `data-diff` + `dbt` documentation](https://docs.datafold.com/development_testing/how_it_works) to get started!
 * Get support from the dbt Community Slack in [#tools-datafold](https://getdbt.slack.com/archives/C03D25A92UU)
 
 
 # Get started
 
 ## Validating dbt model changes between dev and prod
-⚡ Looking to use `data-diff` in dbt development? Head over to [our `data-diff` + `dbt` documentation](https://docs.datafold.com/development_testing/how_it_works) to get started!
+
 
 ## Compare data tables between databases
 🔀 To compare data between databases, install `data-diff` with specific database adapters, e.g.:
