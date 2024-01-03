@@ -123,17 +123,17 @@ class Dialect(BaseDialect):
         if m:
             precision = int(m.group(3)) if m.group(3) else None
             scale = int(m.group(4)) if m.group(4) else None
-            
+
             if scale is not None:
-              # NUMERIC(..., scale) — scale is set explicitly
-              effective_precision = scale
+                # NUMERIC(..., scale) — scale is set explicitly
+                effective_precision = scale
             elif precision is not None:
-              # NUMERIC(...) — scale is missing but precision is set
-              # effectively the same as NUMERIC(..., 0)
-              effective_precision = 0
+                # NUMERIC(...) — scale is missing but precision is set
+                # effectively the same as NUMERIC(..., 0)
+                effective_precision = 0
             else:
-              # NUMERIC → default scale is 9
-              effective_precision = 9
+                # NUMERIC → default scale is 9
+                effective_precision = 9
             col_type = Decimal(precision=effective_precision)
             return col_type
 
