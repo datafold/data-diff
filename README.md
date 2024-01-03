@@ -162,8 +162,7 @@ Check out [documentation](https://docs.datafold.com/reference/open_source/cli) f
 | ElasticSearch |  📝    |                                                                                                                                     |
 | Planetscale   |  📝    |                                                                                                                                     |
 | Pinot         |  📝    |                                                                                                                                     |
-| Druid         |  📝    |                                                                                                                                     |
-| Kafka         |  📝    |                                                                                                                                     |
+| Druid         |  📝    |                                                                                                                                     |                                                                                                                                  |
 | SQLite        |  📝    |                                                                                                                                     |
 
 * 🟢: Implemented and thoroughly tested.
