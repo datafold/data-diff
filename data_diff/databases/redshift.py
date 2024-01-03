@@ -181,7 +181,7 @@ class Redshift(PostgreSQL):
 
             schema_dict[col_name] = RawColumnInfo(
                 column_name=col_name,
-                data_type=col_name,
+                data_type=base_type,
                 datetime_precision=None,
                 numeric_precision=precision,
                 numeric_scale=scale,
