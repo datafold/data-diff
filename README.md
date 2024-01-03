@@ -11,12 +11,10 @@ data-diff: Compare datasets fast, within or across SQL databases
 
 > [Join our live virtual lab series to learn how to set it up!](https://www.datafold.com/virtual-hands-on-lab)
 
-
 # What's a Data Diff?
 A data diff is the value-level comparison between two tables—used to identify critical changes to your data and guarantee data quality.
 
 There is a lot you can do with data-diff: you can test SQL code by comparing development or staging environment data to production, or compare source and target data to identify discrepancies when moving data between databases.
-
 
 # Use Cases
 
@@ -45,28 +43,6 @@ Test SQL code and preview changes by comparing development/staging environment d
 - **[Get started with data-diff & dbt](https://docs.datafold.com/development_testing/cli)**
 
 Reach out on the dbt Community Slack in [#tools-datafold](https://getdbt.slack.com/archives/C03D25A92UU) for advice and support
-
-
-# How it works
-
-When comparing the data, `data-diff` utilizes the resources of the underlying databases as much as possible. It has two primary modes of comparison:
-
-## `joindiff`
-- Recommended for comparing data within the same database
-- Uses the outer join operation to diff the rows as efficiently as possible within the same database
-- Fully relies on the underlying database engine for computation
-- Requires both datasets to be queryable with a single SQL query
-- Time complexity approximates JOIN operation and is largely independent of the number of differences in the dataset
-
-## `hashdiff`
-- Recommended for comparing datasets across different databases
-- Can also be helpful in diffing very large tables with few expected differences within the same database
-- Employs a divide-and-conquer algorithm based on hashing and binary search
-- Can diff data across distinct database engines, e.g., PostgreSQL <> Snowflake
-- Time complexity approximates COUNT(*) operation when there are few differences
-- Performance degrades when datasets have a large number of differences
-
-More information about the algorithm and performance considerations can be found [here](https://github.com/datafold/data-diff/blob/master/docs/technical-explanation.md)
 
 # Get started
 
