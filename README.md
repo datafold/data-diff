@@ -18,31 +18,30 @@ There is a lot you can do with data-diff: you can test SQL code by comparing dev
 
 # Use Cases
 
-## Data Migration & Replication Testing
-Compare source to target and check for discrepancies when moving data between systems:
-- Migrating to a new data warehouse (e.g., Oracle > Snowflake)
-- Converting SQL to a new transformation framework (e.g., stored procedures > dbt)
-- Continuously replicating data from an OLTP DB to OLAP DWH (e.g., MySQL > Redshift)
+### Data Migration & Replication Testing
+data-diff is a powerful tool for comparing data when you're moving it between systems. Use it to ensure data accuracy and identify discrepancies during tasks like:
+- **Migrating** to a new data warehouse (e.g., Oracle > Snowflake)
+- **Converting SQL** to a new transformation framework (e.g., stored procedures > dbt)
+- Continuously **replicating data** from an OLTP database to OLAP data warehouse (e.g., MySQL > Redshift)
 
-
-## Data Development Testing 
-Test SQL code and preview changes by comparing development/staging environment data to production:
-1. Make a change to some SQL code
+### Data Development Testing 
+When developing SQL code, data-diff helps you validate and preview changes by comparing data between development/staging environments and production. Here's how it works:
+1. Make a change to your SQL code
 2. Run the SQL code to create a new dataset
-3. Compare the dataset with its production version or another iteration
+3. Compare this dataset with its production version or other iterations
 
-  <p align="left">
+# dbt Integration
+data-diff integrates with [dbt Core](https://github.com/dbt-labs/dbt-core) to seamlessly compare local development to production datasets
+
+  <p align="center">
   <img alt="dbt" src="https://seeklogo.com/images/D/dbt-logo-E4B0ED72A2-seeklogo.com.png" width="10%" />
-  </p>
+  </p> 
 
-- data-diff integrates with [dbt Core](https://github.com/dbt-labs/dbt-core) to seamlessly compare local development to production datasets
-- [dbt Cloud users should check out Datafold's out-of-the-box deployment testing integration](https://www.datafold.com/data-deployment-testing)
+Learn more about how data-diff works with dbt:
+* Read our docs to get started with [data-diff & dbt](https://docs.datafold.com/development_testing/cli) or :eyes: **watch the [4-min demo video](https://www.loom.com/share/ad3df969ba6b4298939efb2fbcc14cde)**
+* dbt Cloud users should check out [Datafold's out-of-the-box deployment testing integration](https://www.datafold.com/data-deployment-testing)
+* Get support from the dbt Community Slack in [#tools-datafold](https://getdbt.slack.com/archives/C03D25A92UU)
 
-- :eyes: **Watch the [4-min demo video](https://www.loom.com/share/ad3df969ba6b4298939efb2fbcc14cde)**
-
-- **[Get started with data-diff & dbt](https://docs.datafold.com/development_testing/cli)**
-
-Reach out on the dbt Community Slack in [#tools-datafold](https://getdbt.slack.com/archives/C03D25A92UU) for advice and support
 
 # Get started
 
