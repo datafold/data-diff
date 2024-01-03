@@ -81,6 +81,11 @@ More information about the algorithm and performance considerations can be found
 pip install data-diff 'data-diff[postgresql,snowflake]' -U
 ```
 
+Additionally, you can install all database adapters as follows.
+```
+pip install data-diff 'data-diff[with_everything]' -U
+```
+
 Run `data-diff` with connection URIs. In the following example, we compare tables between PostgreSQL and Snowflake using the hashdiff algorithm:
 
 ```bash
@@ -98,7 +103,7 @@ Run `data-diff` with a `toml` configuration file. In the following example, we c
 
 ```toml
 ## DATABASE CONNECTION ##
-[database.duckdb_connection] 
+[database.duckdb_connection]
   driver = "duckdb"
   # filepath = "datafold_demo.duckdb" # local duckdb file example
   # filepath = "md:" # default motherduck connection example
