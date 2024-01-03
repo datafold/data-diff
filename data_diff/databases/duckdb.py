@@ -46,6 +46,10 @@ class Dialect(BaseDialect):
     SUPPORTS_PRIMARY_KEY = True
     SUPPORTS_INDEXES = True
 
+    # https://duckdb.org/docs/sql/data_types/numeric#fixed-point-decimals
+    # The default WIDTH and SCALE is DECIMAL(18, 3), if none are specified.
+    DEFAULT_NUMERIC_PRECISION = 3
+
     TYPE_CLASSES = {
         # Timestamps
         "TIMESTAMP WITH TIME ZONE": TimestampTZ,
