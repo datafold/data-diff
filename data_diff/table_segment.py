@@ -1,5 +1,5 @@
 import time
-from typing import Container, List, Optional, Tuple
+from typing import Container, Dict, List, Optional, Sequence, Tuple
 import logging
 from itertools import product
 
@@ -9,8 +9,8 @@ from typing_extensions import Self
 from data_diff.utils import safezip, Vector
 from data_diff.utils import ArithString, split_space
 from data_diff.databases.base import Database
-from data_diff.abcs.database_types import DbPath, DbKey, DbTime
-from data_diff.schema import Schema, create_schema
+from data_diff.abcs.database_types import DbPath, DbKey, DbTime, IKey
+from data_diff.schema import RawColumnInfo, Schema, create_schema
 from data_diff.queries.extras import Checksum
 from data_diff.queries.api import Count, SKIP, table, this, Expr, min_, max_, Code
 from data_diff.queries.extras import ApplyFuncAndNormalizeAsString, NormalizeAsString
@@ -141,7 +141,7 @@ class TableSegment:
     def _where(self):
         return f"({self.where})" if self.where else None
 
-    def _with_raw_schema(self, raw_schema: dict) -> Self:
+    def _with_raw_schema(self, raw_schema: Dict[str, RawColumnInfo]) -> Self:
         schema = self.database._process_table_schema(self.table_path, raw_schema, self.relevant_columns, self._where())
         return self.new(schema=create_schema(self.database.name, self.table_path, schema, self.case_sensitive))
 
@@ -152,7 +152,7 @@ class TableSegment:
 
         return self._with_raw_schema(self.database.query_table_schema(self.table_path))
 
-    def get_schema(self):
+    def get_schema(self) -> Dict[str, RawColumnInfo]:
         return self.database.query_table_schema(self.table_path)
 
     def _make_key_range(self):
@@ -205,7 +205,7 @@ class TableSegment:
         """Creates a copy of the instance using 'replace()'"""
         return attrs.evolve(self, **kwargs)
 
-    def new_key_bounds(self, min_key: Vector, max_key: Vector) -> Self:
+    def new_key_bounds(self, min_key: Vector, max_key: Vector, *, key_types: Optional[Sequence[IKey]] = None) -> Self:
         if self.min_key is not None:
             assert self.min_key <= min_key, (self.min_key, min_key)
             assert self.min_key < max_key
@@ -213,6 +213,13 @@ class TableSegment:
         if self.max_key is not None:
             assert min_key < self.max_key
             assert max_key <= self.max_key
+
+        # If asked, enforce the PKs to proper types, mainly to meta-params of the relevant side,
+        # so that we do not leak e.g. casing of UUIDs from side A to side B and vice versa.
+        # If not asked, keep the meta-params of the keys as is (assume them already casted).
+        if key_types is not None:
+            min_key = Vector(type.make_value(val) for type, val in safezip(key_types, min_key))
+            max_key = Vector(type.make_value(val) for type, val in safezip(key_types, max_key))
 
         return attrs.evolve(self, min_key=min_key, max_key=max_key)
 
