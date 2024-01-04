@@ -1,7 +1,7 @@
 import unittest
 
 from data_diff.queries.api import table, commit
-from data_diff import TableSegment, HashDiffer
+from data_diff import TableSegment, HashDiffer, JoinDiffer
 from data_diff import databases as db
 from tests.common import get_conn, random_table_suffix, connect
 
@@ -36,6 +36,12 @@ class TestClickzetta(unittest.TestCase):
         a = TableSegment(self.connection, self.table_src.path, ("id",), "comment")
         b = TableSegment(self.connection, self.table_dst.path, ("id",), "comment")
 
+        # join-diff check
+        join_differ = JoinDiffer()
+        join_diff = list(join_differ.diff_tables(a, b))
+        join_id = join_diff[0][1][0]
+        self.assertEqual(join_diff, [("-", (join_id, "This one is different"))])
+
         differ = HashDiffer()
         diff = list(differ.diff_tables(a, b))
         id = diff[0][1][0]
@@ -62,6 +68,28 @@ class TestClickzetta(unittest.TestCase):
         diff = list(differ.diff_tables(c, a))
         assert not diff, diff
 
+        # Compare with PostgreSQL
+        pg_conn = get_conn(db.PostgreSQL)
+
+        rows = self.connection.query(self.table_src.select(), list)
+
+        queries = [
+            f"CREATE TABLE {self.table_dst_name} (id BIGINT, comment VARCHAR)",
+            commit,
+            self.table_dst.insert_rows(rows, columns=["id", "comment"]),
+            commit,
+        ]
+
+        for q in queries:
+            pg_conn.query(q)
+
+        c = TableSegment(pg_conn, (self.table_dst_name,), ("id",), "comment")
+        diff = list(differ.diff_tables(a, c))
+        assert not diff, diff
+        diff = list(differ.diff_tables(c, a))
+        assert not diff, diff
+
         self.connection.query(self.table_src.drop(True))
         self.connection.query(self.table_dst.drop(True))
         mysql_conn.query(self.table_dst.drop(True))
+        pg_conn.query(self.table_dst.drop(True))
