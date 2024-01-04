@@ -83,7 +83,7 @@ pip install data-diff 'data-diff[postgresql,snowflake]' -U
 
 Additionally, you can install all database adapters as follows.
 ```
-pip install data-diff 'data-diff[with_everything]' -U
+pip install data-diff 'data-diff[all-dbs]' -U
 ```
 
 Run `data-diff` with connection URIs. In the following example, we compare tables between PostgreSQL and Snowflake using the hashdiff algorithm:
