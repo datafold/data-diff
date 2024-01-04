@@ -20,9 +20,9 @@ There is a lot you can do with data-diff: you can test SQL code by comparing dev
 
 ### Data Migration & Replication Testing
 data-diff is a powerful tool for comparing data when you're moving it between systems. Use it to ensure data accuracy and identify discrepancies during tasks like:
-- **Migrating** to a new data warehouse (e.g., Oracle > Snowflake)
-- **Converting SQL** to a new transformation framework (e.g., stored procedures > dbt)
-- Continuously **replicating data** from an OLTP database to OLAP data warehouse (e.g., MySQL > Redshift)
+- **Migrating** to a new data warehouse (e.g., Oracle -> Snowflake)
+- **Converting SQL** to a new transformation framework (e.g., stored procedures -> dbt)
+- Continuously **replicating data** from an OLTP database to OLAP data warehouse (e.g., MySQL -> Redshift)
 
 ### Data Development Testing 
 When developing SQL code, data-diff helps you validate and preview changes by comparing data between development/staging environments and production. Here's how it works:
@@ -50,7 +50,7 @@ Looking to use data-diff in dbt development?
 
 Development testing with Datafold enables you to see the impact of dbt code changes on data as you write the code, whether in your IDE or CLI. 
 
- Head over to [our `data-diff` + `dbt` documentation](https://docs.datafold.com/development_testing/how_it_works) to get started with a development testing workflow!
+ Head over to [our `data-diff` + `dbt` documentation](https://docs.datafold.com/development_testing/cli) to get started with a development testing workflow!
 
 ### 🔀 Compare data tables between databases
 1. Install `data-diff` with adapters
@@ -140,9 +140,12 @@ After running your data-diff job, review the output to identify and analyze diff
 
 Check out [documentation](https://docs.datafold.com/reference/open_source/cli) for the full command reference.
 
+# data-diff OSS & Datafold Cloud
+data-diff is an open source utility. You run stateless diffs on your local computer but results cannot be easily accessed by others.
+
+Scale up with [Datafold Cloud](https://www.datafold.com/) to make data diffing a company-wide experience to both supercharge your data diffing CLI experience (ex: data-diff --dbt --cloud) and run diffs manually in the UI. This includes [column-level lineage](https://www.datafold.com/column-level-lineage), [CI testing](https://docs.datafold.com/deployment_testing/how_it_works/), and diff history.
 
 # Supported databases
-
 
 | Database      | Status | Connection string                                                                                                                   |
 |---------------|-------------------------------------------------------------------------------------------------------------------------------------|-------------------------------------------------------------------------------------------------------------------------------------|
@@ -182,11 +185,32 @@ Your database not listed here?
 
 `data-diff` efficiently compares data using two modes:
 
-1. **`joindiff`**: Ideal for comparing data within the same database, utilizing outer joins for efficient row comparisons. It relies on the database engine for computation and has consistent performance.
+**joindiff**: Ideal for comparing data within the same database, utilizing outer joins for efficient row comparisons. It relies on the database engine for computation and has consistent performance.
 
-2. **`hashdiff`**: Recommended for comparing datasets across different databases or large tables with minimal differences. It uses hashing and binary search, capable of diffing data across distinct database engines.
+**hashdiff**: Recommended for comparing datasets across different databases or large tables with minimal differences. It uses hashing and binary search, capable of diffing data across distinct database engines.
 
 For detailed algorithm and performance insights, explore [here](https://github.com/datafold/data-diff/blob/master/docs/technical-explanation.md).
+
+<details>
+<summary>Click here to learn more about joindiff and hashdiff</summary>
+
+### `joindiff`
+* Recommended for comparing data within the same database
+* Uses the outer join operation to diff the rows as efficiently as possible within the same database
+* Fully relies on the underlying database engine for computation
+* Requires both datasets to be queryable with a single SQL query
+* Time complexity approximates JOIN operation and is largely independent of the number of differences in the dataset
+
+### `hashdiff`:
+* Recommended for comparing datasets across different databases
+* Can also be helpful in diffing very large tables with few expected differences within the same database
+* Employs a divide-and-conquer algorithm based on hashing and binary search
+* Can diff data across distinct database engines, e.g., PostgreSQL <> Snowflake
+* Time complexity approximates COUNT(*) operation when there are few differences
+* Performance degrades when datasets have a large number of differences
+
+</details>
+
 
 ## Contributors
 
