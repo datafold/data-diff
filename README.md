@@ -189,7 +189,7 @@ Your database not listed here?
 
 **hashdiff**: Recommended for comparing datasets across different databases or large tables with minimal differences. It uses hashing and binary search, capable of diffing data across distinct database engines.
 
-For detailed algorithm and performance insights, explore [here](https://github.com/datafold/data-diff/blob/master/docs/technical-explanation.md).
+For detailed algorithm and performance insights, explore [here](https://github.com/datafold/data-diff/blob/master/docs/technical-explanation.md), or head to our docs to [learn more about how Datafold diffs data](https://docs.datafold.com/data_diff/how-datafold-diffs-data). 
 
 <details>
 <summary>Click here to learn more about joindiff and hashdiff</summary>
