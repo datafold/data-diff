@@ -124,7 +124,14 @@ click.Context.formatter_class = MyHelpFormatter
 @click.argument("database2", required=False)
 @click.argument("table2", required=False)
 @click.option(
-    "-k", "--key-columns", default=[], multiple=True, help="Names of primary key columns. Default='id'.", metavar="NAME"
+    "-k",
+    "--key-columns",
+    default=[],
+    multiple=True,
+    help="Names of primary key columns. Default='id'."
+    "Can be used more than once in the same command for composite key. "
+    "Example: -k col_a -k col_b",
+    metavar="NAME",
 )
 @click.option("-t", "--update-column", default=None, help="Name of updated_at/last_updated column", metavar="NAME")
 @click.option(
