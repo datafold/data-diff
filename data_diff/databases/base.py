@@ -922,12 +922,6 @@ class Database(abc.ABC):
     is_closed: bool = False
     _dialect: BaseDialect = None
 
-    def __enter__(self):
-        return self
-
-    def __exit__(self, exc_type, exc_value, traceback):
-        self.close()
-
     @property
     def name(self):
         return type(self).__name__
@@ -1170,8 +1164,9 @@ class Database(abc.ABC):
         return apply_query(callback, sql_code)
 
     def close(self):
-        """Close connection(s) to the database instance. Querying will stop functioning."""
+        "Close connection(s) to the database instance. Querying will stop functioning."
         self.is_closed = True
+        return super().close()
 
     @property
     def dialect(self) -> BaseDialect:
@@ -1242,8 +1237,6 @@ class ThreadedDatabase(Database):
     def close(self):
         super().close()
         self._queue.shutdown()
-        if hasattr(self.thread_local, "conn"):
-            self.thread_local.conn.close()
 
     @property
     def is_autocommit(self) -> bool:
