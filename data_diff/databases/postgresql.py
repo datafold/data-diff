@@ -45,12 +45,6 @@ class PostgresqlDialect(BaseDialect):
     SUPPORTS_PRIMARY_KEY: ClassVar[bool] = True
     SUPPORTS_INDEXES = True
 
-    # https://www.postgresql.org/docs/current/datatype-numeric.html#DATATYPE-NUMERIC-DECIMAL
-    # without any precision or scale creates an “unconstrained numeric” column
-    # in which numeric values of any length can be stored, up to the implementation limits.
-    # https://www.postgresql.org/docs/current/datatype-numeric.html#DATATYPE-NUMERIC-TABLE
-    DEFAULT_NUMERIC_PRECISION = 16383
-
     TYPE_CLASSES: ClassVar[Dict[str, Type[ColType]]] = {
         # Timestamps
         "timestamp with time zone": TimestampTZ,
@@ -191,21 +185,10 @@ class PostgreSQL(ThreadedDatabase):
         if database:
             info_schema_path.insert(0, database)
 
-        return f"""SELECT column_name, data_type, datetime_precision,
-                    -- see comment for DEFAULT_NUMERIC_PRECISION
-                    CASE
-                        WHEN data_type = 'numeric'
-                            THEN coalesce(numeric_precision, 131072 + {self.dialect.DEFAULT_NUMERIC_PRECISION})
-                        ELSE numeric_precision
-                    END AS numeric_precision,
-                    CASE
-                        WHEN data_type = 'numeric'
-                            THEN coalesce(numeric_scale, {self.dialect.DEFAULT_NUMERIC_PRECISION})
-                        ELSE numeric_scale
-                    END AS numeric_scale
-                    FROM {'.'.join(info_schema_path)}
-                    WHERE table_name = '{table}' AND table_schema = '{schema}'
-            """
+        return (
+            f"SELECT column_name, data_type, datetime_precision, numeric_precision, numeric_scale FROM {'.'.join(info_schema_path)} "
+            f"WHERE table_name = '{table}' AND table_schema = '{schema}'"
+        )
 
     def select_table_unique_columns(self, path: DbPath) -> str:
         database, schema, table = self._normalize_table_path(path)
@@ -231,3 +214,8 @@ class PostgreSQL(ThreadedDatabase):
         raise ValueError(
             f"{self.name}: Bad table path for {self}: '{'.'.join(path)}'. Expected format: table, schema.table, or database.schema.table"
         )
+
+    def close(self):
+        super().close()
+        if self._conn is not None:
+            self._conn.close()

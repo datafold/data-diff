@@ -1,5 +1,6 @@
 import hashlib
 import os
+import re
 import string
 import random
 from typing import Callable
@@ -187,3 +188,7 @@ def table_segment(database, table_path, key_columns, *args, **kw):
     if isinstance(key_columns, str):
         key_columns = (key_columns,)
     return TableSegment(database, table_path, key_columns, *args, **kw)
+
+
+def ansi_stdout_cleanup(ansi_input) -> str:
+    return re.sub(r"\x1B\[[0-?]*[ -/]*[@-~]", "", ansi_input)

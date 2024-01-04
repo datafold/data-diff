@@ -22,7 +22,7 @@ from data_diff.cloud.data_source import (
     _test_data_source,
 )
 from data_diff.dbt_parser import TDatadiffConfig
-
+from tests.common import ansi_stdout_cleanup
 
 DATA_SOURCE_CONFIGS = {
     "snowflake": TDsConfig(
@@ -262,7 +262,7 @@ class TestDataSource(unittest.TestCase):
             )
             self.assertEqual(actual_config, config)
             self.assertEqual(
-                mock_stdout.getvalue().strip(),
+                ansi_stdout_cleanup(mock_stdout.getvalue().strip()),
                 'Cannot extract "account" from dbt profiles.yml. Please, type it manually',
             )
 
@@ -294,7 +294,7 @@ class TestDataSource(unittest.TestCase):
                 data_source_name=config.name,
             )
             self.assertEqual(actual_config, config)
-            self.assertEqual(mock_stdout.getvalue().strip(), "Parameter must not be empty")
+            self.assertEqual(ansi_stdout_cleanup(mock_stdout.getvalue().strip()), "Parameter must not be empty")
 
     def test_check_data_source_exists(self):
         self.assertEqual(_check_data_source_exists(self.data_sources, self.data_sources[0].name), self.data_sources[0])
