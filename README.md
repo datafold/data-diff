@@ -140,11 +140,6 @@ After running your data-diff job, review the output to identify and analyze diff
 
 Check out [documentation](https://docs.datafold.com/reference/open_source/cli) for the full command reference.
 
-# data-diff OSS & Datafold Cloud
-data-diff is an open source utility for running stateless diffs on your local computer for a great single player experience.
-
-Scale up with [Datafold Cloud](https://www.datafold.com/) to make data diffing a company-wide experience to both supercharge your data diffing CLI experience (ex: data-diff --dbt --cloud) and run diffs manually in the UI. This includes [column-level lineage](https://www.datafold.com/column-level-lineage), [CI testing](https://docs.datafold.com/deployment_testing/how_it_works/), and diff history.
-
 # Supported databases
 
 | Database      | Status | Connection string                                                                                                                   |
@@ -189,8 +184,6 @@ Your database not listed here?
 
 **hashdiff**: Recommended for comparing datasets across different databases or large tables with minimal differences. It uses hashing and binary search, capable of diffing data across distinct database engines.
 
-For detailed algorithm and performance insights, explore [here](https://github.com/datafold/data-diff/blob/master/docs/technical-explanation.md), or head to our docs to [learn more about how Datafold diffs data](https://docs.datafold.com/data_diff/how-datafold-diffs-data). 
-
 <details>
 <summary>Click here to learn more about joindiff and hashdiff</summary>
 
@@ -209,8 +202,16 @@ For detailed algorithm and performance insights, explore [here](https://github.c
 * Time complexity approximates COUNT(*) operation when there are few differences
 * Performance degrades when datasets have a large number of differences
 
-</details>
+</details>  
+<br>
 
+For detailed algorithm and performance insights, explore [here](https://github.com/datafold/data-diff/blob/master/docs/technical-explanation.md), or head to our docs to [learn more about how Datafold diffs data](https://docs.datafold.com/data_diff/how-datafold-diffs-data). 
+
+
+# data-diff OSS & Datafold Cloud
+data-diff is an open source utility for running stateless diffs on your local computer for a great single player experience.
+
+Scale up with [Datafold Cloud](https://www.datafold.com/) to make data diffing a company-wide experience to both supercharge your data diffing CLI experience (ex: data-diff --dbt --cloud) and run diffs manually in the UI. This includes [column-level lineage](https://www.datafold.com/column-level-lineage), [CI testing](https://docs.datafold.com/deployment_testing/how_it_works/), and diff history.
 
 ## Contributors
 
