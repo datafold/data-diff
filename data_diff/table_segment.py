@@ -126,7 +126,7 @@ class TableSegment:
     case_sensitive: Optional[bool] = True
     _schema: Optional[Schema] = None
 
-    def __attrs_post_init__(self):
+    def __attrs_post_init__(self) -> None:
         if not self.update_column and (self.min_update or self.max_update):
             raise ValueError("Error: the min_update/max_update feature requires 'update_column' to be set.")
 
@@ -138,7 +138,7 @@ class TableSegment:
                 f"Error: min_update expected to be smaller than max_update! ({self.min_update} >= {self.max_update})"
             )
 
-    def _where(self):
+    def _where(self) -> Optional[str]:
         return f"({self.where})" if self.where else None
 
     def _with_raw_schema(self, raw_schema: Dict[str, RawColumnInfo]) -> Self:

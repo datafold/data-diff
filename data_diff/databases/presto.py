@@ -152,7 +152,7 @@ class Presto(Database):
 
     _conn: Any
 
-    def __init__(self, **kw):
+    def __init__(self, **kw) -> None:
         super().__init__()
         self.default_schema = "public"
         prestodb = import_presto()

@@ -70,10 +70,10 @@ class Dialect(BaseDialect):
         "boolean": Boolean,
     }
 
-    def quote(self, s: str):
+    def quote(self, s: str) -> str:
         return f"`{s}`"
 
-    def to_string(self, s: str):
+    def to_string(self, s: str) -> str:
         return f"cast({s} as char)"
 
     def is_distinct_from(self, a: str, b: str) -> str:
@@ -129,7 +129,7 @@ class MySQL(ThreadedDatabase):
 
     _args: Dict[str, Any]
 
-    def __init__(self, *, thread_count, **kw):
+    def __init__(self, *, thread_count, **kw) -> None:
         super().__init__(thread_count=thread_count)
         self._args = kw
 

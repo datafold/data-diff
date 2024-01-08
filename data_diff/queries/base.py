@@ -5,7 +5,7 @@ import attrs
 
 @attrs.define(frozen=True)
 class _SKIP:
-    def __repr__(self):
+    def __repr__(self) -> str:
         return "SKIP"
 
 

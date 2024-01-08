@@ -65,7 +65,7 @@ class Dialect(BaseDialect):
         except KeyError:
             return super().type_repr(t)
 
-    def quote(self, s: str):
+    def quote(self, s: str) -> str:
         return f"`{s}`"
 
     def to_string(self, s: str) -> str:
@@ -118,7 +118,7 @@ class Databricks(ThreadedDatabase):
     catalog: str
     _args: Dict[str, Any]
 
-    def __init__(self, *, thread_count, **kw):
+    def __init__(self, *, thread_count, **kw) -> None:
         super().__init__(thread_count=thread_count)
         logging.getLogger("databricks.sql").setLevel(logging.WARNING)
 

@@ -80,7 +80,7 @@ class CaseAwareMapping(MutableMapping[str, V]):
 
 
 class CaseInsensitiveDict(CaseAwareMapping):
-    def __init__(self, initial):
+    def __init__(self, initial) -> None:
         super().__init__()
         self._dict = {k.lower(): (k, v) for k, v in dict(initial).items()}
 
@@ -93,13 +93,13 @@ class CaseInsensitiveDict(CaseAwareMapping):
     def __len__(self) -> int:
         return len(self._dict)
 
-    def __setitem__(self, key: str, value):
+    def __setitem__(self, key: str, value) -> None:
         k = key.lower()
         if k in self._dict:
             key = self._dict[k][0]
         self._dict[k] = key, value
 
-    def __delitem__(self, key: str):
+    def __delitem__(self, key: str) -> None:
         del self._dict[key.lower()]
 
     def get_key(self, key: str) -> str:
@@ -161,7 +161,7 @@ class ArithUUID(ArithString):
         checkpoints = split_space(self.uuid.int, other.uuid.int, count)
         return [attrs.evolve(self, uuid=i) for i in checkpoints]
 
-    def __int__(self):
+    def __int__(self) -> int:
         return self.uuid.int
 
     def __add__(self, other: int) -> Self:
@@ -241,7 +241,7 @@ class ArithAlphanumeric(ArithString):
     _str: str
     _max_len: Optional[int] = None
 
-    def __attrs_post_init__(self):
+    def __attrs_post_init__(self) -> None:
         if self._str is None:
             raise ValueError("Alphanum string cannot be None")
         if self._max_len and len(self._str) > self._max_len:
@@ -255,16 +255,16 @@ class ArithAlphanumeric(ArithString):
     # def int(self):
     #     return alphanumToNumber(self._str, alphanums)
 
-    def __str__(self):
+    def __str__(self) -> str:
         s = self._str
         if self._max_len:
             s = s.rjust(self._max_len, alphanums[0])
         return s
 
-    def __len__(self):
+    def __len__(self) -> int:
         return len(self._str)
 
-    def __repr__(self):
+    def __repr__(self) -> str:
         return f'alphanum"{self._str}"'
 
     def __add__(self, other: "Union[ArithAlphanumeric, int]") -> Self:
@@ -289,17 +289,17 @@ class ArithAlphanumeric(ArithString):
 
         return NotImplemented
 
-    def __ge__(self, other):
+    def __ge__(self, other) -> bool:
         if not isinstance(other, type(self)):
             return NotImplemented
         return self._str >= other._str
 
-    def __lt__(self, other):
+    def __lt__(self, other) -> bool:
         if not isinstance(other, type(self)):
             return NotImplemented
         return self._str < other._str
 
-    def __eq__(self, other):
+    def __eq__(self, other) -> bool:
         if not isinstance(other, type(self)):
             return NotImplemented
         return self._str == other._str
@@ -424,32 +424,32 @@ class Vector(tuple):
     Partial implementation: Only the needed functionality is implemented
     """
 
-    def __lt__(self, other: "Vector"):
+    def __lt__(self, other: "Vector") -> bool:
         if isinstance(other, Vector):
             return all(a < b for a, b in safezip(self, other))
         return NotImplemented
 
-    def __le__(self, other: "Vector"):
+    def __le__(self, other: "Vector") -> bool:
         if isinstance(other, Vector):
             return all(a <= b for a, b in safezip(self, other))
         return NotImplemented
 
-    def __gt__(self, other: "Vector"):
+    def __gt__(self, other: "Vector") -> bool:
         if isinstance(other, Vector):
             return all(a > b for a, b in safezip(self, other))
         return NotImplemented
 
-    def __ge__(self, other: "Vector"):
+    def __ge__(self, other: "Vector") -> bool:
         if isinstance(other, Vector):
             return all(a >= b for a, b in safezip(self, other))
         return NotImplemented
 
-    def __eq__(self, other: "Vector"):
+    def __eq__(self, other: "Vector") -> bool:
         if isinstance(other, Vector):
             return all(a == b for a, b in safezip(self, other))
         return NotImplemented
 
-    def __sub__(self, other: "Vector"):
+    def __sub__(self, other: "Vector") -> "Vector":
         if isinstance(other, Vector):
             return Vector((a - b) for a, b in safezip(self, other))
         raise NotImplementedError()
@@ -540,7 +540,7 @@ class LogStatusHandler(logging.Handler):
     This log handler can be used to update a rich.status every time a log is emitted.
     """
 
-    def __init__(self):
+    def __init__(self) -> None:
         super().__init__()
         self.status = Status("")
         self.prefix = ""
@@ -575,12 +575,12 @@ class UnknownMeta(type):
     def __instancecheck__(self, instance):
         return instance is Unknown
 
-    def __repr__(self):
+    def __repr__(self) -> str:
         return "Unknown"
 
 
 class Unknown(metaclass=UnknownMeta):
-    def __nonzero__(self):
+    def __bool__(self) -> bool:
         raise TypeError()
 
     def __new__(class_, *args, **kwargs):

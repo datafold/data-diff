@@ -40,7 +40,7 @@ class Trino(presto.Presto):
 
     _conn: Any
 
-    def __init__(self, **kw):
+    def __init__(self, **kw) -> None:
         super().__init__()
         trino = import_trino()
 
