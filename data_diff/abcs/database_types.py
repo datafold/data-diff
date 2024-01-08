@@ -290,7 +290,7 @@ class Integer(NumericType, IKey):
     precision: int = 0
     python_type: type = int
 
-    def __attrs_post_init__(self):
+    def __attrs_post_init__(self) -> None:
         assert self.precision == 0
 
 

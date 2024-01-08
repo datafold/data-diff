@@ -100,7 +100,7 @@ class Connect:
     database_by_scheme: Dict[str, Database]
     conn_cache: MutableMapping[Hashable, Database]
 
-    def __init__(self, database_by_scheme: Dict[str, Database] = DATABASE_BY_SCHEME):
+    def __init__(self, database_by_scheme: Dict[str, Database] = DATABASE_BY_SCHEME) -> None:
         super().__init__()
         self.database_by_scheme = database_by_scheme
         self.conn_cache = weakref.WeakValueDictionary()

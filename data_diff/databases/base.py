@@ -5,7 +5,22 @@ from datetime import datetime
 import math
 import sys
 import logging
-from typing import Any, Callable, ClassVar, Dict, Generator, Tuple, Optional, Sequence, Type, List, Union, TypeVar
+from typing import (
+    Any,
+    Callable,
+    ClassVar,
+    Dict,
+    Generator,
+    Iterator,
+    NewType,
+    Tuple,
+    Optional,
+    Sequence,
+    Type,
+    List,
+    Union,
+    TypeVar,
+)
 from functools import partial, wraps
 from concurrent.futures import ThreadPoolExecutor
 import threading
@@ -116,7 +131,7 @@ class Compiler(AbstractCompiler):
     def compile(self, elem, params=None) -> str:
         return self.dialect.compile(self, elem, params)
 
-    def new_unique_name(self, prefix="tmp"):
+    def new_unique_name(self, prefix="tmp") -> str:
         self._counter[0] += 1
         return f"{prefix}{self._counter[0]}"
 
@@ -173,7 +188,7 @@ class ThreadLocalInterpreter:
     compiler: Compiler
     gen: Generator
 
-    def apply_queries(self, callback: Callable[[str], Any]):
+    def apply_queries(self, callback: Callable[[str], Any]) -> None:
         q: Expr = next(self.gen)
         while True:
             sql = self.compiler.database.dialect.compile(self.compiler, q)
@@ -885,20 +900,21 @@ class BaseDialect(abc.ABC):
 
 
 T = TypeVar("T", bound=BaseDialect)
+Row = Sequence[Any]
 
 
 @attrs.define(frozen=True)
 class QueryResult:
-    rows: list
+    rows: List[Row]
     columns: Optional[list] = None
 
-    def __iter__(self):
+    def __iter__(self) -> Iterator[Row]:
         return iter(self.rows)
 
-    def __len__(self):
+    def __len__(self) -> int:
         return len(self.rows)
 
-    def __getitem__(self, i):
+    def __getitem__(self, i) -> Row:
         return self.rows[i]
 
 
@@ -1209,7 +1225,7 @@ class ThreadedDatabase(Database):
     _queue: Optional[ThreadPoolExecutor] = None
     thread_local: threading.local = attrs.field(factory=threading.local)
 
-    def __attrs_post_init__(self):
+    def __attrs_post_init__(self) -> None:
         self._queue = ThreadPoolExecutor(self.thread_count, initializer=self.set_conn)
         logger.info(f"[{self.name}] Starting a threadpool, size={self.thread_count}.")
 

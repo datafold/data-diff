@@ -18,13 +18,15 @@ class SegmentInfo:
     rowcounts: Dict[int, int] = attrs.field(factory=dict)
     max_rows: Optional[int] = None
 
-    def set_diff(self, diff: List[Union[Tuple[Any, ...], List[Any]]], schema: Optional[Tuple[Tuple[str, type]]] = None):
+    def set_diff(
+        self, diff: List[Union[Tuple[Any, ...], List[Any]]], schema: Optional[Tuple[Tuple[str, type]]] = None
+    ) -> None:
         self.diff_schema = schema
         self.diff = diff
         self.diff_count = len(diff)
         self.is_diff = self.diff_count > 0
 
-    def update_from_children(self, child_infos):
+    def update_from_children(self, child_infos) -> None:
         child_infos = list(child_infos)
         assert child_infos
 
@@ -53,7 +55,7 @@ class InfoTree:
         self.children.append(node)
         return node
 
-    def aggregate_info(self):
+    def aggregate_info(self) -> None:
         if self.children:
             for c in self.children:
                 c.aggregate_info()

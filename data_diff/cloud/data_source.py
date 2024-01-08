@@ -46,7 +46,7 @@ class ValueRequiredPrompt(Prompt):
         return value
 
 
-def _validate_temp_schema(temp_schema: str):
+def _validate_temp_schema(temp_schema: str) -> None:
     if len(temp_schema.split(".")) != 2:
         raise ValueError("Temporary schema should have a format <database>.<schema>")
 
