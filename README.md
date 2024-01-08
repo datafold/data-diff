@@ -209,7 +209,8 @@ For detailed algorithm and performance insights, explore [here](https://github.c
 
 
 # data-diff OSS & Datafold Cloud
-data-diff is an open source utility for running stateless diffs on your local computer for a great single player experience.
+
+data-diff is an open source utility for running stateless diffs as a great single player experience.
 
 Scale up with [Datafold Cloud](https://www.datafold.com/) to make data diffing a company-wide experience to both supercharge your data diffing CLI experience (ex: data-diff --dbt --cloud) and run diffs manually in the UI. This includes [column-level lineage](https://www.datafold.com/column-level-lineage), [CI testing](https://docs.datafold.com/deployment_testing/how_it_works/), and diff history.
 
