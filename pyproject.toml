@@ -84,10 +84,6 @@ all-oss-supported-dbs = [
     "preql", "mysql-connector-python", "psycopg2", "snowflake-connector-python", "cryptography", "presto-python-client",
     "oracledb", "trino", "clickhouse-driver", "vertica-python", "duckdb"
 ]
-all-cloud-dbs = [
-    "preql", "mysql-connector-python", "psycopg2", "snowflake-connector-python", "cryptography", "presto-python-client",
-    "oracledb", "pyodbc", "trino", "clickhouse-driver", "vertica-python", "duckdb"
-]
 
 [tool.poetry.group.dev.dependencies]
 pre-commit = "^3.5.0"
