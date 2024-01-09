@@ -61,7 +61,7 @@ To compare data between databases, install `data-diff` with specific database ad
 pip install data-diff 'data-diff[postgresql,snowflake]' -U
 ```
 
-Additionally, you can install all database adapters as follows.
+Additionally, you can install all open source supported database adapters as follows.
 ```
 pip install data-diff 'data-diff[all-local-dbs]' -U
 ```
