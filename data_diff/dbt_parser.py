@@ -50,7 +50,7 @@ def try_get_dbt_runner():
 
 # ProfileRenderer.render_data() fails without instantiating global flag MACRO_DEBUGGING in dbt-core 1.5
 # hacky but seems to be a bug on dbt's end
-def try_set_dbt_flags():
+def try_set_dbt_flags() -> None:
     try:
         from dbt.flags import set_flags
 

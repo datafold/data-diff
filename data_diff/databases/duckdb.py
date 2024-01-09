@@ -126,7 +126,7 @@ class DuckDB(Database):
     _args: Dict[str, Any] = attrs.field(init=False)
     _conn: Any = attrs.field(init=False)
 
-    def __init__(self, **kw):
+    def __init__(self, **kw) -> None:
         super().__init__()
         self._args = kw
         self._conn = self.create_connection()

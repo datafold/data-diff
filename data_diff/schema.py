@@ -1,5 +1,5 @@
 import logging
-from typing import Any, Collection, Iterable, Optional
+from typing import Any, Collection, Iterator, Optional
 
 import attrs
 
@@ -28,7 +28,7 @@ class RawColumnInfo(Collection[Any]):
     collation_name: Optional[str] = None
 
     # It was a tuple once, so we keep it backward compatible temporarily, until remade to classes.
-    def __iter__(self) -> Iterable[Any]:
+    def __iter__(self) -> Iterator[Any]:
         return iter(
             (self.column_name, self.data_type, self.datetime_precision, self.numeric_precision, self.numeric_scale)
         )

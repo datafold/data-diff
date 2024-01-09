@@ -104,7 +104,7 @@ class Snowflake(Database):
 
     _conn: Any
 
-    def __init__(self, *, schema: str, key: Optional[str] = None, key_content: Optional[str] = None, **kw):
+    def __init__(self, *, schema: str, key: Optional[str] = None, key_content: Optional[str] = None, **kw) -> None:
         super().__init__()
         snowflake, serialization, default_backend = import_snowflake()
         logging.getLogger("snowflake.connector").setLevel(logging.WARNING)
