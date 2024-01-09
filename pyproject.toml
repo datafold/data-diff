@@ -80,7 +80,7 @@ trino = ["trino"]
 clickhouse = ["clickhouse-driver"]
 vertica = ["vertica-python"]
 duckdb = ["duckdb"]
-all-local-dbs = [
+all-oss-supported-dbs = [
     "preql", "mysql-connector-python", "psycopg2", "snowflake-connector-python", "cryptography", "presto-python-client",
     "oracledb", "trino", "clickhouse-driver", "vertica-python", "duckdb"
 ]
