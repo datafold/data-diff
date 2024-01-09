@@ -63,7 +63,7 @@ pip install data-diff 'data-diff[postgresql,snowflake]' -U
 
 Additionally, you can install all open source supported database adapters as follows.
 ```
-pip install data-diff 'data-diff[all-local-dbs]' -U
+pip install data-diff 'data-diff[all-oss-supported-dbs]' -U
 ```
 
 2. Run `data-diff` with connection URIs
