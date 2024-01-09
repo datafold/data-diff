@@ -33,7 +33,7 @@ TIME_RE = re.compile(r"(\d+)([a-z]+)")
 UNITS_STR = ", ".join(sorted(TIME_UNITS.keys()))
 
 
-def string_similarity(a, b):
+def string_similarity(a, b) -> SequenceMatcher:
     return SequenceMatcher(None, a, b).ratio()
 
 
@@ -53,7 +53,7 @@ def parse_time_atom(count, unit):
     return count, unit
 
 
-def parse_time_delta(t: str):
+def parse_time_delta(t: str) -> timedelta:
     time_dict = {}
     while t:
         m = TIME_RE.match(t)
@@ -70,5 +70,5 @@ def parse_time_delta(t: str):
     return timedelta(**time_dict)
 
 
-def parse_time_before(time: datetime, delta: str):
+def parse_time_before(time: datetime, delta: str) -> datetime:
     return time - parse_time_delta(delta)

@@ -5,7 +5,7 @@ from collections.abc import Iterable
 from concurrent.futures import ThreadPoolExecutor
 from concurrent.futures.thread import _WorkItem
 from time import sleep
-from typing import Callable, Iterator, Optional
+from typing import Any, Callable, Iterator, Optional
 
 import attrs
 
@@ -19,7 +19,7 @@ class AutoPriorityQueue(PriorityQueue):
 
     _counter = itertools.count().__next__
 
-    def put(self, item: Optional[_WorkItem], block=True, timeout=None):
+    def put(self, item: Optional[_WorkItem], block=True, timeout=None) -> None:
         priority = item.kwargs.pop("priority") if item is not None else 0
         super().put((-priority, self._counter(), item), block, timeout)
 
@@ -34,7 +34,7 @@ class PriorityThreadPoolExecutor(ThreadPoolExecutor):
     XXX WARNING: Might break in future versions of Python
     """
 
-    def __init__(self, *args):
+    def __init__(self, *args) -> None:
         super().__init__(*args)
         self._work_queue = AutoPriorityQueue()
 
@@ -58,7 +58,7 @@ class ThreadedYielder(Iterable):
     _exception: Optional[None]
     yield_list: bool
 
-    def __init__(self, max_workers: Optional[int] = None, yield_list: bool = False):
+    def __init__(self, max_workers: Optional[int] = None, yield_list: bool = False) -> None:
         super().__init__()
         self._pool = PriorityThreadPoolExecutor(max_workers)
         self._futures = deque()
@@ -66,7 +66,7 @@ class ThreadedYielder(Iterable):
         self._exception = None
         self.yield_list = yield_list
 
-    def _worker(self, fn, *args, **kwargs):
+    def _worker(self, fn, *args, **kwargs) -> None:
         try:
             res = fn(*args, **kwargs)
             if res is not None:
@@ -77,10 +77,10 @@ class ThreadedYielder(Iterable):
         except Exception as e:
             self._exception = e
 
-    def submit(self, fn: Callable, *args, priority: int = 0, **kwargs):
+    def submit(self, fn: Callable, *args, priority: int = 0, **kwargs) -> None:
         self._futures.append(self._pool.submit(self._worker, fn, *args, priority=priority, **kwargs))
 
-    def __iter__(self) -> Iterator:
+    def __iter__(self) -> Iterator[Any]:
         while True:
             if self._exception:
                 raise self._exception

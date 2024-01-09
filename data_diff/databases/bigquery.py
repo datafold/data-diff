@@ -85,10 +85,10 @@ class Dialect(BaseDialect):
     def random(self) -> str:
         return "RAND()"
 
-    def quote(self, s: str):
+    def quote(self, s: str) -> str:
         return f"`{s}`"
 
-    def to_string(self, s: str):
+    def to_string(self, s: str) -> str:
         return f"cast({s} as string)"
 
     def type_repr(self, t) -> str:
@@ -212,7 +212,7 @@ class BigQuery(Database):
     dataset: str
     _client: Any
 
-    def __init__(self, project, *, dataset, bigquery_credentials=None, **kw):
+    def __init__(self, project, *, dataset, bigquery_credentials=None, **kw) -> None:
         super().__init__()
         credentials = bigquery_credentials
         bigquery = import_bigquery()

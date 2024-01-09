@@ -6,7 +6,7 @@ from abc import ABC, abstractmethod
 from enum import Enum
 from contextlib import contextmanager
 from operator import methodcaller
-from typing import Dict, Set, List, Tuple, Iterator, Optional, Union
+from typing import Any, Dict, Set, List, Tuple, Iterator, Optional, Union
 from concurrent.futures import ThreadPoolExecutor, as_completed
 
 import attrs
@@ -89,7 +89,7 @@ class DiffResultWrapper:
     stats: dict
     result_list: list = attrs.field(factory=list)
 
-    def __iter__(self):
+    def __iter__(self) -> Iterator[Any]:
         yield from self.result_list
         for i in self.diff:
             self.result_list.append(i)

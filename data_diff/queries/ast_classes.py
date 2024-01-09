@@ -45,7 +45,7 @@ class ExprNode(Compilable):
                 if isinstance(v, ExprNode):
                     yield from v._dfs_values()
 
-    def cast_to(self, to):
+    def cast_to(self, to) -> "Cast":
         return Cast(self, to)
 
 
@@ -110,7 +110,7 @@ class ITable:
         resolve_names(self.source_table, exprs)
         return Select.make(self, columns=exprs, distinct=distinct, optimizer_hints=optimizer_hints)
 
-    def where(self, *exprs):
+    def where(self, *exprs) -> "Select":
         """Filter the rows, based on the given predicates. (aka Selection)"""
         exprs = args_as_tuple(exprs)
         exprs = _drop_skips(exprs)
@@ -120,7 +120,7 @@ class ITable:
         resolve_names(self.source_table, exprs)
         return Select.make(self, where_exprs=exprs)
 
-    def order_by(self, *exprs):
+    def order_by(self, *exprs) -> "Select":
         """Order the rows lexicographically, according to the given expressions."""
         exprs = _drop_skips(exprs)
         if not exprs:
@@ -129,14 +129,14 @@ class ITable:
         resolve_names(self.source_table, exprs)
         return Select.make(self, order_by_exprs=exprs)
 
-    def limit(self, limit: int):
+    def limit(self, limit: int) -> "Select":
         """Stop yielding rows after the given limit. i.e. take the first 'n=limit' rows"""
         if limit is SKIP:
             return self
 
         return Select.make(self, limit_expr=limit)
 
-    def join(self, target: "ITable"):
+    def join(self, target: "ITable") -> "Join":
         """Join the current table with the target table, returning a new table containing both side-by-side.
 
         When joining, it's recommended to use explicit tables names, instead of `this`, in order to avoid potential name collisions.
@@ -180,7 +180,7 @@ class ITable:
 
         return GroupBy(self, keys)
 
-    def _get_column(self, name: str):
+    def _get_column(self, name: str) -> "Column":
         if self.schema:
             name = self.schema.get_key(name)  # Get the actual name. Might be case-insensitive.
         return Column(self, name)
@@ -188,29 +188,29 @@ class ITable:
     # def __getattr__(self, column):
     #     return self._get_column(column)
 
-    def __getitem__(self, column):
+    def __getitem__(self, column) -> "Column":
         if not isinstance(column, str):
             raise TypeError()
         return self._get_column(column)
 
-    def count(self):
+    def count(self) -> "Select":
         """SELECT count() FROM self"""
         return Select(self, [Count()])
 
-    def union(self, other: "ITable"):
+    def union(self, other: "ITable") -> "TableOp":
         """SELECT * FROM self UNION other"""
         return TableOp("UNION", self, other)
 
-    def union_all(self, other: "ITable"):
+    def union_all(self, other: "ITable") -> "TableOp":
         """SELECT * FROM self UNION ALL other"""
         return TableOp("UNION ALL", self, other)
 
-    def minus(self, other: "ITable"):
+    def minus(self, other: "ITable") -> "TableOp":
         """SELECT * FROM self EXCEPT other"""
         # aka
         return TableOp("EXCEPT", self, other)
 
-    def intersect(self, other: "ITable"):
+    def intersect(self, other: "ITable") -> "TableOp":
         """SELECT * FROM self INTERSECT other"""
         return TableOp("INTERSECT", self, other)
 
@@ -233,51 +233,51 @@ class Count(ExprNode):
 
 @attrs.define(frozen=False, eq=False)
 class LazyOps:
-    def __add__(self, other):
+    def __add__(self, other) -> "BinOp":
         return BinOp("+", [self, other])
 
-    def __sub__(self, other):
+    def __sub__(self, other) -> "BinOp":
         return BinOp("-", [self, other])
 
-    def __neg__(self):
+    def __neg__(self) -> "UnaryOp":
         return UnaryOp("-", self)
 
-    def __gt__(self, other):
+    def __gt__(self, other) -> "BinBoolOp":
         return BinBoolOp(">", [self, other])
 
-    def __ge__(self, other):
+    def __ge__(self, other) -> "BinBoolOp":
         return BinBoolOp(">=", [self, other])
 
-    def __eq__(self, other):
+    def __eq__(self, other) -> "BinBoolOp":
         if other is None:
             return BinBoolOp("IS", [self, None])
         return BinBoolOp("=", [self, other])
 
-    def __lt__(self, other):
+    def __lt__(self, other) -> "BinBoolOp":
         return BinBoolOp("<", [self, other])
 
-    def __le__(self, other):
+    def __le__(self, other) -> "BinBoolOp":
         return BinBoolOp("<=", [self, other])
 
-    def __or__(self, other):
+    def __or__(self, other) -> "BinBoolOp":
         return BinBoolOp("OR", [self, other])
 
-    def __and__(self, other):
+    def __and__(self, other) -> "BinBoolOp":
         return BinBoolOp("AND", [self, other])
 
-    def is_distinct_from(self, other):
+    def is_distinct_from(self, other) -> "IsDistinctFrom":
         return IsDistinctFrom(self, other)
 
-    def like(self, other):
+    def like(self, other) -> "BinBoolOp":
         return BinBoolOp("LIKE", [self, other])
 
-    def sum(self):
+    def sum(self) -> "Func":
         return Func("SUM", [self])
 
-    def max(self):
+    def max(self) -> "Func":
         return Func("MAX", [self])
 
-    def min(self):
+    def min(self) -> "Func":
         return Func("MIN", [self])
 
 
@@ -523,7 +523,7 @@ class GroupBy(ExprNode, ITable, Root):
     values: Optional[Sequence[Expr]] = None
     having_exprs: Optional[Sequence[Expr]] = None
 
-    def __attrs_post_init__(self):
+    def __attrs_post_init__(self) -> None:
         assert self.keys or self.values
 
     def having(self, *exprs) -> Self:

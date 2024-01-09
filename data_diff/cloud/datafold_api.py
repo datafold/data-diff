@@ -185,7 +185,7 @@ class DatafoldAPI:
     host: str = "https://app.datafold.com"
     timeout: int = 30
 
-    def __attrs_post_init__(self):
+    def __attrs_post_init__(self) -> None:
         self.host = self.host.rstrip("/")
         self.headers = {
             "Authorization": f"Key {self.api_key}",

@@ -23,7 +23,7 @@ def _drop_table(name: DbPath):
     yield commit
 
 
-def drop_table(db, tbl):
+def drop_table(db, tbl) -> None:
     if isinstance(db, Oracle):
         db.query(_drop_table_oracle(tbl))
     else:
@@ -51,6 +51,6 @@ def _append_to_table(path: DbPath, expr: Expr):
     yield commit
 
 
-def append_to_table(db, path, expr):
+def append_to_table(db, path, expr) -> None:
     f = _append_to_table_oracle if isinstance(db, Oracle) else _append_to_table
     db.query(f(path, expr))
