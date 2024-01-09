@@ -74,15 +74,15 @@ redshift = ["psycopg2"]
 snowflake = ["snowflake-connector-python", "cryptography"]
 presto = ["presto-python-client"]
 oracle = ["oracledb"]
-mssql = ["pyodbc"]  # natively supported in Datafold Cloud only
+mssql = ["pyodbc"]
 # databricks = ["databricks-sql-connector"]
 trino = ["trino"]
 clickhouse = ["clickhouse-driver"]
 vertica = ["vertica-python"]
 duckdb = ["duckdb"]
-all-oss-supported-dbs = [
+all-dbs = [
     "preql", "mysql-connector-python", "psycopg2", "snowflake-connector-python", "cryptography", "presto-python-client",
-    "oracledb", "trino", "clickhouse-driver", "vertica-python", "duckdb"
+    "oracledb", "pyodbc", "trino", "clickhouse-driver", "vertica-python", "duckdb"
 ]
 
 [tool.poetry.group.dev.dependencies]
