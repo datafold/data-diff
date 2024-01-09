@@ -151,6 +151,7 @@ Check out [documentation](https://docs.datafold.com/reference/open_source/cli) f
 | Redshift      |  🟢     | `redshift://<username>:<password>@<hostname>:5439/<database>`                                                                       |
 | DuckDB        |  🟢   | `duckdb://<filepath>`                                                                                          |
 | MotherDuck        |  🟢   | `duckdb://<filepath>`                                                                                                   |
+| Microsoft SQL Server        |  🟢   | `mssql://<user>:<password>@<host>/<database>/<schema>`                                                                                                   |
 | Oracle        |  🟡   | `oracle://<username>:<password>@<hostname>/servive_or_sid`                                                                          |
 | Presto        |  🟡   | `presto://<username>:<password>@<hostname>:8080/<database>`                                                                         |
 | Databricks    |  🟡   | `databricks://<http_path>:<access_token>@<server_hostname>/<catalog>/<schema>`                                                      |
