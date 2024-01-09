@@ -24,7 +24,7 @@ data-diff is a powerful tool for comparing data when you're moving it between sy
 - **Converting SQL** to a new transformation framework (e.g., stored procedures -> dbt)
 - Continuously **replicating data** from an OLTP database to OLAP data warehouse (e.g., MySQL -> Redshift)
 
-### Data Development Testing 
+### Data Development Testing
 When developing SQL code, data-diff helps you validate and preview changes by comparing data between development/staging environments and production. Here's how it works:
 1. Make a change to your SQL code
 2. Run the SQL code to create a new dataset
@@ -33,7 +33,7 @@ When developing SQL code, data-diff helps you validate and preview changes by co
 # dbt Integration
   <p align="left">
   <img alt="dbt" src="https://seeklogo.com/images/D/dbt-logo-E4B0ED72A2-seeklogo.com.png" width="10%" />
-  </p> 
+  </p>
 
 data-diff integrates with [dbt Core](https://github.com/dbt-labs/dbt-core) to seamlessly compare local development to production datasets.
 
@@ -46,9 +46,9 @@ Learn more about how data-diff works with dbt:
 # Getting Started
 
 ### ⚡ Validating dbt model changes between dev and prod
-Looking to use data-diff in dbt development? 
+Looking to use data-diff in dbt development?
 
-Development testing with Datafold enables you to see the impact of dbt code changes on data as you write the code, whether in your IDE or CLI. 
+Development testing with Datafold enables you to see the impact of dbt code changes on data as you write the code, whether in your IDE or CLI.
 
  Head over to [our `data-diff` + `dbt` documentation](https://docs.datafold.com/development_testing/cli) to get started with a development testing workflow!
 
@@ -59,6 +59,11 @@ To compare data between databases, install `data-diff` with specific database ad
 
 ```
 pip install data-diff 'data-diff[postgresql,snowflake]' -U
+```
+
+Additionally, you can install all open source supported database adapters as follows.
+```
+pip install data-diff 'data-diff[all-oss-supported-dbs]' -U
 ```
 
 2. Run `data-diff` with connection URIs
@@ -75,13 +80,13 @@ data-diff \
   -c <columns to compare> \
   -w <filter condition>
 ```
-3. Set up your configuration 
+3. Set up your configuration
 
 You can use a `toml` configuration file to run your `data-diff` job. In this example, we compare tables between MotherDuck (hosted DuckDB) and Snowflake using the hashdiff algorithm:
 
 ```toml
 ## DATABASE CONNECTION ##
-[database.duckdb_connection] 
+[database.duckdb_connection]
   driver = "duckdb"
   # filepath = "datafold_demo.duckdb" # local duckdb file example
   # filepath = "md:" # default motherduck connection example
@@ -202,10 +207,10 @@ Your database not listed here?
 * Time complexity approximates COUNT(*) operation when there are few differences
 * Performance degrades when datasets have a large number of differences
 
-</details>  
+</details>
 <br>
 
-For detailed algorithm and performance insights, explore [here](https://github.com/datafold/data-diff/blob/master/docs/technical-explanation.md), or head to our docs to [learn more about how Datafold diffs data](https://docs.datafold.com/data_diff/how-datafold-diffs-data). 
+For detailed algorithm and performance insights, explore [here](https://github.com/datafold/data-diff/blob/master/docs/technical-explanation.md), or head to our docs to [learn more about how Datafold diffs data](https://docs.datafold.com/data_diff/how-datafold-diffs-data).
 
 
 # data-diff OSS & Datafold Cloud
@@ -216,7 +221,7 @@ Scale up with [Datafold Cloud](https://www.datafold.com/) to make data diffing a
 
 ## Contributors
 
-We thank everyone who contributed so far! 
+We thank everyone who contributed so far!
 
 We'd love to see your face here: [Contributing Instructions](CONTRIBUTING.md)
 
