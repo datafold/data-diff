@@ -83,14 +83,17 @@ class TestSetAge(unittest.TestCase):
         _set_age(options, None, None, self.database)
         assert len(options) == 0
 
+        options = {}
         _set_age(options, "1d", None, self.database)
         assert len(options) == 1
         assert options.get("max_update") is not None
 
+        options = {}
         _set_age(options, None, "1d", self.database)
         assert len(options) == 1
         assert options.get("min_update") is not None
 
+        options = {}
         _set_age(options, "1d", "1d", self.database)
         assert len(options) == 2
         assert options.get("max_update") is not None
