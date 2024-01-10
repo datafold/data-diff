@@ -85,15 +85,8 @@ CONN_STRINGS = {
     db.MsSQL: TEST_MSSQL_CONN_STRING,
 }
 
-_database_instances = {}
 
-
-def get_conn(cls: type, shared: bool = False) -> Database:
-    if shared:
-        if cls not in _database_instances:
-            _database_instances[cls] = get_conn(cls, shared=False)
-        return _database_instances[cls]
-
+def get_conn(cls: type) -> Database:
     return connect(CONN_STRINGS[cls], N_THREADS)
 
 
@@ -140,12 +133,11 @@ class DiffTestCase(unittest.TestCase):
     db_cls = None
     src_schema = None
     dst_schema = None
-    shared_connection = True
 
     def setUp(self):
         assert self.db_cls, self.db_cls
 
-        self.connection = get_conn(self.db_cls, self.shared_connection)
+        self.connection = get_conn(self.db_cls)
 
         table_suffix = random_table_suffix()
         self.table_src_name = f"src{table_suffix}"

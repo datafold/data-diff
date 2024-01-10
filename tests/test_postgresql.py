@@ -11,7 +11,7 @@ from tests.common import get_conn, random_table_suffix, connect
 
 class TestUUID(unittest.TestCase):
     def setUp(self) -> None:
-        self.connection = get_conn(db.PostgreSQL, False)
+        self.connection = get_conn(db.PostgreSQL)
 
         table_suffix = random_table_suffix()
 
