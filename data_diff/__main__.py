@@ -6,7 +6,7 @@ import time
 from copy import deepcopy
 from datetime import datetime
 from itertools import islice
-from typing import Dict, Optional, Tuple
+from typing import Dict, Optional, Tuple, Sequence, Union
 
 import click
 import rich
@@ -361,9 +361,9 @@ def _get_dbs(
     return db1, db2
 
 
-def _set_age(options, min_age, max_age, db1) -> None:
+def _set_age(options: dict, min_age: Optional[str], max_age: Optional[str], db: Database) -> None:
     if min_age or max_age:
-        now: datetime = db1.query(current_timestamp(), datetime).replace(tzinfo=None)
+        now: datetime = db.query(current_timestamp(), datetime).replace(tzinfo=None)
         try:
             if max_age:
                 options["min_update"] = parse_time_before(now, max_age)
@@ -374,18 +374,18 @@ def _set_age(options, min_age, max_age, db1) -> None:
 
 
 def _get_table_differ(
-    algorithm,
-    db1,
-    db2,
-    threaded,
-    threads,
-    assume_unique_key,
-    sample_exclusive_rows,
-    materialize_all_rows,
-    table_write_limit,
-    materialize_to_table,
-    bisection_factor,
-    bisection_threshold,
+    algorithm: str,
+    db1: Database,
+    db2: Database,
+    threaded: bool,
+    threads: int,
+    assume_unique_key: bool,
+    sample_exclusive_rows: bool,
+    materialize_all_rows: bool,
+    table_write_limit: int,
+    materialize_to_table: Optional[str],
+    bisection_factor: Optional[int],
+    bisection_threshold: Optional[int],
 ) -> TableDiffer:
     algorithm = Algorithm(algorithm)
     if algorithm == Algorithm.AUTO:
@@ -405,14 +405,14 @@ def _get_table_differ(
                 materialize_to_table and db1.dialect.parse_table_name(eval_name_template(materialize_to_table))
             ),
         )
-    else:
-        assert algorithm == Algorithm.HASHDIFF
-        return HashDiffer(
-            bisection_factor=bisection_factor,
-            bisection_threshold=bisection_threshold,
-            threaded=threaded,
-            max_threadpool_size=threads and threads * 2,
-        )
+
+    assert algorithm == Algorithm.HASHDIFF
+    return HashDiffer(
+        bisection_factor=DEFAULT_BISECTION_FACTOR if bisection_factor is None else bisection_factor,
+        bisection_threshold=DEFAULT_BISECTION_THRESHOLD if bisection_threshold is None else bisection_threshold,
+        threaded=threaded,
+        max_threadpool_size=threads and threads * 2,
+    )
 
 
 def _print_result(stats, json_output, diff_iter) -> None:
@@ -436,8 +436,18 @@ def _print_result(stats, json_output, diff_iter) -> None:
             sys.stdout.flush()
 
 
-def _get_expanded_columns(columns, case_sensitive, mutual, db1, schema1, table1, db2, schema2, table2) -> set:
-    expanded_columns = set()
+def _get_expanded_columns(
+    columns: list[str],
+    case_sensitive: bool,
+    mutual: set[str],
+    db1: Database,
+    schema1: dict,
+    table1: str,
+    db2: Database,
+    schema2: dict,
+    table2: str,
+) -> set[str]:
+    expanded_columns: set[str] = set()
     for c in columns:
         cc = c if case_sensitive else c.lower()
         match = set(match_like(cc, mutual))
@@ -451,7 +461,7 @@ def _get_expanded_columns(columns, case_sensitive, mutual, db1, schema1, table1,
     return expanded_columns
 
 
-def _get_threads(threads, threads1, threads2) -> Tuple[bool, int]:
+def _get_threads(threads: Union[int, str, None], threads1: Optional[int], threads2: Optional[int]) -> Tuple[bool, int]:
     threaded = True
     if threads is None:
         threads = 1
@@ -519,9 +529,6 @@ def _data_diff(
         return
 
     key_columns = key_columns or ("id",)
-    bisection_factor = DEFAULT_BISECTION_FACTOR if bisection_factor is None else int(bisection_factor)
-    bisection_threshold = DEFAULT_BISECTION_THRESHOLD if bisection_threshold is None else int(bisection_threshold)
-
     threaded, threads = _get_threads(threads, threads1, threads2)
     start = time.monotonic()
 
@@ -531,12 +538,14 @@ def _data_diff(
         )
         return
 
+    db1: Database
+    db2: Database
     db1, db2 = _get_dbs(threads, database1, threads1, database2, threads2, interactive)
     with db1, db2:
-        options = dict(
-            case_sensitive=case_sensitive,
-            where=where,
-        )
+        options = {
+            "case_sensitive": case_sensitive,
+            "where": where,
+        }
 
         _set_age(options, min_age, max_age, db1)
         dbs: Tuple[Database, Database] = db1, db2

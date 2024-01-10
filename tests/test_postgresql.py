@@ -2,7 +2,7 @@ import unittest
 from copy import deepcopy
 from urllib.parse import quote
 
-from data_diff import TableSegment, HashDiffer
+from data_diff import TableSegment, HashDiffer, Database
 from data_diff import connect_to_table
 from data_diff import databases as db
 from data_diff.queries.api import table, commit
@@ -119,37 +119,34 @@ class Test100Fields(unittest.TestCase):
 
 
 class TestSpecialCharacterPassword(unittest.TestCase):
+    username: str = "test"
+    password: str = "passw!!!@rd"
+
     def setUp(self) -> None:
-        self.connection = get_conn(db.PostgreSQL)
+        self.connection: Database = get_conn(db.PostgreSQL)
+        self.table_name = f"table{random_table_suffix()}"
 
-        table_suffix = random_table_suffix()
+        # Setup user with special character '@' in password
+        self.connection.query(f"DROP USER IF EXISTS {self.username};", None)
+        self.connection.query(f"CREATE USER {self.username} WITH PASSWORD '{self.password}';", None)
 
-        self.table_name = f"table{table_suffix}"
-        self.table = table(self.table_name)
+    def tearDown(self):
+        self.connection.query(f"DROP USER IF EXISTS {self.username};", None)
+        self.connection.close()
 
     def test_special_char_password(self):
-        username = "test"
-        password = "passw!!!@rd"
-        # Setup user with special character '@' in password
-        self.connection.query(f"DROP USER IF EXISTS {username};", None)
-        self.connection.query(f"CREATE USER {username} WITH PASSWORD '{password}';", None)
-
-        password_quoted = quote(password)
         db_config = deepcopy(self.connection._args)
         db_config.update(
             {
                 "driver": "postgresql",
                 "dbname": db_config.pop("database"),
-                "user": username,
-                "password": password_quoted,
+                "user": self.username,
+                "password": quote(self.password),
             }
         )
 
         # verify pythonic connection method
-        connect_to_table(
-            db_config,
-            self.table_name,
-        )
+        connect_to_table(db_config, self.table_name)
 
         # verify connection method with URL string unquoted after it's verified
         db_url = (
@@ -157,5 +154,5 @@ class TestSpecialCharacterPassword(unittest.TestCase):
             f"{db_config.get('port', 5432)}/{db_config['dbname']}"
         )
 
-        connection_verified = connect(db_url)
-        assert connection_verified._args.get("password") == password
+        with connect(db_url) as connection_verified:
+            assert connection_verified._args.get("password") == self.password
