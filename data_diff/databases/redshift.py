@@ -10,6 +10,7 @@ from data_diff.abcs.database_types import (
     FractionalType,
     DbPath,
     TimestampTZ,
+    Integer
 )
 from data_diff.databases.postgresql import (
     BaseDialect,
@@ -31,6 +32,8 @@ class Dialect(PostgresqlDialect):
         "double": Float,
         "real": Float,
         "super": JSON,
+        "int": Integer,  # Redshift Spectrum
+        "float": Float,  # Redshift Spectrum
     }
     SUPPORTS_INDEXES = False
 
