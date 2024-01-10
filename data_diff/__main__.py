@@ -1,33 +1,31 @@
-from copy import deepcopy
-from datetime import datetime
+import json
+import logging
 import os
 import sys
 import time
-import json
-import logging
+from copy import deepcopy
+from datetime import datetime
 from itertools import islice
 from typing import Dict, Optional, Tuple
 
+import click
 import rich
 from rich.logging import RichHandler
-import click
 
 from data_diff import Database, DbPath
-from data_diff.schema import RawColumnInfo, create_schema
-from data_diff.queries.api import current_timestamp
-
+from data_diff.config import apply_config_from_file
+from data_diff.databases._connect import connect
 from data_diff.dbt import dbt_diff
-from data_diff.utils import eval_name_template, remove_password_from_url, safezip, match_like, LogStatusHandler
-from data_diff.diff_tables import Algorithm
+from data_diff.diff_tables import Algorithm, TableDiffer
 from data_diff.hashdiff_tables import HashDiffer, DEFAULT_BISECTION_THRESHOLD, DEFAULT_BISECTION_FACTOR
 from data_diff.joindiff_tables import TABLE_WRITE_LIMIT, JoinDiffer
-from data_diff.table_segment import TableSegment
-from data_diff.databases._connect import connect
 from data_diff.parse_time import parse_time_before, UNITS_STR, ParseError
-from data_diff.config import apply_config_from_file
+from data_diff.queries.api import current_timestamp
+from data_diff.schema import RawColumnInfo, create_schema
+from data_diff.table_segment import TableSegment
 from data_diff.tracking import disable_tracking, set_entrypoint_name
+from data_diff.utils import eval_name_template, remove_password_from_url, safezip, match_like, LogStatusHandler
 from data_diff.version import __version__
-
 
 COLOR_SCHEME = {
     "+": "green",
@@ -363,10 +361,9 @@ def _get_dbs(
     return db1, db2
 
 
-def _set_age(options, min_age, max_age, db1):
+def _set_age(options, min_age, max_age, db1) -> None:
     if min_age or max_age:
-        now: datetime = db1.query(current_timestamp(), datetime)
-        now = now.replace(tzinfo=None)
+        now: datetime = db1.query(current_timestamp(), datetime).replace(tzinfo=None)
         try:
             if max_age:
                 options["min_update"] = parse_time_before(now, max_age)
@@ -389,7 +386,7 @@ def _get_table_differ(
     materialize_to_table,
     bisection_factor,
     bisection_threshold,
-):
+) -> TableDiffer:
     algorithm = Algorithm(algorithm)
     if algorithm == Algorithm.AUTO:
         algorithm = Algorithm.JOINDIFF if db1 == db2 else Algorithm.HASHDIFF
@@ -418,7 +415,7 @@ def _get_table_differ(
         )
 
 
-def _print_result(stats, json_output, diff_iter):
+def _print_result(stats, json_output, diff_iter) -> None:
     if stats:
         if json_output:
             rich.print(json.dumps(diff_iter.get_stats_dict()))
