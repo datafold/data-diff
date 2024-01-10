@@ -6,7 +6,7 @@ import time
 from copy import deepcopy
 from datetime import datetime
 from itertools import islice
-from typing import Dict, Optional, Tuple, Sequence, Union
+from typing import Dict, Optional, Tuple, Union, List, Set
 
 import click
 import rich
@@ -437,17 +437,17 @@ def _print_result(stats, json_output, diff_iter) -> None:
 
 
 def _get_expanded_columns(
-    columns: list[str],
+    columns: List[str],
     case_sensitive: bool,
-    mutual: set[str],
+    mutual: Set[str],
     db1: Database,
     schema1: dict,
     table1: str,
     db2: Database,
     schema2: dict,
     table2: str,
-) -> set[str]:
-    expanded_columns: set[str] = set()
+) -> Set[str]:
+    expanded_columns: Set[str] = set()
     for c in columns:
         cc = c if case_sensitive else c.lower()
         match = set(match_like(cc, mutual))
