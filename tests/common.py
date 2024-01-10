@@ -88,7 +88,7 @@ CONN_STRINGS = {
 _database_instances = {}
 
 
-def get_conn(cls: type, shared: bool = True) -> Database:
+def get_conn(cls: type, shared: bool = False) -> Database:
     if shared:
         if cls not in _database_instances:
             _database_instances[cls] = get_conn(cls, shared=False)
