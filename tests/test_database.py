@@ -171,14 +171,13 @@ class TestNumericPrecisionParsing(unittest.TestCase):
 
 
 class TestDatabaseConnection(unittest.TestCase):
-    def setUp(self):
-        self.connection: Database = get_conn(dbs.PostgreSQL)
-
-    def tearDown(self):
-        self.connection.close()
-
-    def test_close_connection(self):
-        self.connection.close()
-        with self.assertRaises(InterfaceError):
-            cursor = self.connection._conn.cursor()
+    def test_close_connection_postgres(self):
+        connection: Database = get_conn(dbs.PostgreSQL)
+        with connection:
+            cursor = connection._conn.cursor()
             cursor.execute("SELECT 1")
+
+        with self.assertRaises(InterfaceError) as interface_error:
+            cursor.execute("SELECT 1")
+
+        assert str(interface_error.exception) == "cursor already closed"
