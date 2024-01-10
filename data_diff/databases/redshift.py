@@ -10,7 +10,7 @@ from data_diff.abcs.database_types import (
     FractionalType,
     DbPath,
     TimestampTZ,
-    Integer
+    Integer,
 )
 from data_diff.databases.postgresql import (
     BaseDialect,
