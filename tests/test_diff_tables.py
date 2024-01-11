@@ -818,11 +818,11 @@ class TestCompoundKeySimple2(DiffTestCase):
         V1 = N + 1
         V2 = N * 1000 + 2
 
-        diffs = [(i, i + N) for i in range(N)]
+        diffs = [(i + 1, i + N) for i in range(N)]  # pk=[1..1000], no dupes
         self.connection.query(
             [
-                self.src_table.insert_rows(diffs + [(K, V1)]),
-                self.dst_table.insert_rows(diffs + [(0, V2)]),
+                self.src_table.insert_rows(diffs + [(K, V1)]),  # exclusive pk=1001
+                self.dst_table.insert_rows(diffs + [(0, V2)]),  # exclusive pk=0
                 commit,
             ]
         )
