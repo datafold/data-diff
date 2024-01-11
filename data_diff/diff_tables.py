@@ -213,6 +213,8 @@ class TableDiffer(ThreadBase, ABC):
     def _diff_tables_wrapper(self, table1: TableSegment, table2: TableSegment, info_tree: InfoTree) -> DiffResult:
         if is_tracking_enabled():
             options = attrs.asdict(self, recurse=False)
+            # not a useful event attribute
+            options.pop("_ignored_columns_lock")
             options["differ_name"] = type(self).__name__
             event_json = create_start_event_json(options)
             run_as_daemon(send_event_json, event_json)

@@ -201,9 +201,26 @@ def create_email_signup_event_json(email: str) -> Dict[str, Any]:
     }
 
 
+def convert_sets_to_lists(obj):
+    """
+    Recursively convert sets in the given object to lists.
+    """
+    if isinstance(obj, set):
+        return list(obj)
+    elif isinstance(obj, dict):
+        return {k: convert_sets_to_lists(v) for k, v in obj.items()}
+    elif isinstance(obj, list):
+        return [convert_sets_to_lists(elem) for elem in obj]
+    else:
+        return obj
+
+
 def send_event_json(event_json) -> None:
     if not g_tracking_enabled:
         raise RuntimeError("Won't send; tracking is disabled!")
+
+    # Convert sets to lists in event_json
+    event_json = convert_sets_to_lists(event_json)
 
     headers = {
         "Content-Type": "application/json",
