@@ -160,3 +160,7 @@ class Vertica(ThreadedDatabase):
             "FROM V_CATALOG.COLUMNS "
             f"WHERE table_name = '{name}' AND table_schema = '{schema}'"
         )
+
+    def close(self):
+        super().close()
+        self._conn.close()
