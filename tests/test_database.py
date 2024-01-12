@@ -4,8 +4,9 @@ from typing import Callable, List, Tuple
 
 import attrs
 import pytz
+from psycopg2 import InterfaceError
 
-from data_diff import connect
+from data_diff import connect, Database
 from data_diff import databases as dbs
 from data_diff.queries.api import table, current_timestamp
 from data_diff.queries.extras import NormalizeAsString
@@ -167,3 +168,16 @@ class TestNumericPrecisionParsing(unittest.TestCase):
         raw_schema = db.query_table_schema(t.path)
         schema = db._process_table_schema(t.path, raw_schema)
         self.assertEqual(schema["value"].precision, db.dialect.DEFAULT_NUMERIC_PRECISION)
+
+
+class TestDatabaseConnection(unittest.TestCase):
+    def test_close_connection_postgres(self):
+        connection: Database = get_conn(dbs.PostgreSQL)
+        with connection:
+            cursor = connection._conn.cursor()
+            cursor.execute("SELECT 1")
+
+        with self.assertRaises(InterfaceError) as interface_error:
+            cursor.execute("SELECT 1")
+
+        assert str(interface_error.exception) == "cursor already closed"
