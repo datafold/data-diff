@@ -1123,21 +1123,6 @@ class Database(abc.ABC):
         )
         samples_by_col = list(zip(*samples_by_row)) if samples_by_row else [[]] * len(text_columns)
         for col_name, samples in safezip(text_columns, samples_by_col):
-            uuid_samples = [s for s in samples if s and is_uuid(s)]
-
-            if uuid_samples:
-                if len(uuid_samples) != len(samples):
-                    logger.warning(
-                        f"Mixed UUID/Non-UUID values detected in column {'.'.join(table_path)}.{col_name}, disabling UUID support."
-                    )
-                else:
-                    assert col_name in col_dict
-                    col_dict[col_name] = String_UUID(
-                        lowercase=all(s == s.lower() for s in uuid_samples),
-                        uppercase=all(s == s.upper() for s in uuid_samples),
-                    )
-                    continue
-
             if self.SUPPORTS_ALPHANUMS:  # Anything but MySQL (so far)
                 alphanum_samples = [s for s in samples if String_Alphanum.test_value(s)]
                 if alphanum_samples:
