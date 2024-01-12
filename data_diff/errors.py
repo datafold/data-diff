@@ -68,3 +68,7 @@ class DataDiffCloudDiffTimedOut(Exception):
 
 class DataDiffSimpleSelectNotFound(Exception):
     "Raised when using --select on dbt < 1.5 and a model node is not found in the manifest."
+
+
+class DataDiffMismatchingKeyTypesError(Exception):
+    "Raised when the key types of two tables do not match, like VARCHAR and INT."

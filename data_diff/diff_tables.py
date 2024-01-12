@@ -11,6 +11,7 @@ from concurrent.futures import ThreadPoolExecutor, as_completed
 
 import attrs
 
+from data_diff.errors import DataDiffMismatchingKeyTypesError
 from data_diff.info_tree import InfoTree, SegmentInfo
 from data_diff.utils import dbt_diff_string_template, run_as_daemon, safezip, getLogger, truncate_error, Vector
 from data_diff.thread_utils import ThreadedYielder
@@ -213,6 +214,8 @@ class TableDiffer(ThreadBase, ABC):
     def _diff_tables_wrapper(self, table1: TableSegment, table2: TableSegment, info_tree: InfoTree) -> DiffResult:
         if is_tracking_enabled():
             options = attrs.asdict(self, recurse=False)
+            # not a useful event attribute
+            options.pop("_ignored_columns_lock")
             options["differ_name"] = type(self).__name__
             event_json = create_start_event_json(options)
             run_as_daemon(send_event_json, event_json)
@@ -290,9 +293,13 @@ class TableDiffer(ThreadBase, ABC):
             if not isinstance(kt, IKey):
                 raise NotImplementedError(f"Cannot use a column of type {kt} as a key")
 
-        for kt1, kt2 in safezip(key_types1, key_types2):
+        for i, (kt1, kt2) in enumerate(safezip(key_types1, key_types2)):
             if kt1.python_type is not kt2.python_type:
-                raise TypeError(f"Incompatible key types: {kt1} and {kt2}")
+                k1 = table1.key_columns[i]
+                k2 = table2.key_columns[i]
+                raise DataDiffMismatchingKeyTypesError(
+                    f"Key columns {k1} and {k2} can't be compared due to different types."
+                )
 
         # Query min/max values
         key_ranges = self._threaded_call_as_completed("query_key_range", [table1, table2])

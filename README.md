@@ -63,7 +63,7 @@ pip install data-diff 'data-diff[postgresql,snowflake]' -U
 
 Additionally, you can install all open source supported database adapters as follows.
 ```
-pip install data-diff 'data-diff[all-oss-supported-dbs]' -U
+pip install data-diff 'data-diff[all-dbs]' -U
 ```
 
 2. Run `data-diff` with connection URIs
@@ -156,6 +156,7 @@ Check out [documentation](https://docs.datafold.com/reference/open_source/cli) f
 | Redshift      |  🟢     | `redshift://<username>:<password>@<hostname>:5439/<database>`                                                                       |
 | DuckDB        |  🟢   | `duckdb://<filepath>`                                                                                          |
 | MotherDuck        |  🟢   | `duckdb://<filepath>`                                                                                                   |
+| Microsoft SQL Server        |  🟢   | `mssql://<user>:<password>@<host>/<database>/<schema>`                                                                                                   |
 | Oracle        |  🟡   | `oracle://<username>:<password>@<hostname>/servive_or_sid`                                                                          |
 | Presto        |  🟡   | `presto://<username>:<password>@<hostname>:8080/<database>`                                                                         |
 | Databricks    |  🟡   | `databricks://<http_path>:<access_token>@<server_hostname>/<catalog>/<schema>`                                                      |
