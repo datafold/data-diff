@@ -176,6 +176,7 @@ relevant_databases.discard(dbs.Presto)
 
 test_relevant_database: Callable = test_each_database_in_list(relevant_databases)
 
+
 @test_relevant_database
 class TestCloseMethod(unittest.TestCase):
     def test_close_connection(self):
