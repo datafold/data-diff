@@ -70,6 +70,33 @@ class TestGetDBS(unittest.TestCase):
             assert db1._interactive
             assert db2._interactive
 
+    def test_database_connection_failure(self) -> None:
+        """Test when database connection fails."""
+        with self.assertRaises(Exception):  # Assuming that connect() raises Exception on connection failure
+            _get_dbs(1, "db1_str", 0, "db2_str", 0, False)
+
+    def test_invalid_inputs(self) -> None:
+        """Test invalid inputs."""
+        with self.assertRaises(Exception): # Assuming that connect() raises Exception on failure
+            _get_dbs(0, "", 0, "", 0, False)  # Empty connection strings
+
+    def test_database_object(self) -> None:
+        """Test returned database objects are valid and not None."""
+        db1_str: str = CONN_STRINGS[db.PostgreSQL]
+        db2_str: str = CONN_STRINGS[db.PostgreSQL]
+        db1, db2 = _get_dbs(1, db1_str, 0, db2_str, 0, False)
+        self.assertIsNotNone(db1)
+        self.assertIsNotNone(db2)
+        self.assertIsInstance(db1, Database)
+        self.assertIsInstance(db2, Database)
+        
+    def test_databases_are_different(self) -> None:
+        """Test separate connections for different databases."""
+        db1_str: str = CONN_STRINGS[db.PostgreSQL]
+        db2_str: str = CONN_STRINGS[db.MySQL]
+        db1, db2 = _get_dbs(0, db1_str, 1, db2_str, 2, False)
+        with db1, db2:
+            self.assertIsNot(db1, db2)  # Check that db1 and db2 are not the same object
 
 class TestSetAge(unittest.TestCase):
     def setUp(self) -> None:
@@ -98,7 +125,11 @@ class TestSetAge(unittest.TestCase):
         assert len(options) == 2
         assert options.get("max_update") is not None
         assert options.get("min_update") is not None
-
+            
+    def test__set_age_db_query_failure(self):
+        with self.assertRaises(Exception):
+            options = {}
+            _set_age(options, "1d", "1d", self.mock_database)
 
 class TestGetTableDiffer(unittest.TestCase):
     def test__get_table_differ(self):
@@ -158,6 +189,21 @@ class TestGetExpandedColumns(DiffTestCase):
         assert len(expanded_columns) == 3
         assert len(set(expanded_columns) & set(columns)) == 3
 
+    def test__get_expanded_columns_case_sensitive(self):
+        columns = ["UserID", "MovieID", "Rating"]
+        kwargs = {
+            "db1": self.connection,
+            "schema1": self.src_schema,
+            "table1": self.table_src_name,
+            "db2": self.connection,
+            "schema2": self.dst_schema,
+            "table2": self.table_dst_name,
+        }
+        expanded_columns = _get_expanded_columns(columns, True, set(columns), **kwargs)
+
+        assert len(expanded_columns) == 3
+        assert len(set(expanded_columns) & set(columns)) == 3
+
 
 class TestGetThreads(unittest.TestCase):
     def test__get_threads(self):
@@ -194,4 +240,8 @@ class TestGetThreads(unittest.TestCase):
 
         with self.assertRaises(ValueError) as value_error:
             _get_threads(0, None, None)
+        assert str(value_error.exception) == "Error: threads must be >= 1"
+
+        with self.assertRaises(ValueError) as value_error:
+            _get_threads(-1, None, None)
         assert str(value_error.exception) == "Error: threads must be >= 1"

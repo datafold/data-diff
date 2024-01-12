@@ -128,6 +128,7 @@ class MySQL(ThreadedDatabase):
     CONNECT_URI_PARAMS = ["database?"]
 
     _args: Dict[str, Any]
+    _conn: Any
 
     def __init__(self, *, thread_count, **kw) -> None:
         super().__init__(thread_count=thread_count)
@@ -142,7 +143,8 @@ class MySQL(ThreadedDatabase):
     def create_connection(self):
         mysql = import_mysql()
         try:
-            return mysql.connect(charset="utf8", use_unicode=True, **self._args)
+            self._conn = mysql.connect(charset="utf8", use_unicode=True, **self._args)
+            return self._conn
         except mysql.Error as e:
             if e.errno == mysql.errorcode.ER_ACCESS_DENIED_ERROR:
                 raise ConnectError("Bad user name or password") from e

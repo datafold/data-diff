@@ -86,9 +86,16 @@ CONN_STRINGS = {
 }
 
 
-def get_conn(cls: type) -> Database:
-    return connect(CONN_STRINGS[cls], N_THREADS)
+# def get_conn(cls: type) -> Database:
+#     return connect(CONN_STRINGS[cls], N_THREADS)
+_database_instances = {}
 
+def get_conn(cls: type, shared: bool = True) -> Database:
+    if shared:
+        if cls not in _database_instances:
+            _database_instances[cls] = get_conn(cls, shared=False)
+        return _database_instances[cls]
+    return connect(CONN_STRINGS[cls], N_THREADS)
 
 def _print_used_dbs():
     used = {k.__name__ for k, v in CONN_STRINGS.items() if v is not None}
