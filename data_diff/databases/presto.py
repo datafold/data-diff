@@ -181,7 +181,8 @@ class Presto(Database):
 
     def close(self):
         super().close()
-        self._conn.close()
+        if self._conn is not None:
+            self._conn.close()
 
     def select_table_schema(self, path: DbPath) -> str:
         schema, table = self._normalize_table_path(path)

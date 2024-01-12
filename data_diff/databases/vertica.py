@@ -136,6 +136,7 @@ class Vertica(ThreadedDatabase):
     CONNECT_URI_PARAMS = ["database?"]
 
     _args: Dict[str, Any]
+    _conn: Any
 
     def __init__(self, *, thread_count, **kw) -> None:
         super().__init__(thread_count=thread_count)
@@ -146,8 +147,8 @@ class Vertica(ThreadedDatabase):
     def create_connection(self):
         vertica = import_vertica()
         try:
-            c = vertica.connect(**self._args)
-            return c
+            self._conn = vertica.connect(**self._args)
+            return self._conn
         except vertica.errors.ConnectionError as e:
             raise ConnectError(*e.args) from e
 
