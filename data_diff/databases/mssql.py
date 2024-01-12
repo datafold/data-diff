@@ -13,6 +13,7 @@ from data_diff.databases.base import (
 )
 from data_diff.abcs.database_types import (
     JSON,
+    Date,
     NumericType,
     Timestamp,
     TimestampTZ,
@@ -46,7 +47,7 @@ class Dialect(BaseDialect):
         "datetime": Timestamp,
         "datetime2": Timestamp,
         "smalldatetime": Timestamp,
-        "date": Timestamp,
+        "date": Date,
         # Numbers
         "float": Float,
         "real": Float,
