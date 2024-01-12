@@ -77,7 +77,7 @@ class TestGetDBS(unittest.TestCase):
 
     def test_invalid_inputs(self) -> None:
         """Test invalid inputs."""
-        with self.assertRaises(Exception): # Assuming that connect() raises Exception on failure
+        with self.assertRaises(Exception):  # Assuming that connect() raises Exception on failure
             _get_dbs(0, "", 0, "", 0, False)  # Empty connection strings
 
     def test_database_object(self) -> None:
@@ -89,7 +89,7 @@ class TestGetDBS(unittest.TestCase):
         self.assertIsNotNone(db2)
         self.assertIsInstance(db1, Database)
         self.assertIsInstance(db2, Database)
-        
+
     def test_databases_are_different(self) -> None:
         """Test separate connections for different databases."""
         db1_str: str = CONN_STRINGS[db.PostgreSQL]
@@ -97,6 +97,7 @@ class TestGetDBS(unittest.TestCase):
         db1, db2 = _get_dbs(0, db1_str, 1, db2_str, 2, False)
         with db1, db2:
             self.assertIsNot(db1, db2)  # Check that db1 and db2 are not the same object
+
 
 class TestSetAge(unittest.TestCase):
     def setUp(self) -> None:
@@ -125,11 +126,12 @@ class TestSetAge(unittest.TestCase):
         assert len(options) == 2
         assert options.get("max_update") is not None
         assert options.get("min_update") is not None
-            
+
     def test__set_age_db_query_failure(self):
         with self.assertRaises(Exception):
             options = {}
             _set_age(options, "1d", "1d", self.mock_database)
+
 
 class TestGetTableDiffer(unittest.TestCase):
     def test__get_table_differ(self):

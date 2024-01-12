@@ -174,7 +174,7 @@ class TestNumericPrecisionParsing(unittest.TestCase):
 class TestCloseMethod(unittest.TestCase):
     def test_close_connection(self):
         connection: Database = get_conn(self.db_cls)
-        
+
         # Perform a query to verify the connection is established
         with connection:
             cursor = connection._conn.cursor()
