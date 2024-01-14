@@ -17,6 +17,7 @@ from data_diff.abcs.database_types import (
     FractionalType,
     Boolean,
     Date,
+    Time
 )
 from data_diff.databases.base import BaseDialect, ThreadedDatabase, import_helper, ConnectError
 from data_diff.databases.base import (
@@ -57,6 +58,8 @@ class PostgresqlDialect(BaseDialect):
         "timestamp without time zone": Timestamp,
         "timestamp": Timestamp,
         "date": Date,
+        "time with time zone": Time,
+        "time without time zone": Time,
         # Numbers
         "double precision": Float,
         "real": Float,
@@ -110,6 +113,23 @@ class PostgresqlDialect(BaseDialect):
     def normalize_timestamp(self, value: str, coltype: TemporalType) -> str:
         def _add_padding(coltype: TemporalType, timestamp6: str):
             return f"RPAD(LEFT({timestamp6}, {TIMESTAMP_PRECISION_POS+coltype.precision}), {TIMESTAMP_PRECISION_POS+6}, '0')"
+
+        try:
+            is_date = coltype.is_date
+            is_time = coltype.is_time
+        except:
+            is_date = False
+            is_time = False
+
+        if isinstance(coltype, Date) or is_date:
+            return f"cast({value} as varchar)"
+
+        if isinstance(coltype, Time) or is_time:
+            seconds = f"EXTRACT( epoch from {value})"
+            rounded = f"ROUND({seconds},  {coltype.precision})"
+            time_value = f"CAST('00:00:00' as time) + make_interval(0, 0, 0, 0, 0, 0, {rounded})"  # 6th arg = seconds
+            converted = f"to_char({time_value}, 'hh24:mi:ss.ff6')"
+            return converted
 
         if coltype.rounds:
             # NULL value expected to return NULL after normalization

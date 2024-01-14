@@ -15,6 +15,7 @@ from data_diff.abcs.database_types import (
     DbPath,
     Boolean,
     Date,
+    Time,
 )
 from data_diff.databases.base import (
     BaseDialect,
@@ -45,6 +46,7 @@ class Dialect(BaseDialect):
         "TIMESTAMP_LTZ": Timestamp,
         "TIMESTAMP_TZ": TimestampTZ,
         "DATE": Date,
+        "TIME": Time,
         # Numbers
         "NUMBER": Decimal,
         "FLOAT": Float,
@@ -83,10 +85,18 @@ class Dialect(BaseDialect):
     def normalize_timestamp(self, value: str, coltype: TemporalType) -> str:
         try:
             is_date = coltype.is_date
+            is_time = coltype.is_time
         except:
             is_date = False
+            is_time = False
         if isinstance(coltype, Date) or is_date:
             return f"({value}::varchar)"
+        elif isinstance(coltype, Time) or is_time:
+            microseconds = f"TIMEDIFF(microsecond, cast('00:00:00' as time), {value})"
+            rounded = f"round({microseconds}, -6 + {coltype.precision})"
+            time_value = f"TIMEADD(microsecond, {rounded}, cast('00:00:00' as time))"
+            converted = f"TO_VARCHAR({time_value}, 'HH24:MI:SS.FF6')"
+            return converted
 
         if coltype.rounds:
             timestamp = f"to_timestamp(round(date_part(epoch_nanosecond, convert_timezone('UTC', {value})::timestamp(9))/1000000000, {coltype.precision}))"
