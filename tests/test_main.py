@@ -124,7 +124,11 @@ class TestSetAge(unittest.TestCase):
         assert len(options) == 2
         assert options.get("max_update") is not None
         assert options.get("min_update") is not None
-
+            
+    def test__set_age_db_query_failure(self):
+        with self.assertRaises(Exception):
+            options = {}
+            _set_age(options, "1d", "1d", self.mock_database)
 
 class TestGetTableDiffer(unittest.TestCase):
     def test__get_table_differ(self):
