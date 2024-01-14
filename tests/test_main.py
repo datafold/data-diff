@@ -69,7 +69,33 @@ class TestGetDBS(unittest.TestCase):
             assert db1 != db2
             assert db1._interactive
             assert db2._interactive
+    def test_database_connection_failure(self) -> None:
+        """Test when database connection fails."""
+        with self.assertRaises(Exception):  # Assuming that connect() raises Exception on connection failure
+            _get_dbs(1, "db1_str", 0, "db2_str", 0, False)
 
+    def test_invalid_inputs(self) -> None:
+        """Test invalid inputs."""
+        with self.assertRaises(Exception): # Assuming that connect() raises Exception on failure
+            _get_dbs(0, "", 0, "", 0, False)  # Empty connection strings
+
+    def test_database_object(self) -> None:
+        """Test returned database objects are valid and not None."""
+        db1_str: str = CONN_STRINGS[db.PostgreSQL]
+        db2_str: str = CONN_STRINGS[db.PostgreSQL]
+        db1, db2 = _get_dbs(1, db1_str, 0, db2_str, 0, False)
+        self.assertIsNotNone(db1)
+        self.assertIsNotNone(db2)
+        self.assertIsInstance(db1, Database)
+        self.assertIsInstance(db2, Database)
+        
+    def test_databases_are_different(self) -> None:
+        """Test separate connections for different databases."""
+        db1_str: str = CONN_STRINGS[db.PostgreSQL]
+        db2_str: str = CONN_STRINGS[db.MySQL]
+        db1, db2 = _get_dbs(0, db1_str, 1, db2_str, 2, False)
+        with db1, db2:
+            self.assertIsNot(db1, db2)  # Check that db1 and db2 are not the same object
 
 class TestSetAge(unittest.TestCase):
     def setUp(self) -> None:
