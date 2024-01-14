@@ -4,10 +4,10 @@ from typing import Callable, List, Tuple
 
 import attrs
 import pytz
-from psycopg2 import InterfaceError
 
 from data_diff import connect, Database
 from data_diff import databases as dbs
+from data_diff.abcs.database_types import TimestampTZ
 from data_diff.queries.api import table, current_timestamp
 from data_diff.queries.extras import NormalizeAsString
 from data_diff.schema import create_schema
@@ -18,7 +18,6 @@ from tests.common import (
     str_to_checksum,
     random_table_suffix,
 )
-from data_diff.abcs.database_types import TimestampTZ
 
 TEST_DATABASES = {
     dbs.MySQL,
@@ -173,14 +172,12 @@ class TestNumericPrecisionParsing(unittest.TestCase):
 @test_each_database
 class TestCloseMethod(unittest.TestCase):
     def test_close_connection(self):
-        connection: Database = get_conn(self.db_cls)
-        
+        database: Database = get_conn(self.db_cls)
+
         # Perform a query to verify the connection is established
-        with connection:
-            cursor = connection._conn.cursor()
-            cursor.execute("SELECT 1")
+        with database:
+            database.query("SELECT 1")
 
         # Now the connection should be closed, and trying to execute a query should fail.
         with self.assertRaises(Exception):  # Catch any type of exception.
-            cursor.execute("SELECT 1")
-            
+            database.query("SELECT 1")
