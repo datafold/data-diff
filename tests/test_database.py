@@ -170,14 +170,17 @@ class TestNumericPrecisionParsing(unittest.TestCase):
         self.assertEqual(schema["value"].precision, db.dialect.DEFAULT_NUMERIC_PRECISION)
 
 
-class TestDatabaseConnection(unittest.TestCase):
-    def test_close_connection_postgres(self):
-        connection: Database = get_conn(dbs.PostgreSQL)
+@test_each_database
+class TestCloseMethod(unittest.TestCase):
+    def test_close_connection(self):
+        connection: Database = get_conn(self.db_cls)
+        
+        # Perform a query to verify the connection is established
         with connection:
             cursor = connection._conn.cursor()
             cursor.execute("SELECT 1")
 
-        with self.assertRaises(InterfaceError) as interface_error:
+        # Now the connection should be closed, and trying to execute a query should fail.
+        with self.assertRaises(Exception):  # Catch any type of exception.
             cursor.execute("SELECT 1")
-
-        assert str(interface_error.exception) == "cursor already closed"
+            
