@@ -81,6 +81,13 @@ class Dialect(BaseDialect):
         return f"md5({s})"
 
     def normalize_timestamp(self, value: str, coltype: TemporalType) -> str:
+        try:
+            is_date = coltype.is_date
+        except:
+            is_date = False
+        if isinstance(coltype, Date) or is_date:
+            return f"({value}::varchar)"
+
         if coltype.rounds:
             timestamp = f"to_timestamp(round(date_part(epoch_nanosecond, convert_timezone('UTC', {value})::timestamp(9))/1000000000, {coltype.precision}))"
         else:
