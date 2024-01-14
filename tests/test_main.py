@@ -188,6 +188,21 @@ class TestGetExpandedColumns(DiffTestCase):
         assert len(expanded_columns) == 3
         assert len(set(expanded_columns) & set(columns)) == 3
 
+    def test__get_expanded_columns_case_sensitive(self):
+        columns = ["UserID", "MovieID", "Rating"]
+        kwargs = {
+            "db1": self.connection,
+            "schema1": self.src_schema,
+            "table1": self.table_src_name,
+            "db2": self.connection,
+            "schema2": self.dst_schema,
+            "table2": self.table_dst_name,
+        }
+        expanded_columns = _get_expanded_columns(columns, True, set(columns), **kwargs)
+
+        assert len(expanded_columns) == 3
+        assert len(set(expanded_columns) & set(columns)) == 3
+
 
 class TestGetThreads(unittest.TestCase):
     def test__get_threads(self):
@@ -225,3 +240,8 @@ class TestGetThreads(unittest.TestCase):
         with self.assertRaises(ValueError) as value_error:
             _get_threads(0, None, None)
         assert str(value_error.exception) == "Error: threads must be >= 1"
+       
+        with self.assertRaises(ValueError) as value_error:
+            _get_threads(-1, None, None)
+        assert str(value_error.exception) == "Error: threads must be >= 1"
+
