@@ -24,6 +24,8 @@ from data_diff.abcs.database_types import (
     Native_UUID,
     Text,
     Boolean,
+    Date,
+    Time
 )
 
 
@@ -46,7 +48,8 @@ class Dialect(BaseDialect):
         "datetime": Timestamp,
         "datetime2": Timestamp,
         "smalldatetime": Timestamp,
-        "date": Timestamp,
+        "date": Date,
+        "time": Time,
         # Numbers
         "float": Float,
         "real": Float,
