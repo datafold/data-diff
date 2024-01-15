@@ -48,11 +48,11 @@ class TestMD5(unittest.TestCase):
     def test_md5_as_int(self):
         self.mysql = connect(TEST_MYSQL_CONN_STRING)
 
-        str = "hello world"
-        query_fragment = self.mysql.dialect.md5_as_int("'{0}'".format(str))
+        message = "hello world"
+        query_fragment = self.mysql.dialect.md5_as_int(f"'{message}'")
         query = f"SELECT {query_fragment}"
 
-        self.assertEqual(str_to_checksum(str), self.mysql.query(query, int))
+        self.assertEqual(str_to_checksum(message), self.mysql.query(query, int))
 
 
 class TestConnect(unittest.TestCase):
@@ -89,14 +89,16 @@ class TestQueries(unittest.TestCase):
         db.query(table(name).insert_row(1, now, now))
         db.query(db.dialect.set_timezone_to_utc())
 
-        t = table(name)
-        raw_schema = db.query_table_schema(t.path)
-        schema = db._process_table_schema(t.path, raw_schema)
-        schema = create_schema(db.name, t, schema, case_sensitive=True)
-        t = attrs.evolve(t, schema=schema)
-        t.schema["created_at"] = attrs.evolve(t.schema["created_at"], precision=t.schema["created_at"].precision)
+        table_object = table(name)
+        raw_schema = db.query_table_schema(table_object.path)
+        schema = db._process_table_schema(table_object.path, raw_schema)
+        schema = create_schema(db.name, table_object, schema, case_sensitive=True)
+        table_object = attrs.evolve(table_object, schema=schema)
+        table_object.schema["created_at"] = attrs.evolve(
+            table_object.schema["created_at"], precision=table_object.schema["created_at"].precision
+        )
 
-        tbl = table(name, schema=t.schema)
+        tbl = table(name, schema=table_object.schema)
 
         results = db.query(tbl.select(NormalizeAsString(tbl[c]) for c in ["created_at", "updated_at"]), List[Tuple])
 
@@ -131,8 +133,8 @@ class TestThreePartIds(unittest.TestCase):
 
         for part in (table_one_part, table_two_part, table_three_part):
             db.query(part.create())
-            d = db.query_table_schema(part.path)
-            assert len(d) == 1
+            schema = db.query_table_schema(part.path)
+            assert len(schema) == 1
             db.query(part.drop())
 
 
@@ -140,33 +142,36 @@ class TestThreePartIds(unittest.TestCase):
 class TestNumericPrecisionParsing(unittest.TestCase):
     def test_specified_precision(self):
         name = "tbl_" + random_table_suffix()
-        db = get_conn(self.db_cls)
-        tbl = table(name, schema={"value": "DECIMAL(10, 2)"})
-        db.query(tbl.create())
-        t = table(name)
-        raw_schema = db.query_table_schema(t.path)
-        schema = db._process_table_schema(t.path, raw_schema)
-        self.assertEqual(schema["value"].precision, 2)
+        db_connection = get_conn(self.db_cls)
+        with db_connection:
+            table_object = table(name, schema={"value": "DECIMAL(10, 2)"})
+            db_connection.query(table_object.create())
+            table_object = table(name)
+            raw_schema = db_connection.query_table_schema(table_object.path)
+            schema = db_connection._process_table_schema(table_object.path, raw_schema)
+            self.assertEqual(schema["value"].precision, 2)
 
     def test_specified_zero_precision(self):
         name = "tbl_" + random_table_suffix()
-        db = get_conn(self.db_cls)
-        tbl = table(name, schema={"value": "DECIMAL(10)"})
-        db.query(tbl.create())
-        t = table(name)
-        raw_schema = db.query_table_schema(t.path)
-        schema = db._process_table_schema(t.path, raw_schema)
-        self.assertEqual(schema["value"].precision, 0)
+        db_connection = get_conn(self.db_cls)
+        with db_connection:
+            table_object = table(name, schema={"value": "DECIMAL(10)"})
+            db_connection.query(table_object.create())
+            table_object = table(name)
+            raw_schema = db_connection.query_table_schema(table_object.path)
+            schema = db_connection._process_table_schema(table_object.path, raw_schema)
+            self.assertEqual(schema["value"].precision, 0)
 
     def test_default_precision(self):
         name = "tbl_" + random_table_suffix()
-        db = get_conn(self.db_cls)
-        tbl = table(name, schema={"value": "DECIMAL"})
-        db.query(tbl.create())
-        t = table(name)
-        raw_schema = db.query_table_schema(t.path)
-        schema = db._process_table_schema(t.path, raw_schema)
-        self.assertEqual(schema["value"].precision, db.dialect.DEFAULT_NUMERIC_PRECISION)
+        db_connection = get_conn(self.db_cls)
+        with db_connection:
+            table_object = table(name, schema={"value": "DECIMAL"})
+            db_connection.query(table_object.create())
+            table_object = table(name)
+            raw_schema = db_connection.query_table_schema(table_object.path)
+            schema = db_connection._process_table_schema(table_object.path, raw_schema)
+            self.assertEqual(schema["value"].precision, db_connection.dialect.DEFAULT_NUMERIC_PRECISION)
 
 
 # Skip presto as it doesn't support a close method:
