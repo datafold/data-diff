@@ -161,6 +161,6 @@ class Vertica(ThreadedDatabase):
             f"WHERE table_name = '{name}' AND table_schema = '{schema}'"
         )
 
-    def close(self):
-        super().close()
-        self._conn.close()
+    # def close(self):
+    #     super().close()
+    #     self._conn.close()
