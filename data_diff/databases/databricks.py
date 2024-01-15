@@ -5,6 +5,7 @@ import logging
 import attrs
 
 from data_diff.abcs.database_types import (
+    Date,
     Integer,
     Float,
     Decimal,
@@ -52,6 +53,7 @@ class Dialect(BaseDialect):
         # Timestamps
         "TIMESTAMP": Timestamp,
         "TIMESTAMP_NTZ": Timestamp,
+        "DATE": Date,
         # Text
         "STRING": Text,
         "VARCHAR": Text,
