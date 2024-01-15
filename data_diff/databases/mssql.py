@@ -13,7 +13,6 @@ from data_diff.databases.base import (
 )
 from data_diff.abcs.database_types import (
     JSON,
-    Date,
     NumericType,
     Timestamp,
     TimestampTZ,
@@ -25,6 +24,8 @@ from data_diff.abcs.database_types import (
     Native_UUID,
     Text,
     Boolean,
+    Date,
+    Time
 )
 
 
@@ -48,6 +49,7 @@ class Dialect(BaseDialect):
         "datetime2": Timestamp,
         "smalldatetime": Timestamp,
         "date": Date,
+        "time": Time,
         # Numbers
         "float": Float,
         "real": Float,

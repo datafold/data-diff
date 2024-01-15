@@ -92,7 +92,12 @@ class Dialect(BaseDialect):
 
     def normalize_timestamp(self, value: str, coltype: TemporalType) -> str:
         """Databricks timestamp contains no more than 6 digits in precision"""
-
+        try:
+            is_date = coltype.is_date
+        except:
+            is_date = False
+        if isinstance(coltype, Date) or is_date:
+            return f"date_format({value}, 'yyyy-MM-dd')"
         if coltype.rounds:
             # cast to timestamp due to unix_micros() requiring timestamp
             timestamp = f"cast(round(unix_micros(cast({value} as timestamp)) / 1000000, {coltype.precision}) * 1000000 as bigint)"
