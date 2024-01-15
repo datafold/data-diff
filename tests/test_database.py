@@ -169,7 +169,15 @@ class TestNumericPrecisionParsing(unittest.TestCase):
         self.assertEqual(schema["value"].precision, db.dialect.DEFAULT_NUMERIC_PRECISION)
 
 
-@test_each_database
+# Skip presto as it doesn't support a close method:
+# https://github.com/prestodb/presto-python-client/blob/be2610e524fa8400c9f2baa41ba0159d44ac2b11/prestodb/dbapi.py#L130
+closeable_databases = TEST_DATABASES.copy()
+closeable_databases.discard(dbs.Presto)
+
+test_closeable_databases: Callable = test_each_database_in_list(closeable_databases)
+
+
+@test_closeable_databases
 class TestCloseMethod(unittest.TestCase):
     def test_close_connection(self):
         database: Database = get_conn(self.db_cls)
