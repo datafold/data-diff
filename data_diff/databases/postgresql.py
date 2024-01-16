@@ -17,7 +17,7 @@ from data_diff.abcs.database_types import (
     FractionalType,
     Boolean,
     Date,
-    Time
+    Time,
 )
 from data_diff.databases.base import BaseDialect, ThreadedDatabase, import_helper, ConnectError
 from data_diff.databases.base import (
