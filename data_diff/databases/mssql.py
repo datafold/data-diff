@@ -25,7 +25,7 @@ from data_diff.abcs.database_types import (
     Text,
     Boolean,
     Date,
-    Time
+    Time,
 )
 
 
