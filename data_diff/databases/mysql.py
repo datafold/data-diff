@@ -14,6 +14,7 @@ from data_diff.abcs.database_types import (
     ColType_UUID,
     Boolean,
     Date,
+    Time,
 )
 from data_diff.databases.base import (
     ThreadedDatabase,
@@ -48,6 +49,7 @@ class Dialect(BaseDialect):
         "datetime": Datetime,
         "timestamp": Timestamp,
         "date": Date,
+        "time": Time,
         # Numbers
         "double": Float,
         "float": Float,
@@ -106,6 +108,20 @@ class Dialect(BaseDialect):
         return f"md5({s})"
 
     def normalize_timestamp(self, value: str, coltype: TemporalType) -> str:
+        try:
+            is_date = coltype.is_date
+            is_time = coltype.is_time
+        except:
+            is_date = False
+            is_time = False
+
+        if isinstance(coltype, Date) or is_date:
+            return f"cast({value} as char)"
+
+        if isinstance(coltype, Time) or is_time:
+            formatted = f"time_format(cast({value} as time({coltype.precision})), '%H:%i:%s.%f')"
+            return formatted
+
         if coltype.rounds:
             return self.to_string(f"cast( cast({value} as datetime({coltype.precision})) as datetime(6))")
 
