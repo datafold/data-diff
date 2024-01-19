@@ -147,8 +147,8 @@ class Vertica(ThreadedDatabase):
     def create_connection(self):
         vertica = import_vertica()
         try:
-            self._conn = vertica.connect(**self._args)
-            return self._conn
+            c = vertica.connect(**self._args)
+            return c
         except vertica.errors.ConnectionError as e:
             raise ConnectError(*e.args) from e
 
