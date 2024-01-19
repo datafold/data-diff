@@ -136,7 +136,6 @@ class Vertica(ThreadedDatabase):
     CONNECT_URI_PARAMS = ["database?"]
 
     _args: Dict[str, Any]
-    _conn: Any
 
     def __init__(self, *, thread_count, **kw) -> None:
         super().__init__(thread_count=thread_count)
