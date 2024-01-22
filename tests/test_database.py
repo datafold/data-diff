@@ -180,13 +180,12 @@ test_relevant_database: Callable = test_each_database_in_list(relevant_databases
 @test_relevant_database
 class TestCloseMethod(unittest.TestCase):
     def test_close_connection(self):
-        connection: Database = get_conn(self.db_cls)
+        database: Database = get_conn(self.db_cls)
 
         # Perform a query to verify the connection is established
-        with connection:
-            cursor = connection._conn.cursor()
-            cursor.execute("SELECT 1")
+        with database:
+            database.query("SELECT 1")
 
         # Now the connection should be closed, and trying to execute a query should fail.
         with self.assertRaises(Exception):  # Catch any type of exception.
-            cursor.execute("SELECT 1")
+            database.query("SELECT 1")
