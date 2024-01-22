@@ -157,6 +157,11 @@ class Date(TemporalType):
 
 
 @attrs.define(frozen=True)
+class Time(TemporalType):
+    pass
+
+
+@attrs.define(frozen=True)
 class NumericType(ColType):
     # 'precision' signifies how many fractional digits (after the dot) we want to compare
     precision: int

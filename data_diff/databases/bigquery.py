@@ -19,6 +19,8 @@ from data_diff.abcs.database_types import (
     TemporalType,
     Boolean,
     UnknownColType,
+    Time,
+    Date,
 )
 from data_diff.databases.base import (
     BaseDialect,
@@ -63,6 +65,8 @@ class Dialect(BaseDialect):
         # Dates
         "TIMESTAMP": Timestamp,
         "DATETIME": Datetime,
+        "DATE": Date,
+        "TIME": Time,
         # Numbers
         "INT64": Integer,
         "INT32": Integer,
@@ -160,6 +164,21 @@ class Dialect(BaseDialect):
         return f"md5({s})"
 
     def normalize_timestamp(self, value: str, coltype: TemporalType) -> str:
+        try:
+            is_date = coltype.is_date
+            is_time = coltype.is_time
+        except:
+            is_date = False
+            is_time = False
+        if isinstance(coltype, Date) or is_date:
+            return f"FORMAT_DATE('%F', {value})"
+        if isinstance(coltype, Time) or is_time:
+            microseconds = f"TIME_DIFF( {value}, cast('00:00:00' as time), microsecond)"
+            rounded = f"ROUND({microseconds}, -6 + {coltype.precision})"
+            time_value = f"TIME_ADD(cast('00:00:00' as time), interval cast({rounded} as int64) microsecond)"
+            converted = f"FORMAT_TIME('%H:%M:%E6S', {time_value})"
+            return converted
+
         if coltype.rounds:
             timestamp = f"timestamp_micros(cast(round(unix_micros(cast({value} as timestamp))/1000000, {coltype.precision})*1000000 as int))"
             return f"FORMAT_TIMESTAMP('%F %H:%M:%E6S', {timestamp})"
