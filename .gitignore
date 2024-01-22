@@ -150,3 +150,5 @@ benchmark_*.png
 
 # History
 .history
+
+docker-compose-local.yml

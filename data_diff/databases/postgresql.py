@@ -17,7 +17,7 @@ from data_diff.abcs.database_types import (
     FractionalType,
     Boolean,
     Date,
-    Time
+    Time,
 )
 from data_diff.databases.base import BaseDialect, ThreadedDatabase, import_helper, ConnectError
 from data_diff.databases.base import (
@@ -251,3 +251,8 @@ class PostgreSQL(ThreadedDatabase):
         raise ValueError(
             f"{self.name}: Bad table path for {self}: '{'.'.join(path)}'. Expected format: table, schema.table, or database.schema.table"
         )
+
+    def close(self):
+        super().close()
+        if self._conn is not None:
+            self._conn.close()
