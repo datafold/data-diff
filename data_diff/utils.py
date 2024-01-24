@@ -466,11 +466,8 @@ def dbt_diff_string_template(
     # string_output += f"\n\nChanged Rows: {rows_updated}\n"
     # string_output += f"Unchanged Rows: {rows_unchanged}\n\n"
 
-    data = [
-        ['Added/Removed', rows_added, rows_removed],
-        ['Unchanged/Changed', rows_unchanged, rows_updated]
-    ]
-    headers = ['', 'PROD', 'DEV']
+    data = [["Added/Removed", rows_added, rows_removed], ["Unchanged/Changed", rows_unchanged, rows_updated]]
+    headers = ["", "PROD", "DEV"]
     string_output = f"\n{tabulate(data, headers=headers)}\n\n"
 
     string_output += extra_info_str
