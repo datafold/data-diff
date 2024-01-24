@@ -509,7 +509,7 @@ def columns_added_template(columns_added) -> str:
 
 
 def columns_type_changed_template(columns_type_changed) -> str:
-    columns_type_changed_str = f"Type change: {columns_type_changed}\n"
+    columns_type_changed_str = f"Type changed: {columns_type_changed}\n"
     return columns_type_changed_str
 
 
