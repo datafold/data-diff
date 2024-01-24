@@ -298,6 +298,8 @@ def _local_diff(
 
     table1_column_names = set(table1_columns.keys())
     table2_column_names = set(table2_columns.keys())
+    print(f"table1_column_names: {len(table1_column_names)}")
+    print(f"table2_column_names: {len(table2_column_names)}")
     column_set = table1_column_names.intersection(table2_column_names)
     columns_added = table2_column_names.difference(table1_column_names)
     columns_removed = table1_column_names.difference(table2_column_names)
@@ -450,12 +452,14 @@ def _cloud_diff(
             raise Exception(f"Api response did not contain a diff_id")
 
         diff_results = api.poll_data_diff_results(diff_id)
+        # print(diff_results)
 
         rows_added_count = diff_results.pks.exclusives[1]
         rows_removed_count = diff_results.pks.exclusives[0]
 
         rows_updated = diff_results.values.rows_with_differences
         total_rows = diff_results.values.total_rows
+        # print(f"total_rows: {total_rows}")
         rows_unchanged = int(total_rows) - int(rows_updated)
         diff_percent_list = {
             x.column_name: str(x.match) + "%" for x in diff_results.values.columns_diff_stats if x.match != 100.0
@@ -475,12 +479,15 @@ def _cloud_diff(
 
         if any([rows_added_count, rows_removed_count, rows_updated]):
             diff_output = dbt_diff_string_template(
-                rows_added_count,
-                rows_removed_count,
-                rows_updated,
-                str(rows_unchanged),
-                diff_percent_list,
-                "Value Changed:",
+                total_rows_table1=diff_stats.table1_count,
+                total_rows_table2=diff_stats.table2_count,
+                total_rows_diff=total_rows_diff,
+                rows_added=rows_added_count,
+                rows_removed=rows_removed_count,
+                rows_updated=rows_updated,
+                rows_unchanged=str(rows_unchanged),
+                extra_info_dict=diff_percent_list,
+                extra_info_str="Value Changed:",
             )
             diff_output_str += f"\n{diff_url}\n {diff_output} \n"
             rich.print(diff_output_str)

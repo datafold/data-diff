@@ -459,14 +459,23 @@ class Vector(tuple):
 
 
 def dbt_diff_string_template(
-    rows_added: str, rows_removed: str, rows_updated: str, rows_unchanged: str, extra_info_dict: Dict, extra_info_str
+    total_rows_table1: int,
+    total_rows_table2: int,
+    total_rows_diff: str,
+    rows_added: str,
+    rows_removed: str,
+    rows_updated: str,
+    rows_unchanged: str,
+    extra_info_dict: Dict,
+    extra_info_str: str,
 ) -> str:
-    # string_output = f"\n{tabulate([[rows_added, rows_removed]], headers=['PROD', 'DEV'])}"
-
-    # string_output += f"\n\nChanged Rows: {rows_updated}\n"
-    # string_output += f"Unchanged Rows: {rows_unchanged}\n\n"
-
-    data = [["Added/Removed", rows_added, rows_removed], ["Unchanged/Changed", rows_unchanged, rows_updated]]
+    data = [
+        ["Total Rows", total_rows_table1, f"{total_rows_table2} {diff_int_dynamic_color_template(total_rows_diff)}"],
+        ["Changed Rows", "", rows_updated],
+        ["Unchanged Rows", rows_unchanged, ""],
+        ["Added Rows", "", diff_int_dynamic_color_template(rows_added)],
+        ["Removed Rows", "", f"[red]-{rows_removed}[/]"],
+    ]
     headers = ["", "PROD", "DEV"]
     string_output = f"\n{tabulate(data, headers=headers)}\n\n"
 
@@ -476,6 +485,15 @@ def dbt_diff_string_template(
         string_output += f"\n{k}: {v}"
 
     return string_output
+
+
+def diff_int_dynamic_color_template(diff_value: int) -> str:
+    if diff_value > 0:
+        return f"[green]+ {diff_value}[/]"
+    elif diff_value < 0:
+        return f"[red]({diff_value})[/]"
+    else:
+        return diff_value
 
 
 def _jsons_equiv(a: str, b: str):
@@ -502,13 +520,13 @@ def diffs_are_equiv_jsons(diff: list, json_cols: dict):
     return match, overriden_diff_cols
 
 
-def columns_removed_template(columns_removed) -> str:
-    columns_removed_str = f"[red]Column(s) removed:[/] [blue]{columns_removed}[/]\n"
+def columns_removed_template(columns_removed: set) -> str:
+    columns_removed_str = f"[red]Column(s) removed [-{len(columns_removed)}]:[/] [blue]{columns_removed}[/]\n"
     return columns_removed_str
 
 
-def columns_added_template(columns_added) -> str:
-    columns_added_str = f"[green]Column(s) added: {columns_added}[/]\n"
+def columns_added_template(columns_added: set) -> str:
+    columns_added_str = f"[green]Column(s) added [+{len(columns_added)}]: {columns_added}[/]\n"
     return columns_added_str
 
 
