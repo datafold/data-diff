@@ -502,13 +502,16 @@ def columns_removed_template(columns_removed) -> str:
     columns_removed_str = f"[red]Column(s) removed:[/] [blue]{columns_removed}[/]\n"
     return columns_removed_str
 
+
 def columns_added_template(columns_added) -> str:
     columns_added_str = f"[green]Column(s) added: {columns_added}[/]\n"
     return columns_added_str
 
+
 def columns_type_changed_template(columns_type_changed) -> str:
     columns_type_changed_str = f"Type change: {columns_type_changed}\n"
     return columns_type_changed_str
+
 
 def no_differences_template() -> str:
     return "[bold][green]No row differences[/][/]\n"
