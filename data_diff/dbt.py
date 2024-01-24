@@ -298,8 +298,6 @@ def _local_diff(
 
     table1_column_names = set(table1_columns.keys())
     table2_column_names = set(table2_columns.keys())
-    print(f"table1_column_names: {len(table1_column_names)}")
-    print(f"table2_column_names: {len(table2_column_names)}")
     column_set = table1_column_names.intersection(table2_column_names)
     columns_added = table2_column_names.difference(table1_column_names)
     columns_removed = table1_column_names.difference(table2_column_names)
@@ -308,11 +306,11 @@ def _local_diff(
         k for k, v in table2_columns.items() if k in table1_columns and v.data_type != table1_columns[k].data_type
     }
 
-    if columns_added:
-        diff_output_str += columns_added_template(columns_added)
-
     if columns_removed:
         diff_output_str += columns_removed_template(columns_removed)
+
+    if columns_added:
+        diff_output_str += columns_added_template(columns_added)
 
     if columns_type_changed:
         diff_output_str += columns_type_changed_template(columns_type_changed)
@@ -468,11 +466,11 @@ def _cloud_diff(
         columns_removed = diff_results.schema_.exclusive_columns[0]
         column_type_changes = diff_results.schema_.column_type_differs
 
-        if columns_added:
-            diff_output_str += columns_added_template(columns_added)
-
         if columns_removed:
             diff_output_str += columns_removed_template(columns_removed)
+
+        if columns_added:
+            diff_output_str += columns_added_template(columns_added)
 
         if column_type_changes:
             diff_output_str += columns_type_changed_template(column_type_changes)
