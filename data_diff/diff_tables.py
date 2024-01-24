@@ -145,7 +145,7 @@ class DiffResultWrapper:
                 diff_stats.diff_by_sign["!"],
                 diff_stats.unchanged,
                 diff_stats.extra_column_diffs,
-                "Values Updated:",
+                "[u]Values Changed[/u]",
             )
 
         else:

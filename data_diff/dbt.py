@@ -480,7 +480,7 @@ def _cloud_diff(
                 rows_updated,
                 str(rows_unchanged),
                 diff_percent_list,
-                "Value Match Percent:",
+                "Value Changed:",
             )
             diff_output_str += f"\n{diff_url}\n {diff_output} \n"
             rich.print(diff_output_str)
@@ -524,7 +524,7 @@ def _cloud_diff(
 
 
 def _diff_output_base(dev_path: str, prod_path: str) -> str:
-    return f"\n[green]{prod_path} <> {dev_path}[/] \n"
+    return f"\n[blue]{prod_path}[/] <> [green]{dev_path}[/] \n"
 
 
 def _initialize_events(dbt_user_id: Optional[str], dbt_version: Optional[str], dbt_project_id: Optional[str]) -> None:

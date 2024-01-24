@@ -463,7 +463,7 @@ def dbt_diff_string_template(
 ) -> str:
     string_output = f"\n{tabulate([[rows_added, rows_removed]], headers=['Rows Added', 'Rows Removed'])}"
 
-    string_output += f"\n\nUpdated Rows: {rows_updated}\n"
+    string_output += f"\n\nChanged Rows: {rows_updated}\n"
     string_output += f"Unchanged Rows: {rows_unchanged}\n\n"
 
     string_output += extra_info_str
@@ -499,19 +499,16 @@ def diffs_are_equiv_jsons(diff: list, json_cols: dict):
 
 
 def columns_removed_template(columns_removed) -> str:
-    columns_removed_str = f"Column(s) removed: {columns_removed}\n"
+    columns_removed_str = f"[red]Column(s) removed:[/] [blue]{columns_removed}[/]\n"
     return columns_removed_str
 
-
 def columns_added_template(columns_added) -> str:
-    columns_added_str = f"Column(s) added: {columns_added}\n"
+    columns_added_str = f"[green]Column(s) added: {columns_added}[/]\n"
     return columns_added_str
-
 
 def columns_type_changed_template(columns_type_changed) -> str:
     columns_type_changed_str = f"Type change: {columns_type_changed}\n"
     return columns_type_changed_str
-
 
 def no_differences_template() -> str:
     return "[bold][green]No row differences[/][/]\n"
