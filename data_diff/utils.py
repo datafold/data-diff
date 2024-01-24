@@ -531,7 +531,7 @@ def columns_added_template(columns_added: set) -> str:
 
 
 def columns_type_changed_template(columns_type_changed) -> str:
-    columns_type_changed_str = f"Type changed: [green]{columns_type_changed}[/]\n"
+    columns_type_changed_str = f"Type changed [{len(columns_type_changed)}]: [green]{columns_type_changed}[/]\n"
     return columns_type_changed_str
 
 
