@@ -480,7 +480,7 @@ def dbt_diff_string_template(
     string_output = f"\n{tabulate(data, headers=headers)}\n\n"
 
     tabulate_diffs = [[k, v] for k, v in extra_info_dict.items()]
-    headers = ["columns", "# of different values"]
+    headers = ["columns", "# different values"]
     diffs_table = tabulate(tabulate_diffs, headers=headers)
     string_output += diffs_table
 
