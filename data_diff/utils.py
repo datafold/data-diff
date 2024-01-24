@@ -461,10 +461,17 @@ class Vector(tuple):
 def dbt_diff_string_template(
     rows_added: str, rows_removed: str, rows_updated: str, rows_unchanged: str, extra_info_dict: Dict, extra_info_str
 ) -> str:
-    string_output = f"\n{tabulate([[rows_added, rows_removed]], headers=['Rows Added', 'Rows Removed'])}"
+    # string_output = f"\n{tabulate([[rows_added, rows_removed]], headers=['PROD', 'DEV'])}"
 
-    string_output += f"\n\nChanged Rows: {rows_updated}\n"
-    string_output += f"Unchanged Rows: {rows_unchanged}\n\n"
+    # string_output += f"\n\nChanged Rows: {rows_updated}\n"
+    # string_output += f"Unchanged Rows: {rows_unchanged}\n\n"
+
+    data = [
+        ['Added/Removed', rows_added, rows_removed],
+        ['Unchanged/Changed', rows_unchanged, rows_updated]
+    ]
+    headers = ['', 'PROD', 'DEV']
+    string_output = f"\n{tabulate(data, headers=headers)}\n\n"
 
     string_output += extra_info_str
 
@@ -509,7 +516,7 @@ def columns_added_template(columns_added) -> str:
 
 
 def columns_type_changed_template(columns_type_changed) -> str:
-    columns_type_changed_str = f"Type changed: {columns_type_changed}\n"
+    columns_type_changed_str = f"Type changed: [green]{columns_type_changed}[/]\n"
     return columns_type_changed_str
 
 
