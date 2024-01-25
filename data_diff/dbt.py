@@ -456,11 +456,13 @@ def _cloud_diff(
         rows_removed_count = diff_results.pks.exclusives[0]
 
         rows_updated = diff_results.values.rows_with_differences
-        total_rows = diff_results.values.total_rows
-        # print(f"total_rows: {total_rows}")
-        rows_unchanged = int(total_rows) - int(rows_updated)
+        total_rows_table1 = diff_results.pks.total_rows[0]
+        total_rows_table2 = diff_results.pks.total_rows[1]
+        total_rows_diff = total_rows_table2 - total_rows_table1
+
+        rows_unchanged = int(total_rows_table2) - int(rows_updated)
         diff_percent_list = {
-            x.column_name: str(x.match) + "%" for x in diff_results.values.columns_diff_stats if x.match != 100.0
+            x.column_name: str(round(100.00-x.match,2)) + "%" for x in diff_results.values.columns_diff_stats if x.match != 100.0
         }
         columns_added = diff_results.schema_.exclusive_columns[1]
         columns_removed = diff_results.schema_.exclusive_columns[0]
@@ -477,8 +479,8 @@ def _cloud_diff(
 
         if any([rows_added_count, rows_removed_count, rows_updated]):
             diff_output = dbt_diff_string_template(
-                total_rows_table1=diff_stats.table1_count,
-                total_rows_table2=diff_stats.table2_count,
+                total_rows_table1=total_rows_table1,
+                total_rows_table2=total_rows_table2,
                 total_rows_diff=total_rows_diff,
                 rows_added=rows_added_count,
                 rows_removed=rows_removed_count,
