@@ -462,7 +462,7 @@ def _cloud_diff(
 
         rows_unchanged = int(total_rows_table2) - int(rows_updated)
         diff_percent_list = {
-            x.column_name: str(round(100.00 - x.match, 2)) + "%"
+            x.column_name: f"{str(round(100.00 - x.match, 2))}%"
             for x in diff_results.values.columns_diff_stats
             if x.match != 100.0
         }
