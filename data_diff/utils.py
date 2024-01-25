@@ -466,6 +466,7 @@ def dbt_diff_string_template(
     rows_removed: str,
     rows_updated: str,
     rows_unchanged: str,
+    deps_impacts: Optional[Dict],
     extra_info_dict: Dict,
     extra_info_str: str,
 ) -> str:
@@ -483,6 +484,12 @@ def dbt_diff_string_template(
     headers = ["columns", "# diff values"]
     diffs_table = tabulate(tabulate_diffs, headers=headers)
     string_output += diffs_table
+
+    if deps_impacts:
+        tabulate_deps_impacts = [[k, v] for k, v in deps_impacts.items()]
+        headers = ["deps", "# data assets"]
+        diffs_table = f"\n\n{tabulate(tabulate_deps_impacts, headers=headers)}"
+        string_output += diffs_table
 
     return string_output
 

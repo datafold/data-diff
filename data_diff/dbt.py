@@ -462,7 +462,9 @@ def _cloud_diff(
 
         rows_unchanged = int(total_rows_table2) - int(rows_updated)
         diff_percent_list = {
-            x.column_name: str(round(100.00-x.match,2)) + "%" for x in diff_results.values.columns_diff_stats if x.match != 100.0
+            x.column_name: str(round(100.00 - x.match, 2)) + "%"
+            for x in diff_results.values.columns_diff_stats
+            if x.match != 100.0
         }
         columns_added = diff_results.schema_.exclusive_columns[1]
         columns_removed = diff_results.schema_.exclusive_columns[0]
@@ -477,6 +479,11 @@ def _cloud_diff(
         if column_type_changes:
             diff_output_str += columns_type_changed_template(column_type_changes)
 
+        deps_impacts = {
+            key: len(value) + sum(len(item.get("BiHtSync", [])) for item in value) if key == "hightouch" else len(value)
+            for key, value in diff_results.deps.deps.items()
+        }
+
         if any([rows_added_count, rows_removed_count, rows_updated]):
             diff_output = dbt_diff_string_template(
                 total_rows_table1=total_rows_table1,
@@ -486,6 +493,7 @@ def _cloud_diff(
                 rows_removed=rows_removed_count,
                 rows_updated=rows_updated,
                 rows_unchanged=str(rows_unchanged),
+                deps_impacts=deps_impacts,
                 extra_info_dict=diff_percent_list,
                 extra_info_str="Value Changed:",
             )
