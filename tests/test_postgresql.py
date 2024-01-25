@@ -1,11 +1,12 @@
 import unittest
-
+from copy import deepcopy
 from urllib.parse import quote
-from data_diff.queries.api import table, commit
-from data_diff import TableSegment, HashDiffer
-from data_diff import databases as db
-from tests.common import get_conn, random_table_suffix, connect
+
+from data_diff import TableSegment, HashDiffer, Database
 from data_diff import connect_to_table
+from data_diff import databases as db
+from data_diff.queries.api import table, commit
+from tests.common import get_conn, random_table_suffix, connect
 
 
 class TestUUID(unittest.TestCase):
@@ -118,38 +119,40 @@ class Test100Fields(unittest.TestCase):
 
 
 class TestSpecialCharacterPassword(unittest.TestCase):
+    username: str = "test"
+    password: str = "passw!!!@rd"
+
     def setUp(self) -> None:
-        self.connection = get_conn(db.PostgreSQL)
+        self.connection: Database = get_conn(db.PostgreSQL)
+        self.table_name = f"table{random_table_suffix()}"
 
-        table_suffix = random_table_suffix()
+        # Setup user with special character '@' in password
+        self.connection.query(f"DROP USER IF EXISTS {self.username};", None)
+        self.connection.query(f"CREATE USER {self.username} WITH PASSWORD '{self.password}';", None)
 
-        self.table_name = f"table{table_suffix}"
-        self.table = table(self.table_name)
+    def tearDown(self):
+        self.connection.query(f"DROP USER IF EXISTS {self.username};", None)
+        self.connection.close()
 
     def test_special_char_password(self):
-        password = "passw!!!@rd"
-        # Setup user with special character '@' in password
-        self.connection.query("DROP USER IF EXISTS test;", None)
-        self.connection.query(f"CREATE USER test WITH PASSWORD '{password}';", None)
-
-        password_quoted = quote(password)
-        db_config = {
-            "driver": "postgresql",
-            "host": "localhost",
-            "port": 5432,
-            "dbname": "postgres",
-            "user": "test",
-            "password": password_quoted,
-        }
-
-        # verify pythonic connection method
-        connect_to_table(
-            db_config,
-            self.table_name,
+        db_config = deepcopy(self.connection._args)
+        db_config.update(
+            {
+                "driver": "postgresql",
+                "dbname": db_config.pop("database"),
+                "user": self.username,
+                "password": quote(self.password),
+            }
         )
 
-        # verify connection method with URL string unquoted after it's verified
-        db_url = f"postgresql://{db_config['user']}:{db_config['password']}@{db_config['host']}:{db_config['port']}/{db_config['dbname']}"
+        # verify pythonic connection method
+        connect_to_table(db_config, self.table_name)
 
-        connection_verified = connect(db_url)
-        assert connection_verified._args.get("password") == password
+        # verify connection method with URL string unquoted after it's verified
+        db_url = (
+            f"postgresql://{db_config['user']}:{db_config['password']}@{db_config['host']}:"
+            f"{db_config.get('port', 5432)}/{db_config['dbname']}"
+        )
+
+        with connect(db_url) as connection_verified:
+            assert connection_verified._args.get("password") == self.password

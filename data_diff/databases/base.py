@@ -938,6 +938,12 @@ class Database(abc.ABC):
     is_closed: bool = False
     _dialect: BaseDialect = None
 
+    def __enter__(self):
+        return self
+
+    def __exit__(self, exc_type, exc_value, traceback):
+        self.close()
+
     @property
     def name(self):
         return type(self).__name__
@@ -1058,7 +1064,7 @@ class Database(abc.ABC):
         return d
 
     def select_table_unique_columns(self, path: DbPath) -> str:
-        "Provide SQL for selecting the names of unique columns in the table"
+        """Provide SQL for selecting the names of unique columns in the table"""
         schema, name = self._normalize_table_path(path)
 
         return (
@@ -1180,9 +1186,8 @@ class Database(abc.ABC):
         return apply_query(callback, sql_code)
 
     def close(self):
-        "Close connection(s) to the database instance. Querying will stop functioning."
+        """Close connection(s) to the database instance. Querying will stop functioning."""
         self.is_closed = True
-        return super().close()
 
     @property
     def dialect(self) -> BaseDialect:
@@ -1241,18 +1246,20 @@ class ThreadedDatabase(Database):
         return r.result()
 
     def _query_in_worker(self, sql_code: Union[str, ThreadLocalInterpreter]):
-        "This method runs in a worker thread"
+        """This method runs in a worker thread"""
         if self._init_error:
             raise self._init_error
         return self._query_conn(self.thread_local.conn, sql_code)
 
     @abstractmethod
     def create_connection(self):
-        "Return a connection instance, that supports the .cursor() method."
+        """Return a connection instance, that supports the .cursor() method."""
 
     def close(self):
         super().close()
         self._queue.shutdown()
+        if hasattr(self.thread_local, "conn"):
+            self.thread_local.conn.close()
 
     @property
     def is_autocommit(self) -> bool:

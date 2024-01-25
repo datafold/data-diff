@@ -66,7 +66,7 @@ Make sure to update the appropriate `TEST_*_CONN_STRING`, so that it will be inc
 
 #### Run the tests
 
-You can run the tests with `unittest`.
+You can run the tests with `python -m unittest`.
 
 When running against multiple databases, the tests can take a long while.
 
@@ -110,6 +110,15 @@ $ poetry install # Install dependencies
 ```shell-session
 $ docker-compose up -d mysql postgres # run mysql and postgres dbs in background
 ```
+
+If you want to change the configuration of docker-compose and run the DB containers, copy docker-compose.yml into docker-compose-local.yml, make changes and run
+```shell-session
+$ cp docker-compose.yml docker-compose-local.yml
+$ docker-compose -f docker-compose-local.yml up -d mysql postgres # run mysql and postgres dbs in background
+ ```
+you will also have to set up `tests/local_settings.py` where `TEST_*_CONN_STRING` can be edited
+
+`docker-compose-local.yml` and `tests/local_settings.py` is git ignored so should not show up in git changes.
 
 [docker-compose]: https://docs.docker.com/compose/install/
 
