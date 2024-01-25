@@ -118,16 +118,7 @@ def dbt_diff(cli_options: CliOptions, log_status_handler: Optional[LogStatusHand
             if log_status_handler:
                 log_status_handler.set_prefix(f"Diffing {model.alias} \n")
 
-            diff_vars = _get_diff_vars(
-                dbt_parser,
-                config,
-                model,
-                cli_options.where,
-                cli_options.stats,
-                cli_options.columns,
-                cli_options.prod_database,
-                cli_options.prod_schema,
-            )
+            diff_vars = _get_diff_vars(dbt_parser, config, model, cli_options)
 
             # we won't always have a prod path when using state
             # when the model DNE in prod manifest, skip the model diff
@@ -235,8 +226,12 @@ def _get_prod_path_from_config(config, model, dev_database, dev_schema) -> Tuple
         if custom_schema:
             if not config.prod_custom_schema:
                 raise DataDiffCustomSchemaNoConfigError(
-                    f"Found a custom schema on model {model.name}, but no value for\nvars:\n  data_diff:\n    prod_custom_schema:\nPlease set a value or utilize the `--state` flag!\n\n"
-                    + "For more details see: https://docs.datafold.com/development_testing/open_source"
+                    (
+                        f"Found a custom schema on model {model.name}, but no value for\nvars:\n"
+                        f"  data_diff:\n    prod_custom_schema:\n"
+                        f"Please set a value or utilize the `--state` flag!\n\n"
+                        f"For more details see: https://docs.datafold.com/development_testing/open_source"
+                    )
                 )
             prod_schema = config.prod_custom_schema.replace("<custom_schema>", custom_schema)
             # no custom schema, use the default
@@ -522,7 +517,10 @@ def _initialize_events(dbt_user_id: Optional[str], dbt_version: Optional[str], d
 
 def _email_signup() -> None:
     email_regex = r"^[\w\.\+-]+@[\w\.-]+\.\w+$"
-    prompt = "\nWould you like to be notified when a new data-diff version is available?\n\nEnter email or leave blank to opt out (we'll only ask once).\n"
+    prompt = (
+        "\nWould you like to be notified when a new data-diff version is available?\n\n"
+        "Enter email or leave blank to opt out (we'll only ask once).\n"
+    )
 
     if bool_ask_for_email():
         while True:
@@ -546,7 +544,11 @@ def _email_signup() -> None:
 
 def _extension_notification() -> None:
     if bool_notify_about_extension():
-        message = "\n\nHaving a good time diffing?\n\nMake sure to check out the free Datafold Cloud Trial for an evolved experience:\n\n- value-level diffs\n- column-level lineage\n"
+        message = (
+            "\n\nHaving a good time diffing?\n\n"
+            "Make sure to check out the free Datafold Cloud Trial for an evolved experience:\n\n"
+            "- value-level diffs\n- column-level lineage\n"
+        )
         rich.print(message)
         rich.print(Markdown(f"[Sign Up Here]({DATAFOLD_TRIAL_URL})"))
         rich.print("")

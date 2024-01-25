@@ -1,5 +1,5 @@
 from dataclasses import dataclass
-from typing import Optional, Literal, Dict, Union
+from typing import Optional, Literal, Dict, Union, Tuple
 
 
 @dataclass
@@ -11,9 +11,9 @@ class CliOptions:
     table1: Optional[str] = None
     database2: Optional[str] = None
     table2: Optional[str] = None
-    key_columns: tuple[str] = ()
+    key_columns: Tuple[str] = ()
     update_column: Optional[str] = None
-    columns: tuple[str] = ()
+    columns: Tuple[str] = ()
     limit: Optional[int] = None
     materialize_to_table: Optional[str] = None
     min_age: Optional[str] = None
