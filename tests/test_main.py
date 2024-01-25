@@ -2,7 +2,7 @@ import unittest
 
 from data_diff import Database, JoinDiffer, HashDiffer
 from data_diff import databases as db
-from data_diff.__main__ import _get_dbs, _set_age, _get_table_differ, _get_expanded_columns, _get_threads
+from data_diff.__main__ import _get_dbs, _set_age, _get_table_differ, _get_expanded_columns, _set_threads
 from data_diff.databases.mysql import MySQL
 from data_diff.diff_tables import TableDiffer
 from tests.common import CONN_STRINGS, get_conn, DiffTestCase
@@ -209,41 +209,41 @@ class TestGetExpandedColumns(DiffTestCase):
 
 class TestGetThreads(unittest.TestCase):
     def test__get_threads(self):
-        threaded, threads = _get_threads(None, None, None)
+        threaded, threads = _set_threads(None, None, None)
         assert threaded
         assert threads == 1
 
-        threaded, threads = _get_threads(None, 2, 3)
+        threaded, threads = _set_threads(None, 2, 3)
         assert threaded
         assert threads == 1
 
-        threaded, threads = _get_threads("serial", None, None)
+        threaded, threads = _set_threads("serial", None, None)
         assert not threaded
         assert threads == 1
 
         with self.assertRaises(AssertionError):
-            _get_threads("serial", 1, 2)
+            _set_threads("serial", 1, 2)
 
-        threaded, threads = _get_threads("4", None, None)
+        threaded, threads = _set_threads("4", None, None)
         assert threaded
         assert threads == 4
 
         with self.assertRaises(ValueError) as value_error:
-            _get_threads("auto", None, None)
+            _set_threads("auto", None, None)
         assert str(value_error.exception) == "invalid literal for int() with base 10: 'auto'"
 
-        threaded, threads = _get_threads(5, None, None)
+        threaded, threads = _set_threads(5, None, None)
         assert threaded
         assert threads == 5
 
-        threaded, threads = _get_threads(6, 7, 8)
+        threaded, threads = _set_threads(6, 7, 8)
         assert threaded
         assert threads == 6
 
         with self.assertRaises(ValueError) as value_error:
-            _get_threads(0, None, None)
+            _set_threads(0, None, None)
         assert str(value_error.exception) == "Error: threads must be >= 1"
 
         with self.assertRaises(ValueError) as value_error:
-            _get_threads(-1, None, None)
+            _set_threads(-1, None, None)
         assert str(value_error.exception) == "Error: threads must be >= 1"

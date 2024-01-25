@@ -11,6 +11,7 @@ from rich.prompt import Prompt
 from rich.markdown import Markdown
 from concurrent.futures import ThreadPoolExecutor, as_completed
 
+from data_diff.cli_options import CliOptions
 from data_diff.errors import (
     DataDiffCustomSchemaNoConfigError,
     DataDiffDbtProjectVarsNotFoundError,
@@ -68,34 +69,25 @@ class TDiffVars(pydantic.BaseModel):
     stats_flag: bool = False
 
 
-def dbt_diff(
-    profiles_dir_override: Optional[str] = None,
-    project_dir_override: Optional[str] = None,
-    is_cloud: bool = False,
-    dbt_selection: Optional[str] = None,
-    json_output: bool = False,
-    state: Optional[str] = None,
-    log_status_handler: Optional[LogStatusHandler] = None,
-    where_flag: Optional[str] = None,
-    stats_flag: bool = False,
-    columns_flag: Optional[Tuple[str]] = None,
-    production_database_flag: Optional[str] = None,
-    production_schema_flag: Optional[str] = None,
-) -> None:
+def dbt_diff(cli_options: CliOptions, log_status_handler: Optional[LogStatusHandler] = None) -> None:
     print_version_info()
     set_entrypoint_name(os.getenv("DATAFOLD_TRIGGERED_BY", "CLI-dbt"))
-    dbt_parser = DbtParser(profiles_dir_override, project_dir_override, state)
-    models = dbt_parser.get_models(dbt_selection)
+    dbt_parser = DbtParser(cli_options.dbt_profiles_dir, cli_options.dbt_project_dir, cli_options.state)
+    models = dbt_parser.get_models(cli_options.select)
     config = dbt_parser.get_datadiff_config()
     _initialize_events(dbt_parser.dbt_user_id, dbt_parser.dbt_version, dbt_parser.dbt_project_id)
 
-    if not state and not (config.prod_database or config.prod_schema):
+    if not cli_options.state and not (config.prod_database or config.prod_schema):
         doc_url = "https://docs.datafold.com/development_testing/open_source#configure-your-dbt-project"
         raise DataDiffDbtProjectVarsNotFoundError(
-            f"""vars: data_diff: section not found in dbt_project.yml.\n\nTo solve this, please configure your dbt project: \n{doc_url}\n\nOr specify a production manifest using the `--state` flag."""
+            (
+                f"vars: data_diff: section not found in dbt_project.yml.\n\n"
+                f"To solve this, please configure your dbt project: \n{doc_url}"
+                f"\n\nOr specify a production manifest using the `--state` flag."
+            )
         )
 
-    if is_cloud:
+    if cli_options.cloud:
         api = _initialize_api()
         # exit so the user can set the key
         if not api:
@@ -104,7 +96,10 @@ def dbt_diff(
         if config.datasource_id is None:
             rich.print("[red]Data source ID not found in dbt_project.yml")
             raise DataDiffNoDatasourceIdError(
-                f"Datasource ID not found. Please include it as a dbt variable in the dbt_project.yml. \nInstructions: {CLOUD_DOC_URL}\n\nvars:\n data_diff:\n   datasource_id: 1234"
+                (
+                    f"Datasource ID not found. Please include it as a dbt variable in the dbt_project.yml. \n"
+                    f"Instructions: {CLOUD_DOC_URL}\n\nvars:\n data_diff:\n   datasource_id: 1234"
+                )
             )
 
         data_source = api.get_data_source(config.datasource_id)
@@ -127,17 +122,17 @@ def dbt_diff(
                 dbt_parser,
                 config,
                 model,
-                where_flag,
-                stats_flag,
-                columns_flag,
-                production_database_flag,
-                production_schema_flag,
+                cli_options.where,
+                cli_options.stats,
+                cli_options.columns,
+                cli_options.prod_database,
+                cli_options.prod_schema,
             )
 
             # we won't always have a prod path when using state
             # when the model DNE in prod manifest, skip the model diff
             if (
-                state and len(diff_vars.prod_path) < 2
+                cli_options.state and len(diff_vars.prod_path) < 2
             ):  # < 2 because some providers like databricks can legitimately have *only* 2
                 diff_output_str = _diff_output_base(".".join(diff_vars.dev_path), ".".join(diff_vars.prod_path))
                 diff_output_str += "[green]New model: nothing to diff![/] \n"
@@ -145,15 +140,15 @@ def dbt_diff(
                 continue
 
             if diff_vars.primary_keys:
-                if is_cloud:
+                if cli_options.cloud:
                     future = executor.submit(
                         _cloud_diff, diff_vars, config.datasource_id, api, org_meta, log_status_handler
                     )
                 else:
-                    future = executor.submit(_local_diff, diff_vars, json_output, log_status_handler)
+                    future = executor.submit(_local_diff, diff_vars, cli_options.json_output, log_status_handler)
                 futures[future] = model
             else:
-                if json_output:
+                if cli_options.json_output:
                     print(
                         json.dumps(
                             jsonify_error(
@@ -181,17 +176,8 @@ def dbt_diff(
     _extension_notification()
 
 
-def _get_diff_vars(
-    dbt_parser: "DbtParser",
-    config: TDatadiffConfig,
-    model,
-    where_flag: Optional[str] = None,
-    stats_flag: bool = False,
-    columns_flag: Optional[Tuple[str]] = None,
-    production_database_flag: Optional[str] = None,
-    production_schema_flag: Optional[str] = None,
-) -> TDiffVars:
-    cli_columns = list(columns_flag) if columns_flag else []
+def _get_diff_vars(dbt_parser: "DbtParser", config: TDatadiffConfig, model, cli_options: CliOptions) -> TDiffVars:
+    cli_columns = list(cli_options.columns) if cli_options.columns else []
     dev_database = model.database
     dev_schema = model.schema_
     dev_alias = prod_alias = model.alias
@@ -204,8 +190,8 @@ def _get_diff_vars(
         prod_database, prod_schema = _get_prod_path_from_config(config, model, dev_database, dev_schema)
 
     # cli flags take precedence over any project level config
-    prod_database = production_database_flag or prod_database
-    prod_schema = production_schema_flag or prod_schema
+    prod_database = cli_options.prod_database or prod_database
+    prod_schema = cli_options.prod_schema or prod_schema
 
     if dbt_parser.requires_upper:
         dev_qualified_list = [x.upper() for x in [dev_database, dev_schema, dev_alias] if x]
@@ -225,10 +211,10 @@ def _get_diff_vars(
         connection=dbt_parser.connection,
         threads=dbt_parser.threads,
         # cli flags take precedence over any model level config
-        where_filter=where_flag or datadiff_model_config.where_filter,
+        where_filter=cli_options.where or datadiff_model_config.where_filter,
         include_columns=cli_columns or datadiff_model_config.include_columns,
         exclude_columns=[] if cli_columns else datadiff_model_config.exclude_columns,
-        stats_flag=stats_flag,
+        stats_flag=cli_options.stats,
     )
 
 
