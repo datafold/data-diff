@@ -470,13 +470,13 @@ def dbt_diff_string_template(
     extra_info_str: str,
 ) -> str:
     data = [
-        ["Total", total_rows_table1, f"{total_rows_table2} {diff_int_dynamic_color_template(total_rows_diff)}"],
-        ["Different", "", rows_updated],
-        ["Unchanged", rows_unchanged, ""],
-        ["Added", "", diff_int_dynamic_color_template(rows_added)],
-        ["Removed", "", f"[red]-{rows_removed}[/]"],
+        ["Total", total_rows_table1, "", f"{total_rows_table2} {diff_int_dynamic_color_template(total_rows_diff)}"],
+        ["Added", "", "", diff_int_dynamic_color_template(rows_added)],
+        ["Removed", "", "", f"[red]-{rows_removed}[/]"],
+        ["Different", "", rows_updated, ""],
+        ["Unchanged", "", rows_unchanged, ""],
     ]
-    headers = ["rows", "PROD", "DEV"]
+    headers = ["rows", "PROD", "<>", "DEV"]
     string_output = f"\n{tabulate(data, headers=headers)}\n\n"
 
     tabulate_diffs = [[k, v] for k, v in extra_info_dict.items()]
