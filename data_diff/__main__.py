@@ -496,21 +496,24 @@ def _get_expanded_columns(
 
 def _set_threads(cli_options: CliOptions) -> None:
     cli_options.threaded = True
+    message = "Error: threads must be of type int, or value must be 'serial'."
     if isinstance(cli_options.threads, str):
         if cli_options.threads.lower() != "serial":
-            message = "Error: threads must be a number, or 'serial'."
             logging.error(message)
             raise ValueError(message)
 
         assert not (cli_options.threads1 or cli_options.threads2)
         cli_options.threaded = False
         cli_options.threads = 1
-    else:
-        assert isinstance(cli_options.threads, int)
-        if cli_options.threads < 1:
-            message = "Error: threads must be >= 1"
-            logging.error(message)
-            raise ValueError(message)
+
+    elif not isinstance(cli_options.threads, int):
+        logging.error(message)
+        raise ValueError(message)
+
+    elif cli_options.threads < 1:
+        message = "Error: threads must be >= 1"
+        logging.error(message)
+        raise ValueError(message)
 
 
 def _data_diff(cli_options: CliOptions) -> None:
