@@ -466,9 +466,9 @@ def dbt_diff_string_template(
     rows_removed: str,
     rows_updated: str,
     rows_unchanged: str,
-    deps_impacts: Optional[Dict],
     extra_info_dict: Dict,
     extra_info_str: str,
+    deps_impacts: Optional[Dict] = None,
 ) -> str:
     data = [
         ["Total", total_rows_table1, "", f"{total_rows_table2} {diff_int_dynamic_color_template(total_rows_diff)}"],
