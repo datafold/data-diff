@@ -7,9 +7,9 @@ class CliOptions:
     bisection_factor: int
     bisection_threshold: int
     table_write_limit: int
-    database1: Optional[str] = None
+    database1: Union[str, Dict, None] = None
     table1: Optional[str] = None
-    database2: Optional[str] = None
+    database2: Union[str, Dict, None] = None
     table2: Optional[str] = None
     key_columns: Tuple[str] = ()
     update_column: Optional[str] = None
@@ -29,7 +29,7 @@ class CliOptions:
     assume_unique_key: bool = False
     sample_exclusive_rows: bool = False
     materialize_all_rows: bool = False
-    threads: Union[int, Literal["serial"]] = 1
+    threads: Union[None, int, Literal["serial"]] = None
     threads1: Optional[int] = None
     threads2: Optional[int] = None
     threaded: bool = False

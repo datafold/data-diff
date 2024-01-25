@@ -236,7 +236,7 @@ click.Context.formatter_class = MyHelpFormatter
 @click.option(
     "-j",
     "--threads",
-    default=1,
+    default=None,
     help=(
         "Number of worker threads to use per database. Default=1. "
         "A higher number will increase performance, but take more capacity from your database. "
@@ -497,7 +497,10 @@ def _get_expanded_columns(
 def _set_threads(cli_options: CliOptions) -> None:
     cli_options.threaded = True
     message = "Error: threads must be of type int, or value must be 'serial'."
-    if isinstance(cli_options.threads, str):
+    if cli_options.threads is None:
+        cli_options.threads = 1
+
+    elif isinstance(cli_options.threads, str):
         if cli_options.threads.lower() != "serial":
             logging.error(message)
             raise ValueError(message)

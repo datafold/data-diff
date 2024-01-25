@@ -87,8 +87,7 @@ def _apply_config(config: Dict[str, Any], run_name: str, cli_options: CliOptions
 
     # Update keywords
     for new_key, new_value in run_args.items():
-        if new_value is not None:
-            cli_options.__setattr__(new_key, new_value)
+        cli_options.__setattr__(new_key, cli_options.__getattribute__(new_key) or new_value)
 
     cli_options.__conf__ = run_args
 
@@ -124,5 +123,5 @@ def apply_config_from_file(path: str, run_name: str, cli_options: CliOptions):
         _apply_config(toml.load(f), run_name, cli_options)
 
 
-def apply_config_from_string(toml_config: str, run_name: str, kw: Dict[str, Any]):
-    _apply_config(toml.loads(toml_config), run_name, kw)
+def apply_config_from_string(toml_config: str, run_name: str, cli_options: CliOptions):
+    _apply_config(toml.loads(toml_config), run_name, cli_options)
