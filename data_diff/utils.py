@@ -471,8 +471,8 @@ def dbt_diff_string_template(
 ) -> str:
     data = [
         ["Total", total_rows_table1, "", f"{total_rows_table2} {diff_int_dynamic_color_template(total_rows_diff)}"],
-        ["Added", "", "", diff_int_dynamic_color_template(rows_added)],
-        ["Removed", "", "", f"[red]-{rows_removed}[/]"],
+        ["Added", "", diff_int_dynamic_color_template(rows_added), ""],
+        ["Removed", "", f"[red]-{rows_removed}[/]", ""],
         ["Different", "", rows_updated, ""],
         ["Unchanged", "", rows_unchanged, ""],
     ]
