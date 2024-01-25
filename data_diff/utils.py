@@ -491,7 +491,7 @@ def diff_int_dynamic_color_template(diff_value: int) -> str:
     if diff_value > 0:
         return f"[green]+{diff_value}[/]"
     elif diff_value < 0:
-        return f"[red]({diff_value})[/]"
+        return f"[red][{diff_value}][/]"
     elif diff_value == 0:
         return ""
     else:
@@ -523,12 +523,12 @@ def diffs_are_equiv_jsons(diff: list, json_cols: dict):
 
 
 def columns_removed_template(columns_removed: set) -> str:
-    columns_removed_str = f"[red]Column(s) removed [-{len(columns_removed)}]:[/] [blue]{columns_removed}[/]\n"
+    columns_removed_str = f"[red]Columns removed [-{len(columns_removed)}]:[/] [blue]{columns_removed}[/]\n"
     return columns_removed_str
 
 
 def columns_added_template(columns_added: set) -> str:
-    columns_added_str = f"[green]Column(s) added [+{len(columns_added)}]: {columns_added}[/]\n"
+    columns_added_str = f"[green]Columns added [+{len(columns_added)}]: {columns_added}[/]\n"
     return columns_added_str
 
 
