@@ -1162,7 +1162,7 @@ class Database(abc.ABC):
     def _normalize_table_path(self, path: DbPath) -> DbPath:
         if len(path) == 1:
             return self.default_schema, path[0]
-        else:
+        elif len(path) == 2:
             return path
 
         raise ValueError(f"{self.name}: Bad table path for {self}: '{'.'.join(path)}'. Expected form: schema.table")
