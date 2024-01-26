@@ -483,7 +483,7 @@ def _cloud_diff(
 
         diff_output_str += f"Primary Keys: {diff_vars.primary_keys} \n"
         if diff_vars.where_filter:
-            diff_output_str += f"Where Filter: {diff_vars.where_filter} \n"
+            diff_output_str += f"Where Filter: '{str(diff_vars.where_filter)}' \n"
 
         if diff_vars.include_columns:
             diff_output_str += f"Included Columns: {diff_vars.include_columns} \n"
