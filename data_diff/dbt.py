@@ -515,6 +515,7 @@ def _cloud_diff(
                 rows_updated=rows_updated,
                 rows_unchanged=str(rows_unchanged),
                 deps_impacts=deps_impacts,
+                is_cloud=True,
                 extra_info_dict=diff_percent_list,
                 extra_info_str="Value Changed:",
             )

@@ -468,6 +468,7 @@ def dbt_diff_string_template(
     rows_unchanged: str,
     extra_info_dict: Dict,
     extra_info_str: str,
+    is_cloud: Optional[bool] = False,
     deps_impacts: Optional[Dict] = None,
 ) -> str:
     data = [
@@ -481,7 +482,12 @@ def dbt_diff_string_template(
     string_output = f"\n{tabulate(data, headers=headers)}\n\n"
 
     tabulate_diffs = [[k, v] for k, v in extra_info_dict.items()]
-    headers = ["columns", "# diff values"]
+
+    if is_cloud:
+        headers = ["columns", "% diff values"]
+    else: 
+        headers = ["columns", "# diff values"]
+
     diffs_table = tabulate(tabulate_diffs, headers=headers)
     string_output += diffs_table
 
