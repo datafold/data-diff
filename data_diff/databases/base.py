@@ -1031,14 +1031,11 @@ class Database(abc.ABC):
     def select_table_schema(self, path: DbPath) -> str:
         """Provide SQL for selecting the table schema as (name, type, date_prec, num_prec)"""
         schema, name = self._normalize_table_path(path)
-        print(f"path: {path}")
-        print(f"schema: {schema}")
-        print(f"name: {name}")
 
         return (
             "SELECT column_name, data_type, datetime_precision, numeric_precision, numeric_scale "
             "FROM information_schema.columns "
-            f"WHERE table_name = '{name}' AND table_schema = '{schema}' and table_catalog = '{schema}'"
+            f"WHERE table_name = '{name}' AND table_schema = '{schema}'"
         )
 
     def query_table_schema(self, path: DbPath) -> Dict[str, RawColumnInfo]:
