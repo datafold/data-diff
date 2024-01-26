@@ -1031,11 +1031,14 @@ class Database(abc.ABC):
     def select_table_schema(self, path: DbPath) -> str:
         """Provide SQL for selecting the table schema as (name, type, date_prec, num_prec)"""
         schema, name = self._normalize_table_path(path)
+        print(f"path: {path}")
+        print(f"schema: {schema}")
+        print(f"name: {name}")
 
         return (
             "SELECT column_name, data_type, datetime_precision, numeric_precision, numeric_scale "
             "FROM information_schema.columns "
-            f"WHERE table_name = '{name}' AND table_schema = '{schema}'"
+            f"WHERE table_name = '{name}' AND table_schema = '{schema}' and table_catalog = '{schema}'"
         )
 
     def query_table_schema(self, path: DbPath) -> Dict[str, RawColumnInfo]:
@@ -1046,6 +1049,7 @@ class Database(abc.ABC):
               accessing the schema using a SQL query.
         """
         rows = self.query(self.select_table_schema(path), list, log_message=path)
+        print(f"path: {path}")
         if not rows:
             raise RuntimeError(f"{self.name}: Table '{'.'.join(path)}' does not exist, or has no columns")
 
@@ -1060,6 +1064,10 @@ class Database(abc.ABC):
             )
             for r in rows
         }
+        print(f"d: {d}")
+        print(f"len(d): {len(d)}")
+        print(f"rows: {rows}")
+        print(f"len(rows): {len(rows)}")
         assert len(d) == len(rows)
         return d
 
@@ -1160,7 +1168,7 @@ class Database(abc.ABC):
     def _normalize_table_path(self, path: DbPath) -> DbPath:
         if len(path) == 1:
             return self.default_schema, path[0]
-        elif len(path) == 2:
+        else:
             return path
 
         raise ValueError(f"{self.name}: Bad table path for {self}: '{'.'.join(path)}'. Expected form: schema.table")
