@@ -306,7 +306,16 @@ def _local_diff(
         k for k, v in table2_columns.items() if k in table1_columns and v.data_type != table1_columns[k].data_type
     }
 
-    diff_output_str += f"Primary Key: {diff_vars.primary_keys} \n"
+    diff_output_str += f"Primary Keys: {diff_vars.primary_keys} \n"
+
+    if diff_vars.where_filter:
+        diff_output_str += f"Where Filter: '{str(diff_vars.where_filter)}' \n"
+
+    if diff_vars.include_columns:
+        diff_output_str += f"Included Columns: {diff_vars.include_columns} \n"
+
+    if diff_vars.exclude_columns:
+        diff_output_str += f"Excluded Columns: {diff_vars.exclude_columns} \n"
 
     if columns_removed:
         diff_output_str += columns_removed_template(columns_removed)
@@ -473,6 +482,14 @@ def _cloud_diff(
         column_type_changes = diff_results.schema_.column_type_differs
 
         diff_output_str += f"Primary Keys: {diff_vars.primary_keys} \n"
+        if diff_vars.where_filter:
+            diff_output_str += f"Where Filter: {diff_vars.where_filter} \n"
+
+        if diff_vars.include_columns:
+            diff_output_str += f"Included Columns: {diff_vars.include_columns} \n"
+
+        if diff_vars.exclude_columns:
+            diff_output_str += f"Excluded Columns: {diff_vars.exclude_columns} \n"
 
         if columns_removed:
             diff_output_str += columns_removed_template(columns_removed)
