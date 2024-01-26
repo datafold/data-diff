@@ -306,6 +306,8 @@ def _local_diff(
         k for k, v in table2_columns.items() if k in table1_columns and v.data_type != table1_columns[k].data_type
     }
 
+    diff_output_str += f"Primary Key: {diff_vars.primary_keys} \n"
+
     if columns_removed:
         diff_output_str += columns_removed_template(columns_removed)
 
@@ -469,6 +471,8 @@ def _cloud_diff(
         columns_added = diff_results.schema_.exclusive_columns[1]
         columns_removed = diff_results.schema_.exclusive_columns[0]
         column_type_changes = diff_results.schema_.column_type_differs
+
+        diff_output_str += f"Primary Keys: {diff_vars.primary_keys} \n"
 
         if columns_removed:
             diff_output_str += columns_removed_template(columns_removed)
