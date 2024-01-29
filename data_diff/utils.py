@@ -471,31 +471,33 @@ def dbt_diff_string_template(
     is_cloud: Optional[bool] = False,
     deps_impacts: Optional[Dict] = None,
 ) -> str:
-    data = [
+    # main table
+    main_rows = [
         ["Total", total_rows_table1, "", f"{total_rows_table2} {diff_int_dynamic_color_template(total_rows_diff)}"],
         ["Added", "", diff_int_dynamic_color_template(rows_added), ""],
         ["Removed", "", f"[red]-{rows_removed}[/]", ""],
         ["Different", "", rows_updated, ""],
         ["Unchanged", "", rows_unchanged, ""],
     ]
-    headers = ["rows", "PROD", "<>", "DEV"]
-    string_output = f"\n{tabulate(data, headers=headers)}\n\n"
 
-    tabulate_diffs = [[k, v] for k, v in extra_info_dict.items()]
+    main_headers = ["rows", "PROD", "<>", "DEV"]
+    main_table = tabulate(main_rows, headers=main_headers)
 
-    if is_cloud:
-        headers = ["columns", "% diff values"]
-    else:
-        headers = ["columns", "# diff values"]
+    # diffs table
+    diffs_rows = list(extra_info_dict.items())
 
-    diffs_table = tabulate(tabulate_diffs, headers=headers)
-    string_output += diffs_table
+    diffs_headers = ["columns", "% diff values" if is_cloud else "# diff values"]
+    diffs_table = tabulate(diffs_rows, headers=diffs_headers)
 
+    # deps impacts table
+    deps_impacts_table = ""
     if deps_impacts:
-        tabulate_deps_impacts = [[k, v] for k, v in deps_impacts.items()]
-        headers = ["deps", "# data assets"]
-        diffs_table = f"\n\n{tabulate(tabulate_deps_impacts, headers=headers)}"
-        string_output += diffs_table
+        deps_impacts_rows = list(deps_impacts.items())
+        deps_impacts_headers = ["deps", "# data assets"]
+        deps_impacts_table = f"\n\n{tabulate(deps_impacts_rows, headers=deps_impacts_headers)}"
+
+    # combine all tables
+    string_output = f"\n{main_table}\n\n{diffs_table}{deps_impacts_table}"
 
     return string_output
 
