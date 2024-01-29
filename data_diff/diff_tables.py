@@ -101,14 +101,12 @@ class DiffResultWrapper:
 
         key_columns = self.info_tree.info.tables[0].key_columns
         len_key_columns = len(key_columns)
-        # print(f"key_columns: {key_columns}")
         diff_by_key = {}
         extra_column_diffs = None
         if is_dbt:
             extra_column_values_store = {}
             extra_columns = self.info_tree.info.tables[0].extra_columns
             extra_column_diffs = {k: 0 for k in extra_columns}
-            # print(f"extra_columns: {extra_columns}")
 
         for sign, values in self.result_list:
             k = values[:len_key_columns]
