@@ -484,7 +484,7 @@ def dbt_diff_string_template(
     main_table = tabulate(main_rows, headers=main_headers)
 
     # diffs table
-    diffs_rows = list(extra_info_dict.items())
+    diffs_rows = sorted(list(extra_info_dict.items()))
 
     diffs_headers = ["columns", "% diff values" if is_cloud else "# diff values"]
     diffs_table = tabulate(diffs_rows, headers=diffs_headers)

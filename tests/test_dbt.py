@@ -37,21 +37,68 @@ class TestDbtDiffer(unittest.TestCase):
         )
 
         # assertions for the diff that exists in tests/dbt_artifacts/jaffle_shop.duckdb
+        orders_expected_output = """
+        jaffle_shop.prod.orders <> jaffle_shop.dev.orders 
+        Primary Keys: ['order_id'] 
+
+        rows       PROD    <>             DEV
+        ---------  ------  -------------  ------------------
+        Total      10                     20 [+10]
+        Added              +10
+        Removed            0
+        Different          0
+        Unchanged          10
+
+        columns                 # diff values
+        --------------------  ---------------
+        amount                              0
+        bank_transfer_amount                0
+        coupon_amount                       0
+        credit_card_amount                  0
+        customer_id                         0
+        gift_card_amount                    0
+        order_date                          0
+        status                              0 
+        """
+
+        stg_payments_expected_output = """
+        jaffle_shop.prod.stg_payments <> jaffle_shop.dev.stg_payments 
+        Primary Keys: ['payment_id'] 
+        No row differences
+        """
+
+        stg_customers_expected_output = """
+        jaffle_shop.prod.stg_customers <> jaffle_shop.dev.stg_customers 
+        Primary Keys: ['customer_id'] 
+        No row differences
+        """
+
+        stg_orders_expected_output = """
+        jaffle_shop.prod.stg_orders <> jaffle_shop.dev.stg_orders 
+        Primary Keys: ['order_id'] 
+        No row differences
+        """
+
+        customers_expected_output = """
+        jaffle_shop.prod.customers <> jaffle_shop.dev.customers 
+        Primary Keys: ['customer_id'] 
+        No row differences
+        """
+
+        expected_outputs = [
+            orders_expected_output,
+            stg_payments_expected_output,
+            stg_customers_expected_output,
+            stg_orders_expected_output,
+            customers_expected_output,
+        ]
+
         if test_project_path == artifacts_path:
-            diff_string = b"".join(diff).decode("utf-8")
-            # 4 with no diffs
-            assert diff_string.count("No row differences") == 4
-            # 1 with a diff
-            assert diff_string.count("PROD") == 1
-            assert diff_string.count("DEV") == 1
-            assert diff_string.count("Primary Keys") == 5
-            assert diff_string.count("Where Filter") == 0
-            assert diff_string.count("Type Changed") == 0
-            assert diff_string.count("Total") == 1
-            assert diff_string.count("Added") == 1
-            assert diff_string.count("Removed") == 1
-            assert diff_string.count("Different") == 1
-            assert diff_string.count("Unchanged") == 1
+            actual_output_stripped = b"".join(diff).decode("utf-8").strip().replace(" ", "")
+
+            for expected_output in expected_outputs:
+                expected_output_stripped = "".join(line.strip() for line in expected_output.split("\n")).replace(" ", "")
+                assert expected_output_stripped in actual_output_stripped
 
     @unittest.skipIf(
         not os.environ.get("MOTHERDUCK_TOKEN"),
