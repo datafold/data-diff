@@ -470,7 +470,7 @@ def _cloud_diff(
         total_rows_table2 = diff_results.pks.total_rows[1]
         total_rows_diff = total_rows_table2 - total_rows_table1
 
-        rows_unchanged = int(total_rows_table2) - int(rows_updated)
+        rows_unchanged = int(total_rows_table1) - int(rows_updated) - int(rows_removed_count)
         diff_percent_list = {
             x.column_name: f"{str(round(100.00 - x.match, 2))}%"
             for x in diff_results.values.columns_diff_stats

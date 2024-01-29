@@ -135,8 +135,6 @@ class DiffResultWrapper:
         unchanged = table1_count - diff_by_sign["-"] - diff_by_sign["!"]
         diff_percent = 1 - unchanged / max(table1_count, table2_count)
 
-        # print(f"extra_column_diffs: {extra_column_diffs}")
-
         return DiffStats(diff_by_sign, table1_count, table2_count, unchanged, diff_percent, extra_column_diffs)
 
     def get_stats_string(self, is_dbt: bool = False):
