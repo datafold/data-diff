@@ -511,7 +511,7 @@ def diff_int_dynamic_color_template(diff_value: int) -> str:
     elif diff_value < 0:
         return f"[red]{diff_value}[/]"
     else:
-        return ""
+        return "0"
 
 
 def _jsons_equiv(a: str, b: str):
