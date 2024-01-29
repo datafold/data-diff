@@ -39,12 +39,20 @@ class TestDbtDiffer(unittest.TestCase):
         # assertions for the diff that exists in tests/dbt_artifacts/jaffle_shop.duckdb
         if test_project_path == artifacts_path:
             diff_string = b"".join(diff).decode("utf-8")
-            # 5 diffs were ran
-            assert diff_string.count("<>") == 5
+            print(diff_string)
+            # 6 diffs were ran
+            assert diff_string.count("<>") == 6
             # 4 with no diffs
             assert diff_string.count("No row differences") == 4
             # 1 with a diff
-            assert diff_string.count("  Rows Added    Rows Removed") == 1
+            assert diff_string.count("Primary Keys") == 1
+            assert diff_string.count("Where Filter") == 1
+            assert diff_string.count("Type Changed") == 1
+            assert diff_string.count("Total") == 1
+            assert diff_string.count("Added") == 1
+            assert diff_string.count("Removed") == 1
+            assert diff_string.count("Different") == 1
+            assert diff_string.count("Unchanged") == 1
 
     @unittest.skipIf(
         not os.environ.get("MOTHERDUCK_TOKEN"),
@@ -62,7 +70,7 @@ class TestDbtDiffer(unittest.TestCase):
         if test_project_path == artifacts_path:
             diff_string = b"".join(diff).decode("utf-8")
             # 5 diffs were ran
-            assert diff_string.count("<>") == 5
+            assert diff_string.count("<>") == 6
             # 4 with no diffs
             assert diff_string.count("No row differences") == 4
             # 1 with a diff
