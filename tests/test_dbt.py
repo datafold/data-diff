@@ -97,7 +97,9 @@ class TestDbtDiffer(unittest.TestCase):
             actual_output_stripped = b"".join(diff).decode("utf-8").strip().replace(" ", "")
 
             for expected_output in expected_outputs:
-                expected_output_stripped = "".join(line.strip() for line in expected_output.split("\n")).replace(" ", "")
+                expected_output_stripped = "".join(line.strip() for line in expected_output.split("\n")).replace(
+                    " ", ""
+                )
                 assert expected_output_stripped in actual_output_stripped
 
     @unittest.skipIf(
