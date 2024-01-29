@@ -461,7 +461,6 @@ def _cloud_diff(
             raise Exception(f"Api response did not contain a diff_id")
 
         diff_results = api.poll_data_diff_results(diff_id)
-        # print(diff_results)
 
         rows_added_count = diff_results.pks.exclusives[1]
         rows_removed_count = diff_results.pks.exclusives[0]
@@ -477,8 +476,8 @@ def _cloud_diff(
             for x in diff_results.values.columns_diff_stats
             if x.match != 100.0
         }
-        columns_added = diff_results.schema_.exclusive_columns[1]
-        columns_removed = diff_results.schema_.exclusive_columns[0]
+        columns_added = set(diff_results.schema_.exclusive_columns[1])
+        columns_removed = set(diff_results.schema_.exclusive_columns[0])
         column_type_changes = diff_results.schema_.column_type_differs
 
         diff_output_str += f"Primary Keys: {diff_vars.primary_keys} \n"
