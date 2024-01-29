@@ -473,9 +473,9 @@ def dbt_diff_string_template(
 ) -> str:
     # main table
     main_rows = [
-        ["Total", total_rows_table1, "", f"{total_rows_table2} {diff_int_dynamic_color_template(total_rows_diff)}"],
+        ["Total", total_rows_table1, "", f"{total_rows_table2} [{diff_int_dynamic_color_template(total_rows_diff)}]"],
         ["Added", "", diff_int_dynamic_color_template(rows_added), ""],
-        ["Removed", "", f"[red]-{rows_removed}[/]", ""],
+        ["Removed", "", diff_int_dynamic_color_template(-rows_removed), ""],
         ["Different", "", rows_updated, ""],
         ["Unchanged", "", rows_unchanged, ""],
     ]
@@ -503,14 +503,15 @@ def dbt_diff_string_template(
 
 
 def diff_int_dynamic_color_template(diff_value: int) -> str:
+    if not isinstance(diff_value, int):
+        return diff_value
+
     if diff_value > 0:
         return f"[green]+{diff_value}[/]"
     elif diff_value < 0:
-        return f"[red][{diff_value}][/]"
-    elif diff_value == 0:
-        return ""
+        return f"[red]{diff_value}[/]"
     else:
-        return diff_value
+        return ""
 
 
 def _jsons_equiv(a: str, b: str):
