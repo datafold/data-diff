@@ -1,6 +1,6 @@
 import unittest
 
-from data_diff.utils import remove_passwords_in_dict, match_regexps, match_like, number_to_human
+from data_diff.utils import remove_passwords_in_dict, match_regexps, match_like, number_to_human, diff_int_dynamic_color_template
 from data_diff.__main__ import _remove_passwords_in_dict
 
 
@@ -123,3 +123,17 @@ class TestUtils(unittest.TestCase):
         assert number_to_human(-1000) == "-1k"
         assert number_to_human(-1000000) == "-1m"
         assert number_to_human(-1000000000) == "-1b"
+
+
+class TestDiffIntDynamicColorTemplate(unittest.TestCase):
+    def test_string_input(self):
+        self.assertEqual(diff_int_dynamic_color_template("test_string"), "test_string")
+
+    def test_positive_diff_value(self):
+        self.assertEqual(diff_int_dynamic_color_template(10), "[green]+10[/]")
+
+    def test_negative_diff_value(self):
+        self.assertEqual(diff_int_dynamic_color_template(-10), "[red]-10[/]")
+
+    def test_zero_diff(self):
+        self.assertEqual(diff_int_dynamic_color_template(0), "0")
