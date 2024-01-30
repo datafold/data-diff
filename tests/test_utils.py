@@ -1,6 +1,15 @@
 import unittest
+from unittest.mock import patch
 
-from data_diff.utils import remove_passwords_in_dict, match_regexps, match_like, number_to_human, diff_int_dynamic_color_template
+from data_diff.utils import (
+    remove_passwords_in_dict,
+    match_regexps,
+    match_like,
+    number_to_human,
+    diff_int_dynamic_color_template,
+    dbt_diff_string_template,
+)
+
 from data_diff.__main__ import _remove_passwords_in_dict
 
 
@@ -137,3 +146,33 @@ class TestDiffIntDynamicColorTemplate(unittest.TestCase):
 
     def test_zero_diff(self):
         self.assertEqual(diff_int_dynamic_color_template(0), "0")
+
+
+class TestDbtDiffStringTemplate(unittest.TestCase):
+    @patch("data_diff.utils.diff_int_dynamic_color_template")
+    @patch("data_diff.utils.tabulate")
+    def test_dbt_diff_string_template(self, mock_tabulate, mock_diff_template):
+        mock_diff_template.return_value = "some color coded string"
+        mock_tabulate.return_value = "tabulated string"
+
+        expected_output = "\ntabulated string\n\ntabulated string\n\ntabulated string"
+
+        output = dbt_diff_string_template(
+            total_rows_table1=10,
+            total_rows_table2=20,
+            total_rows_diff=10,
+            rows_added=5,
+            rows_removed=2,
+            rows_updated=3,
+            rows_unchanged=0,
+            extra_info_dict={"info": "values"},
+            extra_info_str="extra info",
+            is_cloud=False,
+            deps_impacts={"dep": "assets"},
+        )
+
+        self.assertEqual(output, expected_output)
+        mock_diff_template.assert_any_call(10)
+        mock_diff_template.assert_any_call(5)
+        mock_diff_template.assert_any_call(-2)
+        mock_tabulate.assert_called()
