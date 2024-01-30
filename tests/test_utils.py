@@ -1,5 +1,6 @@
 import unittest
 from unittest.mock import patch
+import re
 
 from data_diff.utils import (
     remove_passwords_in_dict,
@@ -8,6 +9,9 @@ from data_diff.utils import (
     number_to_human,
     diff_int_dynamic_color_template,
     dbt_diff_string_template,
+    columns_removed_template,
+    columns_added_template,
+    columns_type_changed_template,
 )
 
 from data_diff.__main__ import _remove_passwords_in_dict
@@ -176,3 +180,27 @@ class TestDbtDiffStringTemplate(unittest.TestCase):
         mock_diff_template.assert_any_call(5)
         mock_diff_template.assert_any_call(-2)
         mock_tabulate.assert_called()
+
+
+class TestColumnsTemplateMethods(unittest.TestCase):
+    def extract_columns_set(self, output):
+        # Extract quoted words by regex
+        output_list = re.findall(r"'(\w*)'", output)
+        # Convert list to set
+        output_set = set(output_list)
+        return output_set
+
+    def test_columns_removed_template(self):
+        output = columns_removed_template({"column1", "column2"})
+        self.assertIn("[red]Columns removed [-2]:[/]", output)
+        self.assertEqual(self.extract_columns_set(output), {"column1", "column2"})
+
+    def test_columns_added_template(self):
+        output = columns_added_template({"column1", "column2"})
+        self.assertIn("[green]Columns added [+2]:", output)
+        self.assertEqual(self.extract_columns_set(output), {"column1", "column2"})
+
+    def test_columns_type_changed_template(self):
+        output = columns_type_changed_template({"column1", "column2"})
+        self.assertIn("Type changed [2]: [green]", output)
+        self.assertEqual(self.extract_columns_set(output), {"column1", "column2"})
