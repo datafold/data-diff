@@ -36,29 +36,33 @@ class TestDbtDiffer(unittest.TestCase):
             "--dbt", "--dbt-project-dir", test_project_path, "--dbt-profiles-dir", test_profiles_path
         )
 
-        # assertions for the diff that exists in tests/dbt_artifacts/jaffle_shop.duckdb
         orders_expected_output = """
         jaffle_shop.prod.orders <> jaffle_shop.dev.orders 
         Primary Keys: ['order_id'] 
+        Where Filter: 'amount >= 0' 
+        Included Columns: ['order_id', 'customer_id', 'order_date', 'amount', 'credit_card_amount', 'coupon_amount', 
+        'bank_transfer_amount', 'gift_card_amount'] 
+        Excluded Columns: ['new_column'] 
+        Columns removed [-1]: {'status'}
+        Columns added [+1]: {'new_column'}
+        Type changed [1]: {'order_date'}
 
-        rows       PROD    <>             DEV
-        ---------  ------  -------------  ------------------
-        Total      10                     20 [+10]
-        Added              +10
-        Removed            0
-        Different          0
-        Unchanged          10
+        rows       PROD    <>            DEV
+        ---------  ------  ------------  -----------------
+        Total      10                    11 [+1]
+        Added              +2
+        Removed            -1
+        Different          9
+        Unchanged          0
 
         columns                 # diff values
         --------------------  ---------------
-        amount                              0
-        bank_transfer_amount                0
-        coupon_amount                       0
-        credit_card_amount                  0
-        customer_id                         0
-        gift_card_amount                    0
-        order_date                          0
-        status                              0 
+        amount                              8
+        bank_transfer_amount                3
+        coupon_amount                       3
+        credit_card_amount                  6
+        customer_id                         9
+        gift_card_amount                    2 
         """
 
         stg_payments_expected_output = """
@@ -123,7 +127,7 @@ class TestDbtDiffer(unittest.TestCase):
             assert diff_string.count("PROD") == 1
             assert diff_string.count("DEV") == 1
             assert diff_string.count("Primary Keys") == 5
-            assert diff_string.count("Where Filter") == 0
+            assert diff_string.count("Where Filter") == 1
             assert diff_string.count("Type Changed") == 0
             assert diff_string.count("Total") == 1
             assert diff_string.count("Added") == 1
@@ -322,6 +326,8 @@ class TestDbtDiffer(unittest.TestCase):
         self.assertEqual(payload.pk_columns, expected_primary_keys)
         self.assertEqual(payload.filter1, where)
         self.assertEqual(payload.filter2, where)
+        # TODO: add tests to check the rest of the payload similar to the basic test above
+        # TODO: add tests to verify TSummaryResultDependencyDetails results
 
     @patch("data_diff.dbt._initialize_api")
     @patch("data_diff.dbt._get_diff_vars")
