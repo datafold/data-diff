@@ -298,6 +298,8 @@ class TestDbtDiffer(unittest.TestCase):
         expected_primary_keys = ["primary_key_column"]
         threads = None
         where = "a_string"
+        include_columns = ["created_at", "num_users", "sub_created_at", "sub_plan"]
+        exclude_columns = ["new_column"]
         connection = {}
         mock_api.create_data_diff.return_value = {"id": 123}
         mock_os_environ.get.return_value = expected_api_key
@@ -309,8 +311,8 @@ class TestDbtDiffer(unittest.TestCase):
             connection=connection,
             threads=threads,
             where_filter=where,
-            include_columns=[],
-            exclude_columns=[],
+            include_columns=include_columns,
+            exclude_columns=exclude_columns,
         )
 
         _cloud_diff(diff_vars, expected_datasource_id, org_meta=org_meta, api=mock_api)
@@ -324,10 +326,8 @@ class TestDbtDiffer(unittest.TestCase):
         self.assertEqual(payload.table1, prod_qualified_list)
         self.assertEqual(payload.table2, dev_qualified_list)
         self.assertEqual(payload.pk_columns, expected_primary_keys)
-        self.assertEqual(payload.filter1, where)
-        self.assertEqual(payload.filter2, where)
-        # TODO: add tests to check the rest of the payload similar to the basic test above
-        # TODO: add tests to verify TSummaryResultDependencyDetails results
+        self.assertEqual(payload.include_columns, include_columns)
+        self.assertEqual(payload.exclude_columns, exclude_columns)
 
     @patch("data_diff.dbt._initialize_api")
     @patch("data_diff.dbt._get_diff_vars")

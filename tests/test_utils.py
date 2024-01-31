@@ -153,7 +153,7 @@ class TestDiffIntDynamicColorTemplate(unittest.TestCase):
 
 class TestDbtDiffStringTemplateNoMock(unittest.TestCase):
     def test_dbt_diff_string_template(self):
-        self.maxDiff = None  # Set maxDiff to None
+        self.maxDiff = None
 
         expected_output = """
 rows       PROD    <>            DEV
