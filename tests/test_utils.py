@@ -1,5 +1,4 @@
 import unittest
-from unittest.mock import patch
 import re
 
 from data_diff.utils import (
@@ -152,14 +151,26 @@ class TestDiffIntDynamicColorTemplate(unittest.TestCase):
         self.assertEqual(diff_int_dynamic_color_template(0), "0")
 
 
-class TestDbtDiffStringTemplate(unittest.TestCase):
-    @patch("data_diff.utils.diff_int_dynamic_color_template")
-    @patch("data_diff.utils.tabulate")
-    def test_dbt_diff_string_template(self, mock_tabulate, mock_diff_template):
-        mock_diff_template.return_value = "some color coded string"
-        mock_tabulate.return_value = "tabulated string"
+class TestDbtDiffStringTemplateNoMock(unittest.TestCase):
+    def test_dbt_diff_string_template(self):
+        self.maxDiff = None  # Set maxDiff to None
 
-        expected_output = "\ntabulated string\n\ntabulated string\n\ntabulated string"
+        expected_output = """
+rows       PROD    <>            DEV
+---------  ------  ------------  ------------------
+Total      10                    20 [[green]+10[/]]
+Added              [green]+5[/]
+Removed            [red]-2[/]
+Different          3
+Unchanged          5
+
+columns    # diff values
+---------  ---------------
+info       values
+
+deps    # data assets
+------  ---------------
+dep     assets"""
 
         output = dbt_diff_string_template(
             total_rows_table1=10,
@@ -168,7 +179,7 @@ class TestDbtDiffStringTemplate(unittest.TestCase):
             rows_added=5,
             rows_removed=2,
             rows_updated=3,
-            rows_unchanged=0,
+            rows_unchanged=5,
             extra_info_dict={"info": "values"},
             extra_info_str="extra info",
             is_cloud=False,
@@ -176,10 +187,6 @@ class TestDbtDiffStringTemplate(unittest.TestCase):
         )
 
         self.assertEqual(output, expected_output)
-        mock_diff_template.assert_any_call(10)
-        mock_diff_template.assert_any_call(5)
-        mock_diff_template.assert_any_call(-2)
-        mock_tabulate.assert_called()
 
 
 class TestColumnsTemplateMethods(unittest.TestCase):
