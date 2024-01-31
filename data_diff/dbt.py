@@ -360,13 +360,14 @@ def _local_diff(
             return
 
         dataset1_columns = [
-            (name, type_, table1.database.dialect.parse_type(table1.table_path, name, type_, *other))
-            for (name, type_, *other) in table1_columns.values()
+            (info.column_name, info.data_type, table1.database.dialect.parse_type(table1.table_path, info))
+            for info in table1_columns.values()
         ]
         dataset2_columns = [
-            (name, type_, table2.database.dialect.parse_type(table2.table_path, name, type_, *other))
-            for (name, type_, *other) in table2_columns.values()
+            (info.column_name, info.data_type, table2.database.dialect.parse_type(table2.table_path, info))
+            for info in table2_columns.values()
         ]
+
         print(
             json.dumps(
                 jsonify(
