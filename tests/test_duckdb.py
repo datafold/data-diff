@@ -12,6 +12,7 @@ class TestDuckDBTableSchemaMethods(unittest.TestCase):
         self.duckdb_conn = duckdb_differ.DuckDB(filepath=test_duckdb_filepath)
 
     def tearDown(self):
+        # Optional: delete file after tests
         os.remove(test_duckdb_filepath)
 
     def test_normalize_table_path(self):
@@ -28,16 +29,9 @@ class TestDuckDBTableSchemaMethods(unittest.TestCase):
             self.duckdb_conn._normalize_table_path(("test_database", "test_schema", "test_table", "extra"))
 
     def test_select_table_schema(self):
-        with self.assertRaises(ValueError) as context:
-            # Try to call the select_table_schema with only one value in the tuple
-            db_path = ("test_table",)
-            self.duckdb_conn.select_table_schema(db_path)
-
-        # Check that the message in the ValueError is what you expect
-        self.assertTrue(
-            "The input path needs to have more than one object in your data diff configuration.\nExpected format: database.schema.table or schema.table"
-            in str(context.exception)
-        )
+        db_path = ("test_table",)
+        expected_sql = "SELECT column_name, data_type, datetime_precision, numeric_precision, numeric_scale FROM information_schema.columns WHERE table_name = 'test_table' AND table_schema = 'main' and table_catalog = current_catalog()"
+        self.assertEqual(self.duckdb_conn.select_table_schema(db_path), expected_sql)
 
         db_path = ("custom_schema", "test_table")
         expected_sql = "SELECT column_name, data_type, datetime_precision, numeric_precision, numeric_scale FROM information_schema.columns WHERE table_name = 'test_table' AND table_schema = 'custom_schema' and table_catalog = current_catalog()"
@@ -46,3 +40,7 @@ class TestDuckDBTableSchemaMethods(unittest.TestCase):
         db_path = ("custom_db", "custom_schema", "test_table")
         expected_sql = "SELECT column_name, data_type, datetime_precision, numeric_precision, numeric_scale FROM custom_db.information_schema.columns WHERE table_name = 'test_table' AND table_schema = 'custom_schema' and table_catalog = 'custom_db'"
         self.assertEqual(self.duckdb_conn.select_table_schema(db_path), expected_sql)
+
+
+if __name__ == "__main__":
+    unittest.main()
