@@ -170,7 +170,7 @@ class DuckDB(Database):
 
         if database:
             info_schema_path.insert(0, database)
-            dynamic_database_clause = f"'{database}'" 
+            dynamic_database_clause = f"'{database}'"
         else:
             dynamic_database_clause = "current_catalog()"
 
