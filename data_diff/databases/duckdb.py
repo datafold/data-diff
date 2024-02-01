@@ -168,7 +168,9 @@ class DuckDB(Database):
 
         # If path only contains one object, raise an error
         if len(path) == 1:
-            raise ValueError('The input path needs to have more than one object in your data diff configuration.\nExpected format: database.schema.table or schema.table')
+            raise ValueError(
+                "The input path needs to have more than one object in your data diff configuration.\nExpected format: database.schema.table or schema.table"
+            )
 
         info_schema_path = ["information_schema", "columns"]
 
@@ -182,7 +184,6 @@ class DuckDB(Database):
             f"SELECT column_name, data_type, datetime_precision, numeric_precision, numeric_scale FROM {'.'.join(info_schema_path)} "
             f"WHERE table_name = '{table}' AND table_schema = '{schema}' and table_catalog = {dynamic_database_clause}"
         )
-
 
     def _normalize_table_path(self, path: DbPath) -> DbPath:
         if len(path) == 1:
