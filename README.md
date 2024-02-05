@@ -16,19 +16,26 @@ A data diff is the value-level comparison between two tables—used to identify 
 
 There is a lot you can do with data-diff: you can test SQL code by comparing development or staging environment data to production, or compare source and target data to identify discrepancies when moving data between databases.
 
-# Use Cases
+# data-diff OSS & Datafold Cloud
+data-diff is an open source utility for running stateless diffs as a great single player experience.
 
-### Data Migration & Replication Testing
-data-diff is a powerful tool for comparing data when you're moving it between systems. Use it to ensure data accuracy and identify discrepancies during tasks like:
-- **Migrating** to a new data warehouse (e.g., Oracle -> Snowflake)
-- **Converting SQL** to a new transformation framework (e.g., stored procedures -> dbt)
-- Continuously **replicating data** from an OLTP database to OLAP data warehouse (e.g., MySQL -> Redshift)
+
+
+Scale up with [Datafold Cloud](https://www.datafold.com/) to make data diffing a company-wide experience to both supercharge your data diffing CLI experience (ex: data-diff --dbt --cloud) and run diffs manually in your CI process and within the Datafold UI. This includes [column-level lineage](https://www.datafold.com/column-level-lineage) with BI tool integrations, [CI testing](https://docs.datafold.com/deployment_testing/how_it_works/), faster cross-database diffing, and diff history.
+
+# Use Cases
 
 ### Data Development Testing
 When developing SQL code, data-diff helps you validate and preview changes by comparing data between development/staging environments and production. Here's how it works:
 1. Make a change to your SQL code
 2. Run the SQL code to create a new dataset
 3. Compare this dataset with its production version or other iterations
+
+### Data Migration & Replication Testing
+data-diff is a powerful tool for comparing data when you're moving it between systems. Use it to ensure data accuracy and identify discrepancies during tasks like:
+- **Migrating** to a new data warehouse (e.g., Oracle -> Snowflake)
+- **Validating SQL transformations** from legacy solutions (e.g., stored procedures) to new transformation frameworks (e.g., dbt)
+- Continuously **replicating data** from an OLTP database to OLAP data warehouse (e.g., MySQL -> Redshift)
 
 # dbt Integration
   <p align="left">
@@ -212,13 +219,6 @@ Your database not listed here?
 <br>
 
 For detailed algorithm and performance insights, explore [here](https://github.com/datafold/data-diff/blob/master/docs/technical-explanation.md), or head to our docs to [learn more about how Datafold diffs data](https://docs.datafold.com/data_diff/how-datafold-diffs-data).
-
-
-# data-diff OSS & Datafold Cloud
-
-data-diff is an open source utility for running stateless diffs as a great single player experience.
-
-Scale up with [Datafold Cloud](https://www.datafold.com/) to make data diffing a company-wide experience to both supercharge your data diffing CLI experience (ex: data-diff --dbt --cloud) and run diffs manually in the UI. This includes [column-level lineage](https://www.datafold.com/column-level-lineage), [CI testing](https://docs.datafold.com/deployment_testing/how_it_works/), and diff history.
 
 ## Contributors
 
