@@ -306,11 +306,22 @@ def _local_diff(
         k for k, v in table2_columns.items() if k in table1_columns and v.data_type != table1_columns[k].data_type
     }
 
-    if columns_added:
-        diff_output_str += columns_added_template(columns_added)
+    diff_output_str += f"Primary Keys: {diff_vars.primary_keys} \n"
+
+    if diff_vars.where_filter:
+        diff_output_str += f"Where Filter: '{str(diff_vars.where_filter)}' \n"
+
+    if diff_vars.include_columns:
+        diff_output_str += f"Included Columns: {diff_vars.include_columns} \n"
+
+    if diff_vars.exclude_columns:
+        diff_output_str += f"Excluded Columns: {diff_vars.exclude_columns} \n"
 
     if columns_removed:
         diff_output_str += columns_removed_template(columns_removed)
+
+    if columns_added:
+        diff_output_str += columns_added_template(columns_added)
 
     if columns_type_changed:
         diff_output_str += columns_type_changed_template(columns_type_changed)
@@ -349,13 +360,14 @@ def _local_diff(
             return
 
         dataset1_columns = [
-            (name, type_, table1.database.dialect.parse_type(table1.table_path, name, type_, *other))
-            for (name, type_, *other) in table1_columns.values()
+            (info.column_name, info.data_type, table1.database.dialect.parse_type(table1.table_path, info))
+            for info in table1_columns.values()
         ]
         dataset2_columns = [
-            (name, type_, table2.database.dialect.parse_type(table2.table_path, name, type_, *other))
-            for (name, type_, *other) in table2_columns.values()
+            (info.column_name, info.data_type, table2.database.dialect.parse_type(table2.table_path, info))
+            for info in table2_columns.values()
         ]
+
         print(
             json.dumps(
                 jsonify(
@@ -455,32 +467,57 @@ def _cloud_diff(
         rows_removed_count = diff_results.pks.exclusives[0]
 
         rows_updated = diff_results.values.rows_with_differences
-        total_rows = diff_results.values.total_rows
-        rows_unchanged = int(total_rows) - int(rows_updated)
+        total_rows_table1 = diff_results.pks.total_rows[0]
+        total_rows_table2 = diff_results.pks.total_rows[1]
+        total_rows_diff = total_rows_table2 - total_rows_table1
+
+        rows_unchanged = int(total_rows_table1) - int(rows_updated) - int(rows_removed_count)
         diff_percent_list = {
-            x.column_name: str(x.match) + "%" for x in diff_results.values.columns_diff_stats if x.match != 100.0
+            x.column_name: f"{str(round(100.00 - x.match, 2))}%"
+            for x in diff_results.values.columns_diff_stats
+            if x.match != 100.0
         }
-        columns_added = diff_results.schema_.exclusive_columns[1]
-        columns_removed = diff_results.schema_.exclusive_columns[0]
+        columns_added = set(diff_results.schema_.exclusive_columns[1])
+        columns_removed = set(diff_results.schema_.exclusive_columns[0])
         column_type_changes = diff_results.schema_.column_type_differs
 
-        if columns_added:
-            diff_output_str += columns_added_template(columns_added)
+        diff_output_str += f"Primary Keys: {diff_vars.primary_keys} \n"
+        if diff_vars.where_filter:
+            diff_output_str += f"Where Filter: '{str(diff_vars.where_filter)}' \n"
+
+        if diff_vars.include_columns:
+            diff_output_str += f"Included Columns: {diff_vars.include_columns} \n"
+
+        if diff_vars.exclude_columns:
+            diff_output_str += f"Excluded Columns: {diff_vars.exclude_columns} \n"
 
         if columns_removed:
             diff_output_str += columns_removed_template(columns_removed)
 
+        if columns_added:
+            diff_output_str += columns_added_template(columns_added)
+
         if column_type_changes:
             diff_output_str += columns_type_changed_template(column_type_changes)
 
+        deps_impacts = {
+            key: len(value) + sum(len(item.get("BiHtSync", [])) for item in value) if key == "hightouch" else len(value)
+            for key, value in diff_results.deps.deps.items()
+        }
+
         if any([rows_added_count, rows_removed_count, rows_updated]):
             diff_output = dbt_diff_string_template(
-                rows_added_count,
-                rows_removed_count,
-                rows_updated,
-                str(rows_unchanged),
-                diff_percent_list,
-                "Value Match Percent:",
+                total_rows_table1=total_rows_table1,
+                total_rows_table2=total_rows_table2,
+                total_rows_diff=total_rows_diff,
+                rows_added=rows_added_count,
+                rows_removed=rows_removed_count,
+                rows_updated=rows_updated,
+                rows_unchanged=str(rows_unchanged),
+                deps_impacts=deps_impacts,
+                is_cloud=True,
+                extra_info_dict=diff_percent_list,
+                extra_info_str="Value Changed:",
             )
             diff_output_str += f"\n{diff_url}\n {diff_output} \n"
             rich.print(diff_output_str)
@@ -524,7 +561,7 @@ def _cloud_diff(
 
 
 def _diff_output_base(dev_path: str, prod_path: str) -> str:
-    return f"\n[green]{prod_path} <> {dev_path}[/] \n"
+    return f"\n[blue]{prod_path}[/] <> [green]{dev_path}[/] \n"
 
 
 def _initialize_events(dbt_user_id: Optional[str], dbt_version: Optional[str], dbt_project_id: Optional[str]) -> None:

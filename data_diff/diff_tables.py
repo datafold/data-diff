@@ -138,14 +138,19 @@ class DiffResultWrapper:
     def get_stats_string(self, is_dbt: bool = False):
         diff_stats = self._get_stats(is_dbt)
 
+        total_rows_diff = diff_stats.table2_count - diff_stats.table1_count
+
         if is_dbt:
             string_output = dbt_diff_string_template(
-                diff_stats.diff_by_sign["+"],
-                diff_stats.diff_by_sign["-"],
-                diff_stats.diff_by_sign["!"],
-                diff_stats.unchanged,
-                diff_stats.extra_column_diffs,
-                "Values Updated:",
+                total_rows_table1=diff_stats.table1_count,
+                total_rows_table2=diff_stats.table2_count,
+                total_rows_diff=total_rows_diff,
+                rows_added=diff_stats.diff_by_sign["+"],
+                rows_removed=diff_stats.diff_by_sign["-"],
+                rows_updated=diff_stats.diff_by_sign["!"],
+                rows_unchanged=diff_stats.unchanged,
+                extra_info_dict=diff_stats.extra_column_diffs,
+                extra_info_str="[u]Values Changed[/u]",
             )
 
         else:
