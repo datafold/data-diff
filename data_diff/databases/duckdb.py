@@ -167,12 +167,16 @@ class DuckDB(Database):
         database, schema, table = self._normalize_table_path(path)
 
         info_schema_path = ["information_schema", "columns"]
+
         if database:
             info_schema_path.insert(0, database)
+            dynamic_database_clause = f"'{database}'"
+        else:
+            dynamic_database_clause = "current_catalog()"
 
         return (
             f"SELECT column_name, data_type, datetime_precision, numeric_precision, numeric_scale FROM {'.'.join(info_schema_path)} "
-            f"WHERE table_name = '{table}' AND table_schema = '{schema}'"
+            f"WHERE table_name = '{table}' AND table_schema = '{schema}' and table_catalog = {dynamic_database_clause}"
         )
 
     def _normalize_table_path(self, path: DbPath) -> DbPath:
