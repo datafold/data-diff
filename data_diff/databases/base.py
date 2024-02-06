@@ -1046,6 +1046,7 @@ class Database(abc.ABC):
               accessing the schema using a SQL query.
         """
         rows = self.query(self.select_table_schema(path), list, log_message=path)
+
         if not rows:
             raise RuntimeError(f"{self.name}: Table '{'.'.join(path)}' does not exist, or has no columns")
 
@@ -1060,6 +1061,7 @@ class Database(abc.ABC):
             )
             for r in rows
         }
+
         assert len(d) == len(rows)
         return d
 
