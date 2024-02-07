@@ -175,6 +175,7 @@ Check out [documentation](https://docs.datafold.com/reference/open_source/cli) f
 | Pinot         |  📝    |                                                                                                                                     |
 | Druid         |  📝    |                                                                                                                                     |                                                                                                                                  |
 | SQLite        |  📝    |                                                                                                                                     |
+
 *MS SQL Server support is limited, with known performance issues that are addressed in Datafold Cloud.
 
 * 🟢: Implemented and thoroughly tested.
