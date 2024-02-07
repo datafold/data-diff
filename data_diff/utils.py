@@ -459,19 +459,59 @@ class Vector(tuple):
 
 
 def dbt_diff_string_template(
-    rows_added: str, rows_removed: str, rows_updated: str, rows_unchanged: str, extra_info_dict: Dict, extra_info_str
+    total_rows_table1: int,
+    total_rows_table2: int,
+    total_rows_diff: int,
+    rows_added: int,
+    rows_removed: int,
+    rows_updated: int,
+    rows_unchanged: int,
+    extra_info_dict: Dict,
+    extra_info_str: str,
+    is_cloud: Optional[bool] = False,
+    deps_impacts: Optional[Dict] = None,
 ) -> str:
-    string_output = f"\n{tabulate([[rows_added, rows_removed]], headers=['Rows Added', 'Rows Removed'])}"
+    # main table
+    main_rows = [
+        ["Total", total_rows_table1, "", f"{total_rows_table2} [{diff_int_dynamic_color_template(total_rows_diff)}]"],
+        ["Added", "", diff_int_dynamic_color_template(rows_added), ""],
+        ["Removed", "", diff_int_dynamic_color_template(-rows_removed), ""],
+        ["Different", "", rows_updated, ""],
+        ["Unchanged", "", rows_unchanged, ""],
+    ]
 
-    string_output += f"\n\nUpdated Rows: {rows_updated}\n"
-    string_output += f"Unchanged Rows: {rows_unchanged}\n\n"
+    main_headers = ["rows", "PROD", "<>", "DEV"]
+    main_table = tabulate(main_rows, headers=main_headers)
 
-    string_output += extra_info_str
+    # diffs table
+    diffs_rows = sorted(list(extra_info_dict.items()))
 
-    for k, v in extra_info_dict.items():
-        string_output += f"\n{k}: {v}"
+    diffs_headers = ["columns", "% diff values" if is_cloud else "# diff values"]
+    diffs_table = tabulate(diffs_rows, headers=diffs_headers)
+
+    # deps impacts table
+    deps_impacts_table = ""
+    if deps_impacts:
+        deps_impacts_rows = list(deps_impacts.items())
+        deps_impacts_headers = ["deps", "# data assets"]
+        deps_impacts_table = f"\n\n{tabulate(deps_impacts_rows, headers=deps_impacts_headers)}"
+
+    # combine all tables
+    string_output = f"\n{main_table}\n\n{diffs_table}{deps_impacts_table}"
 
     return string_output
+
+
+def diff_int_dynamic_color_template(diff_value: int) -> str:
+    if not isinstance(diff_value, int):
+        return diff_value
+
+    if diff_value > 0:
+        return f"[green]+{diff_value}[/]"
+    elif diff_value < 0:
+        return f"[red]{diff_value}[/]"
+    else:
+        return "0"
 
 
 def _jsons_equiv(a: str, b: str):
@@ -498,18 +538,18 @@ def diffs_are_equiv_jsons(diff: list, json_cols: dict):
     return match, overriden_diff_cols
 
 
-def columns_removed_template(columns_removed) -> str:
-    columns_removed_str = f"Column(s) removed: {columns_removed}\n"
+def columns_removed_template(columns_removed: set) -> str:
+    columns_removed_str = f"[red]Columns removed [-{len(columns_removed)}]:[/] [blue]{columns_removed}[/]\n"
     return columns_removed_str
 
 
-def columns_added_template(columns_added) -> str:
-    columns_added_str = f"Column(s) added: {columns_added}\n"
+def columns_added_template(columns_added: set) -> str:
+    columns_added_str = f"[green]Columns added [+{len(columns_added)}]: {columns_added}[/]\n"
     return columns_added_str
 
 
 def columns_type_changed_template(columns_type_changed) -> str:
-    columns_type_changed_str = f"Type change: {columns_type_changed}\n"
+    columns_type_changed_str = f"Type changed [{len(columns_type_changed)}]: [green]{columns_type_changed}[/]\n"
     return columns_type_changed_str
 
 
