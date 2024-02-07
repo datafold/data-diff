@@ -163,7 +163,7 @@ Check out [documentation](https://docs.datafold.com/reference/open_source/cli) f
 | Redshift      |  🟢     | `redshift://<username>:<password>@<hostname>:5439/<database>`                                                                       |
 | DuckDB        |  🟢   | `duckdb://<filepath>`                                                                                          |
 | MotherDuck        |  🟢   | `duckdb://<filepath>`                                                                                                   |
-| Microsoft SQL Server        |  🟢   | `mssql://<user>:<password>@<host>/<database>/<schema>`                                                                                                   |
+| Microsoft SQL Server*        |  🟢   | `mssql://<user>:<password>@<host>/<database>/<schema>`                                                                                                   |
 | Oracle        |  🟡   | `oracle://<username>:<password>@<hostname>/servive_or_sid`                                                                          |
 | Presto        |  🟡   | `presto://<username>:<password>@<hostname>:8080/<database>`                                                                         |
 | Databricks    |  🟡   | `databricks://<http_path>:<access_token>@<server_hostname>/<catalog>/<schema>`                                                      |
@@ -175,6 +175,7 @@ Check out [documentation](https://docs.datafold.com/reference/open_source/cli) f
 | Pinot         |  📝    |                                                                                                                                     |
 | Druid         |  📝    |                                                                                                                                     |                                                                                                                                  |
 | SQLite        |  📝    |                                                                                                                                     |
+*MS SQL Server support is limited, with known performance issues that are addressed in Datafold Cloud.
 
 * 🟢: Implemented and thoroughly tested.
 * 🟡: Implemented, but not thoroughly tested yet.
