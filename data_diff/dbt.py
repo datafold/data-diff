@@ -1,28 +1,28 @@
-from contextlib import nullcontext
 import json
 import os
 import re
 import time
-from typing import List, Optional, Dict, Tuple, Union
-import keyring
-import pydantic
-import rich
-from rich.prompt import Prompt
-from rich.markdown import Markdown
 from concurrent.futures import ThreadPoolExecutor, as_completed
+from contextlib import nullcontext
+from typing import List, Optional, Dict, Tuple, Union
 
+import keyring
+import rich
+from pydantic import BaseModel
+from rich.markdown import Markdown
+from rich.prompt import Prompt
+
+from data_diff import connect_to_table, diff_tables, Algorithm
 from data_diff.cli_options import CliOptions
+from data_diff.cloud import DatafoldAPI, TCloudApiDataDiff, TCloudApiOrgMeta
+from data_diff.dbt_parser import DbtParser, TDatadiffConfig
+from data_diff.diff_tables import DiffResultWrapper
 from data_diff.errors import (
     DataDiffCustomSchemaNoConfigError,
     DataDiffDbtProjectVarsNotFoundError,
     DataDiffNoAPIKeyError,
     DataDiffNoDatasourceIdError,
 )
-
-from data_diff import connect_to_table, diff_tables, Algorithm
-from data_diff.cloud import DatafoldAPI, TCloudApiDataDiff, TCloudApiOrgMeta
-from data_diff.dbt_parser import DbtParser, TDatadiffConfig
-from data_diff.diff_tables import DiffResultWrapper
 from data_diff.format import jsonify, jsonify_error
 from data_diff.tracking import (
     bool_ask_for_email,
@@ -56,7 +56,7 @@ DATAFOLD_TRIAL_URL = "https://app.datafold.com/org-signup"
 DATAFOLD_INSTRUCTIONS_URL = "https://docs.datafold.com/development_testing/datafold_cloud"
 
 
-class TDiffVars(pydantic.BaseModel):
+class TDiffVars(BaseModel):
     dev_path: List[str]
     prod_path: List[str]
     primary_keys: List[str]

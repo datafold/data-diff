@@ -1,11 +1,11 @@
 import base64
 import enum
 import time
-from typing import Any, Dict, List, Optional, Type, Tuple
+from typing import Any, Dict, List, Optional, Tuple
 
 import attrs
-import pydantic
 import requests
+from pydantic import BaseModel
 from typing_extensions import Self
 
 from data_diff.errors import DataDiffCloudDiffFailed, DataDiffCloudDiffTimedOut, DataDiffDatasourceIdNotFoundError
@@ -21,7 +21,7 @@ class TestDataSourceStatus(str, enum.Enum):
     UNKNOWN = "unknown"
 
 
-class TCloudApiDataSourceSchema(pydantic.BaseModel):
+class TCloudApiDataSourceSchema(BaseModel):
     title: str
     properties: Dict[str, Dict[str, Any]]
     required: List[str]
@@ -48,13 +48,13 @@ class TCloudApiDataSourceSchema(pydantic.BaseModel):
         )
 
 
-class TCloudApiDataSourceConfigSchema(pydantic.BaseModel):
+class TCloudApiDataSourceConfigSchema(BaseModel):
     name: str
     db_type: str
     config_schema: TCloudApiDataSourceSchema
 
 
-class TCloudApiDataSource(pydantic.BaseModel):
+class TCloudApiDataSource(BaseModel):
     id: Optional[int] = None
     name: str
     type: str
@@ -85,7 +85,7 @@ class TCloudApiDataSource(pydantic.BaseModel):
     secret_id: Optional[int] = None
 
 
-class TDsConfig(pydantic.BaseModel):
+class TDsConfig(BaseModel):
     name: str
     type: str
     temp_schema: str
@@ -95,7 +95,7 @@ class TDsConfig(pydantic.BaseModel):
     disable_profiling: bool = True
 
 
-class TCloudApiDataDiff(pydantic.BaseModel):
+class TCloudApiDataDiff(BaseModel):
     data_source1_id: int
     data_source2_id: int
     table1: List[str]
@@ -107,13 +107,13 @@ class TCloudApiDataDiff(pydantic.BaseModel):
     exclude_columns: Optional[List[str]]
 
 
-class TCloudApiOrgMeta(pydantic.BaseModel):
+class TCloudApiOrgMeta(BaseModel):
     org_id: int
     org_name: str
     user_id: int
 
 
-class TSummaryResultPrimaryKeyStats(pydantic.BaseModel):
+class TSummaryResultPrimaryKeyStats(BaseModel):
     total_rows: Tuple[int, int]
     nulls: Tuple[int, int]
     dupes: Tuple[int, int]
@@ -121,12 +121,12 @@ class TSummaryResultPrimaryKeyStats(pydantic.BaseModel):
     distincts: Tuple[int, int]
 
 
-class TSummaryResultColumnDiffStats(pydantic.BaseModel):
+class TSummaryResultColumnDiffStats(BaseModel):
     column_name: str
     match: float
 
 
-class TSummaryResultValueStats(pydantic.BaseModel):
+class TSummaryResultValueStats(BaseModel):
     total_rows: int
     rows_with_differences: int
     total_values: int
@@ -135,7 +135,7 @@ class TSummaryResultValueStats(pydantic.BaseModel):
     columns_diff_stats: List[TSummaryResultColumnDiffStats]
 
 
-class TSummaryResultSchemaStats(pydantic.BaseModel):
+class TSummaryResultSchemaStats(BaseModel):
     columns_mismatched: Tuple[int, int]
     column_type_mismatches: int
     column_reorders: int
@@ -144,11 +144,11 @@ class TSummaryResultSchemaStats(pydantic.BaseModel):
     exclusive_columns: Tuple[List[str], List[str]]
 
 
-class TSummaryResultDependencyDetails(pydantic.BaseModel):
+class TSummaryResultDependencyDetails(BaseModel):
     deps: Dict[str, List[Dict]]
 
 
-class TCloudApiDataDiffSummaryResult(pydantic.BaseModel):
+class TCloudApiDataDiffSummaryResult(BaseModel):
     status: str
     pks: Optional[TSummaryResultPrimaryKeyStats]
     values: Optional[TSummaryResultValueStats]
@@ -170,13 +170,13 @@ class TCloudApiDataDiffSummaryResult(pydantic.BaseModel):
         )
 
 
-class TCloudDataSourceTestResult(pydantic.BaseModel):
+class TCloudDataSourceTestResult(BaseModel):
     status: TestDataSourceStatus
     message: str
     outcome: str
 
 
-class TCloudApiDataSourceTestResult(pydantic.BaseModel):
+class TCloudApiDataSourceTestResult(BaseModel):
     name: str
     status: str
     result: Optional[TCloudDataSourceTestResult]

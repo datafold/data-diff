@@ -2,7 +2,7 @@ import json
 import time
 from typing import List, Optional, Union, overload
 
-import pydantic
+from pydantic import BaseModel
 import rich
 from rich.table import Table
 from rich.prompt import Confirm, Prompt, FloatPrompt, IntPrompt, InvalidResponse
@@ -21,7 +21,7 @@ from data_diff.dbt_parser import DbtParser
 UNKNOWN_VALUE = "unknown_value"
 
 
-class TDataSourceTestStage(pydantic.BaseModel):
+class TDataSourceTestStage(BaseModel):
     name: str
     status: TestDataSourceStatus
     description: str = ""

@@ -187,5 +187,5 @@ def ansi_stdout_cleanup(ansi_input) -> str:
     return re.sub(r"\x1B\[[0-?]*[ -/]*[@-~]", "", ansi_input)
 
 
-def get_cli_options() -> CliOptions:
-    return CliOptions(bisection_factor=2, bisection_threshold=3, table_write_limit=1)
+def get_cli_options(**kwargs) -> CliOptions:
+    return CliOptions(bisection_factor=2, bisection_threshold=3, table_write_limit=1, **kwargs)

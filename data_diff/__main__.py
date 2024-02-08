@@ -10,6 +10,7 @@ from typing import Dict, Optional, Tuple, List, Set
 
 import click
 import rich
+from pydantic_core._pydantic_core import ValidationError
 from rich.logging import RichHandler
 
 from data_diff import Database, DbPath
@@ -243,7 +244,6 @@ click.Context.formatter_class = MyHelpFormatter
         "'serial' guarantees a single-threaded execution of the algorithm (useful for debugging)."
     ),
     metavar="COUNT",
-    type=int,
 )
 @click.option(
     "-w",
@@ -494,38 +494,12 @@ def _get_expanded_columns(
     return expanded_columns
 
 
-def _set_threads(cli_options: CliOptions) -> None:
-    cli_options.threaded = True
-    message = "Error: threads must be of type int, or value must be 'serial'."
-    if cli_options.threads is None:
-        cli_options.threads = 1
-
-    elif isinstance(cli_options.threads, str):
-        if cli_options.threads.lower() != "serial":
-            logging.error(message)
-            raise ValueError(message)
-
-        assert not (cli_options.threads1 or cli_options.threads2)
-        cli_options.threaded = False
-        cli_options.threads = 1
-
-    elif not isinstance(cli_options.threads, int):
-        logging.error(message)
-        raise ValueError(message)
-
-    elif cli_options.threads < 1:
-        message = "Error: threads must be >= 1"
-        logging.error(message)
-        raise ValueError(message)
-
-
 def _data_diff(cli_options: CliOptions) -> None:
     if cli_options.limit and cli_options.stats:
         logging.error("Cannot specify a limit when using the -s/--stats switch")
         return
 
     key_columns = cli_options.key_columns or ("id",)
-    _set_threads(cli_options)
     start = time.monotonic()
 
     if cli_options.database1 is None or cli_options.database2 is None:
