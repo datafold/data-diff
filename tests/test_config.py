@@ -35,11 +35,9 @@ class TestConfig(unittest.TestCase):
         self.assertRaises(ConfigParseError, apply_config_from_string, config, "bla", cli_options)  # No such run
 
         cli_options: CliOptions = get_cli_options()
-        print(config)
         apply_config_from_string(config, "pg_pg", cli_options)
         assert cli_options.update_column == "timestamp"  # default
         assert cli_options.verbose is True
-        print(cli_options.threads)
         assert cli_options.threads == 4  # overwritten by pg_pg
         assert cli_options.database1 == {"driver": "postgresql", "user": "postgres", "password": "Password1"}
         assert cli_options.database2 == "postgresql://postgres:Password1@/"
