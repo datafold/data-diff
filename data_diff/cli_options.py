@@ -1,6 +1,6 @@
 from typing import Optional, Literal, Dict, Union, Tuple
 
-from pydantic import BaseModel, PositiveInt, model_validator
+from pydantic import BaseModel, PositiveInt
 
 
 class CliOptions(BaseModel):
@@ -29,7 +29,7 @@ class CliOptions(BaseModel):
     assume_unique_key: bool = False
     sample_exclusive_rows: bool = False
     materialize_all_rows: bool = False
-    threads: Union[PositiveInt, Literal["serial"]] = 1
+    threads: Union[None, PositiveInt, Literal["serial"]] = None
     threads1: Optional[PositiveInt] = None
     threads2: Optional[PositiveInt] = None
     threaded: bool = False
@@ -46,13 +46,3 @@ class CliOptions(BaseModel):
     prod_database: Optional[str] = None
     prod_schema: Optional[str] = None
     __conf__: Optional[Dict] = None
-
-    @model_validator(mode="after")
-    def check_threads(self) -> "CliOptions":
-        self.threaded = True
-        if self.threads == "serial":
-            if self.threads1 or self.threads2:
-                raise ValueError("threads1 and threads2 can not be set when threads is set to serial.")
-            self.threads = 1
-            self.threaded = False
-        return self

@@ -6,7 +6,7 @@ import time
 from copy import deepcopy
 from datetime import datetime
 from itertools import islice
-from typing import Dict, Optional, Tuple, List, Set
+from typing import Dict, Optional, Tuple, List, Set, Union
 
 import click
 import rich
@@ -494,12 +494,23 @@ def _get_expanded_columns(
     return expanded_columns
 
 
+def _set_threads(cli_options: CliOptions) -> None:
+    cli_options.threaded = True
+    if cli_options.threads == "serial":
+        assert not (cli_options.threads1 or cli_options.threads2)
+        cli_options.threaded = False
+        cli_options.threads = 1
+    elif cli_options.threads is None:
+        cli_options.threads = 1
+
+
 def _data_diff(cli_options: CliOptions) -> None:
     if cli_options.limit and cli_options.stats:
         logging.error("Cannot specify a limit when using the -s/--stats switch")
         return
 
     key_columns = cli_options.key_columns or ("id",)
+    _set_threads(cli_options)
     start = time.monotonic()
 
     if cli_options.database1 is None or cli_options.database2 is None:

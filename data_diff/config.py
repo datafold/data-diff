@@ -41,7 +41,10 @@ def _apply_config(config: Dict[str, Any], run_name: str, cli_options: CliOptions
     if cli_options.database1 is not None:
         for attr in ("table1", "database2", "table2"):
             if cli_options.__getattribute__(attr) is None:
-                raise ValueError(f"Specified database1 but not {attr}. Must specify all 4 arguments (database1, table1, database2, table2), or none.")
+                raise ValueError(
+                    f"Specified database1 but not {attr}. "
+                    f"Must specify all 4 arguments (database1, table1, database2, table2), or none."
+                )
 
         for index in "12":
             run_args[index] = {attr: cli_options.__getattribute__(f"{attr}{index}") for attr in ("database", "table")}
@@ -85,9 +88,12 @@ def _apply_config(config: Dict[str, Any], run_name: str, cli_options: CliOptions
         if threads is not None:
             run_args[f"threads{index}"] = int(threads)
 
+    print(run_args)
     # Update keywords
     for new_key, new_value in run_args.items():
+        print(new_key, new_value)
         cli_options.__setattr__(new_key, cli_options.__getattribute__(new_key) or new_value)
+        print(cli_options.__getattribute__(new_key))
 
     cli_options.__conf__ = run_args
 

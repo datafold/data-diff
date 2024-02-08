@@ -1,10 +1,10 @@
 import unittest
 
-from pydantic_core._pydantic_core import PydanticCustomError, ValidationError
+from pydantic_core import ValidationError
 
 from data_diff import Database, JoinDiffer, HashDiffer
 from data_diff import databases as db
-from data_diff.__main__ import _get_dbs, _set_age, _get_table_differ, _get_expanded_columns
+from data_diff.__main__ import _get_dbs, _set_age, _get_table_differ, _get_expanded_columns, _set_threads
 from data_diff.cli_options import CliOptions
 from data_diff.databases.mysql import MySQL
 from data_diff.diff_tables import TableDiffer
@@ -101,17 +101,15 @@ class TestGetDBS(unittest.TestCase):
 
     def test_invalid_inputs(self) -> None:
         """Test invalid inputs."""
-        cli_options: CliOptions = get_cli_options()
-        cli_options.database1 = ""
-        cli_options.database2 = ""
+        cli_options: CliOptions = get_cli_options(database1="", database2="")
         with self.assertRaises(Exception):  # Assuming that connect() raises Exception on failure
             _get_dbs(cli_options)  # Empty connection strings
 
     def test_database_object(self) -> None:
         """Test returned database objects are valid and not None."""
-        cli_options: CliOptions = get_cli_options()
-        cli_options.database1 = CONN_STRINGS[db.PostgreSQL]
-        cli_options.database2 = CONN_STRINGS[db.PostgreSQL]
+        cli_options: CliOptions = get_cli_options(
+            database1=CONN_STRINGS[db.PostgreSQL], database2=CONN_STRINGS[db.PostgreSQL]
+        )
         db1, db2 = _get_dbs(cli_options)
         self.assertIsNotNone(db1)
         self.assertIsNotNone(db2)
@@ -257,35 +255,47 @@ class TestGetExpandedColumns(DiffTestCase):
         assert len(set(expanded_columns) & set(columns)) == 3
 
 
-class TestGetThreads(unittest.TestCase):
-    def test__get_threads(self):
+class TestSetThreads(unittest.TestCase):
+    def test__set_threads(self):
         cli_options: CliOptions = get_cli_options(thread1=None, threads2=None)
+        _set_threads(cli_options)
         assert cli_options.threaded
         assert cli_options.threads == 1
 
-        cli_options: CliOptions = get_cli_options(thread1=2, threads2=3)
+        cli_options.threads1 = 2
+        cli_options.threads2 = 3
+        _set_threads(cli_options)
         assert cli_options.threaded
         assert cli_options.threads == 1
 
-        cli_options: CliOptions = get_cli_options(threads="serial", thread1=None, threads2=None)
+        cli_options.threads = "serial"
+        cli_options.threads1 = None
+        cli_options.threads2 = None
+        _set_threads(cli_options)
         assert not cli_options.threaded
         assert cli_options.threads == 1
 
-        with self.assertRaises(ValueError):
-            get_cli_options(threads="serial", thread1=1, threads2=2)
+        cli_options.threads = "serial"
+        cli_options.threads1 = 1
+        cli_options.threads2 = 2
+        with self.assertRaises(AssertionError):
+            _set_threads(cli_options)
 
         with self.assertRaises(ValidationError):
             get_cli_options(threads="auto", thread1=None, threads2=None)
 
         cli_options: CliOptions = get_cli_options(threads="4", thread1=None, threads2=None)
+        _set_threads(cli_options)
         assert cli_options.threaded
         assert cli_options.threads == 4
 
         cli_options: CliOptions = get_cli_options(threads=5, thread1=None, threads2=None)
+        _set_threads(cli_options)
         assert cli_options.threaded
         assert cli_options.threads == 5
 
         cli_options: CliOptions = get_cli_options(threads=6, thread1=7, threads2=8)
+        _set_threads(cli_options)
         assert cli_options.threaded
         assert cli_options.threads == 6
 
