@@ -41,7 +41,7 @@ def _apply_config(config: Dict[str, Any], run_name: str, cli_options: CliOptions
     if cli_options.database1 is not None:
         for attr in ("table1", "database2", "table2"):
             if cli_options.__getattribute__(attr) is None:
-                raise ValueError(f"Specified database1 but not {attr}. Must specify all 4 arguments, or neither.")
+                raise ValueError(f"Specified database1 but not {attr}. Must specify all 4 arguments (database1, table1, database2, table2), or none.")
 
         for index in "12":
             run_args[index] = {attr: cli_options.__getattribute__(f"{attr}{index}") for attr in ("database", "table")}
