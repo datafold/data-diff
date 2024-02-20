@@ -6,11 +6,10 @@ import time
 from copy import deepcopy
 from datetime import datetime
 from itertools import islice
-from typing import Dict, Optional, Tuple, List, Set, Union
+from typing import Dict, Optional, Tuple, List, Set
 
 import click
 import rich
-from pydantic_core._pydantic_core import ValidationError
 from rich.logging import RichHandler
 
 from data_diff import Database, DbPath
