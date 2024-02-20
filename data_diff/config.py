@@ -92,7 +92,7 @@ def _apply_config(config: Dict[str, Any], run_name: str, cli_options: CliOptions
     for new_key, new_value in run_args.items():
         cli_options.__setattr__(new_key, cli_options.__getattribute__(new_key) or new_value)
 
-    cli_options.__conf__ = run_args
+    cli_options.run_args = run_args
 
 
 # There are no strict requirements for the environment variable name format.

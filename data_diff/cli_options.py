@@ -45,4 +45,4 @@ class CliOptions(BaseModel):
     state: Optional[str] = None
     prod_database: Optional[str] = None
     prod_schema: Optional[str] = None
-    __conf__: Optional[Dict] = None
+    run_args: Optional[Dict] = None

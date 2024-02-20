@@ -363,10 +363,10 @@ def main(conf, run, **kwargs) -> None:
     if cli_options.debug:
         log_handlers["rich_handler"].setLevel(logging.DEBUG)
         logging.basicConfig(level=logging.DEBUG, handlers=list(log_handlers.values()))
-        if cli_options.__conf__:
-            __conf__ = deepcopy(cli_options.__conf__)
-            _remove_passwords_in_dict(__conf__)
-            logging.debug(f"Applied run configuration: {__conf__}")
+        if cli_options.run_args:
+            run_args = deepcopy(cli_options.run_args)
+            _remove_passwords_in_dict(run_args)
+            logging.debug(f"Applied run configuration: {run_args}")
     elif cli_options.verbose:
         log_handlers["rich_handler"].setLevel(logging.INFO)
         logging.basicConfig(level=logging.DEBUG, handlers=list(log_handlers.values()))
