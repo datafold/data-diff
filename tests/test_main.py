@@ -1,6 +1,6 @@
 import unittest
 
-from pydantic_core import ValidationError
+from pydantic.error_wrappers import ValidationError
 
 from data_diff import Database, JoinDiffer, HashDiffer
 from data_diff import databases as db
