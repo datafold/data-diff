@@ -4,8 +4,8 @@ import time
 from typing import Any, Dict, List, Optional, Tuple
 
 import attrs
-import requests
 import pydantic
+import requests
 from typing_extensions import Self
 
 from data_diff.errors import DataDiffCloudDiffFailed, DataDiffCloudDiffTimedOut, DataDiffDatasourceIdNotFoundError
