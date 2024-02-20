@@ -11,7 +11,7 @@ class CliOptions(BaseModel):
     table1: Optional[str] = None
     database2: Union[str, Dict, None] = None
     table2: Optional[str] = None
-    key_columns: Tuple[str] = ()
+    key_columns: Tuple[str, ...] = ()
     update_column: Optional[str] = None
     columns: Tuple[str, ...] = ()
     limit: Optional[PositiveInt] = None
