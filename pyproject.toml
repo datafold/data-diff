@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "data-diff"
-version = "0.11.0"
+version = "0.11.1"
 description = "Command-line tool and Python library to efficiently diff rows across two different databases."
 authors = ["Datafold <data-diff@datafold.com>"]
 license = "MIT"
@@ -21,47 +21,47 @@ classifiers = [
 ]
 packages = [{ include = "data_diff" }]
 [tool.poetry.dependencies]
-pydantic = "1.10.12"
-python = "^3.8.0"
+pydantic = ">=1.10.12"
+python = ">=3.8.0,<4.0"
 dsnparse = "<0.2.0"
-click = "^8.1"
+click = ">=8.1"
 rich = "*"
-toml = "^0.10.2"
-mysql-connector-python = {version="8.0.29", optional=true}
+toml = ">=0.10.2"
+mysql-connector-python = {version=">=8.0.29", optional=true}
 psycopg2 = {version="*", optional=true}
 snowflake-connector-python = {version = ">=3.0.2,<4.0.0", optional=true}
 cryptography = {version="*", optional=true}
-trino = {version="^0.314.0", optional=true}
+trino = {version=">=0.314.0", optional=true}
 presto-python-client = {version="*", optional=true}
 clickhouse-driver = {version="*", optional=true}
 duckdb = {version="*", optional=true}
 dbt-core = {version="^1.0.0"}
 keyring = "*"
-tabulate = "^0.9.0"
-preql = {version="^0.2.19", optional=true}
+tabulate = ">=0.9.0"
+preql = {version=">=0.2.19", optional=true}
 vertica-python = {version="*", optional=true}
 urllib3 = "<2"
 oracledb = {version = "*", optional=true}
-pyodbc = {version="^4.0.39", optional=true}
+pyodbc = {version=">=4.0.39", optional=true}
 typing-extensions = ">=4.0.1"
-attrs = "^23.1.0"
+attrs = ">=23.1.0"
 mashumaro = {version = ">=2.9,<3.11.0", extras = ["msgpack"]}
 
 [tool.poetry.dev-dependencies]
 parameterized = "*"
 unittest-parallel = "*"
-preql = "^0.2.19"
+preql = ">=0.2.19"
 mysql-connector-python = "*"
 psycopg2 = "*"
 snowflake-connector-python = ">=3.0.2,<4.0.0"
 cryptography = "*"
-trino = "^0.314.0"
-presto-python-client = "0.8.3"
+trino = ">=0.314.0"
+presto-python-client = ">=0.8.3"
 clickhouse-driver = "*"
 vertica-python = "*"
-duckdb = "^0.9.0"
-dbt-core = "^1.0.0"
-ruff = "^0.1.4"
+duckdb = ">=0.9.0"
+dbt-core = ">=1.0.0"
+ruff = ">=0.1.4"
 # google-cloud-bigquery = "*"
 # databricks-sql-connector = "*"
 
@@ -86,7 +86,7 @@ all-dbs = [
 ]
 
 [tool.poetry.group.dev.dependencies]
-pre-commit = "^3.5.0"
+pre-commit = ">=3.5.0"
 
 [build-system]
 requires = ["poetry-core>=1.0.0"]
