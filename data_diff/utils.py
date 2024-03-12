@@ -72,8 +72,7 @@ V = TypeVar("V")
 
 class CaseAwareMapping(MutableMapping[str, V]):
     @abstractmethod
-    def get_key(self, key: str) -> str:
-        ...
+    def get_key(self, key: str) -> str: ...
 
     def new(self, initial=()) -> Self:
         return type(self)(initial)
@@ -416,7 +415,6 @@ def get_from_dict_with_raise(dictionary: Dict, key: str, exception: Exception):
 
 
 class Vector(tuple):
-
     """Immutable implementation of a regular vector over any arithmetic value
 
     Implements a product order - https://en.wikipedia.org/wiki/Product_order

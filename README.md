@@ -170,18 +170,11 @@ Check out [documentation](https://docs.datafold.com/reference/open_source/cli) f
 | Trino         |  🟡   | `trino://<username>:<password>@<hostname>:8080/<database>`                                                                          |
 | Clickhouse    |  🟡   | `clickhouse://<username>:<password>@<hostname>:9000/<database>`                                                                     |
 | Vertica       |  🟡   | `vertica://<username>:<password>@<hostname>:5433/<database>`                                                                        |
-| ElasticSearch |  📝    |                                                                                                                                     |
-| Planetscale   |  📝    |                                                                                                                                     |
-| Pinot         |  📝    |                                                                                                                                     |
-| Druid         |  📝    |                                                                                                                                     |                                                                                                                                  |
-| SQLite        |  📝    |                                                                                                                                     |
 
 *MS SQL Server support is limited, with known performance issues that are addressed in Datafold Cloud.
 
 * 🟢: Implemented and thoroughly tested.
 * 🟡: Implemented, but not thoroughly tested yet.
-* ⏳: Implementation in progress.
-* 📝: Implementation planned. Contributions welcome.
 
 Your database not listed here?
 
