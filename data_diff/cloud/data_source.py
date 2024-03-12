@@ -90,18 +90,15 @@ def create_ds_config(
 
 
 @overload
-def _cast_value(value: str, type_: Literal["integer"]) -> int:
-    ...
+def _cast_value(value: str, type_: Literal["integer"]) -> int: ...
 
 
 @overload
-def _cast_value(value: str, type_: Literal["boolean"]) -> bool:
-    ...
+def _cast_value(value: str, type_: Literal["boolean"]) -> bool: ...
 
 
 @overload
-def _cast_value(value: str, type_: Literal["string"]) -> str:
-    ...
+def _cast_value(value: str, type_: Literal["string"]) -> str: ...
 
 
 def _cast_value(value: str, type_: str) -> Union[bool, int, str]:

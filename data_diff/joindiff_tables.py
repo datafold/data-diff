@@ -1,6 +1,5 @@
-"""Provides classes for performing a table diff using JOIN
+"""Provides classes for performing a table diff using JOIN"""
 
-"""
 from decimal import Decimal
 from functools import partial
 import logging

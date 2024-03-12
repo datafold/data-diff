@@ -1,4 +1,5 @@
 "Useful AST classes that don't quite fall within the scope of regular SQL"
+
 from typing import Callable, Optional, Sequence
 
 import attrs

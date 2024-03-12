@@ -1,5 +1,5 @@
-"""Provides classes for performing a table diff
-"""
+"""Provides classes for performing a table diff"""
+
 import threading
 import time
 from abc import ABC, abstractmethod
@@ -284,8 +284,7 @@ class TableDiffer(ThreadBase, ABC):
         level=0,
         segment_index=None,
         segment_count=None,
-    ):
-        ...
+    ): ...
 
     def _bisect_and_diff_tables(self, table1: TableSegment, table2: TableSegment, info_tree):
         if len(table1.key_columns) != len(table2.key_columns):
