@@ -1,7 +1,7 @@
 import base64
 import enum
 import time
-from typing import Any, Dict, List, Optional, Type, Tuple
+from typing import Any, Dict, List, Optional, Tuple
 
 import attrs
 import pydantic
