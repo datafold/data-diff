@@ -3,6 +3,7 @@ import os
 from typing import Any, Dict
 import toml
 
+from data_diff.cli_options import CliOptions
 
 _ARRAY_FIELDS = (
     "key_columns",
@@ -18,7 +19,7 @@ def is_uri(s: str) -> bool:
     return "://" in s
 
 
-def _apply_config(config: Dict[str, Any], run_name: str, kw: Dict[str, Any]):
+def _apply_config(config: Dict[str, Any], run_name: str, cli_options: CliOptions):
     _resolve_env(config)
 
     # Load config
@@ -36,15 +37,17 @@ def _apply_config(config: Dict[str, Any], run_name: str, kw: Dict[str, Any]):
     else:
         run_name = "default"
 
-    if kw.get("database1") is not None:
+    # if db details are provided from cli that has precedence
+    if cli_options.database1 is not None:
         for attr in ("table1", "database2", "table2"):
-            if kw[attr] is None:
+            if cli_options.__getattribute__(attr) is None:
                 raise ValueError(f"Specified database1 but not {attr}. Must specify all 4 arguments, or neither.")
 
         for index in "12":
-            run_args[index] = {attr: kw.pop(f"{attr}{index}") for attr in ("database", "table")}
+            run_args[index] = {attr: cli_options.__getattribute__(f"{attr}{index}") for attr in ("database", "table")}
 
-    # Make sure array fields are decoded as list, since array fields in toml are decoded as list, but TableSegment object requires tuple type.
+    # Make sure array fields are decoded as list, since array fields in toml are decoded as list,
+    # but TableSegment object requires tuple type.
     for field in _ARRAY_FIELDS:
         if isinstance(run_args.get(field), list):
             run_args[field] = tuple(run_args[field])
@@ -83,13 +86,10 @@ def _apply_config(config: Dict[str, Any], run_name: str, kw: Dict[str, Any]):
             run_args[f"threads{index}"] = int(threads)
 
     # Update keywords
-    new_kw = dict(kw)  # Set defaults
-    new_kw.update(run_args)  # Apply config
-    new_kw.update({k: v for k, v in kw.items() if v})  # Apply non-empty defaults
+    for new_key, new_value in run_args.items():
+        cli_options.__setattr__(new_key, cli_options.__getattribute__(new_key) or new_value)
 
-    new_kw["__conf__"] = run_args
-
-    return new_kw
+    cli_options.__conf__ = run_args
 
 
 # There are no strict requirements for the environment variable name format.
@@ -118,10 +118,10 @@ def _replace_match(match: re.Match) -> str:
     return os.environ.get(referenced_var, "")
 
 
-def apply_config_from_file(path: str, run_name: str, kw: Dict[str, Any]):
+def apply_config_from_file(path: str, run_name: str, cli_options: CliOptions):
     with open(path) as f:
-        return _apply_config(toml.load(f), run_name, kw)
+        _apply_config(toml.load(f), run_name, cli_options)
 
 
-def apply_config_from_string(toml_config: str, run_name: str, kw: Dict[str, Any]):
-    return _apply_config(toml.loads(toml_config), run_name, kw)
+def apply_config_from_string(toml_config: str, run_name: str, cli_options: CliOptions):
+    _apply_config(toml.loads(toml_config), run_name, cli_options)

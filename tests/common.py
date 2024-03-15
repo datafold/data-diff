@@ -10,6 +10,7 @@ import subprocess
 
 from parameterized import parameterized_class
 
+from data_diff.cli_options import CliOptions
 from data_diff.queries.api import table
 from data_diff.databases.base import Database
 
@@ -184,3 +185,7 @@ def table_segment(database, table_path, key_columns, *args, **kw):
 
 def ansi_stdout_cleanup(ansi_input) -> str:
     return re.sub(r"\x1B\[[0-?]*[ -/]*[@-~]", "", ansi_input)
+
+
+def get_cli_options() -> CliOptions:
+    return CliOptions(bisection_factor=2, bisection_threshold=3, table_write_limit=1)

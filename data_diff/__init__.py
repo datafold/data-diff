@@ -14,7 +14,7 @@ from data_diff.utils import eval_name_template, Vector
 def connect_to_table(
     db_info: Union[str, dict],
     table_name: Union[DbPath, str],
-    key_columns: str = ("id",),
+    key_columns: Tuple[str] = ("id",),
     thread_count: Optional[int] = 1,
     **kwargs,
 ) -> TableSegment:
