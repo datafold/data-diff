@@ -1,8 +1,10 @@
 import os
 import unittest
 
+from data_diff.cli_options import CliOptions
 from data_diff.config import apply_config_from_string, ConfigParseError
 from data_diff.utils import remove_password_from_url
+from tests.common import get_cli_options
 
 
 class TestConfig(unittest.TestCase):
@@ -29,24 +31,29 @@ class TestConfig(unittest.TestCase):
             2.table = "rating_del1"
             2.threads = 22
         """
-        self.assertRaises(ConfigParseError, apply_config_from_string, config, "bla", {})  # No such run
+        cli_options: CliOptions = get_cli_options()
+        self.assertRaises(ConfigParseError, apply_config_from_string, config, "bla", cli_options)  # No such run
 
-        res = apply_config_from_string(config, "pg_pg", {})
-        assert res["update_column"] == "timestamp"  # default
-        assert res["verbose"] is True
-        assert res["threads"] == 4  # overwritten by pg_pg
-        assert res["database1"] == {"driver": "postgresql", "user": "postgres", "password": "Password1"}
-        assert res["database2"] == "postgresql://postgres:Password1@/"
-        assert res["table1"] == "rating"
-        assert res["table2"] == "rating_del1"
-        assert res["threads1"] == 11
-        assert res["threads2"] == 22
-        assert res["key_columns"] == ("id",)
-        assert res["columns"] == ("name", "age")
+        cli_options: CliOptions = get_cli_options()
+        apply_config_from_string(config, "pg_pg", cli_options)
+        assert cli_options.update_column == "timestamp"  # default
+        assert cli_options.verbose is True
+        assert cli_options.threads == 4  # overwritten by pg_pg
+        assert cli_options.database1 == {"driver": "postgresql", "user": "postgres", "password": "Password1"}
+        assert cli_options.database2 == "postgresql://postgres:Password1@/"
+        assert cli_options.table1 == "rating"
+        assert cli_options.table2 == "rating_del1"
+        assert cli_options.threads1 == 11
+        assert cli_options.threads2 == 22
+        assert cli_options.key_columns == ("id",)
+        assert cli_options.columns == ("name", "age")
 
-        res = apply_config_from_string(config, "pg_pg", {"update_column": "foo", "table2": "bar"})
-        assert res["update_column"] == "foo"
-        assert res["table2"] == "bar"
+        cli_options: CliOptions = get_cli_options()
+        cli_options.update_column = "foo"
+        cli_options.table2 = "bar"
+        apply_config_from_string(config, "pg_pg", cli_options)
+        assert cli_options.update_column == "foo"
+        assert cli_options.table2 == "bar"
 
     def test_remove_password(self):
         replace_with = "*****"
@@ -97,13 +104,14 @@ class TestConfig(unittest.TestCase):
         """
 
         os.environ.update(env)
-        res = apply_config_from_string(config, "pg_pg", {})
-        assert res["update_column"] == ""  # missing env var
-        assert res["verbose"] is True
-        assert res["threads"] == 4  # overwritten by pg_pg
-        assert res["database1"] == {"driver": "postgresql", "user": "postgres", "password": "Password1"}
-        assert res["database2"] == "postgresql://postgres:Password1@/"
-        assert res["table1"] == "rating"
-        assert res["table2"] == "rating_del1"
-        assert res["threads1"] == 11
-        assert res["threads2"] == 22
+        cli_options: CliOptions = get_cli_options()
+        apply_config_from_string(config, "pg_pg", cli_options)
+        assert cli_options.update_column == ""  # missing env var
+        assert cli_options.verbose is True
+        assert cli_options.threads == 4  # overwritten by pg_pg
+        assert cli_options.database1 == {"driver": "postgresql", "user": "postgres", "password": "Password1"}
+        assert cli_options.database2 == "postgresql://postgres:Password1@/"
+        assert cli_options.table1 == "rating"
+        assert cli_options.table2 == "rating_del1"
+        assert cli_options.threads1 == 11
+        assert cli_options.threads2 == 22
